@@ -111,6 +111,7 @@ public static class ApiResponseExtensions
 - `Abstractions/IUserRepository`（接口，App.Core）与 `Repositories/InMemoryUserRepository`（App.Infrastructure，**脚手架临时实现**，首个业务功能替换为 EF Core 实现）：
   - 种子账号：`admin` / `admin123`，`displayName = "管理员"`。
 - `Abstractions/IUnitOfWork`（App.Core 接口 / App.Infrastructure `Persistence/UnitOfWork` 实现）：为跨仓储写操作提供显式事务边界；脚手架阶段无真实写库场景，先落接口与实现供后续用例使用。
+  - 事务生命周期约定：每个用例内 `BeginTransactionAsync` → 写操作 → `CommitAsync` / 异常 `RollbackAsync` 各一次；已有未提交事务时再次 `BeginTransactionAsync` 属编程错误，实现需 fail-fast 抛异常（禁止静默复用 / 覆盖当前事务）。
 
 ### 2.8 数据库（App.Infrastructure）
 
