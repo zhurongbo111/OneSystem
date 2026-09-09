@@ -1,0 +1,87 @@
+---
+description: 后端实现规则。开发或修改 backend/ 下的 .NET 8 / ASP.NET Core / EF Core 代码时应用，含分层架构、项目结构、EF Core 与数据库规范。
+alwaysApply: false
+enabled: true
+---
+
+# 后端实现规则
+
+> 总则（SDD 工作流、API 契约、通用约定）见根目录 `AGENTS.md`，本文件只写后端专属实现约定。
+> 开发功能前：先读 `specs/<feature>/` 规格，再按本文件实现。
+
+## 1. 技术栈
+
+- .NET 8 + ASP.NET Core Web API
+- EF Core（Npgsql 提供程序）+ PostgreSQL
+
+## 2. 项目结构
+
+```
+backend/
+├── App.sln
+├── src/
+│   ├── App.Api/            # Controller、中间件、全局异常处理、统一响应
+│   ├── App.Core/           # Handler（业务逻辑）、实体、DTO、统一响应定义
+│   └── App.Infrastructure/ # DbContext、Repository 实现（EF Core）
+└── tests/
+    └── App.Tests/          # 单元测试（xUnit）
+```
+
+- 依赖方向单向：`App.Api → App.Core → App.Infrastructure` 的引用按 `Api` 依赖 `Core` 与 `Infrastructure`、`Infrastructure` 依赖 `Core` 组织；禁止反向依赖。
+
+## 3. 分层架构
+
+```
+Controller → Handler → Repository → EF Core
+```
+
+| 层 | 职责 | 禁止 |
+|---|---|---|
+| Controller | 接收请求、参数校验、调用 Handler、返回统一响应 | 编写业务逻辑 |
+| Handler | 业务逻辑、事务控制 | 直接使用 DbContext / 写 SQL |
+| Repository | 数据访问，封装 EF Core 查询 | 编写业务逻辑 |
+| EF Core / DbContext | ORM 持久化 | — |
+
+- 按业务域（feature）组织模块，Handler / Repository 按域命名（如 `UserHandler`、`UserRepository`）。
+- 事务范围在 Handler 层控制；跨 Repository 的多表写操作必须包裹在显式事务中。
+- 统一响应 `{ code, message, data }` 的定义与全局异常转 `code: 50000` 的中间件放在 `App.Api` / `App.Core` 公共位置，Controller 直接返回。
+
+## 4. 数据库规范（PostgreSQL + EF Core）
+
+- 所有表结构变更必须走 EF Core Migrations；禁止手写 DDL，禁止修改已应用的迁移文件。
+- 业务代码中禁止裸 SQL；确需 EF Core 无法表达的场景，必须在规格中说明并经用户确认。
+- 实体名 PascalCase 单数；表名默认与实体名一致，规格可另行定义。
+- 连接串通过配置注入（`appsettings` / 环境变量），禁止硬编码。
+
+## 5. 编码约定
+
+- 遵循 C# 语言规范：4 空格缩进、Allman 大括号、文件内 `using` 排序（System 在前）。
+- 命名：类 / 方法 / 属性 PascalCase，私有字段 `_camelCase`，接口以 `I` 开头。
+- DTO 与实体分离：对外接口只暴露 DTO，禁止直接返回 EF 实体。
+- 异步优先：IO 相关方法使用 `async/await`，禁止同步阻塞（`.Result` / `.Wait()`）。
+- 可空引用类型启用；公共类型与公共方法写 XML 文档注释（中文）。
+
+## 6. 认证（JWT）
+
+- 使用 JWT 认证；token 有效期与 claims 在各功能规格中定义。
+- `App.Api` 中配置 JWT 校验（中间件 / 授权）；登录等白名单接口统一配置放行。
+- 校验失败统一返回 `code: 40100`，禁止抛出 500。
+- 签名密钥、有效期等通过配置注入（环境变量），禁止硬编码。
+
+## 7. 日志与可观测性
+
+- 日志集成 NLog 并对接默认 `ILogger<T>`（Microsoft.Extensions.Logging）；业务代码只注入使用 `ILogger<T>`，禁止直接调用 NLog。
+- NLog 配置放在 `App.Api`，输出控制台 + 滚动文件；日志级别：dev 为 Info，prod 为 Warning。
+- 日志必须包含上下文（含 traceId）。
+- 可观测性集成 OpenTelemetry（Tracing + Metrics）：在 `App.Api` 引入 SDK，自动埋点 ASP.NET Core 与 EF Core；导出目标按环境配置（dev 可不导出，prod 导出至 collector）。
+
+## 8. 环境配置
+
+- 目前仅 dev / prod 两个环境，通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分。
+- 敏感配置（数据库连接串、JWT 密钥、OTel 导出端点）从环境变量读取，`appsettings` 中只放非敏感默认值。
+
+## 9. 测试
+
+- 单元测试项目 `tests/App.Tests`，框架 xUnit。
+- 重点覆盖 Handler 层业务逻辑；Repository 层可用 EF Core InMemory 提供程序测试。
+- 测试命名：`{类名}_{方法名}_{场景}`；Handler 的公共方法必须有对应单测。

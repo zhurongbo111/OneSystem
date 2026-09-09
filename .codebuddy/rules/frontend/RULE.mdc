@@ -1,0 +1,72 @@
+---
+description: 前端实现规则。开发或修改 frontend/ 下的 Vue 3 / Arco Design / TypeScript 代码时应用，含技术栈、目录结构、组件与状态管理约定。
+alwaysApply: false
+enabled: true
+---
+
+# 前端实现规则
+
+> 总则（SDD 工作流、API 契约、通用约定）见根目录 `AGENTS.md`，本文件只写前端专属实现约定。
+> 开发功能前：先读 `specs/<feature>/` 规格，再按本文件实现。
+
+## 1. 技术栈
+
+- Vue 3 + TypeScript（`<script setup lang="ts">` 组合式 API，禁止 Options API）
+- Arco Design Vue（UI 组件库）
+- Vite（构建）、Pinia（状态）、vue-router（路由）、Axios（HTTP）
+
+## 2. 目录结构
+
+```
+frontend/
+├── index.html
+├── vite.config.ts
+├── package.json
+└── src/
+    ├── api/         # 接口请求层（统一响应解包、类型定义）
+    ├── assets/
+    ├── components/  # 通用组件
+    ├── composables/ # 组合式函数
+    ├── router/      # 路由
+    ├── stores/      # Pinia 状态
+    ├── utils/
+    └── views/       # 页面级组件
+```
+
+## 3. 接口层
+
+- 所有接口请求集中在 `src/api/`，按业务域拆分文件（如 `user.ts`）。
+- 统一封装：基于 Axios 拦截器解包 `{ code, message, data }`；`code !== 0` 时用 Arco `Message.error` 提示 `message` 并 reject。
+- 请求参数与响应定义 TS 类型，与后端 DTO（camelCase）一一对应。
+- 组件内禁止直接调用 `axios/fetch`，必须经 `src/api/` 模块。
+
+## 4. 组件与页面
+
+- 页面级组件放 `src/views/`，按功能目录组织；可复用组件放 `src/components/`。
+- UI 统一使用 Arco Design 组件，不自造样式体系；自定义样式优先使用 Arco 主题变量（`@arco-design` CSS 变量 / 主题定制）。
+- 组件 props / emits 必须声明 TS 类型。
+- 组件名 PascalCase，文件命名与组件名一致。
+
+## 5. 状态与路由
+
+- 状态管理使用 Pinia，按功能拆分 store（`stores/<feature>.ts`）。
+- 路由使用 `vue-router`，路由按功能拆分并在 `router/` 统一注册；路由命名与功能域一致。
+- 路由级代码分割使用 `() => import(...)` 懒加载。
+
+## 6. 编码约定
+
+- 2 空格缩进；ESLint + Prettier 保持统一格式。
+- 变量 / 函数 camelCase，类型 / 接口 / 组件 PascalCase，常量 UPPER_SNAKE_CASE。
+- 禁止 `any`；无法确定类型时使用 `unknown` 收窄。
+- 异步逻辑用 `async/await`，必须处理失败分支（配合接口层统一错误提示）。
+
+## 7. 认证（JWT）
+
+- token 统一存储在 `localStorage`；Axios 请求拦截器从 `localStorage` 读取并附加 `Authorization: Bearer <token>`。
+- 响应拦截器：收到 `code: 40100` 时清除 `localStorage` 中的凭证并跳转登录页（需防重复跳转）。
+
+## 8. 环境与联调
+
+- Vite 多环境：`.env.development` / `.env.production`，目前仅 dev / prod 两个环境。
+- API 基础地址通过 `import.meta.env` 读取（如 `VITE_API_BASE_URL`）；dev 环境指向本地 / dev 后端（可用 Vite proxy）。
+- 集成测试：不单写单元测试；开发时直接联调 dev 环境后端做集成验证，接口行为以联调结果为准。
