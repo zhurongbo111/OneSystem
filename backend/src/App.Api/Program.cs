@@ -2,6 +2,7 @@ using System.Diagnostics;
 using App.Api.Authentication;
 using App.Core.Features.Auth.Login;
 using App.Api.Middleware;
+using App.Api.Swagger;
 using App.Core;
 using App.Core.Abstractions;
 using App.Core.Auth;
@@ -73,16 +74,9 @@ if (builder.Environment.IsDevelopment())
             In = ParameterLocation.Header,
             Description = "粘贴登录接口签发的 JWT（不带 Bearer 前缀亦可）",
         });
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference { Id = "Bearer", Type = ReferenceType.SecurityScheme }
-                },
-                Array.Empty<string>()
-            }
-        });
+        // 不使用文档级 AddSecurityRequirement（其作用于全部 operation，无法区分匿名接口）；
+        // security 要求由 Filter 按 [AllowAnonymous] 白名单语义逐 operation 标注，UI 锁图标与真实认证一致
+        options.OperationFilter<SwaggerSecurityOperationFilter>();
     });
 }
 
