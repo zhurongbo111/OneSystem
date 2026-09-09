@@ -107,7 +107,7 @@ public static class ApiResponseExtensions
 每个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下一组文件（Request / RequestValidator / RequestHandler / Response，详见后端规则第 3 节），不设 Service 层；用例请求实现 `IRequest<TResponse>` 标记、处理器实现 `IRequestHandler<TRequest, TResponse>`，Controller 只依赖 `Abstractions/IMediator` 经 `Send(Request)` 分发：
 
 - `Features/Auth/Login/`：`LoginRequest`（实现 `IRequest<LoginResponse>`）+ `LoginRequestValidator`（FluentValidation，仅格式校验、不查库）+ `LoginRequestHandler`（实现 `IRequestHandler<LoginRequest, LoginResponse>`）+ `LoginResponse`：
-  - 格式校验失败 → `BusinessException(40000)`；
+  - 格式校验由 `Mediator` 全局统一执行（见技术决策），失败 → `BusinessException(40000)`；
   - 查库约束（账号是否存在、密码是否正确）在 Handler 内判断 → `BusinessException(40001, "用户名或密码错误")`；
   - 成功 → `TokenService.Issue(UserDto)` 签发 JWT，返回 `LoginResponse { token, user }`。
 - `Features/Users/GetCurrentUser/`：空请求 `GetCurrentUserRequest`（实现 `IRequest<UserDto>`，占位统一入口签名，不定义 Validator）+ `GetCurrentUserRequestHandler`（实现 `IRequestHandler<GetCurrentUserRequest, UserDto>`），从 `ICurrentUser`（App.Api 基于已认证 claims 实现）还原 `UserDto`。
@@ -201,6 +201,7 @@ frontend/
 | 自研轻量中介 `IMediator.Send(Request)`（简化版 MediatR）而非引入 MediatR 包 | Controller 只面对单一中介入口，不感知具体 Handler，入口统一可替换；请求经 `IRequest<TResponse>` 标记声明响应类型并供运行时分发；注册仍显式（无注册期反射扫描），避免第三方 CQRS 依赖 |
 | RequestValidator 只做格式校验，查库约束放 RequestHandler | 校验器保持无状态纯规则；依赖数据的判定与写操作同处一个逻辑 / 事务上下文 |
 | 格式校验使用 FluentValidation | 声明式规则 + 可测试，替代手写 if 校验 |
+| 格式校验由 `Mediator` 全局统一执行（分发前） | 所有用例强制先校验再处理，无遗漏风险；Handler 不注入 / 不执行校验器，`HandleAsync` 只剩业务逻辑；校验规则仍按用例注册（显式注册、禁止扫描），空请求用例无校验器自动跳过 |
 | 不设 Service 层，RequestHandler 直接依赖仓储 | 避免贫血的业务编排层；跨仓储事务用 IUnitOfWork 显式控制 |
 | 登录示例账号放 `InMemoryUserRepository`（App.Infrastructure） | 脚手架无真实用户表；以仓储接口（App.Core.Abstractions）划边界，首个业务功能直接替换为 EF Core 实现 |
 | `AppDbContext` 暂空、不建迁移 | 无实体则无表；后续功能建表时再走 Migrations |
