@@ -7,13 +7,15 @@
 - [x] B3 实现统一响应 `ApiResponse` / `ApiResponse<T>` / 工厂与错误码常量（App.Core）
 - [x] B4 实现 `BusinessException` 与 `GlobalExceptionMiddleware`（含 traceId 日志）
 - [x] B5 实现 JWT：`JwtOptions`、`TokenService` 签发、`JwtAuthenticationMiddleware` 校验与白名单、dev 密钥兜底
-- [x] B6 实现 DTO（`UserDto`/`LoginRequest`/`LoginResult`）、`IUserAccountService` 内存实现、`AuthHandler`、`UserHandler`
+- [x] B6 实现用例（每 API 一组 Request/RequestValidator/RequestHandler/Response）：登录与获取当前用户示例；`IUserRepository` 接口 + 内存实现、`IUnitOfWork`
 - [x] B7 实现 `AuthController`、`UsersController`、`HealthController`
-- [x] B8 实现 `AppDbContext`（空）与 DI 注册、EF Core UseNpgsql
+- [x] B8 实现 `AppDbContext`（空）、仓储内存实现与 `IUnitOfWork`、EF Core UseNpgsql 与 DI 注册
 - [x] B9 配置 NLog（控制台 + 滚动文件、dev=Info/prod=Warning、traceId 布局）并接入 `UseNLog`
 - [x] B10 接入 OpenTelemetry（Tracing + Metrics 自动埋点，OTLP 条件导出）
 - [x] B11 配置 `appsettings*.json`、`launchSettings.json`（dev 端口 5080）
-- [x] B12 编写单元测试：统一响应、全局异常、`AuthHandler`、`UserHandler`、集成测试；`dotnet build` 与 `dotnet test` 通过（18/18）
+- [x] B12 编写单元测试：统一响应、全局异常、登录 / 当前用户用例、集成测试；`dotnet build` 与 `dotnet test` 通过
+- [x] B13 新增统一入口接口 `IRequestHandler<TRequest,TResponse>`（App.Core/Abstractions）：登录 / 获取当前用户两个用例实现接口并保持同一 `HandleAsync(Request, ct)` 签名；Controller 面向接口注入；`AddCore` 注册改为接口映射；单测同步；`dotnet build` 与 `dotnet test` 通过
+- [x] B14 实现自研用例中介（简化版 MediatR）：`Abstractions` 新增 `IRequest<TResponse>` / `IMediator`，`Mediation/Mediator` 按请求运行时类型经 DI 分发到已注册 `IRequestHandler`；登录 / 获取当前用户请求实现 `IRequest` 标记；Controller 改为只注入 `IMediator`；`AddCore` 注册 `IMediator`；新增 `MediatorTests`；`dotnet build` 与 `dotnet test` 通过
 
 ## 前端
 
