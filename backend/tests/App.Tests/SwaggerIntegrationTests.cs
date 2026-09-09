@@ -33,7 +33,7 @@ public class SwaggerIntegrationTests : IClassFixture<SwaggerIntegrationTests.Dev
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Development");
+            // WebApplicationFactory 默认 Development 环境（UseSetting 设置 ASPNETCORE_ENVIRONMENT 不生效，如需切换须用 UseEnvironment）
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
