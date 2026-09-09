@@ -85,3 +85,4 @@ Controller → Handler → Repository → EF Core
 - 单元测试项目 `tests/App.Tests`，框架 xUnit。
 - 重点覆盖 Handler 层业务逻辑；Repository 层可用 EF Core InMemory 提供程序测试。
 - 测试命名：`{类名}_{方法名}_{场景}`；Handler 的公共方法必须有对应单测。
+- **测试用例要求（强制）**：凡涉及后端改动的功能，交付前必须为改动新增 / 变更的业务逻辑补充相应测试用例（正常分支 + 异常分支）；无对应测试用例的后端改动视为未完成，不得勾选规格 `tasks.md` 中对应任务。
