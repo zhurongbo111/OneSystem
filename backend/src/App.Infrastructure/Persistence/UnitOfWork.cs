@@ -21,10 +21,18 @@ internal sealed class UnitOfWork : IUnitOfWork
     }
 
     /// <summary>
-    /// 开启事务
+    /// 开启事务；已有未提交的事务时抛异常（fail-fast，禁止重复开启）
     /// </summary>
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
-        => _transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+    {
+        if (_transaction is not null)
+        {
+            throw new InvalidOperationException(
+                "当前工作单元已有未提交的事务，禁止重复开启；请先 CommitAsync 或 RollbackAsync。");
+        }
+
+        _transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+    }
 
     /// <summary>
     /// 提交当前事务；未开启事务时忽略
