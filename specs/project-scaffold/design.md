@@ -207,3 +207,4 @@ frontend/
 | `AppDbContext` 暂空、不建迁移 | 无实体则无表；后续功能建表时再走 Migrations |
 | HTTP 状态码恒 200，业务码表达结果 | 与 AGENTS.md 4.1 统一响应约定一致，前端按 `code` 分支处理 |
 | dev 下 JWT 密钥自动生成兜底 | 本地开箱即用；prod 缺失即启动失败，避免裸奔 |
+| 集成测试工厂切换环境用 `builder.UseEnvironment(...)` 而非 `UseSetting("ASPNETCORE_ENVIRONMENT", ...)` | WebApplicationFactory 下 `UseSetting` 设置 `ASPNETCORE_ENVIRONMENT` 对 `IWebHostEnvironment` **不生效**（实证：工厂一直实际运行在 Development）。`UseEnvironment` 直接替换环境名可靠生效；且 Production 下 JWT 密钥校验读取**进程环境变量**（`JWT__SECRET`，Program 早期、in-memory 配置不可见），工厂需在静态构造中 `Environment.SetEnvironmentVariable("JWT__SECRET", ...)` 提供测试密钥 |
