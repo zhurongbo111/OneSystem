@@ -16,7 +16,8 @@ public class LoginRequestHandlerTests
     {
         var options = new JwtOptions { Secret = new string('a', 48), Issuer = "app-api", Audience = "app-web", ExpiresMinutes = 120 };
         var tokenService = new TokenService(Options.Create(options), NullLogger<TokenService>.Instance);
-        return new LoginRequestHandler(new LoginRequestValidator(), new InMemoryUserRepository(), tokenService);
+        // 格式校验由 Mediator 分发前统一执行，处理器不再依赖校验器
+        return new LoginRequestHandler(new InMemoryUserRepository(), tokenService);
     }
 
     [Fact]
@@ -53,14 +54,5 @@ public class LoginRequestHandlerTests
         Assert.Equal(ErrorCode.LoginFailed, ex.Code);
     }
 
-    [Fact]
-    public async Task HandleAsync_参数为空_应抛业务异常40000()
-    {
-        var handler = CreateHandler();
-
-        var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => handler.HandleAsync(new LoginRequest { Username = " ", Password = "" }));
-
-        Assert.Equal(ErrorCode.Validation, ex.Code);
-    }
+    // 格式校验（空参数 40000）已由 Mediator 全局统一执行，用例见 MediatorTests
 }
