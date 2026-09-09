@@ -41,17 +41,14 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "粘贴登录接口签发的 JWT（不带 Bearer 前缀亦可）",
     });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme { Reference = new OpenApiReference { Id = "Bearer", Type = ReferenceType.SecurityScheme } },
-            Array.Empty<string>()
-        }
-    });
+    // 不使用文档级 AddSecurityRequirement（其经 IDocumentFilter 写入文档顶层 security，作用于全部 operation，
+    // 无法区分匿名接口；且 M.O.S 序列化会跳过空列表，operation 级无法以 security: [] 覆盖文档级）
+    // 改为 Filter 按 [AllowAnonymous] 白名单语义逐 operation 标注（见 SwaggerSecurityOperationFilter）
+    options.OperationFilter<SwaggerSecurityOperationFilter>();
 });
 ```
 
-- **全局 SecurityRequirement**：全部 operation 都带 `security: [Bearer]`；`[AllowAnonymous]` 接口在 Swagger UI 显示锁图标但可无 token 调用，语义可接受（文档层面标注"可匿名"无原生支持，不处理）。
+- **security 标注策略（operation 级，替代文档级全局）**：`App.Api/Swagger/SwaggerSecurityOperationFilter`（实现 `Swashbuckle.AspNetCore.SwaggerGen.IOperationFilter`）检测动作方法或其控制器类型上的 `AllowAnonymousAttribute`——命中（登录、健康检查）则不加 security（UI 不显示锁图标），其余接口（含仅靠 `FallbackPolicy` 默认要求登录的）显式添加 operation 级 Bearer security（UI 显示锁图标）。与认证管道白名单共用同一 `[AllowAnonymous]` 特性标注，文档与真实认证语义严格一致，后续新接口无需额外维护文档层白名单。
 - `OpenApiInfo.Title = "App API"`；版本号 `v1` 写死（脚手架期无多版本需求，不引入版本配置节）。
 
 ### 2.3 401 响应标注
@@ -99,6 +96,7 @@ builder.Services.AddSwaggerGen(options =>
 |---|---|
 | SwaggerJson_dev环境_可匿名访问且包含Bearer安全方案 | `GET /swagger/v1/swagger.json` 200；`components.securitySchemes.Bearer.scheme == "bearer"` |
 | SwaggerJson_dev环境_受保护接口标注401 | `/api/users/me` 的 `responses` 含 `401` |
+| SwaggerJson_dev环境_匿名接口不带security要求 | `/api/auth/login`（POST）与 `/health`（GET）的 operation **无** `security` 字段；`/api/users/me` 保留 `security: [Bearer]` |
 | SwaggerUi_dev环境_可匿名打开 | `GET /swagger/index.html` 200 且内容含 `swagger-ui` |
 | Swagger_dev环境_带token调用受保护接口_返回用户 | 登录取 token → `GET /api/users/me`（带 Authorization 头）200 + `code: 0` |
 | Swagger_Production环境_文档不可访问 | `GET /swagger/v1/swagger.json` 200 + `code: 40100`，且响应非 OpenAPI 文档（无 `openapi` 字段） |
@@ -115,3 +113,4 @@ builder.Services.AddSwaggerGen(options =>
 | prod 下 `/swagger*` 回落认证挑战返回 40100（而非 404） | 与全站"统一 40100、HTTP 200"约定一致，不泄露结构；40100 本身不暴露 swagger 存在（与任意未知受保护路径一致） |
 | `App.Core` 也生成 XML 文档 | 模型注释完整进 Swagger，零运行时成本 |
 | 401 仅作文档标注（summary 注明实际 HTTP 200 + 40100） | 全站 HTTP 200 约定（AGENTS.md §4.1）优先于 Swagger 状态码语义；Swashbuckle 6.x 无单状态码响应描述特性 |
+| security 用 `IOperationFilter` 逐 operation 标注（非文档级 `AddSecurityRequirement`） | 文档级 security 作用于全部 operation，匿名接口也会显示锁图标（M.O.S 序列化跳过空列表，operation 级无法覆盖）；operation 级标注与认证管道共用 `[AllowAnonymous]` 单一事实源，新增匿名接口零维护成本；Filter 仅 dev 生效（随 AddSwaggerGen 注册），对 prod 与运行时零影响 |

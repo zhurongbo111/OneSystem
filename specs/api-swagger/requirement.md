@@ -15,7 +15,7 @@
 
 - F1 Swagger 接入：`App.Api` 引入 Swashbuckle（Swashbuckle.AspNetCore），生成 OpenAPI 文档（key `v1`），UI 默认入口 `/swagger`、JSON 位于 `/swagger/v1/swagger.json`。
 - F2 环境开关：仅 `ASPNETCORE_ENVIRONMENT=Development` 启用 Swagger（UI + JSON）；Production（含测试宿主默认）不注册、不映射。
-- F3 安全方案：定义 JWT Bearer 安全方案（scheme `Bearer`，`authorizationCode` 留空，经 UI 右上角 Authorize 粘贴 token）；受保护接口在文档中标注 401 响应。
+- F3 安全方案：定义 JWT Bearer 安全方案（scheme `Bearer`，`authorizationCode` 留空，经 UI 右上角 Authorize 粘贴 token）；受保护接口在文档中标注 401 响应；`[AllowAnonymous]` 标注的接口（登录、健康检查）在 UI 上**不显示锁图标、不带 security 要求**，与真实认证语义一致。
 - F4 XML 注释：`App.Api` 与 `App.Core` 均开启 XML 文档文件生成（公共成员缺注释以 NoWarn 1591 抑制，不破坏既有代码），`AddSwaggerGen` 引入两个项目 XML 注释（Controller 动作 + Request/Response 模型属性注释完整进文档）。
 - F5 dev 匿名可访问：dev 环境下访问 `/swagger`、`/swagger/*` 不触发 40100 统一响应、可匿名打开；实现方式为 Swagger 端点注册在认证/授权**之前**（命中即短路，不进入认证管道），而非在认证层做路径特判。
 - F6 可测试：新增集成测试覆盖 F1~F5 的用户可感知行为（见 design.md §3）。
@@ -27,6 +27,7 @@
 3. UI 上 Authorize 粘贴登录接口签发的 token 后，在文档页调用 `GET /api/users/me` 返回 `code: 0`。
 4. `GET /swagger/v1/swagger.json` 匿名可访问，含 `Bearer` securityScheme 与受保护接口的 401 响应定义。
 5. Production 环境下 `/swagger` 与 `/swagger/v1/swagger.json` 均不可访问。
+6. Swagger UI 中 `[AllowAnonymous]` 接口（`/api/auth/login`、`/health`）无锁图标（swagger.json 中对应 operation 无 `security` 字段）；`/api/users/me` 保留锁图标。
 
 ## 5. 范围外（不做）
 
