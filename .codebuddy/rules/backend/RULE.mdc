@@ -6,13 +6,14 @@ enabled: true
 
 # 后端实现规则
 
-> 总则（SDD 工作流、API 契约、通用约定）见根目录 `AGENTS.md`，本文件只写后端专属实现约定。
-> 开发功能前：先读 `specs/<feature>/` 规格，再按本文件实现。
+> 总则见根目录 `AGENTS.md`（SDD 工作流、API 契约、错误码、通用约定与测试门槛）。本文件只写后端专属实现约定，总则已规定的条款不再重复列出；确需引用时标注章节（如 `AGENTS.md` §4.5 / §6）。
+> 开发功能前：先读 `specs/<feature>/` 规格（`AGENTS.md` §2.2），再按本文件实现。
 
 ## 1. 技术栈
 
 - .NET 8 + ASP.NET Core Web API
 - EF Core（Npgsql 提供程序）+ PostgreSQL
+- FluentValidation（格式校验，规则与用例同目录）
 
 ## 2. 项目结构
 
@@ -20,69 +21,84 @@ enabled: true
 backend/
 ├── App.sln
 ├── src/
-│   ├── App.Api/            # Controller、中间件、全局异常处理、统一响应
-│   ├── App.Core/           # Handler（业务逻辑）、实体、DTO、统一响应定义
-│   └── App.Infrastructure/ # DbContext、Repository 实现（EF Core）
+│   ├── App.Api/            # Controller、中间件、ICurrentUser 实现、全局异常处理、统一响应
+│   ├── App.Core/           # 业务核心：Features（用例）、Abstractions（仓储接口 / IUnitOfWork / IRequest / IRequestHandler / IMediator）、Entities、公共组件
+│   └── App.Infrastructure/ # DbContext、Repository 实现、UnitOfWork 实现
 └── tests/
     └── App.Tests/          # 单元测试（xUnit）
 ```
 
-- 依赖方向单向：`App.Api → App.Core → App.Infrastructure` 的引用按 `Api` 依赖 `Core` 与 `Infrastructure`、`Infrastructure` 依赖 `Core` 组织；禁止反向依赖。
+- 依赖方向单向（禁止反向依赖）：
+  - `App.Api` → `App.Core`，`App.Api` → `App.Infrastructure`
+  - `App.Infrastructure` → `App.Core`
 
-## 3. 分层架构
+## 3. 分层架构（每 API 一个用例）
 
 ```
-Controller → Handler → Repository → EF Core
+Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestHandler → Repository（接口在 App.Core）→ Repository 实现（EF Core）
 ```
 
-| 层 | 职责 | 禁止 |
-|---|---|---|
-| Controller | 接收请求、参数校验、调用 Handler、返回统一响应 | 编写业务逻辑 |
-| Handler | 业务逻辑、事务控制 | 直接使用 DbContext / 写 SQL |
-| Repository | 数据访问，封装 EF Core 查询 | 编写业务逻辑 |
-| EF Core / DbContext | ORM 持久化 | — |
+**一个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下的一组文件**（`<Action>` 为用例名，如 `Login`、`CreateUser`），命名空间 `App.Core.Features.<Feature>.<Action>`：
 
-- 按业务域（feature）组织模块，Handler / Repository 按域命名（如 `UserHandler`、`UserRepository`）。
-- 事务范围在 Handler 层控制；跨 Repository 的多表写操作必须包裹在显式事务中。
-- 统一响应 `{ code, message, data }` 的定义与全局异常转 `code: 50000` 的中间件放在 `App.Api` / `App.Core` 公共位置，Controller 直接返回。
+| 文件 | 职责 |
+|---|---|
+| `<Action>Request.cs` | 入参模型，与前端请求参数 camelCase 一一对应；属性用 `init`，字符串默认 `string.Empty`；实现标记接口 `IRequest<TResponse>`（声明响应类型） |
+| `<Action>RequestValidator.cs` | 数据格式校验（必填、长度、格式、枚举、范围等），基于 FluentValidation |
+| `<Action>RequestHandler.cs` | 业务逻辑 + 查库约束 + 事务，本用例的唯一编排点 |
+| `<Action>Response.cs` | 出参模型（即 `data` 的模型） |
+
+以脚手架为**基准范例**：`Features/Auth/Login`（Request / RequestValidator / RequestHandler / Response 四件套）、`Features/Users/GetCurrentUser`（无参用例以空 `Request` 占位 + 复用共享出参 `UserDto`）；新增功能照此结构一比一组织，并统一实现入口接口（见下）。
+
+分层职责（强制）：
+
+- **RequestValidator**：只做格式层校验，禁止访问仓储 / 查库；需要查询数据的约束（存在性、唯一性、状态流转等）一律放到 `RequestHandler` 中判断。
+- **RequestHandler**：本用例唯一业务编排点，直接依赖仓储接口与无状态技术组件（如 JWT 的 `TokenService`）；**不设 Service 层**——禁止新增业务编排类 `*Service` / `*Handler`（聚合型），通用无状态技术组件按职责命名（不参与业务编排）。
+- **中介分发（强制）**：Controller / 中间层只注入 `App.Core/Abstractions/IMediator`，用 `await _mediator.Send(request)` 触发用例，禁止直接依赖或 `new` 具体 Handler；用例 `Request` 实现标记接口 `IRequest<TResponse>`（声明响应类型）。分发实现 `App.Core/Mediation/Mediator`（自研简化 MediatR）：按请求运行时类型经 DI 解析已注册的 `IRequestHandler<TRequest,TResponse>` 后调用其 `HandleAsync`。
+- **统一用例接口（强制）**：每个用例的处理器实现 `App.Core/Abstractions/IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖；单测可直接测该实现，也可经 `IMediator` 验证分发。
+- 无请求参数的用例（如"获取当前用户"）也定义一个空 `Request` 模型（如 `GetCurrentUserRequest`）占位以统一签名，但不定义 `Validator`；纯内存用例在实现内同步计算后 `return Task.FromResult(result)`，无需 `async` 关键字。
+- 校验统一在 `RequestHandler` 入口执行：先 `await validator.ValidateAsync(request)`，失败抛 `BusinessException(ErrorCode.Validation, 首条错误信息)`；Controller 不再做参数校验。
+- 业务失败统一抛 `BusinessException`，错误码使用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2）；功能专属业务码（如登录失败 `40001`）必须先在各功能 `design.md` 定义再使用。
+- 用例不接触 HTTP：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；需要"当前用户"的用例注入 `App.Core/Abstractions/ICurrentUser`（实现由 `App.Api` 基于 ClaimsPrincipal 提供）。
+- Repository 方法最小化（如 `GetByIdAsync`、`ExistsByEmailAsync`），只做数据访问、不做业务判定；仓储接口与 `IUnitOfWork` 定义在 `App.Core/Abstractions`，实现（EF Core）在 `App.Infrastructure`。
+- 映射：`Request → 实体` 与 `实体 → Response` 在 `RequestHandler` 内完成，禁止把实体直接返回 Controller / 暴露到 API。
+- 出参复用：跨用例 / 多次复用的出参模型（如 `UserDto`）放 `Features/<Feature>/` 下，不放进单个用例目录。
+- 事务：单一仓储的一次写操作由该仓储保证；一个用例内**跨多个仓储的写操作**必须用 `IUnitOfWork` 包裹：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`；异常时 `RollbackAsync` 后重抛，禁止吞异常。
+- 注册：`App.Core/DependencyInjection.AddCore` 显式注册无状态技术组件、`IMediator → Mediator`（一次）、各用例的接口映射（`AddScoped<IRequestHandler<LoginRequest, LoginResponse>, LoginRequestHandler>()`）与 `IValidator<Request>`；`App.Infrastructure/DependencyInjection.AddInfrastructure` 注册 `IUnitOfWork` 与仓储实现（Scoped）。新增用例必须同步注册，禁止反射隐式扫描（`Send` 时按请求类型解析单个已注册实现不属于扫描），禁止在 Controller 手动 `new` 依赖。
 
 ## 4. 数据库规范（PostgreSQL + EF Core）
 
 - 所有表结构变更必须走 EF Core Migrations；禁止手写 DDL，禁止修改已应用的迁移文件。
 - 业务代码中禁止裸 SQL；确需 EF Core 无法表达的场景，必须在规格中说明并经用户确认。
 - 实体名 PascalCase 单数；表名默认与实体名一致，规格可另行定义。
-- 连接串通过配置注入（`appsettings` / 环境变量），禁止硬编码。
 
 ## 5. 编码约定
 
 - 遵循 C# 语言规范：4 空格缩进、Allman 大括号、文件内 `using` 排序（System 在前）。
 - 命名：类 / 方法 / 属性 PascalCase，私有字段 `_camelCase`，接口以 `I` 开头。
-- DTO 与实体分离：对外接口只暴露 DTO，禁止直接返回 EF 实体。
+- 对外模型与实体分离：接口入参用 `Request`、出参用 `Response` / 共享出参模型，禁止直接返回 EF 实体。
 - 异步优先：IO 相关方法使用 `async/await`，禁止同步阻塞（`.Result` / `.Wait()`）。
 - 可空引用类型启用；公共类型与公共方法写 XML 文档注释（中文）。
 
 ## 6. 认证（JWT）
 
 - 使用 JWT 认证；token 有效期与 claims 在各功能规格中定义。
-- `App.Api` 中配置 JWT 校验（中间件 / 授权）；登录等白名单接口统一配置放行。
-- 校验失败统一返回 `code: 40100`，禁止抛出 500。
-- 签名密钥、有效期等通过配置注入（环境变量），禁止硬编码。
+- `App.Api` 中配置 JWT 校验（中间件 / 授权）与登录等白名单放行；白名单范围、`40100` 响应、token 签发与携带等全局约定见 `AGENTS.md` §4.5。
+- 签名密钥来源见 §8（遵循 `AGENTS.md` §7 敏感配置原则）。
 
 ## 7. 日志与可观测性
 
 - 日志集成 NLog 并对接默认 `ILogger<T>`（Microsoft.Extensions.Logging）；业务代码只注入使用 `ILogger<T>`，禁止直接调用 NLog。
-- NLog 配置放在 `App.Api`，输出控制台 + 滚动文件；日志级别：dev 为 Info，prod 为 Warning。
-- 日志必须包含上下文（含 traceId）。
+- NLog 配置放在 `App.Api`，输出控制台 + 滚动文件；日志级别：dev 为 Info，prod 为 Warning（日志上下文含 traceId 的要求见 `AGENTS.md` §5）。
 - 可观测性集成 OpenTelemetry（Tracing + Metrics）：在 `App.Api` 引入 SDK，自动埋点 ASP.NET Core 与 EF Core；导出目标按环境配置（dev 可不导出，prod 导出至 collector）。
 
 ## 8. 环境配置
 
-- 目前仅 dev / prod 两个环境，通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分。
-- 敏感配置（数据库连接串、JWT 密钥、OTel 导出端点）从环境变量读取，`appsettings` 中只放非敏感默认值。
+- 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod，敏感配置只从环境变量读取）；实现上通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分，`appsettings` 只放非敏感默认值。
+- 后端敏感项清单：数据库连接串、JWT 密钥、OTel 导出端点。
 
 ## 9. 测试
 
-- 单元测试项目 `tests/App.Tests`，框架 xUnit。
-- 重点覆盖 Handler 层业务逻辑；Repository 层可用 EF Core InMemory 提供程序测试。
-- 测试命名：`{类名}_{方法名}_{场景}`；Handler 的公共方法必须有对应单测。
-- **测试用例要求（强制）**：凡涉及后端改动的功能，交付前必须为改动新增 / 变更的业务逻辑补充相应测试用例（正常分支 + 异常分支）；无对应测试用例的后端改动视为未完成，不得勾选规格 `tasks.md` 中对应任务。
+- 单元测试项目：`tests/App.Tests`（xUnit）；覆盖重点（RequestHandler 业务逻辑）与测试门槛见 `AGENTS.md` §6。
+- Repository 实现可用 EF Core InMemory 提供程序测试。
+- 测试命名：`{类名}_{方法名}_{场景}`；RequestHandler 的公共方法必须有对应单测。
+- **测试用例要求（强制）**：凡涉及后端改动的功能，交付前必须为改动新增 / 变更的业务逻辑补充正常分支 + 异常分支的测试用例；无对应测试用例视为未完成，不得勾选规格 `tasks.md` 中对应任务。

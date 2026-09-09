@@ -6,8 +6,8 @@ enabled: true
 
 # 前端实现规则
 
-> 总则（SDD 工作流、API 契约、通用约定）见根目录 `AGENTS.md`，本文件只写前端专属实现约定。
-> 开发功能前：先读 `specs/<feature>/` 规格，再按本文件实现。
+> 总则见根目录 `AGENTS.md`（SDD 工作流、API 契约、错误码、通用约定与测试门槛）。本文件只写前端专属实现约定，总则已规定的条款不再重复列出；确需引用时标注章节（如 `AGENTS.md` §4.5 / §6）。
+> 开发功能前：先读 `specs/<feature>/` 规格（`AGENTS.md` §2.2），再按本文件实现。
 
 ## 1. 技术栈
 
@@ -62,15 +62,18 @@ frontend/
 
 ## 7. 认证（JWT）
 
-- token 统一存储在 `localStorage`；Axios 请求拦截器从 `localStorage` 读取并附加 `Authorization: Bearer <token>`。
-- 响应拦截器：收到 `code: 40100` 时清除 `localStorage` 中的凭证并跳转登录页（需防重复跳转）。
+- token 存储、携带与 40100 处置的全局约定见 `AGENTS.md` §4.5；本处为实现细节：
+  - 请求拦截器：从 `localStorage` 读取 token，附加 `Authorization: Bearer <token>`。
+  - 响应拦截器：收到 `code: 40100` 时清除 `localStorage` 凭证并跳转登录页（防重复跳转）。
 
 ## 8. 环境与联调
 
-- Vite 多环境：`.env.development` / `.env.production`，目前仅 dev / prod 两个环境。
-- API 基础地址通过 `import.meta.env` 读取（如 `VITE_API_BASE_URL`）；dev 环境指向本地 / dev 后端（可用 Vite proxy）。
-- 集成测试：不单写单元测试；用 Playwright e2e 自动化（`frontend/e2e/*.spec.ts`，配置 `playwright.config.ts`），直连 dev 后端、不打 mock。
-- **e2e 覆盖要求（强制）**：凡涉及前端改动的功能，交付前必须有对应 e2e 用例覆盖该改动的用户可感知行为（新增 / 变更的页面、交互、流程、异常分支）。无 e2e 覆盖的前端改动视为未完成，不得勾选规格 `tasks.md` 中对应任务。
-- 运行 e2e 前置：先启动后端 dev（`cd backend && dotnet run --project src/App.Api`，端口 5080）与前端 dev（`cd frontend && npm run dev`，端口 5173），再执行 `cd frontend && npm run test:e2e`。
-- **前后端改动须跑相关测试（强制）**：功能同时涉及前后端改动时，交付前必须两端都跑通——后端 `dotnet test`（单元测试）+ 前端 `npm run test:e2e`（集成测试）；只改一端时至少跑被改动端的测试。测试未通过不得声明功能完成。
+- 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod）；实现上使用 Vite 多环境文件 `.env.development` / `.env.production`。
+- API 基础地址通过 `import.meta.env.VITE_API_BASE_URL` 读取；dev 环境指向本地 / dev 后端（可用 Vite proxy）。
 - 接口行为以联调结果为准。
+
+## 9. 测试（e2e）
+
+- e2e 测试策略与强制门槛见 `AGENTS.md` §6；此处只列本仓库的运行细则。
+- 用例与配置：`frontend/e2e/*.spec.ts` + `playwright.config.ts`。
+- 运行：先启动后端 dev（`cd backend && dotnet run --project src/App.Api`，端口 5080）与前端 dev（`cd frontend && npm run dev`，端口 5173），再执行 `cd frontend && npm run test:e2e`。
