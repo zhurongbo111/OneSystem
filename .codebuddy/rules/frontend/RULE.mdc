@@ -69,4 +69,8 @@ frontend/
 
 - Vite 多环境：`.env.development` / `.env.production`，目前仅 dev / prod 两个环境。
 - API 基础地址通过 `import.meta.env` 读取（如 `VITE_API_BASE_URL`）；dev 环境指向本地 / dev 后端（可用 Vite proxy）。
-- 集成测试：不单写单元测试；开发时直接联调 dev 环境后端做集成验证，接口行为以联调结果为准。
+- 集成测试：不单写单元测试；用 Playwright e2e 自动化（`frontend/e2e/*.spec.ts`，配置 `playwright.config.ts`），直连 dev 后端、不打 mock。
+- **e2e 覆盖要求（强制）**：凡涉及前端改动的功能，交付前必须有对应 e2e 用例覆盖该改动的用户可感知行为（新增 / 变更的页面、交互、流程、异常分支）。无 e2e 覆盖的前端改动视为未完成，不得勾选规格 `tasks.md` 中对应任务。
+- 运行 e2e 前置：先启动后端 dev（`cd backend && dotnet run --project src/App.Api`，端口 5080）与前端 dev（`cd frontend && npm run dev`，端口 5173），再执行 `cd frontend && npm run test:e2e`。
+- **前后端改动须跑相关测试（强制）**：功能同时涉及前后端改动时，交付前必须两端都跑通——后端 `dotnet test`（单元测试）+ 前端 `npm run test:e2e`（集成测试）；只改一端时至少跑被改动端的测试。测试未通过不得声明功能完成。
+- 接口行为以联调结果为准。
