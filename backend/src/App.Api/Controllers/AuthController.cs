@@ -1,6 +1,5 @@
-using App.Core.Dtos;
-using App.Core.Errors;
-using App.Core.Handlers;
+using App.Core.Abstractions;
+using App.Core.Features.Auth.Login;
 using App.Core.Responses;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,28 +12,20 @@ namespace App.Api.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthHandler _authHandler;
+    private readonly IMediator _mediator;
 
     /// <summary>
     /// 初始化认证控制器
     /// </summary>
-    public AuthController(IAuthHandler authHandler)
+    public AuthController(IMediator mediator)
     {
-        _authHandler = authHandler;
+        _mediator = mediator;
     }
 
     /// <summary>
-    /// 登录，签发 JWT
+    /// 登录，签发 JWT（格式校验在 LoginRequestValidator，账号校验在 Handler）
     /// </summary>
     [HttpPost("login")]
-    public async Task<ApiResponse<LoginResult>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(request?.Username) || string.IsNullOrWhiteSpace(request.Password))
-        {
-            return ApiResponseFactory.Fail<LoginResult>(ErrorCode.Validation, "用户名或密码不能为空");
-        }
-
-        var result = await _authHandler.LoginAsync(request, cancellationToken);
-        return ApiResponseFactory.Ok(result);
-    }
+    public async Task<ApiResponse<LoginResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
+        => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 }

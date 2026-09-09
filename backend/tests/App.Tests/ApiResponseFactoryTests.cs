@@ -1,5 +1,5 @@
-using App.Core.Dtos;
 using App.Core.Errors;
+using App.Core.Features.Users;
 using App.Core.Responses;
 
 namespace App.Tests;
