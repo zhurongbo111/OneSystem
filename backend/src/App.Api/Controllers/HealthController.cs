@@ -15,6 +15,7 @@ public class HealthController : ControllerBase
     /// 健康检查
     /// </summary>
     [AllowAnonymous]
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<string>))]
     [HttpGet]
     public ApiResponse<string> GetHealth() => ApiResponseFactory.Ok("healthy");
 }
