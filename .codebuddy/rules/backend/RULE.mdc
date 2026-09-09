@@ -56,7 +56,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - **中介分发（强制）**：Controller / 中间层只注入 `App.Core/Abstractions/IMediator`，用 `await _mediator.Send(request)` 触发用例，禁止直接依赖或 `new` 具体 Handler；用例 `Request` 实现标记接口 `IRequest<TResponse>`（声明响应类型）。分发实现 `App.Core/Mediation/Mediator`（自研简化 MediatR）：按请求运行时类型经 DI 解析已注册的 `IRequestHandler<TRequest,TResponse>` 后调用其 `HandleAsync`。
 - **统一用例接口（强制）**：每个用例的处理器实现 `App.Core/Abstractions/IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖；单测可直接测该实现，也可经 `IMediator` 验证分发。
 - 无请求参数的用例（如"获取当前用户"）也定义一个空 `Request` 模型（如 `GetCurrentUserRequest`）占位以统一签名，但不定义 `Validator`；纯内存用例在实现内同步计算后 `return Task.FromResult(result)`，无需 `async` 关键字。
-- 校验统一在 `RequestHandler` 入口执行：先 `await validator.ValidateAsync(request)`，失败抛 `BusinessException(ErrorCode.Validation, 首条错误信息)`；Controller 不再做参数校验。
+- **格式校验全局统一（强制）**：格式校验由 `Mediator` 在分发到 Handler 之前统一执行——`Send` 内按请求运行时类型经 DI 解析已注册的 `IValidator<TRequest>` 并 `await ValidateAsync`，失败抛 `BusinessException(ErrorCode.Validation, 首条错误信息)`，未注册校验器的请求（如空请求用例）自动跳过。`RequestHandler` 不再注入 / 执行校验器，`HandleAsync` 只写业务逻辑与查库约束；Controller 不做参数校验。
 - 业务失败统一抛 `BusinessException`，错误码使用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2）；功能专属业务码（如登录失败 `40001`）必须先在各功能 `design.md` 定义再使用。
 - 用例不接触 HTTP：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；需要"当前用户"的用例注入 `App.Core/Abstractions/ICurrentUser`（实现由 `App.Api` 基于 ClaimsPrincipal 提供）。
 - Repository 方法最小化（如 `GetByIdAsync`、`ExistsByEmailAsync`），只做数据访问、不做业务判定；仓储接口与 `IUnitOfWork` 定义在 `App.Core/Abstractions`，实现（EF Core）在 `App.Infrastructure`。
