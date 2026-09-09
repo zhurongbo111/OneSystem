@@ -48,13 +48,12 @@ public class TokenService
     public string Issue(UserDto user)
     {
         var now = DateTime.UtcNow;
+        // iss / aud / exp 等由 JwtSecurityToken 构造参数生成，不在 claims 中重复声明
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
             new Claim("username", user.Username),
             new Claim("displayName", user.DisplayName),
-            new Claim(JwtRegisteredClaimNames.Iss, _options.Issuer),
-            new Claim(JwtRegisteredClaimNames.Aud, _options.Audience),
         };
         var handler = new JwtSecurityTokenHandler();
         var token = new JwtSecurityToken(
@@ -65,34 +64,6 @@ public class TokenService
             expires: now.AddMinutes(_options.ExpiresMinutes),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(_key), SecurityAlgorithms.HmacSha256));
         return handler.WriteToken(token);
-    }
-
-    /// <summary>
-    /// 校验 JWT，成功时返回 ClaimsPrincipal，失败返回 null
-    /// </summary>
-    /// <param name="token">JWT token 字符串</param>
-    public ClaimsPrincipal? Validate(string token)
-    {
-        var handler = new JwtSecurityTokenHandler();
-        try
-        {
-            var principal = handler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = _options.Issuer,
-                ValidateAudience = true,
-                ValidAudience = _options.Audience,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(_key),
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromSeconds(30),
-            }, out var validated);
-            return validated is JwtSecurityToken ? principal : null;
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     /// <summary>
