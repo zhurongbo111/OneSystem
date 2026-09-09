@@ -85,7 +85,7 @@ builder.Services.AddSwaggerGen(options =>
 | dev，UI Authorize 后调 `/api/users/me` | 200 + `code: 0`，返回用户 |
 | dev，未 Authorize 调 `/api/users/me` | 200 + `code: 40100`（既有行为不变） |
 | prod，`GET /swagger*` | 200 + `code: 40100`（中间件未注册，回落认证挑战；不返回 OpenAPI 文档） |
-| 既有集成测试（实际为 Development 环境） | 不受影响（Swagger 端点前置于认证，既有接口行为不变） |
+| 既有集成测试（`ApiIntegrationTests.Factory`，Production） | 不受影响（Swagger 端点前置于认证，既有接口行为不变） |
 
 ## 3. 测试设计（tests/App.Tests）
 
