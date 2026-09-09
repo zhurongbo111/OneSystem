@@ -26,8 +26,10 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// 获取当前登录用户
+    /// 获取当前登录用户（未登录实际返回 HTTP 200 + code 40100，下方 401 仅为 Swagger 语义标注）
     /// </summary>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDto>))]
+    [ProducesResponseType(401)]
     [HttpGet("me")]
     public async Task<ApiResponse<UserDto>> Me(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetCurrentUserRequest(), cancellationToken));
