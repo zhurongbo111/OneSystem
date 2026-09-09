@@ -69,7 +69,7 @@ public static class ApiResponseExtensions
 - `App.Api/Middleware/GlobalExceptionMiddleware`：
   - `BusinessException` → 返回其 `Code` / `Message`；
   - 其他异常 → `50000`，日志记录异常 + 上下文（含 `Activity.Current?.TraceId`）。
-- 自研中间件置于管道最前（在认证中间件之前），替代 `UseExceptionHandler`。
+- 全局异常中间件置于管道最前，替代 `UseExceptionHandler`。
 
 ### 2.5 JWT 认证
 
@@ -83,10 +83,13 @@ public static class ApiResponseExtensions
 
 - **Dev 兜底**：`ASPNETCORE_ENVIRONMENT=Development` 且未配置 `JWT__SECRET` 时，启动时生成随机密钥并打 Warning 日志（本地开箱即用，重启后 token 失效）；Production 下缺失则启动抛异常。
 - **签发**（App.Core/Auth/TokenService）：claims 含 `sub`（用户 id）、`username`、`displayName`、`iss`/`aud`/`exp`；`HS256`。
-- **校验**（App.Api/Middleware/JwtAuthenticationMiddleware，自研以便统一 40100 语义）：
-  - 白名单放行（前缀匹配）：`/api/auth/login`、`/health`；
-  - 无 token / token 无效 → 直接写 `code: 40100`、`message: "未登录或 token 无效"`，不再进入后续管道；
-  - 校验通过 → 写入 `HttpContext.User`（ClaimsPrincipal）。
+- **校验**：使用 ASP.NET Core 默认认证框架 `Microsoft.AspNetCore.Authentication.JwtBearer`（`App.Api` 注册，见 `App.Api/Authentication/JwtBearerExtensions`）：
+  - `AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...)`：`TokenValidationParameters` 校验 Issuer / Audience / 签名密钥 / 有效期（`ClockSkew` 30 秒），配置值与签发共用 `JwtOptions`；
+  - `AddAuthorization` 设置 `FallbackPolicy = RequireAuthenticatedUser()`：除显式标注 `[AllowAnonymous]` 的接口外，全部默认要求登录，等价于原"白名单外全局校验"语义；
+  - 白名单改用特性表达（不再维护路径前缀）：`AuthController.Login`、`HealthController` 标注 `[AllowAnonymous]`；`UsersController` 标注 `[Authorize]`；
+  - 未认证统一 40100：`JwtBearerEvents.OnChallenge` 跳过默认 HTTP 401（`HandleResponse()`），改为返回 HTTP 200 + `{ code: 40100, message: "未登录或 token 无效" }`，保持全站 HTTP 200 约定；`OnAuthenticationFailed` 记录 warning 日志（含 traceId）；
+  - 校验通过后由认证中间件写入 `HttpContext.User`（ClaimsPrincipal；`sub` 经默认入站映射为 `ClaimTypes.NameIdentifier`），`ICurrentUser` 从该 principal 读取。
+- **管道**：`UseRouting → UseAuthentication → UseAuthorization → MapControllers`，不再使用自研认证中间件。
 
 ### 2.6 接口设计
 
@@ -192,7 +195,7 @@ frontend/
 
 | 决策 | 理由 |
 |---|---|
-| JWT 校验用自研中间件而非 JwtBearer 包 | 需统一返回业务码 40100（HTTP 200），自研更易控制响应结构与白名单 |
+| 采用 ASP.NET Core 默认 JwtBearer 认证（`AddAuthentication().AddJwtBearer()` + `[Authorize]`），仅用 `JwtBearerEvents.OnChallenge` 改写统一响应 | 认证 / 校验逻辑交给框架内置 handler，随框架演进维护，无需自研中间件；白名单用 `[AllowAnonymous]` 表达（`FallbackPolicy` 默认要求登录），40100 语义通过 OnChallenge 保持 HTTP 200 统一响应，两者均符合框架惯例 |
 | 每 API 一组 Request/RequestValidator/RequestHandler/Response（用例 / 垂直切片） | 一个接口一份逻辑与模型、职责单一；RequestHandler 公共方法天然可单测；校验规则与用例同目录、可发现 |
 | 全部 RequestHandler 统一实现 `IRequestHandler<TRequest, TResponse>` 入口 | 统一 `HandleAsync(Request, CancellationToken)` 签名，Controller / DI / 单测面向同一接口；无请求参数的用例以空 Request 模型占位签名 |
 | 自研轻量中介 `IMediator.Send(Request)`（简化版 MediatR）而非引入 MediatR 包 | Controller 只面对单一中介入口，不感知具体 Handler，入口统一可替换；请求经 `IRequest<TResponse>` 标记声明响应类型并供运行时分发；注册仍显式（无注册期反射扫描），避免第三方 CQRS 依赖 |
