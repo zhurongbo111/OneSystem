@@ -1,5 +1,5 @@
 using App.Core.Auth;
-using App.Core.Dtos;
+using App.Core.Features.Users;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

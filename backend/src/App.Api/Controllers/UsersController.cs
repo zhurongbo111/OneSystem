@@ -1,5 +1,6 @@
-using App.Core.Dtos;
-using App.Core.Handlers;
+using App.Core.Abstractions;
+using App.Core.Features.Users;
+using App.Core.Features.Users.GetCurrentUser;
 using App.Core.Responses;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,23 +13,20 @@ namespace App.Api.Controllers;
 [Route("api/users")]
 public class UsersController : ControllerBase
 {
-    private readonly IUserHandler _userHandler;
+    private readonly IMediator _mediator;
 
     /// <summary>
     /// 初始化用户控制器
     /// </summary>
-    public UsersController(IUserHandler userHandler)
+    public UsersController(IMediator mediator)
     {
-        _userHandler = userHandler;
+        _mediator = mediator;
     }
 
     /// <summary>
     /// 获取当前登录用户
     /// </summary>
     [HttpGet("me")]
-    public ApiResponse<UserDto> Me()
-    {
-        var user = _userHandler.GetCurrentUser(User);
-        return ApiResponseFactory.Ok(user);
-    }
+    public async Task<ApiResponse<UserDto>> Me(CancellationToken cancellationToken)
+        => ApiResponseFactory.Ok(await _mediator.Send(new GetCurrentUserRequest(), cancellationToken));
 }

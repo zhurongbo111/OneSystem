@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using App.Api.Authentication;
 using App.Api.Middleware;
 using App.Core;
+using App.Core.Abstractions;
 using App.Core.Auth;
 using App.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +40,10 @@ builder.Services.AddCore();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// 当前用户（claims → ICurrentUser），供需要当前用户的用例 Handler 使用
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
 
 // ========== OpenTelemetry：Tracing + Metrics 自动埋点，OTLP 仅在配置 OTEL_EXPORTER_OTLP_ENDPOINT 时导出 ==========
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");

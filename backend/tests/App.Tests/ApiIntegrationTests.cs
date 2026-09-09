@@ -1,7 +1,8 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using App.Core.Dtos;
+using App.Core.Features.Auth.Login;
+using App.Core.Features.Users;
 using App.Core.Responses;
 using App.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
@@ -66,7 +67,7 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
     public async Task 登录_正确账号_返回token与用户()
     {
         var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest { Username = "admin", Password = "admin123" });
-        var result = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResult>>(_jsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(_jsonOptions);
 
         Assert.NotNull(result);
         Assert.Equal(0, result!.Code);
@@ -105,7 +106,7 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
     public async Task 获取当前用户_有效token_返回用户()
     {
         var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest { Username = "admin", Password = "admin123" });
-        var login = await loginResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResult>>(_jsonOptions);
+        var login = await loginResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(_jsonOptions);
 
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login!.Data!.Token);
         var result = await _client.GetFromJsonAsync<ApiResponse<UserDto>>("/api/users/me", _jsonOptions);
