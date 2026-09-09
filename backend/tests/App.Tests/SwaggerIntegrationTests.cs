@@ -85,6 +85,21 @@ public class SwaggerIntegrationTests : IClassFixture<SwaggerIntegrationTests.Dev
     }
 
     [Fact]
+    public async Task SwaggerJson_dev环境_匿名接口不带security要求()
+    {
+        var json = await _client.GetStringAsync("/swagger/v1/swagger.json");
+        using var doc = JsonDocument.Parse(json);
+        var paths = doc.RootElement.GetProperty("paths");
+
+        // [AllowAnonymous] 接口（登录、健康检查）应剥离全局 security 要求
+        Assert.False(paths.GetProperty("/api/auth/login").GetProperty("post").TryGetProperty("security", out _), "登录接口不应带 security 要求");
+        Assert.False(paths.GetProperty("/health").GetProperty("get").TryGetProperty("security", out _), "健康检查接口不应带 security 要求");
+
+        // 受保护接口保留 Bearer security 要求
+        Assert.True(paths.GetProperty("/api/users/me").GetProperty("get").TryGetProperty("security", out _), "受保护接口应保留 security 要求");
+    }
+
+    [Fact]
     public async Task SwaggerUi_dev环境_可匿名打开()
     {
         var response = await _client.GetAsync("/swagger/index.html");
