@@ -41,6 +41,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// ASP.NET Core 默认 JWT 认证：校验参数与签发共用 JwtOptions，FallbackPolicy 默认要求登录（白名单接口用 [AllowAnonymous] 标注）
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
 // 当前用户（claims → ICurrentUser），供需要当前用户的用例 Handler 使用
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
@@ -74,10 +77,11 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 
-// ========== 管道：全局异常 → JWT 认证 → 路由 ==========
+// ========== 管道：全局异常 → 路由 → 认证/授权 → 控制器（认证失败由 JwtBearerEvents.OnChallenge 统一返回 code 40100）==========
 app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseMiddleware<JwtAuthenticationMiddleware>();
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Logger.LogInformation("App.Api 启动完成，环境={Environment}", app.Environment.EnvironmentName);

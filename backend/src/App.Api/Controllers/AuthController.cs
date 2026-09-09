@@ -1,6 +1,7 @@
 using App.Core.Abstractions;
 using App.Core.Features.Auth.Login;
 using App.Core.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace App.Api.Controllers;
@@ -23,8 +24,9 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// 登录，签发 JWT（格式校验在 LoginRequestValidator，账号校验在 Handler）
+    /// 登录，签发 JWT（格式校验在 LoginRequestValidator，账号校验在 Handler；白名单放行）
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ApiResponse<LoginResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));

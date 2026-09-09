@@ -1,13 +1,13 @@
+using System.IdentityModel.Tokens.Jwt;
 using App.Core.Auth;
 using App.Core.Features.Users;
-using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace App.Tests;
 
 /// <summary>
-/// JWT 签发与校验测试
+/// JWT 签发测试（token 无效 / 错误密钥等校验语义已由 ApiIntegrationTests 的 40100 用例覆盖）
 /// </summary>
 public class TokenServiceTests
 {
@@ -20,34 +20,29 @@ public class TokenServiceTests
     private static UserDto CreateUser() => new() { Id = "1", Username = "admin", DisplayName = "管理员" };
 
     [Fact]
-    public void Issue_再校验_应通过且还原用户()
+    public void Issue_应签发含用户claims与预期issuerAudience的token()
     {
         var service = CreateService(CreateOptions());
 
         var token = service.Issue(CreateUser());
-        var principal = service.Validate(token);
 
-        Assert.NotNull(principal);
-        Assert.Equal("admin", principal!.FindFirst("username")?.Value);
-        Assert.Equal("管理员", principal.FindFirst("displayName")?.Value);
-        // 默认入站映射：sub 会映射为 ClaimTypes.NameIdentifier
-        Assert.Equal("1", principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+        Assert.False(string.IsNullOrEmpty(token));
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        Assert.Equal("app-api", jwt.Issuer);
+        Assert.Equal("app-web", Assert.Single(jwt.Audiences));
+        Assert.Equal("1", jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+        Assert.Equal("admin", jwt.Claims.First(c => c.Type == "username").Value);
+        Assert.Equal("管理员", jwt.Claims.First(c => c.Type == "displayName").Value);
     }
 
     [Fact]
-    public void Validate_无效token_应返回null()
+    public void Issue_应设置与配置一致的有效期()
     {
         var service = CreateService(CreateOptions());
 
-        Assert.Null(service.Validate("not.a.jwt"));
-    }
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(service.Issue(CreateUser()));
 
-    [Fact]
-    public void Validate_错误密钥签发_应返回null()
-    {
-        var issuer = CreateService(CreateOptions(secret: new string('a', 48)));
-        var other = CreateService(CreateOptions(secret: new string('b', 48)));
-
-        Assert.Null(other.Validate(issuer.Issue(CreateUser())));
+        Assert.True(jwt.ValidFrom <= DateTime.UtcNow);
+        Assert.InRange(jwt.ValidTo, DateTime.UtcNow.AddMinutes(119), DateTime.UtcNow.AddMinutes(121));
     }
 }
