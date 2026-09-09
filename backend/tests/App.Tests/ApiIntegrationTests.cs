@@ -27,9 +27,17 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
 
     public class Factory : WebApplicationFactory<Program>
     {
+        static Factory()
+        {
+            // Program 早期的 JWT 密钥校验读取进程环境变量（in-memory 配置对其不可见），
+            // Production 环境缺失即启动失败，故在工厂首次解析前提供测试密钥（对 Development 工厂无副作用）
+            Environment.SetEnvironmentVariable("JWT__SECRET", new string('k', 48));
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Production");
+            // WebApplicationFactory 下 UseSetting("ASPNETCORE_ENVIRONMENT", ...) 对运行时环境不生效，须用 UseEnvironment 切换
+            builder.UseEnvironment("Production");
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
