@@ -21,10 +21,11 @@
 - F6 健康检查：`GET /health` 返回 `{ code: 0, message: "success", data: "healthy" }`，无需认证。
 - F7 可观测性：NLog（控制台 + 滚动文件，dev=Info / prod=Warning）对接 `ILogger<T>`；OpenTelemetry Tracing + Metrics 接入（dev 默认不导出）。
 - F8 环境配置：dev / prod 通过 `ASPNETCORE_ENVIRONMENT` 区分；数据库连接串、JWT 密钥等敏感配置从环境变量读取。
-- F9 后端单元测试：统一响应、异常处理、登录 Handler 的公共方法单测通过。
+- F9 后端单元测试：统一响应、异常处理、登录用例 RequestHandler 的公共方法单测通过。
 - F10 前端项目骨架：Vite + Vue 3 + TS + Arco Design + Pinia + vue-router + Axios，目录结构符合前端规则第 2 节。
 - F11 前端接口层：`src/api/` 统一封装，拦截器解包 `{ code, message, data }`，`code !== 0` 时 `Message.error` 提示；请求自动附加 `Authorization: Bearer <token>`；收到 40100 清凭证并跳转登录页（防重复跳转）。
 - F12 前端页面：登录页（调用登录接口）、首页（展示当前登录用户，需登录态，未登录跳转登录页）。
+- F13 后端用例统一入口：用例由请求标记 `IRequest<TResponse>` 与处理器 `IRequestHandler<TRequest,TResponse>` 构成；Controller 只依赖自研中介 `IMediator`（`App.Core/Mediation` 实现，简化版 MediatR）经 `Send(Request)` 触发用例，不直接依赖具体 Handler（规范见后端规则第 3 节）。
 
 ## 4. 验收标准
 
@@ -37,7 +38,7 @@
 
 ## 5. 范围外（不做）
 
-- 真实数据库建库建表：脚手架阶段 `AppDbContext` 先空实现（不挂实体），PostgreSQL 连接串从环境变量读取但登录使用内存示例用户；首个业务功能接入真实数据表。
+- 真实数据库建库建表：脚手架阶段 `AppDbContext` 先空实现（不挂实体），PostgreSQL 连接串从环境变量读取；登录账号使用内存示例仓储（`InMemoryUserRepository`），首个业务功能接入真实数据表。
 - 用户注册、密码加密存储、权限角色体系。
 - CI/CD、Docker 化部署（见 AGENTS.md 第 10 节待补充清单）。
 - 前端单元测试（按前端规则走联调集成验证）。

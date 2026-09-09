@@ -11,8 +11,8 @@
 │   ├── App.sln
 │   ├── src/
 │   │   ├── App.Api/            # Controller、中间件、全局异常、NLog、OTel、Program
-│   │   ├── App.Core/           # Handler、实体、DTO、统一响应、异常、JWT 签发
-│   │   └── App.Infrastructure/ # AppDbContext、（Repository 实现，脚手架阶段为空）
+│   │   ├── App.Core/           # Features（Request/RequestValidator/RequestHandler/Response）、实体、仓储接口、统一响应、异常、JWT 签发、中介（IMediator/Mediator）
+│   │   └── App.Infrastructure/ # AppDbContext、Repository 实现（脚手架阶段为内存实现）、UnitOfWork 实现
 │   └── tests/
 │       └── App.Tests/          # xUnit 单元测试
 └── frontend/                   # Vite + Vue 3 + TS + Arco Design + Pinia + router + Axios
@@ -27,7 +27,7 @@
 | 项目 | 说明 | 关键包 |
 |---|---|---|
 | App.Api | Web API 入口 | NLog.Web.AspNetCore、OpenTelemetry.* |
-| App.Core | 业务核心 | System.IdentityModel.Tokens.Jwt、Microsoft.Extensions.*（Abstractions / DependencyInjection / Logging / Configuration / Http） |
+| App.Core | 业务核心 | FluentValidation、System.IdentityModel.Tokens.Jwt、Microsoft.Extensions.*（Abstractions / DependencyInjection / Logging / Configuration / Http） |
 | App.Infrastructure | 数据访问 | Microsoft.EntityFrameworkCore、Npgsql.EntityFrameworkCore.PostgreSQL |
 | App.Tests | 单元测试 | xunit、Microsoft.NET.Test.Sdk、Microsoft.AspNetCore.Mvc.Testing、Microsoft.EntityFrameworkCore.InMemory |
 
@@ -65,7 +65,7 @@ public static class ApiResponseExtensions
 
 ### 2.4 异常与全局处理
 
-- `App.Core/Errors/BusinessException.cs`：携带 `Code` + `Message`，Handler 抛出业务错误。
+- `App.Core/Errors/BusinessException.cs`：携带 `Code` + `Message`，由 RequestHandler 抛出业务错误。
 - `App.Api/Middleware/GlobalExceptionMiddleware`：
   - `BusinessException` → 返回其 `Code` / `Message`；
   - 其他异常 → `50000`，日志记录异常 + 上下文（含 `Activity.Current?.TraceId`）。
@@ -92,23 +92,25 @@ public static class ApiResponseExtensions
 
 | 接口 | 方法 | 认证 | 请求 | `data` 响应 | 错误码 |
 |---|---|---|---|---|---|
-| `/api/auth/login` | POST | 否 | `LoginRequest { username, password }` | `LoginResult { token, user }` | 40000 参数空；40001 用户名或密码错误 |
+| `/api/auth/login` | POST | 否 | `LoginRequest { username, password }` | `LoginResponse { token, user }` | 40000 参数空；40001 用户名或密码错误 |
 | `/api/users/me` | GET | 是 | — | `UserDto { id, username, displayName }` | 40100 |
 | `/health` | GET | 否 | — | `"healthy"`（string） | — |
 
-- DTO（App.Core）：`UserDto`、`LoginRequest`、`LoginResult`；对外只暴露 DTO。
-- Controller：`AuthController`、`UsersController`、`HealthController`，仅做参数校验 + 调用 Handler + 返回统一响应。
+- 用例模型（App.Core/Features）：`LoginRequest`、`LoginResponse`、`UserDto` 随用例同目录；对外只暴露模型，不暴露实体。
+- Controller：`AuthController`、`UsersController`、`HealthController`，仅做参数绑定 + 统一经 `IMediator.Send(Request)` 触发对应用例 + 返回统一响应（参数校验由 `RequestValidator` 承担）。
 
-### 2.7 Handler 与示例账号（App.Core）
+### 2.7 用例结构、仓储与示例账号
 
-- `IAuthHandler / AuthHandler`：`Task<LoginResult> LoginAsync(LoginRequest, CancellationToken)`
-  - 参数空 → `BusinessException(40000)`；
-  - 账号校验失败 → `BusinessException(40001, "用户名或密码错误")`；
-  - 成功 → 生成 token + `UserDto`。
-- `IUserHandler / UserHandler`：`UserDto GetCurrentUser(ClaimsPrincipal)` — 从 claims 还原 `UserDto`。
-- `IUserAccountService / InMemoryUserAccountService`（App.Core，**脚手架临时实现**，注释标明由首个业务功能替换为 Repository）：
-  - 测试账号：`admin` / `admin123`，`displayName = "管理员"`。
-- 事务：脚手架阶段无跨 Repository 写操作；后续按规则在 Handler 显式事务。
+每个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下一组文件（Request / RequestValidator / RequestHandler / Response，详见后端规则第 3 节），不设 Service 层；用例请求实现 `IRequest<TResponse>` 标记、处理器实现 `IRequestHandler<TRequest, TResponse>`，Controller 只依赖 `Abstractions/IMediator` 经 `Send(Request)` 分发：
+
+- `Features/Auth/Login/`：`LoginRequest`（实现 `IRequest<LoginResponse>`）+ `LoginRequestValidator`（FluentValidation，仅格式校验、不查库）+ `LoginRequestHandler`（实现 `IRequestHandler<LoginRequest, LoginResponse>`）+ `LoginResponse`：
+  - 格式校验失败 → `BusinessException(40000)`；
+  - 查库约束（账号是否存在、密码是否正确）在 Handler 内判断 → `BusinessException(40001, "用户名或密码错误")`；
+  - 成功 → `TokenService.Issue(UserDto)` 签发 JWT，返回 `LoginResponse { token, user }`。
+- `Features/Users/GetCurrentUser/`：空请求 `GetCurrentUserRequest`（实现 `IRequest<UserDto>`，占位统一入口签名，不定义 Validator）+ `GetCurrentUserRequestHandler`（实现 `IRequestHandler<GetCurrentUserRequest, UserDto>`），从 `ICurrentUser`（App.Api 基于已认证 claims 实现）还原 `UserDto`。
+- `Abstractions/IUserRepository`（接口，App.Core）与 `Repositories/InMemoryUserRepository`（App.Infrastructure，**脚手架临时实现**，首个业务功能替换为 EF Core 实现）：
+  - 种子账号：`admin` / `admin123`，`displayName = "管理员"`。
+- `Abstractions/IUnitOfWork`（App.Core 接口 / App.Infrastructure `Persistence/UnitOfWork` 实现）：为跨仓储写操作提供显式事务边界；脚手架阶段无真实写库场景，先落接口与实现供后续用例使用。
 
 ### 2.8 数据库（App.Infrastructure）
 
@@ -190,7 +192,13 @@ frontend/
 | 决策 | 理由 |
 |---|---|
 | JWT 校验用自研中间件而非 JwtBearer 包 | 需统一返回业务码 40100（HTTP 200），自研更易控制响应结构与白名单 |
-| 登录示例账号放 `InMemoryUserAccountService` | 脚手架无真实用户表；接口化（`IUserAccountService`）便于首个业务功能替换为 Repository |
+| 每 API 一组 Request/RequestValidator/RequestHandler/Response（用例 / 垂直切片） | 一个接口一份逻辑与模型、职责单一；RequestHandler 公共方法天然可单测；校验规则与用例同目录、可发现 |
+| 全部 RequestHandler 统一实现 `IRequestHandler<TRequest, TResponse>` 入口 | 统一 `HandleAsync(Request, CancellationToken)` 签名，Controller / DI / 单测面向同一接口；无请求参数的用例以空 Request 模型占位签名 |
+| 自研轻量中介 `IMediator.Send(Request)`（简化版 MediatR）而非引入 MediatR 包 | Controller 只面对单一中介入口，不感知具体 Handler，入口统一可替换；请求经 `IRequest<TResponse>` 标记声明响应类型并供运行时分发；注册仍显式（无注册期反射扫描），避免第三方 CQRS 依赖 |
+| RequestValidator 只做格式校验，查库约束放 RequestHandler | 校验器保持无状态纯规则；依赖数据的判定与写操作同处一个逻辑 / 事务上下文 |
+| 格式校验使用 FluentValidation | 声明式规则 + 可测试，替代手写 if 校验 |
+| 不设 Service 层，RequestHandler 直接依赖仓储 | 避免贫血的业务编排层；跨仓储事务用 IUnitOfWork 显式控制 |
+| 登录示例账号放 `InMemoryUserRepository`（App.Infrastructure） | 脚手架无真实用户表；以仓储接口（App.Core.Abstractions）划边界，首个业务功能直接替换为 EF Core 实现 |
 | `AppDbContext` 暂空、不建迁移 | 无实体则无表；后续功能建表时再走 Migrations |
 | HTTP 状态码恒 200，业务码表达结果 | 与 AGENTS.md 4.1 统一响应约定一致，前端按 `code` 分支处理 |
 | dev 下 JWT 密钥自动生成兜底 | 本地开箱即用；prod 缺失即启动失败，避免裸奔 |
