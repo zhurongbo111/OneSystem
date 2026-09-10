@@ -51,7 +51,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 分层职责（强制）：
 
-- **RequestValidator**：只做格式层校验，禁止访问仓储 / 查库；需要查询数据的约束（存在性、唯一性、状态流转等）一律放到 `RequestHandler` 中判断。
+- **RequestValidator**：只做格式层校验，禁止访问仓储 / 查库；需要查询数据的约束（存在性、唯一性、状态流转等）一律放到 `RequestHandler` 中判断。字段长度 / 区间 / 正则必须取自 §4.3 的字段约束单一来源，禁止硬编码（须与"数据规则"一致）。
 - **RequestHandler**：本用例唯一业务编排点，直接依赖仓储接口与无状态技术组件（如 JWT 的 `TokenService`）；**不设 Service 层**——禁止新增业务编排类 `*Service` / `*Handler`（聚合型），通用无状态技术组件按职责命名（不参与业务编排）。
 - **中介分发（强制）**：Controller / 中间层只注入 `App.Core/Abstractions/IMediator`，用 `await _mediator.Send(request)` 触发用例，禁止直接依赖或 `new` 具体 Handler；用例 `Request` 实现标记接口 `IRequest<TResponse>`（声明响应类型）。分发实现 `App.Core/Mediation/Mediator`（自研简化 MediatR）：按请求运行时类型经 DI 解析已注册的 `IRequestHandler<TRequest,TResponse>` 后调用其 `HandleAsync`。
 - **统一用例接口（强制）**：每个用例的处理器实现 `App.Core/Abstractions/IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖；单测可直接测该实现，也可经 `IMediator` 验证分发。
@@ -67,9 +67,35 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ## 4. 数据库规范（PostgreSQL + EF Core）
 
+### 4.1 表结构与迁移
+
 - 所有表结构变更必须走 EF Core Migrations；禁止手写 DDL，禁止修改已应用的迁移文件。
 - 业务代码中禁止裸 SQL；确需 EF Core 无法表达的场景，必须在规格中说明并经用户确认。
 - 实体名 PascalCase 单数；表名默认与实体名一致，规格可另行定义。
+
+### 4.2 时间字段一律 `DateTimeOffset`（强制）
+
+- **实体 / DTO（Request / Response）/ 仓储方法签名**中的所有时间字段统一用 `DateTimeOffset`（可空用 `DateTimeOffset?`），**禁止 `DateTime`**。理由：`DateTime.Kind` 在 JSON 序列化与跨层传递中会丢失，导致 UTC 与本地时间混用；`DateTimeOffset` 自带偏移量，语义明确。
+- 取当前时间统一 `DateTimeOffset.UtcNow`，**禁止 `DateTime.Now` / `DateTime.UtcNow`**（后者只有 `DateTimeOffset` 可用时才转换，不直接参与业务逻辑）。
+- Npgsql 将 `DateTimeOffset` 映射为 `timestamptz`，库内按 UTC 存储，接口出入参保留偏移量。由此 `DateTime` → `DateTimeOffset` 的改造若不影响 DDL，**迁移可以 Up/Down 为空**（参照 `20260910070346_ConvertTimestampsToDateTimeOffset`），属正常情况，不要为了"迁移有内容"去改列类型。
+- 时间范围筛选入参为 `DateTimeOffset`（前端传 UTC ISO 串），偏移量显式，后端**不做时区推断 / 不做 UTC 归一化**；闭区间比较直接依赖 `timestamptz` 语义。
+- **唯一例外**：第三方 API 只接受 `DateTime` 时（如 `JwtSecurityToken` 的 `notBefore` / `expires`），在调用边界显式 `.UtcDateTime` 转换并加注释说明，禁止因此把裸 `DateTime` 变量引入业务层（参照 `TokenService.Issue`）。
+- 新增时间字段时同步更新各功能 `design.md` 的数据模型表与表结构表（§4.3 规格侧事实源）。
+
+### 4.3 字段约束单一来源，Validator 与数据规则一致（强制）
+
+> 参照实现：`App.Core/Entities/UserFieldConstraints.cs` + `Persistence/Configurations/UserConfiguration.cs` + `Features/Users/**/*RequestValidator.cs`，一致性由 `tests/App.Tests/FieldValidationConsistencyTests.cs` 守护。
+
+- 「数据规则」（字段长度 / 区间 / 正则 / 必填 / 可空）在代码侧**只在一处定义**：`App.Core/Entities/<实体>FieldConstraints.cs` 常量类（如 `UserFieldConstraints`）。引用方必须使用该常量，**禁止硬编码字面量、禁止复制正则**：
+  - EF 实体配置（`HasMaxLength` / `IsRequired` / `HasColumnType` / 索引等）→ `App.Infrastructure/Persistence/Configurations/<实体>Configuration.cs`；
+  - 各用例 `RequestValidator` 的长度 / 区间 / 正则规则。
+- **同一字段在不同用例中的规则必须同源**，禁止分叉：例如登录、创建、重置的密码区间必须都取 `PasswordMinLength` / `PasswordMaxLength`，不得某个用例写成 ≤128。无对应表列但仍属业务规则的（如明文密码区间、查询关键词长度上限）同样收敛到该常量类。
+- **规格侧对应条款**是 `specs/<feature>/design.md` 的「数据模型 / 表结构」约束表与校验规则表，**规格是事实源**：改动顺序为 `design.md` → 常量类 → EF 配置 → 各 Validator → 一致性单测，代码与规格必须始终一致。
+- 必须由单测守护一致性，至少覆盖：
+  1. EF 模型实际 `HasMaxLength` == 常量（防配置与常量分叉）；
+  2. 同一字段在多个用例的 Validator 中「边界值通过 / 越界拒绝」行为一致；
+  3. 查询类入参（关键词等）长度不超过对应列长度。
+- 新增字段 / 修改约束时，上述五处缺一即视为未完成，不得勾选规格 `tasks.md` 中对应任务。
 
 ## 5. 编码约定
 
