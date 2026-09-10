@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
+
 import {
   ORDER_STATUS_COLOR,
   ORDER_STATUS_LABEL,
@@ -9,11 +9,23 @@ import {
   useOrderData,
 } from '@/composables/useOrderStore'
 import OrderFormDrawer from '@/views/FormShowcase/components/OrderFormDrawer.vue'
+import { Message } from '@arco-design/web-vue'
 
 const route = useRoute()
 const router = useRouter()
 const { findById, remove } = useOrderData()
 
+// —— constants ——
+const itemColumns = [
+  { title: '序号', slotName: 'seq', width: 64, align: 'center' as const },
+  { title: '商品名称', dataIndex: 'productName' },
+  { title: '数量', dataIndex: 'quantity', width: 120 },
+]
+
+// —— reactive state ——
+const drawerVisible = ref(false)
+
+// —— computed ——
 /** 当前订单（id 变化时重新查找） */
 const order = computed(() => {
   const id = String(route.params.id ?? '')
@@ -21,14 +33,6 @@ const order = computed(() => {
 })
 
 const notFound = computed(() => !order.value)
-
-const drawerVisible = ref(false)
-
-const itemColumns = [
-  { title: '序号', slotName: 'seq', width: 64, align: 'center' as const },
-  { title: '商品名称', dataIndex: 'productName' },
-  { title: '数量', dataIndex: 'quantity', width: 120 },
-]
 
 function goBack(): void {
   void router.push({ name: 'form' })

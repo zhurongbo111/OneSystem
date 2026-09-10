@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter, RouterView } from 'vue-router'
+
+import { useAuthStore } from '@/stores/auth'
 import {
   IconMenuFold,
   IconMenuUnfold,
@@ -10,7 +12,6 @@ import {
   IconList,
   IconEdit,
 } from '@arco-design/web-vue/es/icon'
-import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,6 +28,12 @@ const selectedKeys = computed<string[]>(() =>
 /** 当前用户名（未加载时显示占位） */
 const displayName = computed<string>(() => auth.user?.displayName ?? '用户')
 
+onMounted(() => {
+  // 进入受保护子页面后恢复用户信息（从 HomeView 上移至布局，覆盖所有子页面）
+  void auth.fetchCurrentUser()
+})
+
+// —— methods ——
 function onMenuItemClick(key: string): void {
   void router.push({ name: key })
 }
@@ -35,11 +42,6 @@ function onLogout(): void {
   auth.logout()
   void router.replace({ name: 'login' })
 }
-
-onMounted(() => {
-  // 进入受保护子页面后恢复用户信息（从 HomeView 上移至布局，覆盖所有子页面）
-  void auth.fetchCurrentUser()
-})
 </script>
 
 <template>

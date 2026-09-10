@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
@@ -11,6 +12,7 @@ import {
   IconRefresh,
 } from '@arco-design/web-vue/es/icon'
 
+// —— types ——
 /** 列表行数据模型（静态 Mock，参照用，非真实业务） */
 interface UserRow {
   id: string
@@ -22,6 +24,7 @@ interface UserRow {
   seq?: number // 过滤后序号（运行时注入）
 }
 
+// —— constants ——
 /** 静态种子数据：跨角色/状态/时间，便于验证搜索、筛选、排序、分页 */
 const SEED: UserRow[] = [
   { id: 'u01', name: '张伟', email: 'zhang.wei@example.com', role: 'admin', status: 'active', createdAt: '2025-01-08' },
@@ -51,10 +54,76 @@ const SEED: UserRow[] = [
   { id: 'u25', name: '董洁', email: 'dong.jie@example.com', role: 'viewer', status: 'active', createdAt: '2026-02-01' },
 ]
 
+const statusOptions = [
+  { label: '启用', value: 'active' },
+  { label: '禁用', value: 'disabled' },
+]
+const roleOptions = [
+  { label: '管理员', value: 'admin' },
+  { label: '编辑', value: 'editor' },
+  { label: '访客', value: 'viewer' },
+]
+
+const columnOptions = [
+  { label: '名称', value: 'name' },
+  { label: '邮箱', value: 'email' },
+  { label: '角色', value: 'role' },
+  { label: '状态', value: 'status' },
+  { label: '创建时间', value: 'createdAt' },
+]
+
+const rowSelection = { type: 'checkbox' as const, showCheckedAll: true }
+
+const pagination = {
+  defaultPageSize: 10,
+  showTotal: true,
+  showPageSize: true,
+  pageSizeOptions: [10, 20, 50],
+}
+
+const roleColor: Record<UserRow['role'], string> = {
+  admin: 'arcoblue',
+  editor: 'orangered',
+  viewer: 'green',
+}
+const roleLabel: Record<UserRow['role'], string> = {
+  admin: '管理员',
+  editor: '编辑',
+  viewer: '访客',
+}
+
+// —— helpers ——
 function cloneData(list: UserRow[]): UserRow[] {
   return list.map((r) => ({ ...r }))
 }
 
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** 按列 dataIndex 取展示值（创建时间格式化，角色/状态转中文） */
+function getExportValue(row: UserRow, key: string): string {
+  switch (key) {
+    case 'createdAt':
+      return formatDate(row.createdAt)
+    case 'role':
+      return roleLabel[row.role]
+    case 'status':
+      return row.status === 'active' ? '启用' : '禁用'
+    case 'name':
+      return row.name
+    case 'email':
+      return row.email
+    default:
+      return ''
+  }
+}
+
+// —— reactive state ——
 /** 可变数据源（删除/刷新操作它），初始为种子数据拷贝 */
 const data = ref<UserRow[]>(cloneData(SEED))
 
@@ -74,24 +143,7 @@ const selectedKeys = ref<string[]>([])
 /** 列显示设置（不持久化） */
 const visibleColumns = ref<string[]>(['name', 'email', 'role', 'status', 'createdAt'])
 
-const statusOptions = [
-  { label: '启用', value: 'active' },
-  { label: '禁用', value: 'disabled' },
-]
-const roleOptions = [
-  { label: '管理员', value: 'admin' },
-  { label: '编辑', value: 'editor' },
-  { label: '访客', value: 'viewer' },
-]
-
-const columnOptions = [
-  { label: '名称', value: 'name' },
-  { label: '邮箱', value: 'email' },
-  { label: '角色', value: 'role' },
-  { label: '状态', value: 'status' },
-  { label: '创建时间', value: 'createdAt' },
-]
-
+// —— computed ——
 /** 过滤（搜索 + 状态）后的数据，注入序号；排序由 Arco 表格内置完成 */
 const tableData = computed<UserRow[]>(() => {
   const kw = appliedKeyword.value.trim().toLowerCase()
@@ -138,57 +190,12 @@ const columns = computed<TableColumnData[]>(() => {
   return cols
 })
 
-const rowSelection = { type: 'checkbox' as const, showCheckedAll: true }
-
-const pagination = {
-  defaultPageSize: 10,
-  showTotal: true,
-  showPageSize: true,
-  pageSizeOptions: [10, 20, 50],
-}
-
 /** 表格重挂载 key：搜索/筛选变化时回第 1 页 */
 const tableKey = computed(
   () => `${appliedKeyword.value}|${appliedStatus.value ?? ''}|${appliedRole.value ?? ''}`,
 )
 
-const roleColor: Record<UserRow['role'], string> = {
-  admin: 'arcoblue',
-  editor: 'orangered',
-  viewer: 'green',
-}
-const roleLabel: Record<UserRow['role'], string> = {
-  admin: '管理员',
-  editor: '编辑',
-  viewer: '访客',
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-/** 按列 dataIndex 取展示值（创建时间格式化，角色/状态转中文） */
-function getExportValue(row: UserRow, key: string): string {
-  switch (key) {
-    case 'createdAt':
-      return formatDate(row.createdAt)
-    case 'role':
-      return roleLabel[row.role]
-    case 'status':
-      return row.status === 'active' ? '启用' : '禁用'
-    case 'name':
-      return row.name
-    case 'email':
-      return row.email
-    default:
-      return ''
-  }
-}
-
+// —— methods ——
 /** 搜索：应用输入条件并回到第 1 页 */
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value

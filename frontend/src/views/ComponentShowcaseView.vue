@@ -1,22 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+
 import { Message, Notification } from '@arco-design/web-vue'
 import type { TableColumnData, TreeNodeData, CascaderOption } from '@arco-design/web-vue'
 
-// 当前激活的分类 tab
-const activeTab = ref('base')
-
-// ===== 表单类组件绑定 =====
-const inputValue = ref('')
-const selectValue = ref<string | undefined>(undefined)
-const checkValues = ref<string[]>([])
-const radioValue = ref<string>('1')
-const switchValue = ref(true)
-const sliderValue = ref(30)
-const rateValue = ref(3)
-const dateValue = ref<Date | string | undefined>(undefined)
-const cascadeValue = ref<string[]>([])
-
+// —— constants ——
 const selectOptions = [
   { label: '前端', value: 'fe' },
   { label: '后端', value: 'be' },
@@ -35,8 +23,6 @@ const cascadeOptions: CascaderOption[] = [
   },
   { value: 'jiangsu', label: '江苏省' },
 ]
-
-// ===== 数据展示类组件绑定 =====
 const tableColumns: TableColumnData[] = [
   { title: '姓名', dataIndex: 'name' },
   { title: '岗位', dataIndex: 'role' },
@@ -56,10 +42,22 @@ const treeData: TreeNodeData[] = [
   { key: '2', title: '父节点 2' },
 ]
 
-// ===== 反馈类组件绑定 =====
+// —— reactive state ——
+// 当前激活的分类 tab
+const activeTab = ref('base')
+const inputValue = ref('')
+const selectValue = ref<string | undefined>(undefined)
+const checkValues = ref<string[]>([])
+const radioValue = ref<string>('1')
+const switchValue = ref(true)
+const sliderValue = ref(30)
+const rateValue = ref(3)
+const dateValue = ref<Date | string | undefined>(undefined)
+const cascadeValue = ref<string[]>([])
 const modalVisible = ref(false)
 const drawerVisible = ref(false)
 
+// —— methods ——
 function showMessage(): void {
   Message.success('这是一条 Message 提示')
 }

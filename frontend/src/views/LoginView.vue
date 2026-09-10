@@ -1,25 +1,28 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+import { useAuthStore } from '@/stores/auth'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance } from '@arco-design/web-vue'
-import { useAuthStore } from '@/stores/auth'
+
+// —— constants ——
+const rules = {
+  username: [{ required: true, message: '请输入用户名' }],
+  password: [{ required: true, message: '请输入密码' }],
+}
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
+// —— reactive state ——
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 const form = reactive({
   username: '',
   password: '',
 })
-
-const rules = {
-  username: [{ required: true, message: '请输入用户名' }],
-  password: [{ required: true, message: '请输入密码' }],
-}
 
 async function onSubmit(): Promise<void> {
   try {
