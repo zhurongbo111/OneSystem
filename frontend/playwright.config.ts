@@ -20,7 +20,9 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: "http://localhost:5173",
-    // 使用全量 chromium（--headless 模式），避免依赖 chromium_headless_shell（国内网络下载失败）
+    // 本地默认有头模式（可见浏览器窗口）；CI 无显示器，自动退回无头
+    headed: !process.env.CI,
+    // 使用全量 chromium，避免依赖 chromium_headless_shell（国内网络下载失败）
     channel: "chromium",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
