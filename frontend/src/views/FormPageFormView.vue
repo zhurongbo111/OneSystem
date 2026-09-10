@@ -1,34 +1,56 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
-import type { FieldRule, FormInstance, TableColumnData } from '@arco-design/web-vue'
-import { IconPlus } from '@arco-design/web-vue/es/icon'
+
 import {
   ORDER_STATUS_OPTIONS,
   useOrderData,
   type OrderFormLike,
 } from '@/composables/useOrderStore'
+import { Message } from '@arco-design/web-vue'
+import type { FieldRule, FormInstance, TableColumnData } from '@arco-design/web-vue'
+import { IconPlus } from '@arco-design/web-vue/es/icon'
 
+// —— types ——
+interface FormState extends OrderFormLike {
+  items: { key: string; productName: string; quantity: number }[]
+}
+
+// —— stores/composables ——
 const route = useRoute()
 const router = useRouter()
 const { findById, upsert } = useOrderData()
 
-/** 编辑模式：路由为 formEdit 且带 id */
-const editId = computed<string | null>(() =>
-  route.name === 'formEdit' ? (String(route.params.id ?? '') || null) : null,
-)
-const isEdit = computed(() => Boolean(editId.value))
-const pageTitle = computed(() => (isEdit.value ? '编辑订单' : '新增订单'))
+// —— constants ——
+/** 编辑模式：路由为 formEdit 且带 id（路由级，组件实例内稳定） */
+const editId = route.name === 'formEdit' ? (String(route.params.id ?? '') || null) : null
+const isEdit = Boolean(editId)
+const pageTitle = isEdit ? '编辑订单' : '新增订单'
 
+const rules: Record<string, FieldRule[]> = {
+  customer: [{ required: true, message: '请输入客户' }],
+  product: [{ required: true, message: '请输入商品' }],
+  amount: [
+    { required: true, message: '请输入金额' },
+    { positive: true, message: '金额必须大于 0' },
+  ],
+  status: [{ required: true, message: '请选择状态' }],
+  createdAt: [{ required: true, message: '请选择创建时间' }],
+}
+
+/** 商品明细子表格列（Arco：columns 数组 + slotName 插槽） */
+const itemColumns: TableColumnData[] = [
+  { title: '序号', slotName: 'seq', width: 64, align: 'center' },
+  { title: '商品名称', slotName: 'productName' },
+  { title: '数量', slotName: 'quantity', width: 160 },
+  { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
+]
+
+// —— helpers ——
 let itemSeq = 0
 function newKey(): string {
   itemSeq += 1
   return `i-${Date.now()}-${itemSeq}`
-}
-
-interface FormState extends OrderFormLike {
-  items: { key: string; productName: string; quantity: number }[]
 }
 
 function emptyForm(): FormState {
@@ -44,10 +66,11 @@ function emptyForm(): FormState {
   }
 }
 
+// —— reactive state ——
 const form = reactive<FormState>(emptyForm())
 
 /** 编辑模式：挂载后从数据源深拷贝回填 */
-const editingRow = editId.value ? findById(editId.value) : undefined
+const editingRow = editId ? findById(editId) : undefined
 if (editingRow) {
   form.orderNo = editingRow.orderNo
   form.customer = editingRow.customer
@@ -63,36 +86,20 @@ if (editingRow) {
 
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+const itemsErrorShown = ref(false)
 
-const rules: Record<string, FieldRule[]> = {
-  customer: [{ required: true, message: '请输入客户' }],
-  product: [{ required: true, message: '请输入商品' }],
-  amount: [
-    { required: true, message: '请输入金额' },
-    { positive: true, message: '金额必须大于 0' },
-  ],
-  status: [{ required: true, message: '请选择状态' }],
-  createdAt: [{ required: true, message: '请选择创建时间' }],
-}
-
+// —— computed ——
 /** 明细行校验：非表单字段，提交时手动校验，错误提示随输入自动清除（computed 派生） */
 const itemsInvalid = computed(
   () => form.items.length === 0 || form.items.some((i) => i.productName.trim() === '' || i.quantity < 1),
 )
-const itemsErrorShown = ref(false)
+
+// —— methods ——
 function validateItems(): boolean {
   const ok = !itemsInvalid.value
   itemsErrorShown.value = true
   return ok
 }
-
-/** 商品明细子表格列（Arco：columns 数组 + slotName 插槽） */
-const itemColumns: TableColumnData[] = [
-  { title: '序号', slotName: 'seq', width: 64, align: 'center' },
-  { title: '商品名称', slotName: 'productName' },
-  { title: '数量', slotName: 'quantity', width: 160 },
-  { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
-]
 
 function addItem(): void {
   form.items.push({ key: newKey(), productName: '', quantity: 1 })
@@ -117,7 +124,7 @@ async function onSubmit(): Promise<void> {
       return
     }
     const saved = upsert({
-      id: editId.value ?? '',
+      id: editId ?? '',
       orderNo: form.orderNo,
       customer: form.customer.trim(),
       product: form.product.trim(),
@@ -129,7 +136,7 @@ async function onSubmit(): Promise<void> {
       updatedAt: '',
       items: form.items.map((i) => ({ key: i.key, productName: i.productName.trim(), quantity: i.quantity })),
     })
-    Message.success(isEdit.value ? '订单已更新' : '订单已创建')
+    Message.success(isEdit ? '订单已更新' : '订单已创建')
     void router.push({ name: 'formDetail', params: { id: saved.id } })
   } finally {
     submitting.value = false

@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
-import type { TableColumnData } from '@arco-design/web-vue'
-import { IconPlus, IconSearch } from '@arco-design/web-vue/es/icon'
+
 import {
   ORDER_STATUS_COLOR,
   ORDER_STATUS_LABEL,
@@ -13,26 +11,11 @@ import {
   type OrderRow,
 } from '@/composables/useOrderStore'
 import OrderFormDrawer from '@/views/FormShowcase/components/OrderFormDrawer.vue'
+import { Message } from '@arco-design/web-vue'
+import type { TableColumnData } from '@arco-design/web-vue'
+import { IconPlus, IconSearch } from '@arco-design/web-vue/es/icon'
 
-const router = useRouter()
-const { orders, remove } = useOrderData()
-
-/** 关键词：输入态 / 已应用态分离（点搜索才生效） */
-const keywordInput = ref('')
-const appliedKeyword = ref('')
-/** 状态筛选：输入态 / 已应用态 */
-const statusInput = ref<string | undefined>(undefined)
-const appliedStatus = ref<string | undefined>(undefined)
-
-const tableData = computed<OrderRow[]>(() => {
-  const kw = appliedKeyword.value.trim().toLowerCase()
-  return orders.value.filter((o) => {
-    const okKw = !kw || o.orderNo.toLowerCase().includes(kw) || o.customer.toLowerCase().includes(kw)
-    const okSt = !appliedStatus.value || o.status === appliedStatus.value
-    return okKw && okSt
-  })
-})
-
+// —— constants ——
 const columns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '订单号', dataIndex: 'orderNo', width: 170 },
@@ -51,14 +34,36 @@ const pagination = {
   pageSizeOptions: [10, 20, 50],
 }
 
-/** 表格重挂载 key：条件变化回第 1 页 */
-const tableKey = computed(() => `${appliedKeyword.value}|${appliedStatus.value ?? ''}`)
+const router = useRouter()
+const { orders, remove } = useOrderData()
+
+// —— reactive state ——
+/** 关键词：输入态 / 已应用态分离（点搜索才生效） */
+const keywordInput = ref('')
+const appliedKeyword = ref('')
+/** 状态筛选：输入态 / 已应用态 */
+const statusInput = ref<string | undefined>(undefined)
+const appliedStatus = ref<string | undefined>(undefined)
 
 /** 抽屉表单状态（新增/编辑共用） */
 const drawerVisible = ref(false)
 const drawerMode = ref<'create' | 'edit'>('create')
 const drawerEditId = ref<string | undefined>(undefined)
 
+// —— computed ——
+const tableData = computed<OrderRow[]>(() => {
+  const kw = appliedKeyword.value.trim().toLowerCase()
+  return orders.value.filter((o) => {
+    const okKw = !kw || o.orderNo.toLowerCase().includes(kw) || o.customer.toLowerCase().includes(kw)
+    const okSt = !appliedStatus.value || o.status === appliedStatus.value
+    return okKw && okSt
+  })
+})
+
+/** 表格重挂载 key：条件变化回第 1 页 */
+const tableKey = computed(() => `${appliedKeyword.value}|${appliedStatus.value ?? ''}`)
+
+// —— methods ——
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedStatus.value = statusInput.value

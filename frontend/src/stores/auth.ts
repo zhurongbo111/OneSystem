@@ -1,5 +1,6 @@
-import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+
 import { login as loginApi, getCurrentUser, type UserDto } from '@/api/auth'
 import { tokenStorage } from '@/api/request'
 

@@ -55,15 +55,17 @@ export const ORDER_STATUS_LABEL: Record<OrderRow['status'], string> = {
   cancelled: '已取消',
 }
 
+// —— helpers ——
+function cloneRows(list: OrderRow[]): OrderRow[] {
+  return list.map((r) => ({ ...r, items: r.items.map((i) => ({ ...i })) }))
+}
+
 /** 格式化金额：¥ 前缀 + 两位小数 */
 export function formatAmount(n: number): string {
   return `¥ ${n.toFixed(2)}`
 }
 
-function cloneRows(list: OrderRow[]): OrderRow[] {
-  return list.map((r) => ({ ...r, items: r.items.map((i) => ({ ...i })) }))
-}
-
+// —— constants（模块级数据）——
 /** 静态种子数据：跨状态/金额/时间，便于验证筛选与排序 */
 const SEED: OrderRow[] = [
   { id: 'o01', orderNo: 'NO-20250108-001', customer: '张伟', product: '机械键盘', amount: 399, status: 'paid', createdAt: '2025-01-08', remark: '尽快发货', createdBy: 'admin', updatedAt: '2025-01-09', items: [{ key: 'i1', productName: '机械键盘', quantity: 1 }] },

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+
+import { ORDER_STATUS_OPTIONS, useOrderData, type OrderRow } from '@/composables/useOrderStore'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance } from '@arco-design/web-vue'
-import { ORDER_STATUS_OPTIONS, useOrderData, type OrderRow } from '@/composables/useOrderStore'
 
 /** 抽屉表单数据（提交后映射为 OrderRow） */
 interface OrderFormState {
@@ -29,10 +30,21 @@ const emit = defineEmits<{
   (e: 'saved'): void
 }>()
 
-const formRef = ref<FormInstance>()
-const submitting = ref(false)
 const { findById, upsert } = useOrderData()
 
+// —— constants ——
+const rules: Record<string, FieldRule[]> = {
+  customer: [{ required: true, message: '请输入客户' }],
+  product: [{ required: true, message: '请输入商品' }],
+  amount: [
+    { required: true, message: '请输入金额' },
+    { positive: true, message: '金额必须大于 0' },
+  ],
+  status: [{ required: true, message: '请选择状态' }],
+  createdAt: [{ required: true, message: '请选择创建时间' }],
+}
+
+// —— helpers ——
 function emptyForm(): OrderFormState {
   return {
     orderNo: '',
@@ -45,19 +57,12 @@ function emptyForm(): OrderFormState {
   }
 }
 
+// —— reactive state ——
+const formRef = ref<FormInstance>()
+const submitting = ref(false)
 const form = reactive<OrderFormState>(emptyForm())
 
-const rules: Record<string, FieldRule[]> = {
-  customer: [{ required: true, message: '请输入客户' }],
-  product: [{ required: true, message: '请输入商品' }],
-  amount: [
-    { required: true, message: '请输入金额' },
-    { positive: true, message: '金额必须大于 0' },
-  ],
-  status: [{ required: true, message: '请选择状态' }],
-  createdAt: [{ required: true, message: '请选择创建时间' }],
-}
-
+// —— watch ——
 /** 打开抽屉时按模式初始化：新增清空、编辑深拷贝回填（不污染数据源） */
 watch(
   () => props.visible,
@@ -80,6 +85,7 @@ watch(
   },
 )
 
+// —— methods ——
 /** 关闭抽屉 */
 function onClose(): void {
   emit('update:visible', false)
