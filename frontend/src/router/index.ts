@@ -32,6 +32,30 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ListShowcaseView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'form',
+        name: 'form',
+        component: () => import('@/views/FormShowcaseView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'form/new',
+        name: 'formNew',
+        component: () => import('@/views/FormPageFormView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'form/edit/:id',
+        name: 'formEdit',
+        component: () => import('@/views/FormPageFormView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'form/detail/:id',
+        name: 'formDetail',
+        component: () => import('@/views/FormDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {
