@@ -11,6 +11,7 @@ import {
   IconApps,
   IconList,
   IconEdit,
+  IconHistory,
 } from '@arco-design/web-vue/es/icon'
 
 const route = useRoute()
@@ -20,10 +21,14 @@ const auth = useAuthStore()
 /** 侧边栏折叠状态（内存态，不持久化） */
 const collapsed = ref<boolean>(false)
 
+/** 详情等子路由归属到所属一级菜单，保证侧边栏高亮正确 */
+const MENU_ROUTE_MAP: Record<string, string> = { userDetail: 'users' }
+
 /** 菜单选中项：与当前路由名联动（单一数据源） */
-const selectedKeys = computed<string[]>(() =>
-  typeof route.name === 'string' && route.name ? [route.name] : [],
-)
+const selectedKeys = computed<string[]>(() => {
+  const name = typeof route.name === 'string' ? route.name : ''
+  return name ? [MENU_ROUTE_MAP[name] ?? name] : []
+})
 
 /** 当前用户名（未加载时显示占位） */
 const displayName = computed<string>(() => auth.user?.displayName ?? '用户')
@@ -90,6 +95,18 @@ function onLogout(): void {
             <IconEdit />
           </template>
           <span>表单与详情示例</span>
+        </a-menu-item>
+        <a-menu-item key="users">
+          <template #icon>
+            <IconUser />
+          </template>
+          <span>用户管理</span>
+        </a-menu-item>
+        <a-menu-item key="loginLogs">
+          <template #icon>
+            <IconHistory />
+          </template>
+          <span>登录日志</span>
         </a-menu-item>
       </a-menu>
     </a-layout-sider>

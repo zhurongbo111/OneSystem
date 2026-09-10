@@ -57,6 +57,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/FormDetailView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'users',
+        name: 'users',
+        component: () => import('@/views/UserManagement/UsersView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'users/detail/:id',
+        name: 'userDetail',
+        component: () => import('@/views/UserManagement/UserDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'login-logs',
+        name: 'loginLogs',
+        component: () => import('@/views/LoginLogManagement/LoginLogsView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {

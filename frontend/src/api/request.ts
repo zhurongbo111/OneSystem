@@ -108,3 +108,8 @@ export function get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
 export function post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
   return http.post(url, data, config).then((r) => r.data as T)
 }
+
+/** 请求 PUT 并返回解包后的 data（拦截器已把响应体替换为 data） */
+export function put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  return http.put(url, data, config).then((r) => r.data as T)
+}
