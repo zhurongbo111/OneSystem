@@ -15,6 +15,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/components',
+    name: 'components',
+    component: () => import('@/views/ComponentShowcaseView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },

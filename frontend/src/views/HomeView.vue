@@ -15,6 +15,10 @@ function onLogout(): void {
   auth.logout()
   void router.replace({ name: 'login' })
 }
+
+function goComponents(): void {
+  void router.push({ name: 'components' })
+}
 </script>
 
 <template>
@@ -24,6 +28,7 @@ function onLogout(): void {
         <span class="logo">App</span>
         <div class="header-right">
           <a-typography-text v-if="auth.user" class="username">{{ auth.user.displayName }}</a-typography-text>
+          <a-button type="text" @click="goComponents">组件示例</a-button>
           <a-button type="text" @click="onLogout">退出登录</a-button>
         </div>
       </a-layout-header>
