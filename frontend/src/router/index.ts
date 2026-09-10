@@ -26,6 +26,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ComponentShowcaseView.vue'),
         meta: { public: true },
       },
+      {
+        path: 'list',
+        name: 'list',
+        component: () => import('@/views/ListShowcaseView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {

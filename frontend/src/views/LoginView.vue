@@ -43,21 +43,51 @@ async function onSubmit(): Promise<void> {
 
 <template>
   <div class="login-page">
-    <a-card class="login-card" title="登录">
-      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" @submit-success="onSubmit">
-        <a-form-field field="username" label="用户名">
-          <a-input v-model="form.username" placeholder="请输入用户名" allow-clear />
+    <a-card
+      class="login-card"
+      title="登录"
+    >
+      <a-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        layout="vertical"
+        @submit-success="onSubmit"
+      >
+        <a-form-field
+          field="username"
+          label="用户名"
+        >
+          <a-input
+            v-model="form.username"
+            placeholder="请输入用户名"
+            allow-clear
+          />
         </a-form-field>
-        <a-form-field field="password" label="密码">
-          <a-input-password v-model="form.password" placeholder="请输入密码" allow-clear />
+        <a-form-field
+          field="password"
+          label="密码"
+        >
+          <a-input-password
+            v-model="form.password"
+            placeholder="请输入密码"
+            allow-clear
+          />
         </a-form-field>
         <a-form-field>
-          <a-button type="primary" long html-type="submit" :loading="loading">
+          <a-button
+            type="primary"
+            long
+            html-type="submit"
+            :loading="loading"
+          >
             登录
           </a-button>
         </a-form-field>
       </a-form>
-      <a-typography-text type="secondary">测试账号：admin / admin123</a-typography-text>
+      <a-typography-text type="secondary">
+        测试账号：admin / admin123
+      </a-typography-text>
     </a-card>
   </div>
 </template>
