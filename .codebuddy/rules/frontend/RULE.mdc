@@ -73,6 +73,30 @@ frontend/
 - **composable（`composables/*.ts`）**：`imports → types → constants（含模块级单例 ref，需注释）→ helpers → export function useXxx()`；函数体内同样遵守 reactive state → computed → watch → methods 相对顺序。
 - lint 强制项（import 排序、types 先于变量、ref 命名）见 `eslint.config.js`；分区顺序以本表为准 + code review 把关。
 
+### 4.6 按钮交互反馈（强制）
+
+> 目的：任何会发起请求的按钮，点击后必须**立即**给出 loading 反馈，且操作进行中不可重复触发。
+
+**绑定粒度：loading 属于「操作」而非「按钮」**。同一个异步操作无论有几个触发入口（按钮 / 输入框回车 / 分页器 / 行内按钮），共用同一个 loading 状态；不同操作各用独立状态，**禁止多个按钮共用一个 `loading`**。
+
+| 操作类型 | 状态命名 | 绑定方式 |
+|---|---|---|
+| 列表查询（搜索 / 重置 / 刷新 / 翻页 / 每页条数） | `loading` | 按钮 + 回车 `:loading="loading"`，同时 `<a-table :loading="loading">` |
+| 表单提交（新增 / 编辑） | `submitting` | 提交按钮 `:loading="submitting"` |
+| 弹窗确认（重置密码 / 改状态等） | `xxSubmitting` | `a-modal :ok-loading="xxSubmitting"` |
+| 行内操作（启用 / 禁用 / 单行删除） | `xxingId`（如 `togglingId`） | `:loading="togglingId === row.id"` |
+
+**实现要求**
+
+- **触发即置位**：handler 内**先** `xxLoading.value = true`，**再** `await`；用 `try/finally` 在 `finally` 中复位，成功与失败路径都要复位，禁止只在成功分支复位。
+- **防重入**：动作类（提交 / 删除 / 启停）handler 开头必须 `if (xxLoading.value) return`。Arco 的 `loading` 只表现为不可点击，**不阻止事件重入**（如回车 + 点击、弹窗确认连点），需显式判空。
+- **查询类不丢弃点击**：搜索 / 翻页等查询动作，最新意图必须生效，**不要**加 `if (loading.value) return`；改为用请求序号仲裁乱序响应（见 §5 交互模式）。
+- **保留业务 `:disabled`**：与 loading 可叠加，如 `:disabled="!selectedIds.length"` + `:loading="loading"`；`a-button` 的 `loading` 已隐含不可点击，无需为它另写 `:disabled`。
+- **不置 loading 的情形**：同步瞬时动作（打开抽屉 / 弹窗、路由跳转、本地导出 CSV、复制文本）不置 loading；只有「发起请求并等待结果」才置。
+- **行内操作只转被点行**：用「当前操作行 id」判断，避免整列按钮同时转圈。
+
+**e2e**：按钮 loading 属用户可感知行为，相关功能交付前须有 e2e 断言（`AGENTS.md` §6）。
+
 ## 5. 列表页约定
 
 - 所有表格类列表页以 `src/views/ListShowcaseView.vue` 为标准参照实现（规格 `specs/list-showcase/`）；新增列表页优先复制其结构与交互模式再替换业务字段。
@@ -87,6 +111,8 @@ frontend/
 **交互模式**
 - 筛选条件「输入态 / 已应用态」分离：只有点「搜索」（或回车）才写入已应用态，条件变化后清空勾选。
 - 条件变化后回到第 1 页：已应用条件拼成字符串作 `:key` 重挂载表格。
+- 查询动作（搜索 / 重置 / 刷新 / 翻页 / 每页条数）并发不可避免（HTTP 不串行、事件回调不阻塞、`void fetchList()` 不等待），列表请求必须用请求序号仲裁：`const seq = ++fetchSeq` 记序号，响应回来时 `seq !== fetchSeq` 则丢弃，`loading` 也只在最后发起的请求上复位；禁止用 `if (loading) return` 丢弃新点击。
+- 查询类按钮的 loading 绑定见 §4.6（与表格共用同一个 `loading`）。
 - 删除（单行、批量）一律 `a-popconfirm` 确认；批量删除按钮在无勾选时 `:disabled`。
 - 导出当前筛选结果为 CSV 时加 `\uFEFF` BOM 头（Excel 中文兼容）。
 
