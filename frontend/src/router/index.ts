@@ -9,16 +9,24 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
   {
+    // 全局布局父路由：承载各业务页面（侧边菜单 + 顶部栏 + 内容区）
     path: '/',
-    name: 'home',
-    component: () => import('@/views/HomeView.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/components',
-    name: 'components',
-    component: () => import('@/views/ComponentShowcaseView.vue'),
-    meta: { public: true },
+    name: 'layout',
+    component: () => import('@/components/AppLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'home',
+        component: () => import('@/views/HomeView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'components',
+        name: 'components',
+        component: () => import('@/views/ComponentShowcaseView.vue'),
+        meta: { public: true },
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',

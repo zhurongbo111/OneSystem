@@ -43,8 +43,9 @@ test.describe("登录与路由守卫（集成）", () => {
     await page.getByRole("button", { name: "登录" }).click();
     await expect(page).toHaveURL(/\/$/);
 
-    // 退出
-    await page.getByRole("button", { name: "退出登录" }).click();
+    // 退出：经布局顶部栏用户下拉
+    await page.getByRole("button", { name: "用户菜单" }).click();
+    await page.getByText("退出登录").click();
     await expect(page).toHaveURL(/\/login/);
   });
 });

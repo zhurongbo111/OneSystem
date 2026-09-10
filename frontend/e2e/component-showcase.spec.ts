@@ -27,9 +27,9 @@ test.describe('组件示例页面（集成）', () => {
     await expect(page.getByText('选择器 Select')).toBeVisible()
   })
 
-  test('已登录首页点击「组件示例」跳转到组件页', async ({ page }) => {
+  test('已登录首页点击侧边菜单「组件示例」跳转到组件页', async ({ page }) => {
     await login(page)
-    await page.getByRole('button', { name: '组件示例' }).click()
+    await page.locator('.arco-menu-item', { hasText: '组件示例' }).click()
     await expect(page).toHaveURL(/\/components/)
     await expect(page.getByRole('heading', { name: 'Arco Design 组件示例' })).toBeVisible()
   })
