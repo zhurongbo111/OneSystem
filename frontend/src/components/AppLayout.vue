@@ -8,6 +8,7 @@ import {
   IconHome,
   IconApps,
   IconList,
+  IconEdit,
 } from '@arco-design/web-vue/es/icon'
 import { useAuthStore } from '@/stores/auth'
 
@@ -81,6 +82,12 @@ onMounted(() => {
             <IconList />
           </template>
           <span>列表示例</span>
+        </a-menu-item>
+        <a-menu-item key="form">
+          <template #icon>
+            <IconEdit />
+          </template>
+          <span>表单与详情示例</span>
         </a-menu-item>
       </a-menu>
     </a-layout-sider>
