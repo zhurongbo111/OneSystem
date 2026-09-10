@@ -47,32 +47,49 @@ frontend/
 - 组件 props / emits 必须声明 TS 类型。
 - 组件名 PascalCase，文件命名与组件名一致。
 
-## 5. 状态与路由
+## 5. 列表页约定
+
+- 所有表格类列表页以 `src/views/ListShowcaseView.vue` 为标准参照实现（规格 `specs/list-showcase/`）；新增列表页优先复制其结构与交互模式再替换业务字段。
+
+**页面布局**
+- 页面头仅放标题；操作按钮不放页面头，统一并入表格卡片上方的工具条（避免操作离列表太远）。
+- 工具条分两行，整体与表格同在一个无描边 `a-card` 内，紧贴表格：
+  - 筛选行：`a-row`（`wrap`）+ `a-col` 栅格排多列，窄屏自动换行为多行；末列放「搜索」（primary）+「重置」按钮；行底用边框线与操作行分隔。
+  - 操作行：右对齐、紧贴表格；按钮统一 `size="small"`；按 主操作（新增）/ 数据操作（导出、批量删除）/ 视图操作（列设置、刷新）分组，组间用竖 `a-divider` 分隔。
+- 表格配置：`row-key` 必设；分页 `showTotal` + `showPageSize`（`pageSizeOptions: [10, 20, 50]`）；枚举字段（角色/状态等）用 `a-tag` 着色展示；操作列放表格末列，`a-button type="text"`。
+
+**交互模式**
+- 筛选条件「输入态 / 已应用态」分离：只有点「搜索」（或回车）才写入已应用态，条件变化后清空勾选。
+- 条件变化后回到第 1 页：已应用条件拼成字符串作 `:key` 重挂载表格。
+- 删除（单行、批量）一律 `a-popconfirm` 确认；批量删除按钮在无勾选时 `:disabled`。
+- 导出当前筛选结果为 CSV 时加 `\uFEFF` BOM 头（Excel 中文兼容）。
+
+## 6. 状态与路由
 
 - 状态管理使用 Pinia，按功能拆分 store（`stores/<feature>.ts`）。
 - 路由使用 `vue-router`，路由按功能拆分并在 `router/` 统一注册；路由命名与功能域一致。
 - 路由级代码分割使用 `() => import(...)` 懒加载。
 
-## 6. 编码约定
+## 7. 编码约定
 
 - 2 空格缩进；ESLint + Prettier 保持统一格式。
 - 变量 / 函数 camelCase，类型 / 接口 / 组件 PascalCase，常量 UPPER_SNAKE_CASE。
 - 禁止 `any`；无法确定类型时使用 `unknown` 收窄。
 - 异步逻辑用 `async/await`，必须处理失败分支（配合接口层统一错误提示）。
 
-## 7. 认证（JWT）
+## 8. 认证（JWT）
 
 - token 存储、携带与 40100 处置的全局约定见 `AGENTS.md` §4.5；本处为实现细节：
   - 请求拦截器：从 `localStorage` 读取 token，附加 `Authorization: Bearer <token>`。
   - 响应拦截器：收到 `code: 40100` 时清除 `localStorage` 凭证并跳转登录页（防重复跳转）。
 
-## 8. 环境与联调
+## 9. 环境与联调
 
 - 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod）；实现上使用 Vite 多环境文件 `.env.development` / `.env.production`。
 - API 基础地址通过 `import.meta.env.VITE_API_BASE_URL` 读取；dev 环境指向本地 / dev 后端（可用 Vite proxy）。
 - 接口行为以联调结果为准。
 
-## 9. 测试（e2e）
+## 10. 测试（e2e）
 
 - e2e 测试策略与强制门槛见 `AGENTS.md` §6；此处只列本仓库的运行细则。
 - 用例与配置：`frontend/e2e/*.spec.ts` + `playwright.config.ts`。
