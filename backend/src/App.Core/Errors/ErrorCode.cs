@@ -25,4 +25,19 @@ public static class ErrorCode
 
     /// <summary>用户名或密码错误（project-scaffold 功能业务码）</summary>
     public const int LoginFailed = 40001;
+
+    /// <summary>用户名已存在（user-management 功能业务码）</summary>
+    public const int UsernameExists = 40002;
+
+    /// <summary>邮箱已被使用</summary>
+    public const int EmailExists = 40003;
+
+    /// <summary>手机号已被使用</summary>
+    public const int PhoneExists = 40004;
+
+    /// <summary>账号已被禁用（登录时）</summary>
+    public const int UserDisabled = 40005;
+
+    /// <summary>不能禁用当前登录账号</summary>
+    public const int CannotDisableSelf = 40006;
 }

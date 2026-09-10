@@ -31,6 +31,9 @@ public class SwaggerIntegrationTests : IClassFixture<SwaggerIntegrationTests.Dev
     /// </summary>
     public class DevFactory : WebApplicationFactory<Program>
     {
+        // 固定库名：options 委托按 scope 求值，若在委托内生成随机名会导致种子与查询落到不同库
+        private static readonly string DatabaseName = "test-db-swagger-" + Guid.NewGuid();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             // WebApplicationFactory 默认 Development 环境（UseSetting 设置 ASPNETCORE_ENVIRONMENT 不生效，如需切换须用 UseEnvironment）
@@ -47,9 +50,10 @@ public class SwaggerIntegrationTests : IClassFixture<SwaggerIntegrationTests.Dev
 
             builder.ConfigureServices(services =>
             {
-                // 测试环境用 InMemory 数据库替代 PostgreSQL
+                // 测试环境用 InMemory 数据库替代 PostgreSQL：连同 options 一起移除，避免与 Npgsql 配置叠加
                 services.RemoveAll<AppDbContext>();
-                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("test-db-swagger-" + Guid.NewGuid()));
+                services.RemoveAll<DbContextOptions<AppDbContext>>();
+                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(DatabaseName));
             });
         }
     }
@@ -145,6 +149,8 @@ public class SwaggerIntegrationTests : IClassFixture<SwaggerIntegrationTests.Dev
     /// </summary>
     public class ProductionFactory : WebApplicationFactory<Program>
     {
+        private static readonly string DatabaseName = "test-db-swagger-prod-" + Guid.NewGuid();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Production");
@@ -162,7 +168,8 @@ public class SwaggerIntegrationTests : IClassFixture<SwaggerIntegrationTests.Dev
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<AppDbContext>();
-                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("test-db-swagger-prod-" + Guid.NewGuid()));
+                services.RemoveAll<DbContextOptions<AppDbContext>>();
+                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(DatabaseName));
             });
         }
     }

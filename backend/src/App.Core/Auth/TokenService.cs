@@ -47,7 +47,7 @@ public class TokenService
     /// <returns>JWT token 字符串</returns>
     public string Issue(UserDto user)
     {
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
         // iss / aud / exp 等由 JwtSecurityToken 构造参数生成，不在 claims 中重复声明
         var claims = new[]
         {
@@ -56,12 +56,13 @@ public class TokenService
             new Claim("displayName", user.DisplayName),
         };
         var handler = new JwtSecurityTokenHandler();
+        // JwtSecurityToken 的 notBefore / expires 仅接受 DateTime，故在签发边界显式取 UtcDateTime（唯一需要的转换点）
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,
             audience: _options.Audience,
             claims: claims,
-            notBefore: now,
-            expires: now.AddMinutes(_options.ExpiresMinutes),
+            notBefore: now.UtcDateTime,
+            expires: now.AddMinutes(_options.ExpiresMinutes).UtcDateTime,
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(_key), SecurityAlgorithms.HmacSha256));
         return handler.WriteToken(token);
     }

@@ -7,7 +7,7 @@ namespace App.Infrastructure.Persistence;
 /// <summary>
 /// 基于 DbContext 的事务工作单元实现：为跨仓储写操作提供显式事务边界
 /// </summary>
-internal sealed class UnitOfWork : IUnitOfWork
+public sealed class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _dbContext;
     private IDbContextTransaction? _transaction;
@@ -21,7 +21,8 @@ internal sealed class UnitOfWork : IUnitOfWork
     }
 
     /// <summary>
-    /// 开启事务；已有未提交的事务时抛异常（fail-fast，禁止重复开启）
+    /// 开启事务；已有未提交的事务时抛异常（fail-fast，禁止重复开启）。
+    /// InMemory 等非关系型提供程序不支持事务（集成测试场景），此时跳过开启，各仓储写操作仍各自持久化。
     /// </summary>
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
@@ -29,6 +30,11 @@ internal sealed class UnitOfWork : IUnitOfWork
         {
             throw new InvalidOperationException(
                 "当前工作单元已有未提交的事务，禁止重复开启；请先 CommitAsync 或 RollbackAsync。");
+        }
+
+        if (!_dbContext.Database.IsRelational())
+        {
+            return;
         }
 
         _transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);

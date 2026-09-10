@@ -23,14 +23,15 @@ public static class DependencyInjection
             // 连接串来自环境变量 ConnectionStrings__Default；未配置时用本地默认占位，
             // 脚手架阶段无实体查询不会发起连接，首个业务功能接入时要求必须配置真实连接串。
             var connectionString = configuration.GetConnectionString("Default")
-                ?? "Host=localhost;Port=5432;Database=app;Username=app;Password=app";
+                ?? "Host=localhost;Port=5432;Database=app;Username=admin;Password=admin123";
             options.UseNpgsql(connectionString);
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // 脚手架阶段为内存实现（InMemoryUserRepository），首个业务功能替换为 EF Core 实现
-        services.AddScoped<IUserRepository, InMemoryUserRepository>();
+        // EF Core 仓储实现（首个业务功能起替换脚手架的内存实现）
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserLoginLogRepository, UserLoginLogRepository>();
 
         return services;
     }

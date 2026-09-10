@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using App.Api.Authentication;
+using App.Api.Http;
 using App.Core.Features.Auth.Login;
 using App.Api.Middleware;
 using App.Api.Swagger;
@@ -7,6 +8,7 @@ using App.Core;
 using App.Core.Abstractions;
 using App.Core.Auth;
 using App.Infrastructure;
+using App.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using NLog;
@@ -47,9 +49,10 @@ builder.Services.AddEndpointsApiExplorer();
 // ASP.NET Core 默认 JWT 认证：校验参数与签发共用 JwtOptions，FallbackPolicy 默认要求登录（白名单接口用 [AllowAnonymous] 标注）
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
-// 当前用户（claims → ICurrentUser），供需要当前用户的用例 Handler 使用
+// 请求上下文抽象（claims → ICurrentUser / HttpContext → IClientInfo），供用例 Handler 使用
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
+builder.Services.AddScoped<IClientInfo, ClientInfoAccessor>();
 
 // ========== Swagger：仅 dev 环境启用（UI /swagger，JSON /swagger/v1/swagger.json；prod 零注册零暴露）==========
 if (builder.Environment.IsDevelopment())
@@ -121,6 +124,9 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// ========== 数据库初始化：迁移（仅 dev 自动执行，生产由发布流程显式执行）+ 内置管理员种子（幂等）==========
+await DatabaseInitializer.InitializeAsync(app.Services, app.Environment.IsDevelopment());
 
 app.Logger.LogInformation("App.Api 启动完成，环境={Environment}", app.Environment.EnvironmentName);
 app.Run();
