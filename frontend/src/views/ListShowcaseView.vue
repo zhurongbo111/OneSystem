@@ -4,12 +4,16 @@ import { computed, ref } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
-  IconPlus,
-  IconDownload,
-  IconSettings,
-  IconSearch,
   IconDelete,
+  IconDownload,
+  IconEdit,
+  IconEye,
+  IconLock,
+  IconMore,
+  IconPlus,
   IconRefresh,
+  IconSearch,
+  IconSettings,
 } from '@arco-design/web-vue/es/icon'
 
 // —— types ——
@@ -169,7 +173,8 @@ const columns = computed<TableColumnData[]>(() => {
     })
   }
   if (visibleColumns.value.includes('email')) {
-    cols.push({ title: '邮箱', dataIndex: 'email', ellipsis: true, tooltip: true })
+    // 固定宽 + 省略：避免成为唯一弹性列吸收全部剩余空间
+    cols.push({ title: '邮箱', dataIndex: 'email', width: 150, ellipsis: true, tooltip: true })
   }
   if (visibleColumns.value.includes('role')) {
     cols.push({ title: '角色', dataIndex: 'role', width: 110, slotName: 'role' })
@@ -186,9 +191,14 @@ const columns = computed<TableColumnData[]>(() => {
       slotName: 'createdAt',
     })
   }
-  cols.push({ title: '操作', slotName: 'action', width: 150 })
+  // 列宽须 ≥ 实测内容 238px（3×66 文本按钮 + 28 纯图标「更多」+ 3×4 间距），取 240，
+  // 否则 td 内容溢出、表头与内容错位（specs/action-column §2）
+  cols.push({ title: '操作', slotName: 'action', width: 240, bodyCellClass: 'action-cell' })
   return cols
 })
+
+/** 各列固定宽度之和，作为表格横向滚动最小宽度（specs/action-column §2 列宽策略） */
+const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width ?? 0), 0))
 
 /** 表格重挂载 key：搜索/筛选变化时回第 1 页 */
 const tableKey = computed(
@@ -235,6 +245,21 @@ function onBatchDelete(): void {
 /** 新增（演示占位） */
 function onCreate(): void {
   Message.info('演示页面，暂未实现新增')
+}
+
+/** 操作列：详情（演示占位，中性） */
+function onActionDetail(row: UserRow): void {
+  Message.info(`演示：查看详情 ${row.name}`)
+}
+
+/** 操作列：编辑（演示占位，主操作） */
+function onActionEdit(row: UserRow): void {
+  Message.info(`演示：编辑 ${row.name}`)
+}
+
+/** 操作列：重置密码（演示占位，收纳于「更多」） */
+function onActionResetPassword(row: UserRow): void {
+  Message.info(`演示：重置密码 ${row.name}`)
 }
 
 /** 刷新：恢复初始数据并清空条件/勾选 */
@@ -438,6 +463,7 @@ function onExport(): void {
         :columns="columns"
         :data="tableData"
         :pagination="pagination"
+        :scroll="{ x: tableScrollX }"
         :row-selection="rowSelection"
       >
         <template #role="{ record }">
@@ -453,14 +479,31 @@ function onExport(): void {
         <template #createdAt="{ record }">
           {{ formatDate((record as UserRow).createdAt) }}
         </template>
+        <!-- 操作列（specs/action-column §2~§5）：4 个操作 > 3，平铺 详情/编辑/删除，「重置密码」收纳进「更多」；顺序 主操作→中性→危险 -->
         <template #action="{ record }">
-          <a-space :size="4">
+          <a-space
+            class="row-actions"
+            :size="4"
+          >
             <a-button
               type="text"
               size="small"
-              @click="Message.info(`演示：编辑 ${record.name}`)"
+              @click="onActionEdit(record as UserRow)"
             >
+              <template #icon>
+                <IconEdit />
+              </template>
               编辑
+            </a-button>
+            <a-button
+              type="text"
+              size="small"
+              @click="onActionDetail(record as UserRow)"
+            >
+              <template #icon>
+                <IconEye />
+              </template>
+              详情
             </a-button>
             <a-popconfirm
               type="warning"
@@ -472,9 +515,34 @@ function onExport(): void {
                 status="danger"
                 size="small"
               >
+                <template #icon>
+                  <IconDelete />
+                </template>
                 删除
               </a-button>
             </a-popconfirm>
+            <a-dropdown trigger="click">
+              <a-button
+                type="text"
+                size="small"
+                aria-label="更多操作"
+              >
+                <template #icon>
+                  <IconMore />
+                </template>
+              </a-button>
+              <template #content>
+                <a-doption
+                  value="reset-password"
+                  @click="onActionResetPassword(record as UserRow)"
+                >
+                  <template #icon>
+                    <IconLock />
+                  </template>
+                  重置密码
+                </a-doption>
+              </template>
+            </a-dropdown>
           </a-space>
         </template>
       </a-table>
@@ -488,6 +556,17 @@ function onExport(): void {
   flex-direction: column;
   gap: 16px;
   width: 100%;
+}
+
+/* 操作列密度（specs/action-column §5）：收窄 Arco 文本/纯图标按钮默认 0 15px 的水平 padding，避免相邻操作视觉间距过大 */
+.row-actions :deep(.arco-btn-text),
+.row-actions :deep(.arco-btn-only-icon) {
+  padding: 0 8px;
+}
+
+/* 操作列兜底（specs/action-column §2.1）：按钮组不折行，防止列宽不足时换行导致行高异常 */
+:deep(.action-cell) {
+  white-space: nowrap;
 }
 
 .page-header {

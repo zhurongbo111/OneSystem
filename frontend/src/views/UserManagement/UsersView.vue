@@ -7,7 +7,18 @@ import type { UserListItem, UserStatus } from '@/api/user'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance, TableColumnData } from '@arco-design/web-vue'
-import { IconPlus, IconRefresh, IconSearch, IconSettings } from '@arco-design/web-vue/es/icon'
+import {
+  IconEdit,
+  IconEye,
+  IconLock,
+  IconMore,
+  IconPlayCircle,
+  IconPlus,
+  IconPoweroff,
+  IconRefresh,
+  IconSearch,
+  IconSettings,
+} from '@arco-design/web-vue/es/icon'
 
 import UserFormDrawer from './UserFormDrawer.vue'
 
@@ -106,10 +117,11 @@ const columns = computed<TableColumnData[]>(() => {
     cols.push({ title: '显示名', dataIndex: 'displayName', width: 120 })
   }
   if (visibleColumns.value.includes('email')) {
-    cols.push({ title: '邮箱', dataIndex: 'email', ellipsis: true, tooltip: true })
+    // 固定宽 + 省略：避免成为唯一弹性列吸收全部剩余空间（宽屏下邮箱列过宽、操作列挤压错位）
+    cols.push({ title: '邮箱', dataIndex: 'email', width: 150, ellipsis: true, tooltip: true })
   }
   if (visibleColumns.value.includes('phone')) {
-    cols.push({ title: '手机号', dataIndex: 'phone', width: 140 })
+    cols.push({ title: '手机号', dataIndex: 'phone', width: 130 })
   }
   if (visibleColumns.value.includes('status')) {
     cols.push({ title: '状态', dataIndex: 'status', width: 90, slotName: 'status' })
@@ -118,11 +130,16 @@ const columns = computed<TableColumnData[]>(() => {
     cols.push({ title: '最近登录时间', dataIndex: 'lastLoginAt', width: 180, slotName: 'lastLoginAt' })
   }
   if (visibleColumns.value.includes('createdAt')) {
-    cols.push({ title: '创建时间', dataIndex: 'createdAt', width: 180, slotName: 'createdAt' })
+    cols.push({ title: '创建时间', dataIndex: 'createdAt', width: 172, slotName: 'createdAt' })
   }
-  cols.push({ title: '操作', slotName: 'action', width: 260 })
+  // 列宽按实测内容 238px（3×66 文本按钮 + 28 纯图标「更多」+ 3×4 间距）取 240，
+  // 防止列宽小于内容时 td 内容溢出、表头与内容错位（specs/action-column §2）
+  cols.push({ title: '操作', slotName: 'action', width: 240, bodyCellClass: 'action-cell' })
   return cols
 })
+
+/** 各列固定宽度之和，作为表格横向滚动最小宽度（specs/action-column §2 列宽策略） */
+const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width ?? 0), 0))
 
 // —— lifecycle ——
 onMounted(() => {
@@ -365,6 +382,7 @@ async function onSubmitResetPassword(): Promise<void> {
         :columns="columns"
         :data="items"
         :pagination="pagination"
+        :scroll="{ x: tableScrollX }"
         @page-change="onPageChange"
         @page-size-change="onPageSizeChange"
       >
@@ -382,21 +400,31 @@ async function onSubmitResetPassword(): Promise<void> {
         <template #createdAt="{ record }">
           {{ formatDateTime((record as UserListItem).createdAt) }}
         </template>
+        <!-- 操作列（specs/action-column）：4 个操作 > 3，平铺 编辑/详情/禁用，「重置密码」收纳进「更多」 -->
         <template #action="{ record }">
-          <a-space :size="4">
+          <a-space
+            class="row-actions"
+            :size="4"
+          >
             <a-button
               type="text"
               size="small"
               @click="onEdit(record as UserListItem)"
             >
+              <template #icon>
+                <IconEdit />
+              </template>
               编辑
             </a-button>
             <a-button
               type="text"
               size="small"
-              @click="onOpenResetPassword(record as UserListItem)"
+              @click="onDetail(record as UserListItem)"
             >
-              重置密码
+              <template #icon>
+                <IconEye />
+              </template>
+              详情
             </a-button>
             <a-popconfirm
               type="warning"
@@ -405,19 +433,40 @@ async function onSubmitResetPassword(): Promise<void> {
             >
               <a-button
                 type="text"
+                :status="(record as UserListItem).status === 1 ? 'warning' : 'normal'"
                 size="small"
                 :loading="togglingId === (record as UserListItem).id"
               >
+                <template #icon>
+                  <IconPoweroff v-if="(record as UserListItem).status === 1" />
+                  <IconPlayCircle v-else />
+                </template>
                 {{ (record as UserListItem).status === 1 ? '禁用' : '启用' }}
               </a-button>
             </a-popconfirm>
-            <a-button
-              type="text"
-              size="small"
-              @click="onDetail(record as UserListItem)"
-            >
-              详情
-            </a-button>
+            <a-dropdown trigger="click">
+              <a-button
+                type="text"
+                size="small"
+                aria-label="更多操作"
+              >
+                <template #icon>
+                  <IconMore />
+                </template>
+              </a-button>
+              <template #content>
+                <a-doption
+                  value="reset-password"
+                  :disabled="togglingId === (record as UserListItem).id"
+                  @click="onOpenResetPassword(record as UserListItem)"
+                >
+                  <template #icon>
+                    <IconLock />
+                  </template>
+                  重置密码
+                </a-doption>
+              </template>
+            </a-dropdown>
           </a-space>
         </template>
       </a-table>
@@ -463,6 +512,17 @@ async function onSubmitResetPassword(): Promise<void> {
   flex-direction: column;
   gap: 16px;
   width: 100%;
+}
+
+/* 操作列密度（specs/action-column §5）：收窄 Arco 文本/纯图标按钮默认 0 15px 的水平 padding，避免相邻操作视觉间距过大 */
+.row-actions :deep(.arco-btn-text),
+.row-actions :deep(.arco-btn-only-icon) {
+  padding: 0 8px;
+}
+
+/* 操作列兜底（specs/action-column §5）：按钮组不折行，防止列宽不足时按钮换行导致行高异常 */
+:deep(.action-cell) {
+  white-space: nowrap;
 }
 
 .page-header {
