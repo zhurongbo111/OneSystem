@@ -98,7 +98,7 @@ Arco `a-table` 默认 `table-layout: fixed`。**某一列未设 `width` 时会�
 | 禁用 / 启用 | 是 | 警示（禁用态）/ 中性（启用态） | `IconPoweroff` / `IconPlayCircle` | `a-popconfirm` + `togglingId` 行内 loading |
 | 重置密码 | 否（更多） | 中性 | `IconLock` | `a-doption @click` 打开重置密码模态 |
 
-- 操作列 `width` 由 260 调为 220（平铺 3 短操作 + 更多按钮）。
+- 列宽按 §2.1 策略设置：邮箱列 `width: 150` + `ellipsis`（不再无宽度贪婪拉伸）、操作列 `width: 240`、表格 `:scroll="{ x: tableScrollX }"`。
 
 ## 7. 技术决策
 
