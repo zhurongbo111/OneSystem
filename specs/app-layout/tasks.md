@@ -13,3 +13,9 @@
 - [x] F5 新增 e2e `frontend/e2e/app-layout.spec.ts`：布局渲染与菜单选中联动、菜单切换、侧边栏折叠/展开、用户下拉退出登录
 - [x] F6 调整既有 e2e：`login.spec.ts` 退出登录改为经用户下拉；`component-showcase.spec.ts` "组件示例"入口改为侧边菜单
 - [x] F7 `npm run build` 通过、`npm run lint` 通过；前后端 dev 启动后 `npm run test:e2e` 全通过（10 用例）
+
+## 变更：示例页面菜单分组
+
+- [x] G1 `specs/app-layout/requirement.md` / `design.md` 更新：侧边菜单「组件示例 / 列表示例 / 表单与详情示例」收纳进「示例页面」`a-sub-menu`（默认展开，`open-keys` 与 `@open-change` 联动）
+- [x] G2 `AppLayout.vue` 侧边菜单改为：首页 + 示例页面（子菜单：组件示例 / 列表示例 / 表单与详情示例）；子菜单默认展开
+- [x] G3 `npm run build` + `npm run lint` + `npm run test:e2e` 全通过（50 用例）

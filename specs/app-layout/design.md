@@ -30,9 +30,12 @@ routes:
 a-layout (layout="has-sider", class=app-layout)
   a-layout-sider (v-model:collapsed, :collapsed-width=64, :width=208, collapsible, breakpoint=lg, :hide-trigger=false)
     顶部 logo 区（折叠时仅显示图标 / 缩写）
-    a-menu (mode="inline", :selected-keys=当前路由名, :collapsed=collapsed, @menu-item-click=路由跳转)
+    a-menu (:selected-keys=当前路由名, :open-keys=openKeys, :collapsed=collapsed, @menu-item-click=路由跳转, @update:open-keys=同步 openKeys)
       a-menu-item key="home"        → 首页
-      a-menu-item key="components"  → 组件示例
+      a-sub-menu key="showcase"     → 示例页面
+        a-menu-item key="components"  → 组件示例
+        a-menu-item key="list"          → 列表示例
+        a-menu-item key="form"          → 表单与详情示例
   a-layout
     a-layout-header (class=layout-header)
       左侧：折叠触发按钮（MenuFoldOutlined / MenuUnfoldOutlined 图标按钮，与 sider 折叠联动）
@@ -43,8 +46,9 @@ a-layout (layout="has-sider", class=app-layout)
       RouterView
 ```
 
-- 菜单选中：`a-menu` 的 `selected-keys` 用 `computed` 绑定当前 `route.name`（`['home']` / `['components']`），实现路由 ↔ 菜单联动。
-- 菜单点击：`@menu-item-click` 中 `router.push({ name: key })`。
+- 菜单选中：`a-menu` 的 `selected-keys` 用 `computed` 绑定当前 `route.name`（`['home']` / `['components']` / `['list']` / `['form']` 等），实现路由 ↔ 菜单联动。
+- 菜单点击：`@menu-item-click` 中 `router.push({ name: key })`（仅叶子项触发，子菜单不响应）。
+- 子菜单展开：`a-menu` 默认 `vertical` 模式（Arco 合法 mode 为 `vertical` / `horizontal` / `pop` / `popButton`，无 `inline`；误传 `inline` 会使子菜单渲染为 hover 弹出层且 `open-keys` 失效），`open-keys` 绑定 `ref`（初始含 `'showcase'`，进入示例页时被手动折叠则自动重新展开），`@update:open-keys` 同步，避免用户手动折叠后无法再展开。
 - 折叠状态：`ref<boolean>`（默认 false），传给 `a-layout-sider` 的 `v-model:collapsed` 与 header 折叠按钮图标切换；不持久化。
 - 顶部栏右侧：`a-dropdown` 触发元素为头像 + `displayName`（`auth.user` 为空时显示占位 "用户"）；下拉 `a-doption` / `a-menu` 仅一项"退出登录"。
 - 退出登录：`auth.logout()` + `router.replace({ name: 'login' })`（复用现有 auth store 能力，前端规则 §7 的全局约定见 `AGENTS.md` §4.5）。
@@ -78,7 +82,7 @@ a-layout (layout="has-sider", class=app-layout)
 - 依赖：前端 dev（5173）+ 后端 dev（5080，登录需要）。登录用例沿用 `login.spec.ts` 的 `beforeAll` 后端健康检查方式。
 - `app-layout.spec.ts` 用例（需登录，复用登录流程）：
   1. 登录后进入首页，可见侧边菜单"首页"且为选中态（`arco-menu-selected` 可判）。
-  2. 点击菜单"组件示例"跳转 `/components`，"组件示例"菜单项选中。
+  2. 子菜单"示例页面"默认展开，直接点击"组件示例"跳转 `/components`，"组件示例"菜单项选中。
   3. 点击折叠按钮，侧边栏收起（菜单进入折叠态，`arco-layout-sider-collapsed` 可判）；再点展开恢复。
   4. 顶部栏用户下拉点击"退出登录"，跳转登录页。
 - 既有 `login.spec.ts` 调整：
@@ -87,6 +91,7 @@ a-layout (layout="has-sider", class=app-layout)
 - 既有 `component-showcase.spec.ts` 调整：
   - "已登录首页点击「组件示例」跳转"：入口从首页头部按钮改为侧边菜单项，改为点击菜单"组件示例"。
   - 直接访问 `/components`、tab 切换用例不变（页面标题保留）。
+- 既有 `list-showcase.spec.ts` / `form-showcase.spec.ts`：子菜单默认展开，直接点击"列表示例"/"表单与详情示例"菜单项即可进入，无需展开操作，用例不变。
 
 ## 7. 验证门槛（`AGENTS.md` §6）
 
