@@ -7,6 +7,9 @@
 - [x] T3 `UsersView.vue` 操作列改造：编辑 / 详情 / 禁用 平铺（图标 + 颜色），重置密码收纳进「更多」；操作列 `width` 260 → 220；既有行为（抽屉 / 详情跳转 / 启停 popconfirm / 行内 loading / 重置模态）不变
 - [x] T4 e2e `list-showcase.spec.ts` 补操作列用例（平铺按钮、更多下拉、危险样式、删除链路回归）
 - [x] T5 验证：`npm run build` + `npm run lint` + `npm run test:e2e`（含 `user-management.spec.ts` 回归）全通过
+- [x] T6 列宽策略落地（design.md §2.1）：所有列固定 `width`、邮箱列 `ellipsis`、表格 `:scroll="{ x: tableScrollX }"`、操作列 240 + `action-cell` nowrap 兜底（`UsersView.vue` / `ListShowcaseView.vue`）
+- [x] T7 e2e 补「表头与内容对齐」断言（操作列 th 宽 ≥ 按钮组实际宽度），防回退
+- [x] T8 前端规则 §5 补「列宽策略」条款
 
 ## 完成定义
 
