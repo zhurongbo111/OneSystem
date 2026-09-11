@@ -17,7 +17,7 @@
   - 侧边栏 `a-layout-sider`（可折叠）+ `a-menu`（`inline` 模式）。
   - 顶部栏 `a-layout-header`：左侧折叠按钮 + logo，右侧当前用户下拉（展示 `displayName`，含退出登录）。
   - 内容区 `a-layout-content` 内嵌 `RouterView`。
-- F2 侧边菜单项：首页（`/`）、组件示例（`/components`）；菜单当前项与路由联动选中。
+- F2 侧边菜单项：首页（`/`）、示例页面（`a-sub-menu` 子菜单，含组件示例 `/components`、列表示例 `/list`、表单与详情示例 `/form`）；菜单当前项与路由联动选中。
 - F3 侧边栏可折叠（折叠按钮切换），折叠状态为内存态，不持久化。
 - F4 路由改造：`AppLayout` 作为父路由承载 `home`（`/`）与 `components`（`/components`）子路由；`/login` 保持独立；现有路由守卫逻辑不变。
 - F5 页面收敛：`HomeView` 移除自带头部（用户信息 / 退出登录上移到布局顶部栏）；`ComponentShowcaseView` 移除自带顶部标题栏与"返回首页"（导航由侧边菜单承担），保留页面标题与 tab 主体。
@@ -27,7 +27,7 @@
 
 1. `cd frontend && npm run build` 通过，无 TypeScript 错误；`npm run lint` 通过。
 2. 登录后进入首页，可见全局布局（侧边菜单 + 顶部栏），侧边菜单"首页"项选中。
-3. 点击侧边菜单"组件示例"跳转 `/components`，该菜单项选中；内容区渲染组件示例。
+3. 展开侧边菜单"示例页面"子菜单，点击"组件示例"跳转 `/components`，该菜单项选中；内容区渲染组件示例。
 4. 折叠按钮可收起 / 展开侧边栏。
 5. 顶部栏用户下拉可退出登录，退出后跳转登录页。
 6. e2e 覆盖（`npm run test:e2e` 通过）：布局渲染与菜单选中联动、菜单切换、侧边栏折叠、用户下拉退出登录。
