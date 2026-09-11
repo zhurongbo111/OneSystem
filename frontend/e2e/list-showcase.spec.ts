@@ -112,4 +112,57 @@ test.describe('列表页样式参照（集成）', () => {
     await expect(dataRows(page)).toHaveCount(0)
     await expect(page.locator('.arco-empty')).toBeVisible()
   })
+
+  test('操作列平铺 详情/编辑/删除，且含「更多」收纳触发按钮', async ({ page }) => {
+    await goList(page)
+    const firstRow = dataRows(page).first()
+    // 平铺的 3 个操作（主操作/中性/危险）
+    await expect(firstRow.getByRole('button', { name: '详情' })).toBeVisible()
+    await expect(firstRow.getByRole('button', { name: '编辑' })).toBeVisible()
+    await expect(firstRow.getByRole('button', { name: '删除' })).toBeVisible()
+    // 「更多」收纳触发按钮（纯图标，aria-label 定位）
+    await expect(firstRow.getByRole('button', { name: '更多操作' })).toBeVisible()
+    // 删除为危险操作，带 danger 状态类
+    await expect(firstRow.getByRole('button', { name: '删除' })).toHaveClass(/arco-btn-status-danger/)
+  })
+
+  test('操作列按钮水平内边距收窄为 8px（密度约定）', async ({ page }) => {
+    await goList(page)
+    const padding = await dataRows(page)
+      .first()
+      .getByRole('button', { name: '编辑' })
+      .evaluate((el) => getComputedStyle(el).paddingLeft)
+    expect(padding).toBe('8px')
+  })
+
+  test('操作列表头与内容对齐（列宽 ≥ 按钮组宽度，不错位）', async ({ page }) => {
+    await goList(page)
+    // 操作列为末列表头
+    const thWidth = await page
+      .locator('thead th')
+      .last()
+      .evaluate((el) => el.getBoundingClientRect().width)
+    // 按钮组实际渲染宽度
+    const contentWidth = await dataRows(page)
+      .first()
+      .locator('td')
+      .last()
+      .locator('.arco-space')
+      .evaluate((el) => el.getBoundingClientRect().width)
+    // 表头宽须不小于按钮组宽，否则内容溢出导致表头与内容错位
+    expect(thWidth).toBeGreaterThanOrEqual(contentWidth - 1)
+  })
+
+  test('点击「更多」展开收纳操作「重置密码」并触发', async ({ page }) => {
+    await goList(page)
+    const firstRow = dataRows(page).first()
+    // 未展开时「重置密码」菜单项不可见
+    await expect(page.locator('.arco-dropdown-option', { hasText: '重置密码' })).toHaveCount(0)
+    await firstRow.getByRole('button', { name: '更多操作' }).click()
+    // 展开后出现收纳的「重置密码」菜单项
+    await expect(page.locator('.arco-dropdown-option', { hasText: '重置密码' })).toBeVisible()
+    await page.locator('.arco-dropdown-option', { hasText: '重置密码' }).click()
+    // 触发演示提示（首行为张伟）
+    await expect(page.getByText('演示：重置密码 张伟')).toBeVisible()
+  })
 })
