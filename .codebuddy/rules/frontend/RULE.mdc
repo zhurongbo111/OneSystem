@@ -106,7 +106,56 @@ frontend/
 - 工具条分两行，整体与表格同在一个无描边 `a-card` 内，紧贴表格：
   - 筛选行：`a-row`（`wrap`）+ `a-col` 栅格排多列，窄屏自动换行为多行；末列放「搜索」（primary）+「重置」按钮；行底用边框线与操作行分隔。
   - 操作行：右对齐、紧贴表格；按钮统一 `size="small"`；按 主操作（新增）/ 数据操作（导出、批量删除）/ 视图操作（列设置、刷新）分组，组间用竖 `a-divider` 分隔。
-- 表格配置：`row-key` 必设；分页 `showTotal` + `showPageSize`（`pageSizeOptions: [10, 20, 50]`）；枚举字段（角色/状态等）用 `a-tag` 着色展示；操作列放表格末列，`a-button type="text"`。
+- 表格配置：`row-key` 必设；分页 `showTotal` + `showPageSize`（`pageSizeOptions: [10, 20, 50]`）；枚举字段（角色/状态等）用 `a-tag` 着色展示；操作列放表格末列，`a-button type="text"`，呈现细则见 §5.2 操作列约定。
+
+### 5.2 操作列约定（强制）
+
+> 规格：`specs/action-column/`。适用范围：所有表格类列表页的操作列；工具条（页面级操作行）不适用，其分组见本节「页面布局」。
+
+**数量：超过 3 个操作收纳进「更多」下拉**
+
+| 操作数 | 呈现 |
+|---|---|
+| ≤ 3 | 全部平铺（`a-space :size="4"`） |
+| > 3 | 保留前 3 个平铺，其余收纳进行内「更多」下拉（`a-dropdown trigger="click"` + `a-doption`，触发按钮 `type="text" size="small"` + `IconMore`） |
+
+- 平铺选取：常用 / 主操作 + 危险操作优先平铺，低频操作进「更多」；「更多」触发按钮恒在末尾。
+- 列宽参考：平铺 ≤ 3 个短操作 `150~220`；含「更多」时 `200~260`。
+- 平铺按钮顺序：主操作 → 中性 → 警示 → 危险。
+
+**颜色：按操作类型固定（行内按钮一律 `type="text" size="small"`）**
+
+| 语义 | 按钮属性 | 适用操作 |
+|---|---|---|
+| 主操作 | 默认 | 编辑 |
+| 警示 | `status="warning"` | 禁用 / 停用 |
+| 危险 | `status="danger"` | 删除 / 移除（不可逆） |
+| 中性 | 默认 | 详情、查看、重置密码、启用 / 重新启用 |
+
+- 启用是恢复操作，不用 success 色；危险 / 警示操作必须 `a-popconfirm` 二次确认。
+- 「更多」菜单项不染色（Arco 菜单项无 `status` 语义位），危险语义由图标 + 二次确认承担；收纳进「更多」的危险 / 警示操作 `@click` 打开确认，禁止无确认直接执行。
+
+**图标：一操作一图标（Arco 图标，`#icon` 插槽，按需具名导入）**
+
+| 操作 | 图标 | 操作 | 图标 |
+|---|---|---|---|
+| 编辑 | `IconEdit` | 重置密码 | `IconLock` |
+| 详情 / 查看 | `IconEye` | 导出 | `IconDownload` |
+| 删除 | `IconDelete` | 更多（收纳触发） | `IconMore` |
+| 启用（恢复） | `IconPlayCircle` | 禁用 / 停用 | `IconPoweroff` |
+
+- 表外操作选 Arco 语义最近图标，且同一图标全项目只对应一个操作。
+
+**密度**：Arco 文本按钮默认 `padding: 0 15px`，操作列内过宽。操作列按钮（含纯图标「更多」触发按钮）统一 `padding: 0 8px`，列表页 scoped 样式实现（`a-space` 加 `class="row-actions"`）：
+
+```css
+.row-actions :deep(.arco-btn-text),
+.row-actions :deep(.arco-btn-only-icon) {
+  padding: 0 8px;
+}
+```
+
+**其他**：操作列固定显示，不参与「列设置」勾选；行内写操作 loading 按 §4.6（`xxingId`），收纳进「更多」的写操作在确认入口同样按 `xxingId` 互斥（`a-doption :disabled`）。
 
 **交互模式**
 - 筛选条件「输入态 / 已应用态」分离：只有点「搜索」（或回车）才写入已应用态，条件变化后清空勾选。
