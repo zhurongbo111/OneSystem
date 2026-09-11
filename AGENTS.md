@@ -46,12 +46,23 @@ specs/
 - AI 实现功能前必须先读 `specs/<feature>/` 三个文件；规格缺失时先提示补规格，不直接写代码。
 - 规格文件命名、结构遵循 2.1，不得随意新增其他层级。
 
+### 2.4 实现前最小读取集（强制）
+
+- AI 动手写代码前，按下述固定集合读取，**禁止**为"了解项目"做全仓或超范围代码探索：
+  1. `.codebuddy/CONTEXT.md`（项目结构摘要，替代代码探索）；
+  2. `specs/<feature>/design.md` + `tasks.md`（`requirement.md` 仅在需求有变时读）；
+  3. 对应端的专项规则（backend → `.codebuddy/rules/backend/RULE.mdc`，frontend → `.codebuddy/rules/frontend/RULE.mdc`）；
+  4. 仅本次要改动的目标文件（含直接调用的既有文件），不做目录级遍历。
+- `.codebuddy/CONTEXT.md` 维护要求：项目结构（项目 / 模块 / 实体 / 功能 / 关键文件位置 / 命令 / 端口）发生变化时，须随当次变更同步更新并一起提交；摘要与实际不一致时以代码和 `specs/` 为准并顺手修正摘要。
+
 ## 3. 目录结构
 
 ```
 .
 ├── AGENTS.md              # 总体规则（本文件）
-├── .codebuddy/rules/      # 专项规则（frontend / backend 等）
+├── .codebuddy/
+│   ├── CONTEXT.md         # 项目结构摘要（实现前最小读取集，§2.4）
+│   └── rules/             # 专项规则（frontend / backend 等）
 ├── specs/                 # 功能规格
 ├── frontend/              # 前端项目
 └── backend/               # 后端项目
