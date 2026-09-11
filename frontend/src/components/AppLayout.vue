@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterView } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -30,8 +30,34 @@ const selectedKeys = computed<string[]>(() => {
   return name ? [MENU_ROUTE_MAP[name] ?? name] : []
 })
 
+// —— constants ——
+
+/** 「示例页面」子菜单 key */
+const SHOWCASE_MENU_KEY = 'showcase'
+/** 示例页路由名（进入这些路由时自动展开「示例页面」子菜单） */
+const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
+
+// —— reactive state ——
+
+/** 展开的子菜单 key（受控，默认展开「示例页面」；用户手动折叠由 @update:open-keys 同步） */
+const openKeys = ref<string[]>([SHOWCASE_MENU_KEY])
+
+// —— computed ——
+
 /** 当前用户名（未加载时显示占位） */
 const displayName = computed<string>(() => auth.user?.displayName ?? '用户')
+
+// —— watch ——
+
+// 进入示例页时若「示例页面」被用户手动折叠过，自动重新展开
+watch(
+  () => route.name,
+  (name) => {
+    if (typeof name !== 'string' || !SHOWCASE_ROUTE_NAMES.includes(name)) return
+    if (openKeys.value.includes(SHOWCASE_MENU_KEY)) return
+    openKeys.value = [...openKeys.value, SHOWCASE_MENU_KEY]
+  }
+)
 
 onMounted(() => {
   // 进入受保护子页面后恢复用户信息（从 HomeView 上移至布局，覆盖所有子页面）
@@ -67,10 +93,11 @@ function onLogout(): void {
         >App</span>
       </div>
       <a-menu
-        mode="inline"
         :selected-keys="selectedKeys"
+        :open-keys="openKeys"
         :collapsed="collapsed"
         @menu-item-click="onMenuItemClick"
+        @update:open-keys="(keys: string[]) => (openKeys = keys)"
       >
         <a-menu-item key="home">
           <template #icon>
@@ -78,24 +105,32 @@ function onLogout(): void {
           </template>
           <span>首页</span>
         </a-menu-item>
-        <a-menu-item key="components">
+        <a-sub-menu key="showcase">
           <template #icon>
             <IconApps />
           </template>
-          <span>组件示例</span>
-        </a-menu-item>
-        <a-menu-item key="list">
-          <template #icon>
-            <IconList />
+          <template #title>
+            <span>示例页面</span>
           </template>
-          <span>列表示例</span>
-        </a-menu-item>
-        <a-menu-item key="form">
-          <template #icon>
-            <IconEdit />
-          </template>
-          <span>表单与详情示例</span>
-        </a-menu-item>
+          <a-menu-item key="components">
+            <template #icon>
+              <IconApps />
+            </template>
+            <span>组件示例</span>
+          </a-menu-item>
+          <a-menu-item key="list">
+            <template #icon>
+              <IconList />
+            </template>
+            <span>列表示例</span>
+          </a-menu-item>
+          <a-menu-item key="form">
+            <template #icon>
+              <IconEdit />
+            </template>
+            <span>表单与详情示例</span>
+          </a-menu-item>
+        </a-sub-menu>
         <a-menu-item key="users">
           <template #icon>
             <IconUser />
