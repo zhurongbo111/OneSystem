@@ -40,4 +40,16 @@ public static class ErrorCode
 
     /// <summary>不能禁用当前登录账号</summary>
     public const int CannotDisableSelf = 40006;
+
+    /// <summary>商品编码已存在（erp-product 功能业务码）</summary>
+    public const int ProductCodeExists = 40101;
+
+    /// <summary>商品分类名称已存在（erp-product 功能业务码）</summary>
+    public const int CategoryNameExists = 40105;
+
+    /// <summary>分类已被商品引用，禁止删除（erp-product 功能业务码）</summary>
+    public const int CategoryInUse = 40106;
+
+    /// <summary>商品已停用，不可用于开单（erp-product 预留，供 erp-purchase / erp-sale 使用）</summary>
+    public const int ProductDisabled = 40107;
 }
