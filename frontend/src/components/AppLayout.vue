@@ -41,7 +41,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products']
+const ERP_ROUTE_NAMES = ['products', 'partners']
 
 // —— reactive state ——
 
@@ -170,6 +170,12 @@ function onLogout(): void {
               <IconStorage />
             </template>
             <span>商品管理</span>
+          </a-menu-item>
+          <a-menu-item key="partners">
+            <template #icon>
+              <IconUser />
+            </template>
+            <span>往来单位</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>
