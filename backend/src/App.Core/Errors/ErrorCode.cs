@@ -44,6 +44,9 @@ public static class ErrorCode
     /// <summary>商品编码已存在（erp-product 功能业务码）</summary>
     public const int ProductCodeExists = 40101;
 
+    /// <summary>往来单位名称已存在（erp-partner 功能业务码）</summary>
+    public const int PartnerNameExists = 40102;
+
     /// <summary>商品分类名称已存在（erp-product 功能业务码）</summary>
     public const int CategoryNameExists = 40105;
 
