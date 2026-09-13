@@ -32,6 +32,9 @@ public static class DependencyInjection
         // EF Core 仓储实现（首个业务功能起替换脚手架的内存实现）
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserLoginLogRepository, UserLoginLogRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IInventoryRepository, InventoryRepository>();
 
         return services;
     }

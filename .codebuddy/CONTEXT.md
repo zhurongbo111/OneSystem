@@ -21,25 +21,25 @@ backend/
 │   ├── App.Api/          # 入口与 Web 层
 │   │   ├── Program.cs
 │   │   ├── Authentication/   # CurrentUserAccessor、JwtBearerExtensions
-│   │   ├── Controllers/      # Auth / Health / LoginLogs / Users
+│   │   ├── Controllers/      # Auth / Health / LoginLogs / Users / Products / Categories
 │   │   ├── Http/             # ClientInfoAccessor
 │   │   ├── Middleware/       # GlobalExceptionMiddleware
 │   │   ├── Swagger/          # SwaggerSecurityOperationFilter
 │   │   └── appsettings*.json / nlog.config
 │   ├── App.Core/         # 业务核心（禁止反向依赖）
 │   │   ├── DependencyInjection.cs     # AddCore：注册 Mediator、Handler、Validator
-│   │   ├── Abstractions/              # IMediator、IRequest、IRequestHandler、IUnitOfWork、ICurrentUser、IClientInfo、IUserRepository、IUserLoginLogRepository
+│   │   ├── Abstractions/              # IMediator、IRequest、IRequestHandler、IUnitOfWork、ICurrentUser、IClientInfo、IUserRepository、IUserLoginLogRepository、ICategoryRepository、IProductRepository、IInventoryRepository、ProductListItem、ProductDetail、ProductPickItem
 │   │   ├── Auth/                      # JwtOptions、PasswordHasher、TokenService
-│   │   ├── Entities/                  # User、UserLoginLog、UserStatus、UserFieldConstraints
+│   │   ├── Entities/                  # User、UserLoginLog、UserStatus、UserFieldConstraints、Product、Category、Inventory、ProductStatus、ProductFieldConstraints、CategoryFieldConstraints
 │   │   ├── Errors/                    # BusinessException、ErrorCode
 │   │   ├── Mediation/                 # Mediator（自研简化 MediatR，Send 前统一跑 Validator）
 │   │   └── Features/                  # 每用例四件套：Request / RequestValidator / RequestHandler / Response
 │   └── App.Infrastructure/
 │       ├── DependencyInjection.cs     # AddInfrastructure：IUnitOfWork、仓储实现
-│       ├── AppDbContext.cs
+│       ├── AppDbContext.cs            # 含 Categories / Products / Inventory 三个 DbSet
 │       ├── Migrations/
 │       ├── Persistence/               # UnitOfWork、DatabaseInitializer、Configurations/
-│       └── Repositories/              # UserRepository、UserLoginLogRepository
+│       └── Repositories/              # UserRepository、UserLoginLogRepository、CategoryRepository、ProductRepository、InventoryRepository
 └── tests/App.Tests/      # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport 等
 ```
 
@@ -50,8 +50,10 @@ backend/
 | Auth | Login |
 | LoginLogs | GetLoginLogs |
 | Users | CreateUser、GetUsers、GetUserById、GetCurrentUser（空 Request 无 Validator）、UpdateUser、UpdateUserStatus、ResetPassword |
+| Products | GetProducts、GetProductById、CreateProduct、UpdateProduct、UpdateProductStatus、GetProductPickList |
+| Categories | GetCategories、CreateCategory、UpdateCategory、DeleteCategory |
 
-共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`。
+共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`；`Features/Products/ProductDto`、`ProductPickDto`、`ProductInputNormalizer`；`Features/Categories/CategoryDto`。
 
 **基准参照**：
 - 后端用例脚手架：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（无参用例形态）。
@@ -64,8 +66,8 @@ frontend/
 ├── index.html / vite.config.ts / playwright.config.ts / eslint.config.js
 ├── src/
 │   ├── main.ts / App.vue / env.d.ts
-│   ├── api/          # request.ts（Axios 统一解包/40100 处置）、auth.ts、user.ts、loginLog.ts
-│   ├── components/   # AppLayout.vue
+│   ├── api/          # request.ts（Axios 统一解包/40100 处置）、auth.ts、user.ts、loginLog.ts、product.ts
+│   ├── components/   # AppLayout.vue（侧边栏含「进销存」子菜单：商品管理）
 │   ├── composables/  # useOrderStore.ts（演示用）
 │   ├── router/       # index.ts（按功能路由懒加载）
 │   ├── stores/       # auth.ts（Pinia）
@@ -74,9 +76,10 @@ frontend/
 │       ├── LoginView.vue / HomeView.vue
 │       ├── UserManagement/       # UsersView + UserDetailView + UserFormDrawer
 │       ├── LoginLogManagement/   # LoginLogsView
+│       ├── ProductManagement/    # ProductsView + ProductFormDrawer + CategoryManagerModal（进销存/商品管理）
 │       └── 演示页：ComponentShowcaseView、FormShowcaseView、ListShowcaseView、FormPageFormView、FormDetailView
 │            └── FormShowcase/components/OrderFormDrawer.vue
-└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management 各一个 spec.ts
+└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management 各一个 spec.ts
 ```
 
 **基准参照**：

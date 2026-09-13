@@ -22,6 +22,15 @@ public class AppDbContext : DbContext
     /// <summary>用户登录日志表</summary>
     public DbSet<UserLoginLog> UserLoginLogs => Set<UserLoginLog>();
 
+    /// <summary>商品分类表</summary>
+    public DbSet<Category> Categories => Set<Category>();
+
+    /// <summary>商品表</summary>
+    public DbSet<Product> Products => Set<Product>();
+
+    /// <summary>库存台账表（与商品 1:1）</summary>
+    public DbSet<Inventory> Inventory => Set<Inventory>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
