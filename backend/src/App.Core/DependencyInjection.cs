@@ -16,6 +16,12 @@ using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Categories.DeleteCategory;
 using App.Core.Features.Categories.GetCategories;
 using App.Core.Features.Categories.UpdateCategory;
+using App.Core.Features.Partners;
+using App.Core.Features.Partners.CreatePartner;
+using App.Core.Features.Partners.GetPartnerById;
+using App.Core.Features.Partners.GetPartners;
+using App.Core.Features.Partners.UpdatePartner;
+using App.Core.Features.Partners.UpdatePartnerStatus;
 using App.Core.Features.Products;
 using App.Core.Features.Products.CreateProduct;
 using App.Core.Features.Products.GetProductById;
@@ -77,6 +83,13 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<UpdateCategoryRequest, CategoryDto>, UpdateCategoryRequestHandler>();
         services.AddScoped<IRequestHandler<DeleteCategoryRequest, object?>, DeleteCategoryRequestHandler>();
 
+        // 往来单位用例（erp-partner）
+        services.AddScoped<IRequestHandler<GetPartnersRequest, PagedResult<PartnerDto>>, GetPartnersRequestHandler>();
+        services.AddScoped<IRequestHandler<CreatePartnerRequest, PartnerDto>, CreatePartnerRequestHandler>();
+        services.AddScoped<IRequestHandler<GetPartnerByIdRequest, PartnerDto>, GetPartnerByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdatePartnerRequest, PartnerDto>, UpdatePartnerRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdatePartnerStatusRequest, PartnerDto>, UpdatePartnerStatusRequestHandler>();
+
         // 格式校验器（FluentValidation）：校验规则集中在对应用例目录；无校验器的用例（如按 id 详情）不注册
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<GetUsersRequest>, GetUsersRequestValidator>();
@@ -91,6 +104,10 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdateProductStatusRequest>, UpdateProductStatusRequestValidator>();
         services.AddScoped<IValidator<CreateCategoryRequest>, CreateCategoryRequestValidator>();
         services.AddScoped<IValidator<UpdateCategoryRequest>, UpdateCategoryRequestValidator>();
+        services.AddScoped<IValidator<GetPartnersRequest>, GetPartnersRequestValidator>();
+        services.AddScoped<IValidator<CreatePartnerRequest>, CreatePartnerRequestValidator>();
+        services.AddScoped<IValidator<UpdatePartnerRequest>, UpdatePartnerRequestValidator>();
+        services.AddScoped<IValidator<UpdatePartnerStatusRequest>, UpdatePartnerStatusRequestValidator>();
 
         return services;
     }

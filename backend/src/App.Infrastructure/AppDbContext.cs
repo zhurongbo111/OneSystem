@@ -31,6 +31,9 @@ public class AppDbContext : DbContext
     /// <summary>库存台账表（与商品 1:1）</summary>
     public DbSet<Inventory> Inventory => Set<Inventory>();
 
+    /// <summary>往来单位表（供应商 / 客户合并）</summary>
+    public DbSet<Partner> Partners => Set<Partner>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
