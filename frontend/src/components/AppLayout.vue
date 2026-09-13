@@ -13,6 +13,7 @@ import {
   IconEdit,
   IconHistory,
   IconStorage,
+  IconArchive,
 } from '@arco-design/web-vue/es/icon'
 
 const route = useRoute()
@@ -41,7 +42,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'partners']
+const ERP_ROUTE_NAMES = ['products', 'partners', 'inventory']
 
 // —— reactive state ——
 
@@ -176,6 +177,12 @@ function onLogout(): void {
               <IconUser />
             </template>
             <span>往来单位</span>
+          </a-menu-item>
+          <a-menu-item key="inventory">
+            <template #icon>
+              <IconArchive />
+            </template>
+            <span>库存查询</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>
