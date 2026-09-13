@@ -65,4 +65,59 @@ public sealed class InventoryRepository : IInventoryRepository
 
         return affected >= 1;
     }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<InventoryItem> Items, int Total)> GetPagedAsync(
+        string? keyword,
+        Guid? categoryId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        // 仅启用商品；左连接 Inventory 带出库存（无库存行时按 0 计）
+        var query = from p in _dbContext.Products.AsNoTracking()
+                    where p.Status == ProductStatus.Enabled
+                    join c in _dbContext.Categories.AsNoTracking() on p.CategoryId equals c.Id
+                    join i in _dbContext.Inventory.AsNoTracking() on p.Id equals i.ProductId into iGroup
+                    from i in iGroup.DefaultIfEmpty()
+                    select new
+                    {
+                        Product = p,
+                        CategoryName = c.Name,
+                        StockQuantity = i == null ? 0 : i.Quantity,
+                        UpdatedAt = (DateTimeOffset?)(i == null ? null : i.UpdatedAt),
+                    };
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var lower = keyword.Trim().ToLowerInvariant();
+            query = query.Where(x => x.Product.Code.ToLower().Contains(lower) || x.Product.Name.ToLower().Contains(lower));
+        }
+
+        if (categoryId is not null)
+        {
+            var value = categoryId.Value;
+            query = query.Where(x => x.Product.CategoryId == value);
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(x => x.Product.Code)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new InventoryItem
+            {
+                ProductId = x.Product.Id,
+                Code = x.Product.Code,
+                Name = x.Product.Name,
+                CategoryName = x.CategoryName,
+                Unit = x.Product.Unit,
+                StockQuantity = x.StockQuantity,
+                SafetyStock = x.Product.SafetyStock,
+                UpdatedAt = x.UpdatedAt,
+            })
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
 }

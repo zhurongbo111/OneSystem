@@ -40,4 +40,21 @@ public interface IInventoryRepository
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>是否扣减成功（库存不足时返回 false）</returns>
     Task<bool> TryDecrementAsync(Guid productId, int amount, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 库存分页查询（erp-inventory-query）：联查 Inventory / Products / Categories，
+    /// 仅启用商品（Products.Status = Enabled）；keyword 模糊匹配编码 / 名称；categoryId 精确匹配；
+    /// 按 Products.Code 升序。低库存判定不在本方法，由 Handler 计算。
+    /// </summary>
+    /// <param name="keyword">关键词（编码 / 名称），可空</param>
+    /// <param name="categoryId">分类 id，可空</param>
+    /// <param name="page">页码（从 1 起）</param>
+    /// <param name="pageSize">每页条数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<(IReadOnlyList<InventoryItem> Items, int Total)> GetPagedAsync(
+        string? keyword,
+        Guid? categoryId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }
