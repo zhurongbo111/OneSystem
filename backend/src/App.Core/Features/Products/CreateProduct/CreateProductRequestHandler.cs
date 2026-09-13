@@ -82,7 +82,8 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
         try
         {
             await _productRepository.AddAsync(product, cancellationToken);
-            await _inventoryRepository.AddAsync(new Inventory
+            // 全限定名：Features 下新增 Inventory 用例命名空间后，Inventory 在该处被解析为命名空间而非实体类型
+            await _inventoryRepository.AddAsync(new App.Core.Entities.Inventory
             {
                 Id = Guid.NewGuid(),
                 ProductId = product.Id,
