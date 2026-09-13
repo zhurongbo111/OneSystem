@@ -12,6 +12,7 @@ import {
   IconList,
   IconEdit,
   IconHistory,
+  IconStorage,
 } from '@arco-design/web-vue/es/icon'
 
 const route = useRoute()
@@ -37,10 +38,15 @@ const SHOWCASE_MENU_KEY = 'showcase'
 /** 示例页路由名（进入这些路由时自动展开「示例页面」子菜单） */
 const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 
+/** 「进销存」子菜单 key */
+const ERP_MENU_KEY = 'erp'
+/** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
+const ERP_ROUTE_NAMES = ['products']
+
 // —— reactive state ——
 
-/** 展开的子菜单 key（受控，默认展开「示例页面」；用户手动折叠由 @update:open-keys 同步） */
-const openKeys = ref<string[]>([SHOWCASE_MENU_KEY])
+/** 展开的子菜单 key（受控，默认展开「示例页面」「进销存」；用户手动折叠由 @update:open-keys 同步） */
+const openKeys = ref<string[]>([SHOWCASE_MENU_KEY, ERP_MENU_KEY])
 
 // —— computed ——
 
@@ -49,13 +55,22 @@ const displayName = computed<string>(() => auth.user?.displayName ?? '用户')
 
 // —— watch ——
 
-// 进入示例页时若「示例页面」被用户手动折叠过，自动重新展开
+// 进入某子菜单路由时，若所属子菜单被用户手动折叠过，自动重新展开
 watch(
   () => route.name,
   (name) => {
-    if (typeof name !== 'string' || !SHOWCASE_ROUTE_NAMES.includes(name)) return
-    if (openKeys.value.includes(SHOWCASE_MENU_KEY)) return
-    openKeys.value = [...openKeys.value, SHOWCASE_MENU_KEY]
+    if (typeof name !== 'string') return
+    if (SHOWCASE_ROUTE_NAMES.includes(name)) {
+      if (!openKeys.value.includes(SHOWCASE_MENU_KEY)) {
+        openKeys.value = [...openKeys.value, SHOWCASE_MENU_KEY]
+      }
+      return
+    }
+    if (ERP_ROUTE_NAMES.includes(name)) {
+      if (!openKeys.value.includes(ERP_MENU_KEY)) {
+        openKeys.value = [...openKeys.value, ERP_MENU_KEY]
+      }
+    }
   }
 )
 
@@ -143,6 +158,20 @@ function onLogout(): void {
           </template>
           <span>登录日志</span>
         </a-menu-item>
+        <a-sub-menu key="erp">
+          <template #icon>
+            <IconStorage />
+          </template>
+          <template #title>
+            <span>进销存</span>
+          </template>
+          <a-menu-item key="products">
+            <template #icon>
+              <IconStorage />
+            </template>
+            <span>商品管理</span>
+          </a-menu-item>
+        </a-sub-menu>
       </a-menu>
     </a-layout-sider>
     <a-layout class="app-main">
