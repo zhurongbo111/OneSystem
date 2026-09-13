@@ -21,25 +21,25 @@ backend/
 │   ├── App.Api/          # 入口与 Web 层
 │   │   ├── Program.cs
 │   │   ├── Authentication/   # CurrentUserAccessor、JwtBearerExtensions
-│   │   ├── Controllers/      # Auth / Health / LoginLogs / Users / Products / Categories
+│   │   ├── Controllers/      # Auth / Health / LoginLogs / Users / Products / Categories / Partners
 │   │   ├── Http/             # ClientInfoAccessor
 │   │   ├── Middleware/       # GlobalExceptionMiddleware
 │   │   ├── Swagger/          # SwaggerSecurityOperationFilter
 │   │   └── appsettings*.json / nlog.config
 │   ├── App.Core/         # 业务核心（禁止反向依赖）
 │   │   ├── DependencyInjection.cs     # AddCore：注册 Mediator、Handler、Validator
-│   │   ├── Abstractions/              # IMediator、IRequest、IRequestHandler、IUnitOfWork、ICurrentUser、IClientInfo、IUserRepository、IUserLoginLogRepository、ICategoryRepository、IProductRepository、IInventoryRepository、ProductListItem、ProductDetail、ProductPickItem
+│   │   ├── Abstractions/              # IMediator、IRequest、IRequestHandler、IUnitOfWork、ICurrentUser、IClientInfo、IUserRepository、IUserLoginLogRepository、ICategoryRepository、IProductRepository、IInventoryRepository、IPartnerRepository、ProductListItem、ProductDetail、ProductPickItem
 │   │   ├── Auth/                      # JwtOptions、PasswordHasher、TokenService
-│   │   ├── Entities/                  # User、UserLoginLog、UserStatus、UserFieldConstraints、Product、Category、Inventory、ProductStatus、ProductFieldConstraints、CategoryFieldConstraints
+│   │   ├── Entities/                  # User、UserLoginLog、UserStatus、UserFieldConstraints、Product、Category、Inventory、ProductStatus、ProductFieldConstraints、CategoryFieldConstraints、Partner、PartnerType、PartnerStatus、PartnerFieldConstraints
 │   │   ├── Errors/                    # BusinessException、ErrorCode
 │   │   ├── Mediation/                 # Mediator（自研简化 MediatR，Send 前统一跑 Validator）
 │   │   └── Features/                  # 每用例四件套：Request / RequestValidator / RequestHandler / Response
 │   └── App.Infrastructure/
 │       ├── DependencyInjection.cs     # AddInfrastructure：IUnitOfWork、仓储实现
-│       ├── AppDbContext.cs            # 含 Categories / Products / Inventory 三个 DbSet
+│       ├── AppDbContext.cs            # 含 Categories / Products / Inventory / Partners 四个 DbSet
 │       ├── Migrations/
 │       ├── Persistence/               # UnitOfWork、DatabaseInitializer、Configurations/
-│       └── Repositories/              # UserRepository、UserLoginLogRepository、CategoryRepository、ProductRepository、InventoryRepository
+│       └── Repositories/              # UserRepository、UserLoginLogRepository、CategoryRepository、ProductRepository、InventoryRepository、PartnerRepository
 └── tests/App.Tests/      # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport 等
 ```
 
@@ -52,8 +52,9 @@ backend/
 | Users | CreateUser、GetUsers、GetUserById、GetCurrentUser（空 Request 无 Validator）、UpdateUser、UpdateUserStatus、ResetPassword |
 | Products | GetProducts、GetProductById、CreateProduct、UpdateProduct、UpdateProductStatus、GetProductPickList |
 | Categories | GetCategories、CreateCategory、UpdateCategory、DeleteCategory |
+| Partners | GetPartners、CreatePartner、GetPartnerById、UpdatePartner、UpdatePartnerStatus |
 
-共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`；`Features/Products/ProductDto`、`ProductPickDto`、`ProductInputNormalizer`；`Features/Categories/CategoryDto`。
+共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`；`Features/Products/ProductDto`、`ProductPickDto`、`ProductInputNormalizer`；`Features/Categories/CategoryDto`；`Features/Partners/PartnerDto`。
 
 **基准参照**：
 - 后端用例脚手架：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（无参用例形态）。
@@ -66,8 +67,8 @@ frontend/
 ├── index.html / vite.config.ts / playwright.config.ts / eslint.config.js
 ├── src/
 │   ├── main.ts / App.vue / env.d.ts
-│   ├── api/          # request.ts（Axios 统一解包/40100 处置）、auth.ts、user.ts、loginLog.ts、product.ts
-│   ├── components/   # AppLayout.vue（侧边栏含「进销存」子菜单：商品管理）
+│   ├── api/          # request.ts（Axios 统一解包/40100 处置）、auth.ts、user.ts、loginLog.ts、product.ts、partner.ts
+│   ├── components/   # AppLayout.vue（侧边栏含「进销存」子菜单：商品管理、往来单位）
 │   ├── composables/  # useOrderStore.ts（演示用）
 │   ├── router/       # index.ts（按功能路由懒加载）
 │   ├── stores/       # auth.ts（Pinia）
@@ -77,9 +78,10 @@ frontend/
 │       ├── UserManagement/       # UsersView + UserDetailView + UserFormDrawer
 │       ├── LoginLogManagement/   # LoginLogsView
 │       ├── ProductManagement/    # ProductsView + ProductFormDrawer + CategoryManagerModal（进销存/商品管理）
+│       ├── PartnerManagement/    # PartnersView + PartnerFormDrawer（进销存/往来单位）
 │       └── 演示页：ComponentShowcaseView、FormShowcaseView、ListShowcaseView、FormPageFormView、FormDetailView
 │            └── FormShowcase/components/OrderFormDrawer.vue
-└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management 各一个 spec.ts
+└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / partner-management 各一个 spec.ts
 ```
 
 **基准参照**：
@@ -111,4 +113,4 @@ frontend/
 - 工程/脚手架：`project-scaffold`、`api-swagger`
 - 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`、`frontend-e2e`
 - 业务：`user-management`
-- ERP（开发中，未提交）：`erp-inventory-query`、`erp-partner`、`erp-product`、`erp-purchase`、`erp-sale`
+- ERP（开发中，未提交）：`erp-product`（已完成）、`erp-partner`（已完成）；未开始：`erp-inventory-query`、`erp-purchase`、`erp-sale`
