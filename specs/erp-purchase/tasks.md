@@ -34,9 +34,9 @@
 
 ### 1.5 单元测试
 
-- [ ] 1.5.1 采购单用例测试（成功路径断言单号 + 重算 + 库存 += 调用顺序；40110 / 40400 / 40108 / 40109 / 40107；Void 40104 + 回冲调用；Settlement 40104；Commit 失败 Rollback）
-- [ ] 1.5.2 扩展 `FieldValidationConsistencyTests`（OrderNo EF 长度 == 常量；quantity / unitPrice / items 行边界通过 / 拒绝；keyword 20/21）
-- [ ] 1.5.3 `dotnet test` 全绿；`dotnet build` 0 警告
+- [x] 1.5.1 采购单用例测试（成功路径断言单号 + 重算 + 库存 += 调用顺序；40110 / 40400 / 40108 / 40109 / 40107；Void 40104 + 回冲调用；Settlement 40104；Commit 失败 Rollback）
+- [x] 1.5.2 扩展 `FieldValidationConsistencyTests`（OrderNo EF 长度 == 常量；quantity / unitPrice / items 行边界通过 / 拒绝；keyword 20/21）
+- [x] 1.5.3 `dotnet test` 全绿；`dotnet build` 0 警告
 
 ## 二、前端
 
