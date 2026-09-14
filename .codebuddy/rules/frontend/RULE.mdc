@@ -204,7 +204,7 @@ frontend/
 
 ## 8. 认证（JWT）
 
-- token 存储、携带与 40100 处置的全局约定见 `AGENTS.md` §4.5；本处为实现细节：
+- token 存储、携带与 40100 处置的全局约定见 `AGENTS.md` §4.6；本处为实现细节：
   - 请求拦截器：从 `localStorage` 读取 token，附加 `Authorization: Bearer <token>`。
   - 响应拦截器：收到 `code: 40100` 时清除 `localStorage` 凭证并跳转登录页（防重复跳转）。
 

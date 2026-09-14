@@ -1,6 +1,6 @@
 # 设计规格：商品管理（erp-product）
 
-> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.5、测试 §6）与后端 / 前端专项规则。
+> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §4.3）同样适用。
 > 本规格为进销存功能组商品域底座，库存台账与开单商品选择接口的消费方为 erp-inventory-query / erp-purchase / erp-sale。
 
@@ -170,7 +170,7 @@
 3. 组 `Product`（`Status=Enabled`、审计字段取 `ICurrentUser`）+ `Inventory { Quantity = 0 }`。
 4. `IUnitOfWork`：`BeginTransactionAsync` → `IProductRepository.AddAsync` + `IInventoryRepository.AddAsync` → `CommitAsync`。
 
-**UpdateProduct**：取商品（不存在 → `40400`）→ 更新名称 / 分类 / 单位 / 价格 / 安全阈值 / 备注（**不触碰 `Code`**）→ 更新审计。
+**UpdateProduct**：取商品（不存在 → `40400`）→ 更新名称 / 分类 / 单位 / 价格 / 安全阈值 / 备注（**不触碰 `Code`**，`Code` 为不可改字段；可选字段遵循 `AGENTS.md` §4.5 全量覆盖语义）→ 更新审计。
 
 **UpdateProductStatus**：取商品（不存在 → `40400`）→ 置 `Status` → 更新审计。
 

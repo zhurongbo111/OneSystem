@@ -1,6 +1,6 @@
 # 设计规格：销售出库（erp-sale）
 
-> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.5、测试 §6）与后端 / 前端专项规则。
+> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §4.3）同样适用。
 > **本规格继承 erp-purchase design §0「单据域共用约定」**：`SalesOrders` / `SalesOrderItems` 与 `PurchaseOrders` / `PurchaseOrderItems` 结构完全同构，实现时照抄 erp-purchase 模板并按 §1 替换规则做三处差异替换；共用枚举（`OrderStatus` / `OrderSettlementStatus`）、常量（`OrderFieldConstraints` + `ProductFieldConstraints` 的 quantity / unitPrice 边界）、单号生成（`GenerateOrderNoAsync`，前缀参数化）、校验结构**均不重复定义**。本规格只定义销售特有差异。
 
