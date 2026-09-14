@@ -37,6 +37,12 @@ using App.Core.Features.Purchases.GetPurchaseOrderById;
 using App.Core.Features.Purchases.GetPurchaseOrders;
 using App.Core.Features.Purchases.UpdatePurchaseOrderSettlement;
 using App.Core.Features.Purchases.VoidPurchaseOrder;
+using App.Core.Features.Sales;
+using App.Core.Features.Sales.CreateSalesOrder;
+using App.Core.Features.Sales.GetSalesOrderById;
+using App.Core.Features.Sales.GetSalesOrders;
+using App.Core.Features.Sales.UpdateSalesOrderSettlement;
+using App.Core.Features.Sales.VoidSalesOrder;
 using App.Core.Mediation;
 using App.Core.Responses;
 using FluentValidation;
@@ -108,6 +114,13 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidPurchaseOrderRequest, PurchaseOrderDetailDto>, VoidPurchaseOrderRequestHandler>();
         services.AddScoped<IRequestHandler<UpdatePurchaseOrderSettlementRequest, PurchaseOrderDetailDto>, UpdatePurchaseOrderSettlementRequestHandler>();
 
+        // 销售管理用例（erp-sale）
+        services.AddScoped<IRequestHandler<GetSalesOrdersRequest, PagedResult<SalesOrderListItemDto>>, GetSalesOrdersRequestHandler>();
+        services.AddScoped<IRequestHandler<GetSalesOrderByIdRequest, SalesOrderDetailDto>, GetSalesOrderByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateSalesOrderRequest, SalesOrderDetailDto>, CreateSalesOrderRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidSalesOrderRequest, SalesOrderDetailDto>, VoidSalesOrderRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateSalesOrderSettlementRequest, SalesOrderDetailDto>, UpdateSalesOrderSettlementRequestHandler>();
+
         // 格式校验器（FluentValidation）：校验规则集中在对应用例目录；无校验器的用例（如按 id 详情）不注册
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<GetUsersRequest>, GetUsersRequestValidator>();
@@ -130,6 +143,9 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetPurchaseOrdersRequest>, GetPurchaseOrdersRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseOrderRequest>, CreatePurchaseOrderRequestValidator>();
         services.AddScoped<IValidator<UpdatePurchaseOrderSettlementRequest>, UpdatePurchaseOrderSettlementRequestValidator>();
+        services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
+        services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
+        services.AddScoped<IValidator<UpdateSalesOrderSettlementRequest>, UpdateSalesOrderSettlementRequestValidator>();
 
         return services;
     }

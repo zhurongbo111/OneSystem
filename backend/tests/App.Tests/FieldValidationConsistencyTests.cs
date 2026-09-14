@@ -3,6 +3,8 @@ using App.Core.Features.Auth.Login;
 using App.Core.Features.LoginLogs.GetLoginLogs;
 using App.Core.Features.Purchases.CreatePurchaseOrder;
 using App.Core.Features.Purchases.GetPurchaseOrders;
+using App.Core.Features.Sales.CreateSalesOrder;
+using App.Core.Features.Sales.GetSalesOrders;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.GetUsers;
 using App.Core.Features.Users.ResetPassword;
@@ -232,6 +234,61 @@ public class FieldValidationConsistencyTests
             .Validate(new GetPurchaseOrdersRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
     }
 
+    // ============================== 销售单字段约束（与采购单同组常量，保证两单同规格）==============================
+
+    [Fact]
+    public void EF模型_SalesOrders表OrderNo列长度_应等于字段约束常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<SalesOrder>(dbContext, nameof(SalesOrder.OrderNo)));
+        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<SalesOrder>(dbContext, nameof(SalesOrder.Remark)));
+    }
+
+    [Fact]
+    public void 销售单明细数量_边界值应通过且超界拒绝()
+    {
+        var validator = new CreateSalesOrderRequestValidator();
+
+        Assert.True(ValidateSales(validator, quantity: ProductFieldConstraints.QuantityMinValue));
+        Assert.True(ValidateSales(validator, quantity: ProductFieldConstraints.QuantityMaxValue));
+        Assert.False(ValidateSales(validator, quantity: ProductFieldConstraints.QuantityMinValue - 1));
+        Assert.False(ValidateSales(validator, quantity: ProductFieldConstraints.QuantityMaxValue + 1));
+    }
+
+    [Fact]
+    public void 销售单明细单价_边界值应通过且超界拒绝()
+    {
+        var validator = new CreateSalesOrderRequestValidator();
+
+        // 允许 0 元单价
+        Assert.True(ValidateSales(validator, unitPrice: ProductFieldConstraints.PriceMinValue));
+        Assert.True(ValidateSales(validator, unitPrice: ProductFieldConstraints.PriceMaxValue));
+        Assert.False(ValidateSales(validator, unitPrice: ProductFieldConstraints.PriceMinValue - 0.01m));
+        Assert.False(ValidateSales(validator, unitPrice: ProductFieldConstraints.PriceMaxValue + 0.01m));
+    }
+
+    [Fact]
+    public void 销售单明细行数_上限内通过且超上限拒绝()
+    {
+        var validator = new CreateSalesOrderRequestValidator();
+
+        Assert.True(ValidateSales(validator, itemCount: OrderFieldConstraints.ItemsMaxCount));
+        Assert.False(ValidateSales(validator, itemCount: OrderFieldConstraints.ItemsMaxCount + 1));
+    }
+
+    [Fact]
+    public void 销售单查询关键词长度_应不超过OrderNo列长()
+    {
+        var ok = new string('a', OrderFieldConstraints.KeywordMaxLength);
+        var tooLong = new string('a', OrderFieldConstraints.KeywordMaxLength + 1);
+
+        Assert.True(new GetSalesOrdersRequestValidator()
+            .Validate(new GetSalesOrdersRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetSalesOrdersRequestValidator()
+            .Validate(new GetSalesOrdersRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
     private static bool ValidatePurchase(CreatePurchaseOrderRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
     {
         var items = Enumerable
@@ -239,6 +296,20 @@ public class FieldValidationConsistencyTests
             .Select(_ => new CreatePurchaseOrderItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
             .ToList();
         return validator.Validate(new CreatePurchaseOrderRequest
+        {
+            PartnerId = Guid.NewGuid(),
+            OrderDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Items = items,
+        }).IsValid;
+    }
+
+    private static bool ValidateSales(CreateSalesOrderRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
+    {
+        var items = Enumerable
+            .Range(0, itemCount)
+            .Select(_ => new CreateSalesOrderItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
+            .ToList();
+        return validator.Validate(new CreateSalesOrderRequest
         {
             PartnerId = Guid.NewGuid(),
             OrderDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),

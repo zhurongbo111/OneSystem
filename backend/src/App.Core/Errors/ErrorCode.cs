@@ -53,6 +53,9 @@ public static class ErrorCode
     /// <summary>分类已被商品引用，禁止删除（erp-product 功能业务码）</summary>
     public const int CategoryInUse = 40106;
 
+    /// <summary>库存不足（erp-sale 功能业务码；message 含首个不足商品名，整单拒绝回滚）</summary>
+    public const int InsufficientStock = 40103;
+
     /// <summary>商品已停用，不可用于开单（erp-product 预留，供 erp-purchase / erp-sale 使用）</summary>
     public const int ProductDisabled = 40107;
 

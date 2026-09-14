@@ -40,6 +40,12 @@ public class AppDbContext : DbContext
     /// <summary>采购单明细表</summary>
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
 
+    /// <summary>销售单表</summary>
+    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
+
+    /// <summary>销售单明细表</summary>
+    public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

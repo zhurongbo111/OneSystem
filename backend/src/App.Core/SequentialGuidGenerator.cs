@@ -1,4 +1,4 @@
-namespace App.Core.Features.Purchases;
+namespace App.Core;
 
 /// <summary>
 /// 顺序 Guid 生成器（RFC 4122 v1 布局：时间字段小端 + 计数器位大端，采购 / 销售共用）：
