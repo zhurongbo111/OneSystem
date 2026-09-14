@@ -122,8 +122,14 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     /// <summary>增量操作失败注入：返回非 null 异常时 IncrementAsync 抛出</summary>
     public Func<Exception?>? IncrementFailure { get; set; }
 
+    /// <summary>扣减失败注入：命中返回 false 的商品 id 集合（模拟库存不足，TryDecrementAsync 返回 false）</summary>
+    public HashSet<Guid> TryDecrementFailProducts { get; } = new();
+
     /// <summary>已执行的增量序列（productId, delta），用于断言回冲 / 入库调用</summary>
     public List<(Guid ProductId, int Delta)> Increments { get; } = new();
+
+    /// <summary>已执行的扣减序列（productId, amount），用于断言销售扣减调用</summary>
+    public List<(Guid ProductId, int Amount)> Decrements { get; } = new();
 
     public void Seed(Guid productId, int quantity) => _stock[productId] = quantity;
 
@@ -150,7 +156,17 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     }
 
     public Task<bool> TryDecrementAsync(Guid productId, int amount, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException();
+    {
+        _calls?.Add("TryDecrement");
+        if (TryDecrementFailProducts.Contains(productId) || GetQuantity(productId) < amount)
+        {
+            return Task.FromResult(false);
+        }
+
+        Decrements.Add((productId, amount));
+        _stock[productId] = GetQuantity(productId) - amount;
+        return Task.FromResult(true);
+    }
 
     public Task<(IReadOnlyList<InventoryItem> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? categoryId, int page, int pageSize, CancellationToken cancellationToken = default)
