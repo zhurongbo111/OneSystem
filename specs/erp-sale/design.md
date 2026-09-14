@@ -138,7 +138,7 @@ src/
 | `sales/new` | `saleNew` | `SaleFormPage` |
 | `sales/detail/:id` | `saleDetail` | `SaleDetailView` |
 
-`AppLayout.vue` 侧边菜单「进销存」分组追加子项「销售出库」`sales`；`MENU_ROUTE_MAP` 增加 `saleDetail: 'sales'`（详情页高亮归属父菜单）。
+`AppLayout.vue` 侧边菜单「进销存」分组追加子项「销售开单」`sales`；`MENU_ROUTE_MAP` 增加 `saleDetail: 'sales'`（详情页高亮归属父菜单）。
 
 ### 4.4 页面交互（与 erp-purchase 同构处省略，仅列差异）
 
