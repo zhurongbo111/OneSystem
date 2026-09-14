@@ -1,0 +1,481 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+import { getPartners } from '@/api/partner'
+import type { Partner } from '@/api/partner'
+import {
+  getPurchaseOrders,
+  toDateRange,
+  updatePurchaseOrderSettlement,
+  voidPurchaseOrder,
+  type PurchaseOrderListItem,
+  type SettlementStatus,
+} from '@/api/purchase'
+import { formatDateTime } from '@/utils/datetime'
+import { Message } from '@arco-design/web-vue'
+import type { TableColumnData } from '@arco-design/web-vue'
+import { IconPlus, IconRefresh } from '@arco-design/web-vue/es/icon'
+
+// —— constants ——
+const settlementOptions: { label: string; value: SettlementStatus }[] = [
+  { label: '未付', value: 0 },
+  { label: '已付', value: 1 },
+]
+
+/** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
+let fetchSeq = 0
+
+// —— reactive state ——
+const router = useRouter()
+
+const loading = ref(false)
+/** 正在作废 / 结算的单据 id（design §4.5：voidingId / settlingId） */
+const voidingId = ref<string | undefined>(undefined)
+const settlingId = ref<string | undefined>(undefined)
+const items = ref<PurchaseOrderListItem[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
+
+/** 关键词 / 供应商 / 日期范围 / 结算：输入态与已应用态分离（点搜索才生效） */
+const keywordInput = ref('')
+const partnerInput = ref<string | undefined>(undefined)
+const dateRangeInput = ref<string[] | undefined>(undefined)
+const settlementInput = ref<SettlementStatus | undefined>(undefined)
+const appliedKeyword = ref('')
+const appliedPartner = ref<string | undefined>(undefined)
+const appliedRange = ref<[string, string] | null>(null)
+const appliedSettlement = ref<SettlementStatus | undefined>(undefined)
+
+/** 供应商下拉数据源（全量拉取后前端筛「供应商 / 两者」，后端查询仅支持单值 type） */
+const partners = ref<Partner[]>([])
+const supplierOptions = computed(() =>
+  partners.value
+    .filter((p) => p.type === 1 || p.type === 3)
+    .map((p) => ({ label: p.name, value: p.id })),
+)
+
+// —— computed ——
+/** 表格重挂载 key：已应用条件变化时回到第 1 页 */
+const tableKey = computed(
+  () => `${appliedKeyword.value}|${appliedPartner.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}|${appliedSettlement.value ?? ''}`,
+)
+
+/** 服务端分页配置 */
+const pagination = computed(() => ({
+  current: page.value,
+  pageSize: pageSize.value,
+  total: total.value,
+  showTotal: true,
+  showPageSize: true,
+  pageSizeOptions: [10, 20, 50],
+}))
+
+/** 表格列：序号 / 单号 / 供应商 / 日期 / 总金额 / 结算 / 状态 / 创建时间 / 操作（design §4.4） */
+const columns: TableColumnData[] = [
+  { title: '序号', slotName: 'seq', width: 64, align: 'center' },
+  { title: '单号', slotName: 'orderNo', width: 160 },
+  { title: '供应商', dataIndex: 'partnerName', width: 180, ellipsis: true, tooltip: true },
+  { title: '单据日期', slotName: 'orderDate', width: 110 },
+  { title: '总金额', slotName: 'totalAmount', width: 120, align: 'right' },
+  { title: '结算状态', slotName: 'settlement', width: 100, align: 'center' },
+  { title: '单据状态', slotName: 'status', width: 100, align: 'center' },
+  { title: '创建时间', slotName: 'createdAt', width: 172 },
+  { title: '操作', slotName: 'action', width: 250, bodyCellClass: 'action-cell' },
+]
+
+const tableScrollX = columns.reduce((sum, c) => sum + (c.width ?? 0), 0)
+
+// —— lifecycle ——
+onMounted(async () => {
+  void fetchList()
+  try {
+    const [supplier, both] = await Promise.all([
+      getPartners({ type: 1, status: 1, page: 1, pageSize: 100 }),
+      getPartners({ type: 3, status: 1, page: 1, pageSize: 100 }),
+    ])
+    const seen = new Set<string>()
+    partners.value = [...supplier.items, ...both.items].filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)))
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
+})
+
+// —— methods ——
+/** 拉取当前条件下的列表（请求序号防止乱序响应覆盖最新结果） */
+async function fetchList(): Promise<void> {
+  const seq = ++fetchSeq
+  loading.value = true
+  try {
+    const { start, end } = appliedRange.value
+      ? toDateRange(appliedRange.value[0], appliedRange.value[1])
+      : {}
+    const result = await getPurchaseOrders({
+      keyword: appliedKeyword.value.trim() || undefined,
+      partnerId: appliedPartner.value,
+      start,
+      end,
+      settlement: appliedSettlement.value,
+      page: page.value,
+      pageSize: pageSize.value,
+    })
+    if (seq !== fetchSeq) return
+    items.value = result.items
+    total.value = result.total
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    if (seq === fetchSeq) loading.value = false
+  }
+}
+
+/** 搜索：应用输入条件并回到第 1 页 */
+function onSearch(): void {
+  appliedKeyword.value = keywordInput.value
+  appliedPartner.value = partnerInput.value
+  appliedRange.value = dateRangeInput.value ? (dateRangeInput.value as [string, string]) : null
+  appliedSettlement.value = settlementInput.value
+  page.value = 1
+  void fetchList()
+}
+
+/** 重置：清空条件并回到第 1 页 */
+function onReset(): void {
+  keywordInput.value = ''
+  partnerInput.value = undefined
+  dateRangeInput.value = undefined
+  settlementInput.value = undefined
+  appliedKeyword.value = ''
+  appliedPartner.value = undefined
+  appliedRange.value = null
+  appliedSettlement.value = undefined
+  page.value = 1
+  void fetchList()
+}
+
+/** 刷新当前页 */
+function onRefresh(): void {
+  void fetchList()
+}
+
+function onPageChange(current: number): void {
+  page.value = current
+  void fetchList()
+}
+
+function onPageSizeChange(size: number): void {
+  pageSize.value = size
+  page.value = 1
+  void fetchList()
+}
+
+function onCreate(): void {
+  void router.push({ name: 'purchaseNew' })
+}
+
+function onDetail(row: PurchaseOrderListItem): void {
+  void router.push({ name: 'purchaseDetail', params: { id: row.id } })
+}
+
+/** 作废行整体置灰（design §4.4） */
+function rowClassName(record: PurchaseOrderListItem): string {
+  return record.status === 0 ? 'row-voided' : ''
+}
+
+/** 作废：回冲库存，仅改状态不删数据 */
+async function onVoid(row: PurchaseOrderListItem): Promise<void> {
+  if (voidingId.value) return
+  voidingId.value = row.id
+  try {
+    await voidPurchaseOrder(row.id)
+    Message.success('已作废，库存已回冲')
+    void fetchList()
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    voidingId.value = undefined
+  }
+}
+
+/** 结算切换：未付 ↔ 已付（库存不变） */
+async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
+  if (settlingId.value) return
+  settlingId.value = row.id
+  try {
+    const next: SettlementStatus = row.settlementStatus === 1 ? 0 : 1
+    await updatePurchaseOrderSettlement(row.id, next)
+    Message.success(next === 1 ? '已标记为已付' : '已改回未付')
+    void fetchList()
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    settlingId.value = undefined
+  }
+}
+</script>
+
+<template>
+  <div class="list-page">
+    <!-- 页面头：标题 + 新增 -->
+    <div class="page-header">
+      <h1 class="page-title">
+        采购入库
+      </h1>
+      <a-button
+        type="primary"
+        @click="onCreate"
+      >
+        <template #icon>
+          <IconPlus />
+        </template>
+        开采购单
+      </a-button>
+    </div>
+
+    <a-card
+      :bordered="false"
+      class="table-card"
+    >
+      <div class="toolbar">
+        <!-- 筛选行 -->
+        <a-row
+          class="toolbar-filter"
+          :gutter="16"
+          wrap
+        >
+          <a-col :span="5">
+            <a-input
+              v-model="keywordInput"
+              class="filter-bar__search"
+              placeholder="搜索单号 / 供应商"
+              allow-clear
+              @press-enter="onSearch"
+            />
+          </a-col>
+          <a-col :span="5">
+            <a-select
+              v-model="partnerInput"
+              :options="supplierOptions"
+              placeholder="全部供应商"
+              allow-clear
+              :loading="partners.length === 0"
+            />
+          </a-col>
+          <a-col :span="7">
+            <a-range-picker
+              v-model="dateRangeInput"
+              value-format="YYYY-MM-DD"
+              :allow-clear="true"
+              style="width: 100%"
+            />
+          </a-col>
+          <a-col :span="3">
+            <a-select
+              v-model="settlementInput"
+              :options="settlementOptions"
+              placeholder="结算状态"
+              allow-clear
+            />
+          </a-col>
+          <a-col :span="4">
+            <div class="toolbar-filter__actions">
+              <a-button
+                type="primary"
+                :loading="loading"
+                @click="onSearch"
+              >
+                搜索
+              </a-button>
+              <a-button
+                :loading="loading"
+                @click="onReset"
+              >
+                重置
+              </a-button>
+            </div>
+          </a-col>
+        </a-row>
+
+        <!-- 操作行 -->
+        <div class="toolbar-actions">
+          <a-button
+            size="small"
+            :loading="loading"
+            @click="onRefresh"
+          >
+            <template #icon>
+              <IconRefresh />
+            </template>
+            刷新
+          </a-button>
+        </div>
+      </div>
+
+      <a-table
+        :key="tableKey"
+        row-key="id"
+        :row-class-name="rowClassName"
+        :loading="loading"
+        :columns="columns"
+        :data="items"
+        :pagination="pagination"
+        :scroll="{ x: tableScrollX }"
+        @page-change="onPageChange"
+        @page-size-change="onPageSizeChange"
+      >
+        <template #seq="{ rowIndex }">
+          {{ (page - 1) * pageSize + rowIndex + 1 }}
+        </template>
+        <template #orderNo="{ record }">
+          <a-link
+            :ellipsis="true"
+            @click="onDetail(record as PurchaseOrderListItem)"
+          >
+            {{ (record as PurchaseOrderListItem).orderNo }}
+          </a-link>
+        </template>
+        <template #orderDate="{ record }">
+          {{ formatDateTime((record as PurchaseOrderListItem).orderDate).slice(0, 10) }}
+        </template>
+        <template #totalAmount="{ record }">
+          <span class="amount">
+            ¥ {{ (record as PurchaseOrderListItem).totalAmount.toFixed(2) }}
+          </span>
+        </template>
+        <template #settlement="{ record }">
+          <a-tag :color="(record as PurchaseOrderListItem).settlementStatus === 1 ? 'green' : 'orange'">
+            {{ (record as PurchaseOrderListItem).settlementStatus === 1 ? '已付' : '未付' }}
+          </a-tag>
+        </template>
+        <template #status="{ record }">
+          <a-tag :color="(record as PurchaseOrderListItem).status === 1 ? 'green' : 'gray'">
+            {{ (record as PurchaseOrderListItem).status === 1 ? '正常' : '已作废' }}
+          </a-tag>
+        </template>
+        <template #createdAt="{ record }">
+          {{ formatDateTime((record as PurchaseOrderListItem).createdAt) }}
+        </template>
+        <!-- 操作列：详情 恒显；作废 / 结算切换 仅正常单显示（design §4.4） -->
+        <template #action="{ record }">
+          <a-space
+            class="row-actions"
+            :size="4"
+          >
+            <a-button
+              type="text"
+              size="small"
+              @click="onDetail(record as PurchaseOrderListItem)"
+            >
+              详情
+            </a-button>
+            <a-popconfirm
+              v-if="(record as PurchaseOrderListItem).status === 1"
+              type="warning"
+              content="确认作废该采购单？作废后库存将回冲，且不可恢复"
+              @ok="onVoid(record as PurchaseOrderListItem)"
+            >
+              <a-button
+                type="text"
+                status="warning"
+                size="small"
+                :loading="voidingId === (record as PurchaseOrderListItem).id"
+              >
+                作废
+              </a-button>
+            </a-popconfirm>
+            <a-popconfirm
+              v-if="(record as PurchaseOrderListItem).status === 1"
+              type="info"
+              :content="(record as PurchaseOrderListItem).settlementStatus === 1 ? '确认改回未付？' : '确认标记为已付？'"
+              @ok="onToggleSettlement(record as PurchaseOrderListItem)"
+            >
+              <a-button
+                type="text"
+                size="small"
+                :loading="settlingId === (record as PurchaseOrderListItem).id"
+              >
+                {{ (record as PurchaseOrderListItem).settlementStatus === 1 ? '改回未付' : '标记已付' }}
+              </a-button>
+            </a-popconfirm>
+          </a-space>
+        </template>
+      </a-table>
+    </a-card>
+  </div>
+</template>
+
+<style scoped>
+.list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-1);
+}
+
+.toolbar-filter {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.toolbar-filter .arco-col {
+  display: flex;
+}
+
+.toolbar-filter .arco-col > .arco-input,
+.toolbar-filter .arco-col > .arco-select,
+.toolbar-filter .arco-col > .arco-picker {
+  flex: 1;
+}
+
+.toolbar-filter__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.table-card {
+  border-radius: var(--border-radius-medium);
+}
+
+.amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 操作列密度：收窄 Arco 文本按钮默认水平 padding */
+.row-actions :deep(.arco-btn-text) {
+  padding: 0 8px;
+}
+
+/* 操作列兜底：按钮组不折行 */
+:deep(.action-cell) {
+  white-space: nowrap;
+}
+
+/* 作废行整体置灰（design §4.4） */
+:deep(.row-voided) {
+  opacity: 0.55;
+}
+</style>
