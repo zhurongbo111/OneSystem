@@ -55,4 +55,16 @@ public static class ErrorCode
 
     /// <summary>商品已停用，不可用于开单（erp-product 预留，供 erp-purchase / erp-sale 使用）</summary>
     public const int ProductDisabled = 40107;
+
+    /// <summary>单据已作废，禁止再操作（erp-purchase / erp-sale 共用；作废为终态）</summary>
+    public const int OrderVoided = 40104;
+
+    /// <summary>往来单位已停用，不可用于开单（erp-purchase / erp-sale 共用）</summary>
+    public const int PartnerDisabled = 40108;
+
+    /// <summary>往来单位类型与单据不匹配（如拿客户开采购单；erp-purchase / erp-sale 共用）</summary>
+    public const int PartnerTypeMismatch = 40109;
+
+    /// <summary>单据明细不能为空（erp-purchase / erp-sale 共用；明细行数 ≥ 1）</summary>
+    public const int OrderItemsEmpty = 40110;
 }

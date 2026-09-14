@@ -61,6 +61,7 @@ public sealed class Mediator : IMediator
     /// <summary>
     /// 按请求运行时类型执行已注册的格式校验；未注册校验器时返回有效结果（视为校验通过）。
     /// </summary>
+    /// <param name="services">DI 服务提供器（按请求运行时类型解析校验器）</param>
     /// <param name="request">用例请求（运行时类型即 TRequest）</param>
     /// <returns>格式校验结果；无校验器时为有效结果</returns>
     private static async Task<FluentValidation.Results.ValidationResult> ValidateRequestAsync(IServiceProvider services, object request)

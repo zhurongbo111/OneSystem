@@ -34,6 +34,12 @@ public class AppDbContext : DbContext
     /// <summary>往来单位表（供应商 / 客户合并）</summary>
     public DbSet<Partner> Partners => Set<Partner>();
 
+    /// <summary>采购单表</summary>
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+
+    /// <summary>采购单明细表</summary>
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
