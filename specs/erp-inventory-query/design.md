@@ -1,6 +1,6 @@
 # 设计规格：库存查询（erp-inventory-query）
 
-> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.5、测试 §6）与后端 / 前端专项规则。
+> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照。
 > 本规格消费 erp-product 建立的 `Inventory` / `Products` / `Categories` 表与 `IInventoryRepository`，**不引入新表 / 新实体 / 新迁移**。
 

@@ -110,7 +110,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 ## 6. 认证（JWT）
 
 - 使用 JWT 认证；token 有效期与 claims 在各功能规格中定义。
-- `App.Api` 中配置 JWT 校验（中间件 / 授权）与登录等白名单放行；白名单范围、`40100` 响应、token 签发与携带等全局约定见 `AGENTS.md` §4.5。
+- `App.Api` 中配置 JWT 校验（中间件 / 授权）与登录等白名单放行；白名单范围、`40100` 响应、token 签发与携带等全局约定见 `AGENTS.md` §4.6。
 - 签名密钥来源见 §8（遵循 `AGENTS.md` §7 敏感配置原则）。
 
 ## 7. 日志与可观测性

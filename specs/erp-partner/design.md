@@ -1,6 +1,6 @@
 # 设计规格：往来单位（erp-partner）
 
-> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.5、测试 §6）与后端 / 前端专项规则。
+> 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §4.3）同样适用。
 > 本规格为进销存功能组往来单位域，开单下拉数据源的消费方为 erp-purchase / erp-sale。
 
@@ -104,6 +104,7 @@
 **CreatePartner**：`ExistsByNameAsync(name, null)` 为真 → `40102`；否则组 `Partner`（`Status=Enabled`、审计字段取 `ICurrentUser`）→ 新增。
 
 **UpdatePartner**：`GetByIdAsync`（不存在 → `40400`）→ 更新类型 / 联系人 / 电话 / 地址 / 备注（**不触碰 `Name`**）→ 更新审计。
+- 可选字段（联系人 / 电话 / 地址 / 备注）遵循 `AGENTS.md` §4.5 全量覆盖语义（缺字段 / 空串 / 纯空白一律清空落 `null`）；`Name` 为不可改字段（接口不接受）。
 
 **UpdatePartnerStatus**：`GetByIdAsync`（不存在 → `40400`）→ 置 `Status` → 更新审计。
 

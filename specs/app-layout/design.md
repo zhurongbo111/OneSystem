@@ -51,7 +51,7 @@ a-layout (layout="has-sider", class=app-layout)
 - 子菜单展开：`a-menu` 默认 `vertical` 模式（Arco 合法 mode 为 `vertical` / `horizontal` / `pop` / `popButton`，无 `inline`；误传 `inline` 会使子菜单渲染为 hover 弹出层且 `open-keys` 失效），`open-keys` 绑定 `ref`（初始含 `'showcase'`，进入示例页时被手动折叠则自动重新展开），`@update:open-keys` 同步，避免用户手动折叠后无法再展开。
 - 折叠状态：`ref<boolean>`（默认 false），传给 `a-layout-sider` 的 `v-model:collapsed` 与 header 折叠按钮图标切换；不持久化。
 - 顶部栏右侧：`a-dropdown` 触发元素为头像 + `displayName`（`auth.user` 为空时显示占位 "用户"）；下拉 `a-doption` / `a-menu` 仅一项"退出登录"。
-- 退出登录：`auth.logout()` + `router.replace({ name: 'login' })`（复用现有 auth store 能力，前端规则 §7 的全局约定见 `AGENTS.md` §4.5）。
+- 退出登录：`auth.logout()` + `router.replace({ name: 'login' })`（复用现有 auth store 能力，前端规则 §7 的全局约定见 `AGENTS.md` §4.6）。
 - 用户信息恢复：在布局 `onMounted` 调 `auth.fetchCurrentUser()`（从 `HomeView` 上移至此，保证任何受保护子页面进入都能恢复用户）。
 - 内容区 `a-layout-content` 背景用 `var(--color-fill-2)`，内边距 `24px`，高度自适应。
 
