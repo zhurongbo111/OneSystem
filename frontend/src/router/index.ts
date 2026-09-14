@@ -93,6 +93,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/InventoryManagement/InventoryView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'purchases',
+        name: 'purchases',
+        component: () => import('@/views/PurchaseManagement/PurchasesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'purchases/new',
+        name: 'purchaseNew',
+        component: () => import('@/views/PurchaseManagement/PurchaseFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'purchases/detail/:id',
+        name: 'purchaseDetail',
+        component: () => import('@/views/PurchaseManagement/PurchaseDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {
