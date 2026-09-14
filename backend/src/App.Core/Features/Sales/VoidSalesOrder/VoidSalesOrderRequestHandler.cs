@@ -73,6 +73,6 @@ public sealed class VoidSalesOrderRequestHandler : IRequestHandler<VoidSalesOrde
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");
         }
 
-        return SalesDtoMapper.ToDetailDto(updated);
+        return SalesDtoMapper.ToSalesOrderDetailDto(updated);
     }
 }

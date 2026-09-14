@@ -33,30 +33,12 @@ public sealed class GetInventoryRequestHandler : IRequestHandler<GetInventoryReq
             request.PageSize,
             cancellationToken);
 
-        var pageItems = items.Select(ToDto).ToList();
         return new PagedResult<InventoryItemDto>
         {
-            Items = pageItems,
+            Items = items.Select(InventoryDtoMapper.ToInventoryItemDto).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,
         };
     }
-
-    /// <summary>
-    /// 列表项读模型转出参模型，计算低库存标记
-    /// </summary>
-    private static InventoryItemDto ToDto(InventoryItem item)
-        => new()
-        {
-            ProductId = item.ProductId.ToString(),
-            Code = item.Code,
-            Name = item.Name,
-            CategoryName = item.CategoryName,
-            Unit = item.Unit,
-            StockQuantity = item.StockQuantity,
-            SafetyStock = item.SafetyStock,
-            IsBelowSafetyStock = item.SafetyStock > 0 && item.StockQuantity < item.SafetyStock,
-            UpdatedAt = item.UpdatedAt,
-        };
 }

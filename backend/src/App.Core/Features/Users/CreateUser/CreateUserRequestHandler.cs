@@ -72,6 +72,6 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
         };
 
         await _userRepository.AddAsync(user, cancellationToken);
-        return UserDtoMapper.ToDetail(user);
+        return UserDtoMapper.ToUserDetailDto(user);
     }
 }

@@ -169,7 +169,7 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
 
                 return (await _salesOrderRepository.GetDetailAsync(order.Id, cancellationToken))!
                     is SalesOrderDetail detail
-                    ? SalesDtoMapper.ToDetailDto(detail)
+                    ? SalesDtoMapper.ToSalesOrderDetailDto(detail)
                     : throw new BusinessException(ErrorCode.NotFound, "销售单创建后读取失败");
             }
             catch (OrderNoConflictException) when (attempt < MaxOrderNoAttempts)

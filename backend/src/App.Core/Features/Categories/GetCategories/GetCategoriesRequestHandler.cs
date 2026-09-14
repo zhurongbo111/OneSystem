@@ -25,11 +25,6 @@ public sealed class GetCategoriesRequestHandler : IRequestHandler<GetCategoriesR
     public async Task<IReadOnlyList<CategoryDto>> HandleAsync(GetCategoriesRequest request, CancellationToken cancellationToken = default)
     {
         var categories = await _categoryRepository.GetAllAsync(cancellationToken);
-        return categories.Select(c => new CategoryDto
-        {
-            Id = c.Id.ToString(),
-            Name = c.Name,
-            CreatedAt = c.CreatedAt,
-        }).ToList();
+        return categories.Select(CategoryDtoMapper.ToCategoryDto).ToList();
     }
 }

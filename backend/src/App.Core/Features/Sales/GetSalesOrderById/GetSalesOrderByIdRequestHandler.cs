@@ -32,6 +32,6 @@ public sealed class GetSalesOrderByIdRequestHandler : IRequestHandler<GetSalesOr
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");
         }
 
-        return SalesDtoMapper.ToDetailDto(detail);
+        return SalesDtoMapper.ToSalesOrderDetailDto(detail);
     }
 }

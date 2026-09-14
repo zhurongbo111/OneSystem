@@ -34,31 +34,12 @@ public sealed class GetPartnersRequestHandler : IRequestHandler<GetPartnersReque
             request.PageSize,
             cancellationToken);
 
-        var pageItems = items.Select(ToDto).ToList();
         return new PagedResult<PartnerDto>
         {
-            Items = pageItems,
+            Items = items.Select(PartnerDtoMapper.ToPartnerDto).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,
         };
     }
-
-    /// <summary>
-    /// 实体转出参模型
-    /// </summary>
-    private static PartnerDto ToDto(Partner p)
-        => new()
-        {
-            Id = p.Id.ToString(),
-            Name = p.Name,
-            Type = (int)p.Type,
-            Contact = p.Contact,
-            Phone = p.Phone,
-            Address = p.Address,
-            Remark = p.Remark,
-            Status = (int)p.Status,
-            CreatedAt = p.CreatedAt,
-            UpdatedAt = p.UpdatedAt,
-        };
 }

@@ -32,18 +32,6 @@ public sealed class GetPartnerByIdRequestHandler : IRequestHandler<GetPartnerByI
             throw new BusinessException(ErrorCode.NotFound, "往来单位不存在");
         }
 
-        return new PartnerDto
-        {
-            Id = partner.Id.ToString(),
-            Name = partner.Name,
-            Type = (int)partner.Type,
-            Contact = partner.Contact,
-            Phone = partner.Phone,
-            Address = partner.Address,
-            Remark = partner.Remark,
-            Status = (int)partner.Status,
-            CreatedAt = partner.CreatedAt,
-            UpdatedAt = partner.UpdatedAt,
-        };
+        return PartnerDtoMapper.ToPartnerDto(partner);
     }
 }

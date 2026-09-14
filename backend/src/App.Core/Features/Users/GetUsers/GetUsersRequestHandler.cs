@@ -36,7 +36,7 @@ public sealed class GetUsersRequestHandler : IRequestHandler<GetUsersRequest, Pa
 
         return new PagedResult<UserListItemDto>
         {
-            Items = items.Select(UserDtoMapper.ToListItem).ToList(),
+            Items = items.Select(UserDtoMapper.ToUserListItemDto).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,

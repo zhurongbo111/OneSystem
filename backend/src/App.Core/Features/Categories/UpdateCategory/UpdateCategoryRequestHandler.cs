@@ -43,11 +43,6 @@ public sealed class UpdateCategoryRequestHandler : IRequestHandler<UpdateCategor
         category.Name = name;
         await _categoryRepository.UpdateAsync(category, cancellationToken);
 
-        return new CategoryDto
-        {
-            Id = category.Id.ToString(),
-            Name = category.Name,
-            CreatedAt = category.CreatedAt,
-        };
+        return CategoryDtoMapper.ToCategoryDto(category);
     }
 }

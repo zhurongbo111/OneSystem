@@ -80,23 +80,6 @@ public sealed class UpdateProductRequestHandler : IRequestHandler<UpdateProductR
 
         // 落库后重读当前库存，返回完整出参
         var stockQuantity = await _inventoryRepository.GetQuantityAsync(product.Id, cancellationToken);
-        return new ProductDto
-        {
-            Id = product.Id.ToString(),
-            Code = product.Code,
-            Name = product.Name,
-            CategoryId = product.CategoryId.ToString(),
-            CategoryName = category.Name,
-            Unit = product.Unit,
-            PurchasePrice = product.PurchasePrice,
-            SalePrice = product.SalePrice,
-            SafetyStock = product.SafetyStock,
-            StockQuantity = stockQuantity,
-            IsBelowSafetyStock = product.SafetyStock > 0 && stockQuantity < product.SafetyStock,
-            Status = (int)product.Status,
-            Remark = product.Remark,
-            CreatedAt = product.CreatedAt,
-            UpdatedAt = product.UpdatedAt,
-        };
+        return ProductDtoMapper.ToProductDto(product, category.Name, stockQuantity);
     }
 }

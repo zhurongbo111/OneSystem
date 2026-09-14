@@ -35,16 +35,7 @@ public sealed class GetLoginLogsRequestHandler : IRequestHandler<GetLoginLogsReq
 
         return new PagedResult<LoginLogListItemDto>
         {
-            Items = items.Select(log => new LoginLogListItemDto
-            {
-                Id = log.Id.ToString(),
-                UserId = log.UserId.ToString(),
-                Username = log.Username,
-                DisplayName = log.DisplayName,
-                LoginAt = log.LoginAt,
-                IpAddress = log.IpAddress,
-                UserAgent = log.UserAgent,
-            }).ToList(),
+            Items = items.Select(LoginLogDtoMapper.ToLoginLogListItemDto).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,

@@ -31,23 +31,6 @@ public sealed class GetProductByIdRequestHandler : IRequestHandler<GetProductByI
             throw new BusinessException(ErrorCode.NotFound, "商品不存在");
         }
 
-        return new ProductDto
-        {
-            Id = detail.Id.ToString(),
-            Code = detail.Code,
-            Name = detail.Name,
-            CategoryId = detail.CategoryId.ToString(),
-            CategoryName = detail.CategoryName,
-            Unit = detail.Unit,
-            PurchasePrice = detail.PurchasePrice,
-            SalePrice = detail.SalePrice,
-            SafetyStock = detail.SafetyStock,
-            StockQuantity = detail.StockQuantity,
-            IsBelowSafetyStock = detail.SafetyStock > 0 && detail.StockQuantity < detail.SafetyStock,
-            Status = (int)detail.Status,
-            Remark = detail.Remark,
-            CreatedAt = detail.CreatedAt,
-            UpdatedAt = detail.UpdatedAt,
-        };
+        return ProductDtoMapper.ToProductDto(detail);
     }
 }

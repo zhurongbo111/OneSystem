@@ -57,7 +57,9 @@ backend/
 | Purchases | CreatePurchaseOrder、GetPurchaseOrders、GetPurchaseOrderById、VoidPurchaseOrder、UpdatePurchaseOrderSettlement |
 | Sales | CreateSalesOrder、GetSalesOrders、GetSalesOrderById、VoidSalesOrder、UpdateSalesOrderSettlement |
 
-共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`；`Features/Products/ProductDto`、`ProductPickDto`、`ProductInputNormalizer`；`Features/Categories/CategoryDto`；`Features/Partners/PartnerDto`；`Features/Inventory/InventoryItemDto`；`Features/Purchases/PurchaseOrderDto`、`PurchaseDtoMapper`；`Features/Sales/SalesOrderDto`、`SalesDtoMapper`。
+共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`、`LoginLogDtoMapper`；`Features/Products/ProductDto`、`ProductPickDto`、`ProductDtoMapper`、`ProductInputNormalizer`；`Features/Categories/CategoryDto`、`CategoryDtoMapper`；`Features/Partners/PartnerDto`、`PartnerDtoMapper`；`Features/Inventory/InventoryItemDto`、`InventoryDtoMapper`；`Features/Purchases/PurchaseOrderDto`、`PurchaseDtoMapper`；`Features/Sales/SalesOrderDto`、`SalesDtoMapper`。
+
+**DTO 映射**：每个功能在 `Features/<Feature>/` 下放 `internal static class <Feature>DtoMapper` 集中正向映射（实体 / 读模型 → 出参 DTO），方法名 `To` + 目标 DTO 类型名（如 `UserDtoMapper.ToUserDetailDto`、`ProductDtoMapper.ToProductDto`）；Handler 内禁止内联 `new XxxDto` / 私有 `ToDto` 重复拼装；反向（入参 DTO → 实体）用 `From` + 源 DTO 类型名区分。约定见 `rules/backend/RULE.mdc` §3。
 
 **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）。
 

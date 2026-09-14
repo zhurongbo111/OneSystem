@@ -31,18 +31,7 @@ public sealed class GetSalesOrdersRequestHandler : IRequestHandler<GetSalesOrder
 
         return new PagedResult<SalesOrderListItemDto>
         {
-            Items = items.Select(o => new SalesOrderListItemDto
-            {
-                Id = o.Id.ToString(),
-                OrderNo = o.OrderNo,
-                PartnerId = o.PartnerId.ToString(),
-                PartnerName = o.PartnerName,
-                OrderDate = o.OrderDate,
-                TotalAmount = o.TotalAmount,
-                SettlementStatus = (int)o.SettlementStatus,
-                Status = (int)o.Status,
-                CreatedAt = o.CreatedAt,
-            }).ToList(),
+            Items = items.Select(SalesDtoMapper.ToSalesOrderListItemDto).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,
