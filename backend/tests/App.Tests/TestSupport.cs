@@ -58,6 +58,49 @@ internal static class TestSupport
         };
     }
 
+    /// <summary>构建往来单位实体（默认启用 + 供应商类型）</summary>
+    public static Partner NewPartner(
+        string name = "供应商一",
+        PartnerType type = PartnerType.Supplier,
+        PartnerStatus status = PartnerStatus.Enabled)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new Partner
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            Type = type,
+            Status = status,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+    }
+
+    /// <summary>构建商品实体（默认启用）</summary>
+    public static Product NewProduct(
+        string code = "sku-test",
+        string name = "商品一",
+        decimal purchasePrice = 0m,
+        ProductStatus status = ProductStatus.Enabled,
+        Guid? categoryId = null,
+        string unit = "个")
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new Product
+        {
+            Id = Guid.NewGuid(),
+            Code = code,
+            Name = name,
+            CategoryId = categoryId ?? Guid.NewGuid(),
+            Unit = unit,
+            PurchasePrice = purchasePrice,
+            SalePrice = purchasePrice,
+            Status = status,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+    }
+
     /// <summary>构建 TokenService（单测用固定密钥）</summary>
     public static TokenService CreateTokenService()
     {
