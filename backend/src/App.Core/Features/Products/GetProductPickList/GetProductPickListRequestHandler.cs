@@ -25,15 +25,6 @@ public sealed class GetProductPickListRequestHandler : IRequestHandler<GetProduc
     public async Task<IReadOnlyList<ProductPickDto>> HandleAsync(GetProductPickListRequest request, CancellationToken cancellationToken = default)
     {
         var items = await _productRepository.GetPickListAsync(cancellationToken);
-        return items.Select(p => new ProductPickDto
-        {
-            Id = p.Id.ToString(),
-            Code = p.Code,
-            Name = p.Name,
-            Unit = p.Unit,
-            PurchasePrice = p.PurchasePrice,
-            SalePrice = p.SalePrice,
-            StockQuantity = p.StockQuantity,
-        }).ToList();
+        return items.Select(ProductDtoMapper.ToProductPickDto).ToList();
     }
 }

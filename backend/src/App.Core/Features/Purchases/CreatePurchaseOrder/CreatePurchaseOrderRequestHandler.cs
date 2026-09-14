@@ -157,9 +157,9 @@ public sealed class CreatePurchaseOrderRequestHandler : IRequestHandler<CreatePu
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                return (await _purchaseOrderRepository.GetDetailAsync(order.Id, cancellationToken))!
+                return (await _purchaseOrderRepository.GetDetailAsync(order.Id, cancellationToken))
                     is PurchaseOrderDetail detail
-                    ? PurchaseDtoMapper.ToDetailDto(detail)
+                    ? PurchaseDtoMapper.ToPurchaseOrderDetailDto(detail)
                     : throw new BusinessException(ErrorCode.NotFound, "采购单创建后读取失败");
             }
             catch (OrderNoConflictException) when (attempt < MaxOrderNoAttempts)

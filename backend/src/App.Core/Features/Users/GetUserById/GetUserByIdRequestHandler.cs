@@ -29,6 +29,6 @@ public sealed class GetUserByIdRequestHandler : IRequestHandler<GetUserByIdReque
         var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new BusinessException(ErrorCode.NotFound, "用户不存在");
 
-        return UserDtoMapper.ToDetail(user);
+        return UserDtoMapper.ToUserDetailDto(user);
     }
 }

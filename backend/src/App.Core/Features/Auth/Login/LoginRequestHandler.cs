@@ -86,12 +86,7 @@ public sealed class LoginRequestHandler : IRequestHandler<LoginRequest, LoginRes
             throw;
         }
 
-        var user = new UserDto
-        {
-            Id = account.Id.ToString(),
-            Username = account.Username,
-            DisplayName = account.DisplayName,
-        };
+        var user = UserDtoMapper.ToUserDto(account);
         return new LoginResponse { Token = _tokenService.Issue(user), User = user };
     }
 }

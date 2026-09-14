@@ -52,6 +52,6 @@ public sealed class UpdateSalesOrderSettlementRequestHandler : IRequestHandler<U
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");
         }
 
-        return SalesDtoMapper.ToDetailDto(updated);
+        return SalesDtoMapper.ToSalesOrderDetailDto(updated);
     }
 }

@@ -47,6 +47,6 @@ public sealed class UpdateUserStatusRequestHandler : IRequestHandler<UpdateUserS
         user.UpdatedBy = UserInputNormalizer.CurrentUserId(_currentUser);
 
         await _userRepository.UpdateAsync(user, cancellationToken);
-        return UserDtoMapper.ToDetail(user);
+        return UserDtoMapper.ToUserDetailDto(user);
     }
 }

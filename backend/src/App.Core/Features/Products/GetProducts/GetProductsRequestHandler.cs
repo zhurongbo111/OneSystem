@@ -34,36 +34,12 @@ public sealed class GetProductsRequestHandler : IRequestHandler<GetProductsReque
             request.PageSize,
             cancellationToken);
 
-        var pageItems = items.Select(ToDto).ToList();
         return new PagedResult<ProductDto>
         {
-            Items = pageItems,
+            Items = items.Select(ProductDtoMapper.ToProductDto).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,
         };
     }
-
-    /// <summary>
-    /// 列表项读模型转出参模型，计算低库存标记
-    /// </summary>
-    private static ProductDto ToDto(ProductListItem item)
-        => new()
-        {
-            Id = item.Id.ToString(),
-            Code = item.Code,
-            Name = item.Name,
-            CategoryId = item.CategoryId.ToString(),
-            CategoryName = item.CategoryName,
-            Unit = item.Unit,
-            PurchasePrice = item.PurchasePrice,
-            SalePrice = item.SalePrice,
-            SafetyStock = item.SafetyStock,
-            StockQuantity = item.StockQuantity,
-            IsBelowSafetyStock = item.SafetyStock > 0 && item.StockQuantity < item.SafetyStock,
-            Status = (int)item.Status,
-            Remark = null,
-            CreatedAt = item.CreatedAt,
-            UpdatedAt = item.UpdatedAt,
-        };
 }

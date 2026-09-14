@@ -60,8 +60,10 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - 业务失败统一抛 `BusinessException`，错误码使用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2）；功能专属业务码（如登录失败 `40001`）必须先在各功能 `design.md` 定义再使用。
 - 用例不接触 HTTP：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；需要"当前用户"的用例注入 `App.Core/Abstractions/ICurrentUser`（实现由 `App.Api` 基于 ClaimsPrincipal 提供）。
 - Repository 方法最小化（如 `GetByIdAsync`、`ExistsByEmailAsync`），只做数据访问、不做业务判定；仓储接口与 `IUnitOfWork` 定义在 `App.Core/Abstractions`，实现（EF Core）在 `App.Infrastructure`。
-- 映射：`Request → 实体` 与 `实体 → Response` 在 `RequestHandler` 内完成，禁止把实体直接返回 Controller / 暴露到 API。
-- 出参复用：跨用例 / 多次复用的出参模型（如 `UserDto`）放 `Features/<Feature>/` 下，不放进单个用例目录。
+- 映射：`Request → 实体` 与 `实体 → Response` 在 `RequestHandler` 内完成，禁止把实体直接返回 Controller / 暴露到 API。出参复用：跨用例 / 多次复用的出参模型（如 `UserDto`）放 `Features/<Feature>/` 下，不放进单个用例目录。
+- **DTO 映射统一约定（强制）**：
+  - **正向（实体 / 读模型 → 出参 DTO）**：凡同一功能存在出参映射，集中在 `Features/<Feature>/` 下的 `internal static class <Feature>DtoMapper` 中实现，**禁止在 Handler 内联 `new XxxDto` / 私有 `ToDto` 重复拼装**；方法名统一为 `To` + 目标 DTO 类型名（全部以 `Dto` 结尾），如 `UserDtoMapper.ToUserDetailDto` / `ProductDtoMapper.ToProductDto` / `PurchaseDtoMapper.ToPurchaseOrderListItemDto`；同一 DTO 的映射字段须一致，派生 / 计算字段（如低库存标记）在 Mapper 内计算（可提私有方法）；多个源类型映射同一 DTO 时用重载区分（如读模型重载、实体 + 上下文重载）。
+  - **反向（入参 Request / DTO → 实体）**：与正向区分方向，方法名统一为 `From` + 源类型名，如 `Partner.FromCreatePartnerRequest`（对应正向 `ToPartnerDto`），禁止与正向 `To` 前缀混用。当前反向映射多为各用例私有拼装（实体构造各异），可在实体上提 `From` 工厂方法或集中到 Mapper 的 `From` 方法，但前缀风格须与正向一致区分。
 - 事务：单一仓储的一次写操作由该仓储保证；一个用例内**跨多个仓储的写操作**必须用 `IUnitOfWork` 包裹：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`；异常时 `RollbackAsync` 后重抛，禁止吞异常。
 - 注册：`App.Core/DependencyInjection.AddCore` 显式注册无状态技术组件、`IMediator → Mediator`（一次）、各用例的接口映射（`AddScoped<IRequestHandler<LoginRequest, LoginResponse>, LoginRequestHandler>()`）与 `IValidator<Request>`；`App.Infrastructure/DependencyInjection.AddInfrastructure` 注册 `IUnitOfWork` 与仓储实现（Scoped）。新增用例必须同步注册，禁止反射隐式扫描（`Send` 时按请求类型解析单个已注册实现不属于扫描），禁止在 Controller 手动 `new` 依赖。
 

@@ -32,6 +32,6 @@ public sealed class GetPurchaseOrderByIdRequestHandler : IRequestHandler<GetPurc
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");
         }
 
-        return PurchaseDtoMapper.ToDetailDto(detail);
+        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(detail);
     }
 }

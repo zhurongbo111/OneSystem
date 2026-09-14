@@ -42,11 +42,6 @@ public sealed class CreateCategoryRequestHandler : IRequestHandler<CreateCategor
         };
 
         await _categoryRepository.AddAsync(category, cancellationToken);
-        return new CategoryDto
-        {
-            Id = category.Id.ToString(),
-            Name = category.Name,
-            CreatedAt = category.CreatedAt,
-        };
+        return CategoryDtoMapper.ToCategoryDto(category);
     }
 }

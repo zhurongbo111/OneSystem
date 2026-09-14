@@ -51,6 +51,6 @@ public sealed class UpdatePurchaseOrderSettlementRequestHandler : IRequestHandle
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");
         }
 
-        return PurchaseDtoMapper.ToDetailDto(updated);
+        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(updated);
     }
 }

@@ -45,24 +45,6 @@ public sealed class UpdatePartnerRequestHandler : IRequestHandler<UpdatePartnerR
         partner.UpdatedBy = Guid.TryParse(_currentUser.Id, out var id) ? (Guid?)id : null;
 
         await _partnerRepository.UpdateAsync(partner, cancellationToken);
-        return ToDto(partner);
+        return PartnerDtoMapper.ToPartnerDto(partner);
     }
-
-    /// <summary>
-    /// 实体转出参模型
-    /// </summary>
-    private static PartnerDto ToDto(Partner p)
-        => new()
-        {
-            Id = p.Id.ToString(),
-            Name = p.Name,
-            Type = (int)p.Type,
-            Contact = p.Contact,
-            Phone = p.Phone,
-            Address = p.Address,
-            Remark = p.Remark,
-            Status = (int)p.Status,
-            CreatedAt = p.CreatedAt,
-            UpdatedAt = p.UpdatedAt,
-        };
 }

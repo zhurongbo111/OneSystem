@@ -40,18 +40,6 @@ public sealed class UpdatePartnerStatusRequestHandler : IRequestHandler<UpdatePa
         partner.UpdatedBy = Guid.TryParse(_currentUser.Id, out var id) ? (Guid?)id : null;
 
         await _partnerRepository.UpdateAsync(partner, cancellationToken);
-        return new PartnerDto
-        {
-            Id = partner.Id.ToString(),
-            Name = partner.Name,
-            Type = (int)partner.Type,
-            Contact = partner.Contact,
-            Phone = partner.Phone,
-            Address = partner.Address,
-            Remark = partner.Remark,
-            Status = (int)partner.Status,
-            CreatedAt = partner.CreatedAt,
-            UpdatedAt = partner.UpdatedAt,
-        };
+        return PartnerDtoMapper.ToPartnerDto(partner);
     }
 }

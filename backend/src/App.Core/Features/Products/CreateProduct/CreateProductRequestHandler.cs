@@ -99,29 +99,6 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
             throw;
         }
 
-        return ToDto(product, category.Name, 0);
+        return ProductDtoMapper.ToProductDto(product, category.Name, 0);
     }
-
-    /// <summary>
-    /// 实体转出参模型
-    /// </summary>
-    private static ProductDto ToDto(Product p, string categoryName, int stockQuantity)
-        => new()
-        {
-            Id = p.Id.ToString(),
-            Code = p.Code,
-            Name = p.Name,
-            CategoryId = p.CategoryId.ToString(),
-            CategoryName = categoryName,
-            Unit = p.Unit,
-            PurchasePrice = p.PurchasePrice,
-            SalePrice = p.SalePrice,
-            SafetyStock = p.SafetyStock,
-            StockQuantity = stockQuantity,
-            IsBelowSafetyStock = p.SafetyStock > 0 && stockQuantity < p.SafetyStock,
-            Status = (int)p.Status,
-            Remark = p.Remark,
-            CreatedAt = p.CreatedAt,
-            UpdatedAt = p.UpdatedAt,
-        };
 }

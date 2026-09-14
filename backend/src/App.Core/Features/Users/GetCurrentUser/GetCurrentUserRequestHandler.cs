@@ -31,11 +31,6 @@ public sealed class GetCurrentUserRequestHandler : IRequestHandler<GetCurrentUse
             throw new BusinessException(ErrorCode.Unauthorized, "用户信息缺失，请重新登录");
         }
 
-        return Task.FromResult(new UserDto
-        {
-            Id = _currentUser.Id,
-            Username = _currentUser.Username,
-            DisplayName = _currentUser.DisplayName,
-        });
+        return Task.FromResult(UserDtoMapper.ToUserDto(_currentUser));
     }
 }

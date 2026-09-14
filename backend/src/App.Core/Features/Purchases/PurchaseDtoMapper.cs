@@ -10,7 +10,7 @@ internal static class PurchaseDtoMapper
     /// <summary>
     /// 详情读模型转 DTO
     /// </summary>
-    public static PurchaseOrderDetailDto ToDetailDto(PurchaseOrderDetail detail)
+    public static PurchaseOrderDetailDto ToPurchaseOrderDetailDto(PurchaseOrderDetail detail)
         => new()
         {
             Id = detail.Id.ToString(),
@@ -34,5 +34,22 @@ internal static class PurchaseDtoMapper
                 UnitPrice = i.UnitPrice,
                 Subtotal = i.Subtotal,
             }).ToList(),
+        };
+
+    /// <summary>
+    /// 列表读模型转 DTO
+    /// </summary>
+    public static PurchaseOrderListItemDto ToPurchaseOrderListItemDto(PurchaseOrderListItem item)
+        => new()
+        {
+            Id = item.Id.ToString(),
+            OrderNo = item.OrderNo,
+            PartnerId = item.PartnerId.ToString(),
+            PartnerName = item.PartnerName,
+            OrderDate = item.OrderDate,
+            TotalAmount = item.TotalAmount,
+            SettlementStatus = (int)item.SettlementStatus,
+            Status = (int)item.Status,
+            CreatedAt = item.CreatedAt,
         };
 }
