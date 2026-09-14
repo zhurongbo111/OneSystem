@@ -24,7 +24,7 @@ const auth = useAuthStore()
 const collapsed = ref<boolean>(false)
 
 /** 详情等子路由归属到所属一级菜单，保证侧边栏高亮正确 */
-const MENU_ROUTE_MAP: Record<string, string> = { userDetail: 'users', purchaseDetail: 'purchases' }
+const MENU_ROUTE_MAP: Record<string, string> = { userDetail: 'users', purchaseDetail: 'purchases', salesDetail: 'sales' }
 
 /** 菜单选中项：与当前路由名联动（单一数据源） */
 const selectedKeys = computed<string[]>(() => {
@@ -42,7 +42,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'partners', 'inventory', 'purchases', 'purchaseNew']
+const ERP_ROUTE_NAMES = ['products', 'partners', 'inventory', 'purchases', 'purchaseNew', 'sales', 'salesNew']
 
 // —— reactive state ——
 
@@ -189,6 +189,12 @@ function onLogout(): void {
               <IconStorage />
             </template>
             <span>采购入库</span>
+          </a-menu-item>
+          <a-menu-item key="sales">
+            <template #icon>
+              <IconStorage />
+            </template>
+            <span>销售开单</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>
