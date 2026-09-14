@@ -21,7 +21,11 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:5173",
     // 本地默认有头模式（可见浏览器窗口）；CI 无显示器，自动退回无头
-    headed: !process.env.CI,
+    // 注意：Playwright 配置只认 `headless`（默认 true=无头），`use.headed` 不是有效字段；
+    // 有头只能靠 `headless: false` 或命令行 `--headed`
+    headless: !!process.env.CI,
+    // 本地轻微减速，便于肉眼观察界面操作（CI 不受影响）
+    slowMo: process.env.CI ? 0 : 200,
     // 使用全量 chromium，避免依赖 chromium_headless_shell（国内网络下载失败）
     channel: "chromium",
     trace: "on-first-retry",
