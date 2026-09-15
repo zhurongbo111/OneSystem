@@ -36,15 +36,14 @@ public sealed class UpdateUserStatusRequestHandler : IRequestHandler<UpdateUserS
 
         // 业务约束：不能禁用自己，否则会立即失去后台入口
         if (targetStatus == UserStatus.Disabled
-            && Guid.TryParse(_currentUser.Id, out var currentUserId)
-            && currentUserId == user.Id)
+            && _currentUser.UserId() == user.Id)
         {
             throw new BusinessException(ErrorCode.CannotDisableSelf, "不能禁用当前登录账号");
         }
 
         user.Status = targetStatus;
         user.UpdatedAt = DateTimeOffset.UtcNow;
-        user.UpdatedBy = UserInputNormalizer.CurrentUserId(_currentUser);
+        user.UpdatedBy = _currentUser.UserId();
 
         await _userRepository.UpdateAsync(user, cancellationToken);
         return UserDtoMapper.ToUserDetailDto(user);

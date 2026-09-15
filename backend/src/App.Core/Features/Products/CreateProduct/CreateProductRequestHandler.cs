@@ -58,7 +58,7 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
         }
 
         var now = DateTimeOffset.UtcNow;
-        var operatorId = ProductInputNormalizer.CurrentUserId(_currentUser);
+        var operatorId = _currentUser.UserId();
         var product = new Product
         {
             Id = Guid.NewGuid(),

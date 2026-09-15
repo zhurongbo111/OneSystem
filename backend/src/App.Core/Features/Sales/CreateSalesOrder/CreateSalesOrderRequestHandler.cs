@@ -104,7 +104,7 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
         }
 
         var now = DateTimeOffset.UtcNow;
-        var operatorId = Guid.TryParse(_currentUser.Id, out var id) ? (Guid?)id : null;
+        var operatorId = _currentUser.UserId();
 
         // 事务：先扣库存（防超卖），成功后再插单 + 明细；单号冲突（唯一索引）时回滚后重新生成单号重试。
         // 注意：重试意味着重新扣减——上一轮已扣库存会随回滚恢复，故重新生成单号后整轮重来是安全的。
