@@ -126,12 +126,14 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   await page.getByPlaceholder('2-32 位字母、数字、下划线或连字符').fill(code)
   await page.getByPlaceholder('2-50 字符').fill(name)
   await page.getByPlaceholder('如：个 / 箱 / 斤').fill('个')
+  // 就地行内新建分类（specs/erp-category：抽屉内联输入条 + 保存）
   await page.getByRole('button', { name: '新建分类' }).click()
-  await page.getByPlaceholder(CATEGORY_PLACEHOLDER).fill(uniqueCategoryName())
-  await page.locator('.arco-modal').getByRole('button', { name: '新增' }).click()
+  const catInput = page.getByPlaceholder(CATEGORY_PLACEHOLDER)
+  await expect(catInput).toBeVisible()
+  await catInput.fill(uniqueCategoryName())
+  await page.locator('.arco-drawer').getByRole('button', { name: '保存' }).click()
   // Arco message DOM 残留（同 popconfirm），本用例创建 2 个商品会累积 2 条同文案提示，取最新一条
   await expect(page.getByText('分类已创建').last()).toBeVisible()
-  await page.locator('.arco-modal').getByRole('button', { name: 'Close' }).click()
   // 金额 / 安全库存均为 a-input-number：第 0 / 1 个是采购 / 销售价
   const numberInputs = page.locator('.arco-drawer .arco-input-number input')
   await numberInputs.nth(0).fill('10.00')
