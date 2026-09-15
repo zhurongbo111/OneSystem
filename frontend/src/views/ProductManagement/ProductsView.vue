@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 import { getCategories, getProducts, updateProductStatus } from '@/api/product'
 import type { Category, Product, ProductStatus } from '@/api/product'
@@ -16,7 +15,6 @@ import {
   IconRefresh,
   IconSearch,
   IconSettings,
-  IconTags,
 } from '@arco-design/web-vue/es/icon'
 
 import ProductFormDrawer from './ProductFormDrawer.vue'
@@ -82,9 +80,6 @@ const visibleColumns = ref<string[]>([
 const drawerVisible = ref(false)
 const drawerMode = ref<'create' | 'edit' | 'view'>('create')
 const drawerEditId = ref<string | undefined>(undefined)
-
-// —— stores/composables ——
-const router = useRouter()
 
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
@@ -212,11 +207,6 @@ function onRefresh(): void {
   void fetchList()
 }
 
-/** 跳转分类管理页（独立页面，specs/erp-category） */
-function onGoCategories(): void {
-  void router.push({ name: 'categories' })
-}
-
 function onPageChange(current: number): void {
   page.value = current
   void fetchList()
@@ -342,7 +332,7 @@ function formatAmount(v: number): string {
           </a-col>
         </a-row>
 
-        <!-- 操作行：左组主操作（新增/分类管理）靠左，右组视图操作（列设置/刷新）靠右，同一行 -->
+        <!-- 操作行：左组主操作（新增）靠左，右组视图操作（列设置/刷新）靠右，同一行 -->
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
@@ -354,15 +344,6 @@ function formatAmount(v: number): string {
                 <IconPlus />
               </template>
               新增
-            </a-button>
-            <a-button
-              size="small"
-              @click="onGoCategories"
-            >
-              <template #icon>
-                <IconTags />
-              </template>
-              分类管理
             </a-button>
           </div>
           <div class="toolbar-actions__right">

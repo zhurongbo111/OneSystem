@@ -212,15 +212,6 @@ test.describe('商品管理（集成）', () => {
     }
   })
 
-  test('工具条「分类管理」跳转分类管理独立页', async ({ page }) => {
-    await goProducts(page)
-
-    // 工具条按钮跳转独立页（specs/erp-category），增删改用例见 category-management.spec.ts
-    await page.getByRole('button', { name: '分类管理' }).click()
-    await expect(page).toHaveURL(/\/categories$/)
-    await expect(page.getByRole('heading', { name: '分类管理' })).toBeVisible()
-  })
-
   test('查询按钮点击后进入 loading，完成后恢复可点', async ({ page }) => {
     await goProducts(page)
     await page.route(/\/api\/products\?/, async (route) => {
