@@ -13,7 +13,7 @@ import {
 import OrderFormDrawer from '@/views/FormShowcase/components/OrderFormDrawer.vue'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconPlus, IconSearch } from '@arco-design/web-vue/es/icon'
+import { IconPlus, IconSearch, IconUndo } from '@arco-design/web-vue/es/icon'
 
 // —— constants ——
 const columns: TableColumnData[] = [
@@ -163,9 +163,15 @@ function onDelete(row: OrderRow): void {
                 type="primary"
                 @click="onSearch"
               >
+                <template #icon>
+                  <IconSearch />
+                </template>
                 搜索
               </a-button>
               <a-button @click="onReset">
+                <template #icon>
+                  <IconUndo />
+                </template>
                 重置
               </a-button>
             </div>

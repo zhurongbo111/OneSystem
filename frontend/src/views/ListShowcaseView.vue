@@ -14,6 +14,7 @@ import {
   IconRefresh,
   IconSearch,
   IconSettings,
+  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 // —— types ——
@@ -363,9 +364,15 @@ function onExport(): void {
                 type="primary"
                 @click="onSearch"
               >
+                <template #icon>
+                  <IconSearch />
+                </template>
                 搜索
               </a-button>
               <a-button @click="onReset">
+                <template #icon>
+                  <IconUndo />
+                </template>
                 重置
               </a-button>
             </div>

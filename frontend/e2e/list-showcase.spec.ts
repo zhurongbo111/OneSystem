@@ -50,6 +50,12 @@ test.describe('列表页样式参照（集成）', () => {
     await expect(totalText(page)).toHaveText(`共 ${TOTAL} 条`)
   })
 
+  test('搜索/重置按钮带图标（specs/list-showcase §2.2 筛选行）', async ({ page }) => {
+    await goList(page)
+    await expect(page.getByRole('button', { name: '搜索' }).locator('svg')).toBeVisible()
+    await expect(page.getByRole('button', { name: '重置' }).locator('svg')).toBeVisible()
+  })
+
   test('状态筛选「禁用」减少行数', async ({ page }) => {
     await goList(page)
     await page.locator('.filter-bar__status').click()

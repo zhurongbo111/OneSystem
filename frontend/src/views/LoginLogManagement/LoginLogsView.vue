@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getLoginLogs, toUtcRange } from '@/api/loginLog'
 import type { LoginLogListItem } from '@/api/loginLog'
 import { formatDateTime } from '@/utils/datetime'
-import { IconRefresh, IconSearch } from '@arco-design/web-vue/es/icon'
+import { IconRefresh, IconSearch, IconUndo } from '@arco-design/web-vue/es/icon'
 
 // —— constants ——
 const columns = [
@@ -155,12 +155,18 @@ function onPageSizeChange(size: number): void {
                 :loading="loading"
                 @click="onSearch"
               >
+                <template #icon>
+                  <IconSearch />
+                </template>
                 搜索
               </a-button>
               <a-button
                 :loading="loading"
                 @click="onReset"
               >
+                <template #icon>
+                  <IconUndo />
+                </template>
                 重置
               </a-button>
             </div>

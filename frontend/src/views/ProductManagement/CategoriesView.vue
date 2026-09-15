@@ -12,6 +12,7 @@ import {
   IconPlus,
   IconRefresh,
   IconSearch,
+  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 import CategoryFormDrawer from './CategoryFormDrawer.vue'
@@ -203,12 +204,18 @@ async function onDelete(row: Category): Promise<void> {
                 :loading="loading"
                 @click="onSearch"
               >
+                <template #icon>
+                  <IconSearch />
+                </template>
                 搜索
               </a-button>
               <a-button
                 :loading="loading"
                 @click="onReset"
               >
+                <template #icon>
+                  <IconUndo />
+                </template>
                 重置
               </a-button>
             </div>
