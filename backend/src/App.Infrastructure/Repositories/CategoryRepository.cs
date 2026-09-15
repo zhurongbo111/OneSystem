@@ -31,6 +31,31 @@ public sealed class CategoryRepository : ICategoryRepository
     }
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<Category> Items, int Total)> GetPagedAsync(
+        string? keyword,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Categories.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var lower = keyword.Trim().ToLowerInvariant();
+            query = query.Where(c => c.Name.ToLower().Contains(lower));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
+
+    /// <inheritdoc />
     public Task<Category?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         // 该查询同时服务于编辑 / 删除，需跟踪实体以便后续更新，故不使用 AsNoTracking
         => _dbContext.Categories.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);

@@ -3,6 +3,7 @@ using App.Core.Features.Categories;
 using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Categories.DeleteCategory;
 using App.Core.Features.Categories.GetCategories;
+using App.Core.Features.Categories.GetCategoriesPaged;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Core.Responses;
 using Microsoft.AspNetCore.Authorization;
@@ -36,6 +37,21 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     public async Task<ApiResponse<IReadOnlyList<CategoryDto>>> GetCategories(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetCategoriesRequest(), cancellationToken));
+
+    /// <summary>
+    /// 分页查询分类（分类管理页：名称模糊搜索 + 分页，创建时间正序）
+    /// </summary>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<CategoryDto>>))]
+    [ProducesResponseType(401)]
+    [HttpGet("paged")]
+    public async Task<ApiResponse<PagedResult<CategoryDto>>> GetCategoriesPaged(
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
+        [FromQuery] string? keyword,
+        CancellationToken cancellationToken)
+        => ApiResponseFactory.Ok(await _mediator.Send(
+            new GetCategoriesPagedRequest { Page = page, PageSize = pageSize, Keyword = keyword },
+            cancellationToken));
 
     /// <summary>
     /// 新增商品分类（名称唯一，大小写不敏感）

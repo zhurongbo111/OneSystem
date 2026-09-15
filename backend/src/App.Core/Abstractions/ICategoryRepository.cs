@@ -15,6 +15,20 @@ public interface ICategoryRepository
     Task<IReadOnlyList<Category>> GetAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 分页查询分类：按名称模糊匹配筛选，创建时间正序
+    /// </summary>
+    /// <param name="keyword">关键词（名称模糊，忽略大小写），可空</param>
+    /// <param name="page">页码，从 1 起</param>
+    /// <param name="pageSize">每页条数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>当前页数据与总条数</returns>
+    Task<(IReadOnlyList<Category> Items, int Total)> GetPagedAsync(
+        string? keyword,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 按 id 查询分类，不存在返回 null（含跟踪，供编辑 / 删除）
     /// </summary>
     /// <param name="id">分类 id</param>

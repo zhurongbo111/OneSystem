@@ -15,6 +15,7 @@ using App.Core.Features.Categories;
 using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Categories.DeleteCategory;
 using App.Core.Features.Categories.GetCategories;
+using App.Core.Features.Categories.GetCategoriesPaged;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Core.Features.Partners;
 using App.Core.Features.Inventory.GetInventory;
@@ -93,6 +94,7 @@ public static class DependencyInjection
 
         // 商品分类用例（erp-product）
         services.AddScoped<IRequestHandler<GetCategoriesRequest, IReadOnlyList<CategoryDto>>, GetCategoriesRequestHandler>();
+        services.AddScoped<IRequestHandler<GetCategoriesPagedRequest, PagedResult<CategoryDto>>, GetCategoriesPagedRequestHandler>();
         services.AddScoped<IRequestHandler<CreateCategoryRequest, CategoryDto>, CreateCategoryRequestHandler>();
         services.AddScoped<IRequestHandler<UpdateCategoryRequest, CategoryDto>, UpdateCategoryRequestHandler>();
         services.AddScoped<IRequestHandler<DeleteCategoryRequest, object?>, DeleteCategoryRequestHandler>();
