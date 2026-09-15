@@ -33,7 +33,6 @@ public class CategoriesController : ControllerBase
     /// 查询全部分类（下拉 / 筛选用，量小全量取，创建时间正序）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<CategoryDto>>))]
-    [ProducesResponseType(401)]
     [HttpGet]
     public async Task<ApiResponse<IReadOnlyList<CategoryDto>>> GetCategories(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetCategoriesRequest(), cancellationToken));
@@ -42,7 +41,6 @@ public class CategoriesController : ControllerBase
     /// 分页查询分类（分类管理页：名称模糊搜索 + 分页，创建时间正序）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<CategoryDto>>))]
-    [ProducesResponseType(401)]
     [HttpGet("paged")]
     public async Task<ApiResponse<PagedResult<CategoryDto>>> GetCategoriesPaged(
         [FromQuery] int page,
@@ -57,7 +55,6 @@ public class CategoriesController : ControllerBase
     /// 新增商品分类（名称唯一，大小写不敏感）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<CategoryDto>))]
-    [ProducesResponseType(401)]
     [HttpPost]
     public async Task<ApiResponse<CategoryDto>> CreateCategory([FromBody] CreateCategoryRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
@@ -66,7 +63,6 @@ public class CategoriesController : ControllerBase
     /// 编辑商品分类（名称唯一，排除自身；被商品引用的分类允许改名）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<CategoryDto>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}")]
     public async Task<ApiResponse<CategoryDto>> UpdateCategory(
         [FromRoute] Guid id,
@@ -82,7 +78,6 @@ public class CategoriesController : ControllerBase
     /// 删除商品分类（被商品引用的分类返回 40106，提示改编辑名称）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<object>))]
-    [ProducesResponseType(401)]
     [HttpDelete("{id:guid}")]
     public async Task<ApiResponse<object?>> DeleteCategory([FromRoute] Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new DeleteCategoryRequest { Id = id }, cancellationToken));

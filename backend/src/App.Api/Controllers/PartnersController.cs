@@ -33,7 +33,6 @@ public class PartnersController : ControllerBase
     /// 分页查询往来单位（关键词 / 类型 / 状态筛选）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<PartnerDto>>))]
-    [ProducesResponseType(401)]
     [HttpGet]
     public async Task<ApiResponse<PagedResult<PartnerDto>>> GetPartners([FromQuery] GetPartnersRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
@@ -42,7 +41,6 @@ public class PartnersController : ControllerBase
     /// 新增往来单位
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
-    [ProducesResponseType(401)]
     [HttpPost]
     public async Task<ApiResponse<PartnerDto>> CreatePartner([FromBody] CreatePartnerRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
@@ -51,7 +49,6 @@ public class PartnersController : ControllerBase
     /// 查询往来单位详情
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
-    [ProducesResponseType(401)]
     [HttpGet("{id:guid}")]
     public async Task<ApiResponse<PartnerDto>> GetPartnerById([FromRoute] Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetPartnerByIdRequest { Id = id }, cancellationToken));
@@ -60,7 +57,6 @@ public class PartnersController : ControllerBase
     /// 编辑往来单位（名称创建后不可修改，请求体不含 name）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}")]
     public async Task<ApiResponse<PartnerDto>> UpdatePartner(
         [FromRoute] Guid id,
@@ -84,7 +80,6 @@ public class PartnersController : ControllerBase
     /// 停用 / 启用往来单位（停用后不可被新单据选择，保留历史数据）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}/status")]
     public async Task<ApiResponse<PartnerDto>> UpdatePartnerStatus(
         [FromRoute] Guid id,
