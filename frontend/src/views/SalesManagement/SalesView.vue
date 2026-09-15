@@ -22,6 +22,7 @@ import {
   IconRefresh,
   IconRotateLeft,
   IconSearch,
+  IconSettings,
   IconStop,
   IconUndo,
 } from '@arco-design/web-vue/es/icon'
@@ -81,20 +82,64 @@ const pagination = computed(() => ({
   pageSizeOptions: [10, 20, 50],
 }))
 
-/** 表格列：序号 / 单号 / 客户 / 日期 / 总金额 / 结算 / 状态 / 创建时间 / 操作 */
-const columns: TableColumnData[] = [
-  { title: '序号', slotName: 'seq', width: 64, align: 'center' },
-  { title: '单号', slotName: 'orderNo', width: 160 },
-  { title: '客户', dataIndex: 'partnerName', width: 180, ellipsis: true, tooltip: true },
-  { title: '单据日期', slotName: 'orderDate', width: 110 },
-  { title: '总金额', slotName: 'totalAmount', width: 120, align: 'right' },
-  { title: '结算状态', slotName: 'settlement', width: 100, align: 'center' },
-  { title: '单据状态', slotName: 'status', width: 100, align: 'center' },
-  { title: '创建时间', slotName: 'createdAt', width: 172 },
-  { title: '操作', slotName: 'action', width: 280, bodyCellClass: 'action-cell' },
+/** 可选列（序号与操作列固定显示，不参与列设置：specs/action-column §5） */
+const columnOptions = [
+  { label: '单号', value: 'orderNo' },
+  { label: '客户', value: 'partnerName' },
+  { label: '单据日期', value: 'orderDate' },
+  { label: '总金额', value: 'totalAmount' },
+  { label: '结算状态', value: 'settlement' },
+  { label: '单据状态', value: 'status' },
+  { label: '创建时间', value: 'createdAt' },
 ]
 
-const tableScrollX = columns.reduce((sum, c) => sum + (c.width ?? 0), 0)
+/** 列显示设置（不持久化） */
+const visibleColumns = ref<string[]>([
+  'orderNo',
+  'partnerName',
+  'orderDate',
+  'totalAmount',
+  'settlement',
+  'status',
+  'createdAt',
+])
+
+/** 表格列：序号 + 可选列 + 操作（序号与操作固定显示） */
+const columns = computed<TableColumnData[]>(() => {
+  const cols: TableColumnData[] = [{ title: '序号', slotName: 'seq', width: 64, align: 'center' }]
+  if (visibleColumns.value.includes('orderNo')) {
+    cols.push({ title: '单号', slotName: 'orderNo', width: 160 })
+  }
+  if (visibleColumns.value.includes('partnerName')) {
+    cols.push({
+      title: '客户',
+      dataIndex: 'partnerName',
+      width: 180,
+      ellipsis: true,
+      tooltip: true,
+    })
+  }
+  if (visibleColumns.value.includes('orderDate')) {
+    cols.push({ title: '单据日期', slotName: 'orderDate', width: 110 })
+  }
+  if (visibleColumns.value.includes('totalAmount')) {
+    cols.push({ title: '总金额', slotName: 'totalAmount', width: 120, align: 'right' })
+  }
+  if (visibleColumns.value.includes('settlement')) {
+    cols.push({ title: '结算状态', slotName: 'settlement', width: 100, align: 'center' })
+  }
+  if (visibleColumns.value.includes('status')) {
+    cols.push({ title: '单据状态', slotName: 'status', width: 100, align: 'center' })
+  }
+  if (visibleColumns.value.includes('createdAt')) {
+    cols.push({ title: '创建时间', slotName: 'createdAt', width: 172 })
+  }
+  cols.push({ title: '操作', slotName: 'action', width: 280, bodyCellClass: 'action-cell' })
+  return cols
+})
+
+/** 各列固定宽度之和，作为表格横向滚动最小宽度（specs/action-column §2 列宽策略） */
+const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width ?? 0), 0))
 
 // —— lifecycle ——
 onMounted(async () => {
@@ -303,7 +348,7 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
           </a-col>
         </a-row>
 
-        <!-- 操作行：左组主操作（开销售单）靠左，右组数据操作（刷新）靠右，同一行 -->
+        <!-- 操作行：左组主操作（开销售单）靠左，右组视图操作（列设置/刷新）靠右，同一行 -->
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
@@ -318,6 +363,29 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
             </a-button>
           </div>
           <div class="toolbar-actions__right">
+            <a-dropdown trigger="click">
+              <a-button size="small">
+                <template #icon>
+                  <IconSettings />
+                </template>
+                列设置
+              </a-button>
+              <template #content>
+                <div class="col-settings">
+                  <a-checkbox-group v-model="visibleColumns">
+                    <a-space direction="vertical">
+                      <a-checkbox
+                        v-for="opt in columnOptions"
+                        :key="opt.value"
+                        :value="opt.value"
+                      >
+                        {{ opt.label }}
+                      </a-checkbox>
+                    </a-space>
+                  </a-checkbox-group>
+                </div>
+              </template>
+            </a-dropdown>
             <a-button
               size="small"
               :loading="loading"
@@ -498,6 +566,15 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
 
 .amount {
   font-variant-numeric: tabular-nums;
+}
+
+/* 列设置下拉面板 */
+.col-settings {
+  min-width: 160px;
+  padding: 8px 12px;
+  background: var(--color-bg-2);
+  border-radius: var(--border-radius-small);
+  box-shadow: var(--box-shadow-2);
 }
 
 /* 操作列密度：收窄 Arco 文本按钮默认水平 padding */

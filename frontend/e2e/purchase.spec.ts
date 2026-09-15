@@ -199,6 +199,26 @@ async function createPurchaseOrder(
   return orderNo
 }
 
+test.describe('采购入库（列表）', () => {
+  test('列设置可隐藏 / 恢复列，序号与操作列固定显示（specs/action-column §5）', async ({ page }) => {
+    await goPurchases(page)
+    await expect(page.getByRole('columnheader', { name: '创建时间' })).toBeVisible()
+
+    await page.getByRole('button', { name: '列设置' }).click()
+    // 序号与操作列固定显示，不参与列设置
+    await expect(page.locator('.col-settings .arco-checkbox', { hasText: '操作' })).toHaveCount(0)
+    await page.locator('.col-settings .arco-checkbox', { hasText: '创建时间' }).click()
+    await page.getByRole('heading', { name: '采购入库' }).click()
+    await expect(page.getByRole('columnheader', { name: '创建时间' })).toHaveCount(0)
+
+    // 重新勾选后恢复显示
+    await page.getByRole('button', { name: '列设置' }).click()
+    await page.locator('.col-settings .arco-checkbox', { hasText: '创建时间' }).click()
+    await page.getByRole('heading', { name: '采购入库' }).click()
+    await expect(page.getByRole('columnheader', { name: '创建时间' })).toBeVisible()
+  })
+})
+
 test.describe('采购入库（集成）', () => {
   test.beforeAll(async ({ request }) => {
     try {
