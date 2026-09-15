@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { getCategories, getProducts, updateProductStatus } from '@/api/product'
 import type { Category, Product, ProductStatus } from '@/api/product'
@@ -15,10 +16,9 @@ import {
   IconRefresh,
   IconSearch,
   IconSettings,
-  IconStorage,
+  IconTags,
 } from '@arco-design/web-vue/es/icon'
 
-import CategoryManagerModal from './CategoryManagerModal.vue'
 import ProductFormDrawer from './ProductFormDrawer.vue'
 
 // —— constants ——
@@ -83,8 +83,8 @@ const drawerVisible = ref(false)
 const drawerMode = ref<'create' | 'edit' | 'view'>('create')
 const drawerEditId = ref<string | undefined>(undefined)
 
-/** 分类管理弹窗 */
-const categoryModalVisible = ref(false)
+// —— stores/composables ——
+const router = useRouter()
 
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
@@ -210,6 +210,11 @@ function onReset(): void {
 /** 刷新当前页 */
 function onRefresh(): void {
   void fetchList()
+}
+
+/** 跳转分类管理页（独立页面，specs/erp-category） */
+function onGoCategories(): void {
+  void router.push({ name: 'categories' })
 }
 
 function onPageChange(current: number): void {
@@ -351,10 +356,10 @@ function formatAmount(v: number): string {
           </a-button>
           <a-button
             size="small"
-            @click="categoryModalVisible = true"
+            @click="onGoCategories"
           >
             <template #icon>
-              <IconStorage />
+              <IconTags />
             </template>
             分类管理
           </a-button>
@@ -495,11 +500,6 @@ function formatAmount(v: number): string {
       :mode="drawerMode"
       :edit-id="drawerEditId"
       @saved="fetchList"
-    />
-
-    <CategoryManagerModal
-      v-model:visible="categoryModalVisible"
-      @saved="loadCategories"
     />
   </div>
 </template>
