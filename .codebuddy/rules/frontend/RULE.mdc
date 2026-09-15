@@ -97,6 +97,24 @@ frontend/
 
 **e2e**：按钮 loading 属用户可感知行为，相关功能交付前须有 e2e 断言（`AGENTS.md` §6）。
 
+### 4.7 图标选用（强制）
+
+> 项目并存三套图标库：Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`）、Tabler（`@tabler/icons-vue`）、Lucide（`@lucide/vue`）。三套的用法与示例见组件示例页「图标」tab（`/components`，规格 `specs/icon-showcase/`）。
+
+**选型优先级（从高到低，逐级回退，命中即用，禁止反向选择）**
+
+| 优先级 | 类库 | 使用场景 |
+|---:|---|---|
+| 1 | Arco 自带 `Icon*` | 首选，覆盖绝大多数 UI 场景（操作、动作、系统语义） |
+| 2 | Tabler | Arco 无对应语义图标时 |
+| 3 | Lucide | 前两者均无对应语义图标时兜底 |
+
+- 按**业务语义**查找（如「重置」→ `IconUndo`），不是按组件名猜。
+- **禁止反向选择**：不得因偏好某套风格跳过 Arco 直接用 Tabler / Lucide；不得为凑图标使用语义不符的图标（宁缺毋滥，纯装饰性图标可放宽）。
+- **Arco 组件 `#icon` 插槽**（`a-button` / `a-menu-item` / `a-select` 等，含 §5.2 操作列固定图标）一律使用 Arco 图标。
+- **来源注释**：使用 Tabler / Lucide 图标时，在 import 处加一行注释说明，如 `// 图标来源：Tabler（Arco 无对应语义）`，便于 review。
+- **一致性**：同一业务图标全项目统一用同一来源；既有用法不追溯迁移。
+
 ## 5. 列表页约定
 
 - 所有表格类列表页以 `src/views/ListShowcaseView.vue` 为标准参照实现（规格 `specs/list-showcase/`）；新增列表页优先复制其结构与交互模式再替换业务字段。
