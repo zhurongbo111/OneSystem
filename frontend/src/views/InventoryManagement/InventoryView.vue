@@ -7,7 +7,7 @@ import { getCategories } from '@/api/product'
 import type { Category } from '@/api/product'
 import { formatDateTime } from '@/utils/datetime'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconRefresh, IconSearch, IconSettings } from '@arco-design/web-vue/es/icon'
+import { IconRefresh, IconSearch, IconSettings, IconUndo } from '@arco-design/web-vue/es/icon'
 
 // —— constants ——
 /** 列显示设置（不持久化；纯只读页无操作列） */
@@ -214,12 +214,18 @@ function onPageSizeChange(size: number): void {
                 :loading="loading"
                 @click="onSearch"
               >
+                <template #icon>
+                  <IconSearch />
+                </template>
                 搜索
               </a-button>
               <a-button
                 :loading="loading"
                 @click="onReset"
               >
+                <template #icon>
+                  <IconUndo />
+                </template>
                 重置
               </a-button>
             </div>

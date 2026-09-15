@@ -15,6 +15,7 @@ import {
   IconRefresh,
   IconSearch,
   IconSettings,
+  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 import ProductFormDrawer from './ProductFormDrawer.vue'
@@ -320,12 +321,18 @@ function formatAmount(v: number): string {
                 :loading="loading"
                 @click="onSearch"
               >
+                <template #icon>
+                  <IconSearch />
+                </template>
                 搜索
               </a-button>
               <a-button
                 :loading="loading"
                 @click="onReset"
               >
+                <template #icon>
+                  <IconUndo />
+                </template>
                 重置
               </a-button>
             </div>
