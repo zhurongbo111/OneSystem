@@ -48,7 +48,7 @@ a-layout (layout="has-sider", class=app-layout)
 
 - 菜单选中：`a-menu` 的 `selected-keys` 用 `computed` 绑定当前 `route.name`（`['home']` / `['components']` / `['list']` / `['form']` 等），实现路由 ↔ 菜单联动。
 - 菜单点击：`@menu-item-click` 中 `router.push({ name: key })`（仅叶子项触发，子菜单不响应）。
-- 子菜单展开：`a-menu` 默认 `vertical` 模式（Arco 合法 mode 为 `vertical` / `horizontal` / `pop` / `popButton`，无 `inline`；误传 `inline` 会使子菜单渲染为 hover 弹出层且 `open-keys` 失效），`open-keys` 绑定 `ref`（初始含 `'showcase'`，进入示例页时被手动折叠则自动重新展开），`@update:open-keys` 同步，避免用户手动折叠后无法再展开。
+- 子菜单展开：`a-menu` 默认 `vertical` 模式（Arco 合法 mode 为 `vertical` / `horizontal` / `pop` / `popButton`，无 `inline`；误传 `inline` 会使子菜单渲染为 hover 弹出层且 `open-keys` 失效），`open-keys` 绑定 `ref`，**初始为空数组（全部折叠）**；`watch(route.name, ..., { immediate: true })` 在初始化与路由变化时把「当前路由所属分组」补进 `openKeys`（只增不减，不移除用户手动展开的其他分组），`@update:open-keys` 同步用户手动展开 / 折叠，避免用户手动折叠后无法再展开。
 - 折叠状态：`ref<boolean>`（默认 false），传给 `a-layout-sider` 的 `v-model:collapsed` 与 header 折叠按钮图标切换；不持久化。
 - 顶部栏右侧：`a-dropdown` 触发元素为头像 + `displayName`（`auth.user` 为空时显示占位 "用户"）；下拉 `a-doption` / `a-menu` 仅一项"退出登录"。
 - 退出登录：`auth.logout()` + `router.replace({ name: 'login' })`（复用现有 auth store 能力，前端规则 §7 的全局约定见 `AGENTS.md` §4.6）。
@@ -82,16 +82,17 @@ a-layout (layout="has-sider", class=app-layout)
 - 依赖：前端 dev（5173）+ 后端 dev（5080，登录需要）。登录用例沿用 `login.spec.ts` 的 `beforeAll` 后端健康检查方式。
 - `app-layout.spec.ts` 用例（需登录，复用登录流程）：
   1. 登录后进入首页，可见侧边菜单"首页"且为选中态（`arco-menu-selected` 可判）。
-  2. 子菜单"示例页面"默认展开，直接点击"组件示例"跳转 `/components`，"组件示例"菜单项选中。
+  2. 首页时子菜单默认折叠（子项不可见）；点击分组标题"示例页面"展开后点击"组件示例"跳转 `/components`，"组件示例"菜单项选中。
   3. 点击折叠按钮，侧边栏收起（菜单进入折叠态，`arco-layout-sider-collapsed` 可判）；再点展开恢复。
   4. 顶部栏用户下拉点击"退出登录"，跳转登录页。
+  5. 直接访问子页面（如 `/products`）时，所属分组「进销存」自动展开（子项可见），其余分组仍折叠。
 - 既有 `login.spec.ts` 调整：
   - "登录成功进入首页并展示当前用户"：用户信息仍可见（`HomeView` 保留 descriptions），断言不变；如"管理员"在布局顶部栏与卡片都出现，取 `.first()`（已如此）。
   - "退出登录回到登录页"：退出入口从首页头部按钮改为布局顶部栏用户下拉项，需先 hover / 点击下拉触发元素再点击"退出登录"。
 - 既有 `component-showcase.spec.ts` 调整：
   - "已登录首页点击「组件示例」跳转"：入口从首页头部按钮改为侧边菜单项，改为点击菜单"组件示例"。
   - 直接访问 `/components`、tab 切换用例不变（页面标题保留）。
-- 既有 `list-showcase.spec.ts` / `form-showcase.spec.ts`：子菜单默认展开，直接点击"列表示例"/"表单与详情示例"菜单项即可进入，无需展开操作，用例不变。
+- 既有 `list-showcase.spec.ts` / `form-showcase.spec.ts`（以及 `component-showcase.spec.ts`、进销存各 spec）：子菜单改为默认折叠后，点击子菜单项前需先展开所属分组。统一收敛到 e2e 公共 helper `frontend/e2e/helpers/menu.ts` 的 `clickMenuItem(page, name)`——内部按「菜单项 → 分组」映射，子项不可见时先点击分组标题（`.arco-menu-inline-header`）再点击子项；各 spec 用该函数替换原来的 `.arco-menu-item` 直接点击。
 
 ## 7. 验证门槛（`AGENTS.md` §6）
 
