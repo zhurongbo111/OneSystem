@@ -20,7 +20,7 @@ public interface IPurchaseOrderRepository
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<(IReadOnlyList<PurchaseOrderListItem> Items, int Total)> GetPagedAsync(
+    Task<(IReadOnlyList<PurchaseOrder> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         DateTimeOffset? start,
@@ -31,11 +31,11 @@ public interface IPurchaseOrderRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 查询采购单详情（主表 + 明细行，按明细插入顺序），不存在返回 null
+    /// 查询采购单详情（主表实体 + 明细行实体，按明细 Id 还原插入顺序），不存在时 Order 为 null
     /// </summary>
     /// <param name="id">采购单 id</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<PurchaseOrderDetail?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<(PurchaseOrder? Order, IReadOnlyList<PurchaseOrderItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 新增单据 + 明细并持久化（同一仓储内一次 SaveChanges）

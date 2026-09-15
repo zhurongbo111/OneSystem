@@ -26,12 +26,12 @@ public sealed class GetPurchaseOrderByIdRequestHandler : IRequestHandler<GetPurc
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<PurchaseOrderDetailDto> HandleAsync(GetPurchaseOrderByIdRequest request, CancellationToken cancellationToken = default)
     {
-        var detail = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (detail is null)
+        var (order, items) = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");
         }
 
-        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(detail);
+        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(order, items);
     }
 }

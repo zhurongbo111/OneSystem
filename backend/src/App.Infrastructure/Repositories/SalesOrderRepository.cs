@@ -25,7 +25,7 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<SalesOrderListItem> Items, int Total)> GetPagedAsync(
+    public async Task<(IReadOnlyList<SalesOrder> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         DateTimeOffset? start,
@@ -73,65 +73,29 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
             .OrderByDescending(o => o.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(o => new SalesOrderListItem
-            {
-                Id = o.Id,
-                OrderNo = o.OrderNo,
-                PartnerId = o.PartnerId,
-                PartnerName = o.PartnerName,
-                OrderDate = o.OrderDate,
-                TotalAmount = o.TotalAmount,
-                SettlementStatus = o.SettlementStatus,
-                Status = o.Status,
-                CreatedAt = o.CreatedAt,
-            })
             .ToListAsync(cancellationToken);
 
         return (items, total);
     }
 
     /// <inheritdoc />
-    public async Task<SalesOrderDetail?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<(SalesOrder? Order, IReadOnlyList<SalesOrderItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var order = await _dbContext.SalesOrders.AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
 
         if (order is null)
         {
-            return null;
+            return (null, Array.Empty<SalesOrderItem>());
         }
 
         // 明细行按插入顺序（明细 Id 为顺序 Guid，与 AddRange 顺序一致）
         var items = await _dbContext.SalesOrderItems.AsNoTracking()
             .Where(i => i.OrderId == id)
             .OrderBy(i => i.Id)
-            .Select(i => new SalesOrderDetailItem
-            {
-                Id = i.Id,
-                ProductId = i.ProductId,
-                ProductName = i.ProductName,
-                Unit = i.Unit,
-                Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice,
-                Subtotal = i.Subtotal,
-            })
             .ToListAsync(cancellationToken);
 
-        return new SalesOrderDetail
-        {
-            Id = order.Id,
-            OrderNo = order.OrderNo,
-            PartnerId = order.PartnerId,
-            PartnerName = order.PartnerName,
-            OrderDate = order.OrderDate,
-            TotalAmount = order.TotalAmount,
-            SettlementStatus = order.SettlementStatus,
-            Status = order.Status,
-            Remark = order.Remark,
-            CreatedBy = order.CreatedBy,
-            CreatedAt = order.CreatedAt,
-            Items = items,
-        };
+        return (order, items);
     }
 
     /// <inheritdoc />
