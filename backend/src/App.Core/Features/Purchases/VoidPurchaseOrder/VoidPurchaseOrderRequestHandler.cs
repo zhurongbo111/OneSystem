@@ -14,6 +14,7 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化采购单作废用例处理器
@@ -21,11 +22,13 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
     public VoidPurchaseOrderRequestHandler(
         IPurchaseOrderRepository purchaseOrderRepository,
         IInventoryRepository inventoryRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUser currentUser)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -57,7 +60,7 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
                 await _inventoryRepository.IncrementAsync(item.ProductId, -item.Quantity, cancellationToken);
             }
 
-            await _purchaseOrderRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, cancellationToken);
+            await _purchaseOrderRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, _currentUser.UserId(), cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

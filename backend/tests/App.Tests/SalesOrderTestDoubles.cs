@@ -59,17 +59,23 @@ internal sealed class FakeSalesOrderRepository : ISalesOrderRepository
         return Task.CompletedTask;
     }
 
-    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, CancellationToken cancellationToken = default)
+    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         _calls?.Add("UpdateSettlement");
-        _orders[id].SettlementStatus = settlement;
+        var order = _orders[id];
+        order.SettlementStatus = settlement;
+        order.UpdatedBy = operatorId;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
         return Task.CompletedTask;
     }
 
-    public Task UpdateStatusAsync(Guid id, OrderStatus status, CancellationToken cancellationToken = default)
+    public Task UpdateStatusAsync(Guid id, OrderStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         _calls?.Add("UpdateStatus");
-        _orders[id].Status = status;
+        var order = _orders[id];
+        order.Status = status;
+        order.UpdatedBy = operatorId;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
         return Task.CompletedTask;
     }
 

@@ -1,4 +1,5 @@
 using App.Core;
+using App.Core.Abstractions;
 using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.Purchases;
@@ -24,12 +25,13 @@ public class PurchaseOrderLifecycleTests
     /// 构造一张正常采购单（2 行明细：3×1.5 + 2×10 = 24.5）+ 商品 + 库存（10 / 8），预置进假仓储。
     /// </summary>
     private static (FakePurchaseOrderRepository Orders, FakeInventoryRepository Inventory,
-        RecordingUnitOfWork Uow, PurchaseOrder Order, Product P1, Product P2, List<string> Calls) SeedNormal()
+        RecordingUnitOfWork Uow, StubCurrentUser User, PurchaseOrder Order, Product P1, Product P2, List<string> Calls) SeedNormal()
     {
         var calls = new List<string>();
         var orders = new FakePurchaseOrderRepository(calls);
         var inventory = new FakeInventoryRepository(calls);
         var uow = new RecordingUnitOfWork(calls);
+        var user = new StubCurrentUser(Guid.NewGuid());
 
         var partner = TestSupport.NewPartner("供应商");
         var p1 = TestSupport.NewProduct("sku-v1", "商品一");
@@ -59,7 +61,7 @@ public class PurchaseOrderLifecycleTests
         };
         orders.Seed(order, items);
 
-        return (orders, inventory, uow, order, p1, p2, calls);
+        return (orders, inventory, uow, user, order, p1, p2, calls);
     }
 
     // ============================== VoidPurchaseOrder ==============================
@@ -67,8 +69,8 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 作废采购单_成功_应逐行回冲库存并置作废()
     {
-        var (orders, inventory, uow, order, p1, p2, calls) = SeedNormal();
-        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, uow);
+        var (orders, inventory, uow, user, order, p1, p2, calls) = SeedNormal();
+        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, uow, user);
 
         var result = await handler.HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id });
 
@@ -82,6 +84,7 @@ public class PurchaseOrderLifecycleTests
         // 状态置作废（事务序列：Begin → Increment ×2 → UpdateStatus → Commit）
         var afterVoid = await orders.GetDetailAsync(order.Id);
         Assert.Equal(OrderStatus.Voided, afterVoid!.Status);
+        Assert.Equal(user.UserId, order.UpdatedBy);
         Assert.Equal((int)OrderStatus.Voided, result.Status);
         Assert.Equal(new[] { "Begin", "Increment", "Increment", "UpdateStatus", "Commit" }, calls.ToArray());
     }
@@ -89,8 +92,8 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 作废采购单_不存在_应报NotFound()
     {
-        var (orders, inventory, uow, _, _, _, _) = SeedNormal();
-        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, uow);
+        var (orders, inventory, uow, user, _, _, _, _) = SeedNormal();
+        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, uow, user);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseOrderRequest { Id = Guid.NewGuid() }));
@@ -100,11 +103,11 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 作废采购单_已作废_应报OrderVoided且不重复回冲()
     {
-        var (orders, inventory, uow, order, p1, _, calls) = SeedNormal();
+        var (orders, inventory, uow, user, order, p1, _, calls) = SeedNormal();
         // 预置为已作废
-        await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided);
+        await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided, null);
 
-        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, uow);
+        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, uow, user);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id }));
@@ -121,8 +124,8 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 更新结算_成功_应切换结算状态()
     {
-        var (orders, inventory, uow, order, p1, _, calls) = SeedNormal();
-        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders);
+        var (orders, inventory, uow, user, order, p1, _, calls) = SeedNormal();
+        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders, user);
 
         var result = await handler.HandleAsync(
             new UpdatePurchaseOrderSettlementRequest { Id = order.Id, SettlementStatus = (int)OrderSettlementStatus.Settled });
@@ -130,6 +133,7 @@ public class PurchaseOrderLifecycleTests
         Assert.Equal((int)OrderSettlementStatus.Settled, result.SettlementStatus);
         var afterSettle = await orders.GetDetailAsync(order.Id);
         Assert.Equal(OrderSettlementStatus.Settled, afterSettle!.SettlementStatus);
+        Assert.Equal(user.UserId, order.UpdatedBy);
         Assert.Contains("UpdateSettlement", calls);
         // 库存不受结算影响
         Assert.Equal(10, inventory.GetQuantity(p1.Id));
@@ -139,10 +143,10 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 更新结算_已作废_应报OrderVoided()
     {
-        var (orders, inventory, uow, order, _, _, _) = SeedNormal();
-        await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided);
+        var (orders, inventory, uow, user, order, _, _, _) = SeedNormal();
+        await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided, null);
 
-        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders);
+        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders, user);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(
             new UpdatePurchaseOrderSettlementRequest { Id = order.Id, SettlementStatus = (int)OrderSettlementStatus.Settled }));
@@ -152,8 +156,8 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 更新结算_不存在_应报NotFound()
     {
-        var (orders, inventory, uow, _, _, _, _) = SeedNormal();
-        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders);
+        var (orders, inventory, uow, user, _, _, _, _) = SeedNormal();
+        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders, user);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(
             new UpdatePurchaseOrderSettlementRequest { Id = Guid.NewGuid(), SettlementStatus = (int)OrderSettlementStatus.Settled }));
@@ -163,8 +167,8 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 更新结算_目标与当前相同_应为无操作()
     {
-        var (orders, _, uow, order, _, _, calls) = SeedNormal();
-        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders);
+        var (orders, _, uow, user, order, _, _, calls) = SeedNormal();
+        var handler = new UpdatePurchaseOrderSettlementRequestHandler(orders, user);
 
         // 当前为 Unsettled，再设为 Unsettled → 幂等，不调用 UpdateSettlementAsync
         var result = await handler.HandleAsync(
@@ -178,7 +182,7 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 查询采购单详情_存在_应返回主表与明细()
     {
-        var (orders, _, uow, order, _, _, _) = SeedNormal();
+        var (orders, _, uow, _, order, _, _, _) = SeedNormal();
         var handler = new GetPurchaseOrderByIdRequestHandler(orders);
 
         var result = await handler.HandleAsync(new GetPurchaseOrderByIdRequest { Id = order.Id });
@@ -196,7 +200,7 @@ public class PurchaseOrderLifecycleTests
     [Fact]
     public async Task 查询采购单详情_不存在_应报NotFound()
     {
-        var (orders, _, uow, _, _, _, _) = SeedNormal();
+        var (orders, _, uow, _, _, _, _, _) = SeedNormal();
         var handler = new GetPurchaseOrderByIdRequestHandler(orders);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(

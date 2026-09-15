@@ -11,13 +11,17 @@ namespace App.Core.Features.Purchases.UpdatePurchaseOrderSettlement;
 public sealed class UpdatePurchaseOrderSettlementRequestHandler : IRequestHandler<UpdatePurchaseOrderSettlementRequest, PurchaseOrderDetailDto>
 {
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化采购单结算更新用例处理器
     /// </summary>
-    public UpdatePurchaseOrderSettlementRequestHandler(IPurchaseOrderRepository purchaseOrderRepository)
+    public UpdatePurchaseOrderSettlementRequestHandler(
+        IPurchaseOrderRepository purchaseOrderRepository,
+        ICurrentUser currentUser)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -42,7 +46,7 @@ public sealed class UpdatePurchaseOrderSettlementRequestHandler : IRequestHandle
 
         if (detail.SettlementStatus != target)
         {
-            await _purchaseOrderRepository.UpdateSettlementAsync(request.Id, target, cancellationToken);
+            await _purchaseOrderRepository.UpdateSettlementAsync(request.Id, target, _currentUser.UserId(), cancellationToken);
         }
 
         var updated = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);

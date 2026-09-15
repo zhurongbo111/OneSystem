@@ -15,6 +15,7 @@ public sealed class VoidSalesOrderRequestHandler : IRequestHandler<VoidSalesOrde
     private readonly ISalesOrderRepository _salesOrderRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化销售单作废用例处理器
@@ -22,11 +23,13 @@ public sealed class VoidSalesOrderRequestHandler : IRequestHandler<VoidSalesOrde
     public VoidSalesOrderRequestHandler(
         ISalesOrderRepository salesOrderRepository,
         IInventoryRepository inventoryRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUser currentUser)
     {
         _salesOrderRepository = salesOrderRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -58,7 +61,7 @@ public sealed class VoidSalesOrderRequestHandler : IRequestHandler<VoidSalesOrde
                 await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
             }
 
-            await _salesOrderRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, cancellationToken);
+            await _salesOrderRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, _currentUser.UserId(), cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

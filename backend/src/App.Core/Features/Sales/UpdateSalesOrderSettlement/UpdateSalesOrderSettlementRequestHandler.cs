@@ -12,13 +12,17 @@ namespace App.Core.Features.Sales.UpdateSalesOrderSettlement;
 public sealed class UpdateSalesOrderSettlementRequestHandler : IRequestHandler<UpdateSalesOrderSettlementRequest, SalesOrderDetailDto>
 {
     private readonly ISalesOrderRepository _salesOrderRepository;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化销售单结算更新用例处理器
     /// </summary>
-    public UpdateSalesOrderSettlementRequestHandler(ISalesOrderRepository salesOrderRepository)
+    public UpdateSalesOrderSettlementRequestHandler(
+        ISalesOrderRepository salesOrderRepository,
+        ICurrentUser currentUser)
     {
         _salesOrderRepository = salesOrderRepository;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -43,7 +47,7 @@ public sealed class UpdateSalesOrderSettlementRequestHandler : IRequestHandler<U
 
         if (detail.SettlementStatus != target)
         {
-            await _salesOrderRepository.UpdateSettlementAsync(request.Id, target, cancellationToken);
+            await _salesOrderRepository.UpdateSettlementAsync(request.Id, target, _currentUser.UserId(), cancellationToken);
         }
 
         var updated = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
