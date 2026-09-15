@@ -217,20 +217,11 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
 
 <template>
   <div class="list-page">
-    <!-- 页面头：标题 + 新增 -->
+    <!-- 页面头：仅标题（主操作已并入表格上方工具条左组） -->
     <div class="page-header">
       <h1 class="page-title">
         采购入库
       </h1>
-      <a-button
-        type="primary"
-        @click="onCreate"
-      >
-        <template #icon>
-          <IconPlus />
-        </template>
-        开采购单
-      </a-button>
     </div>
 
     <a-card
@@ -297,18 +288,32 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
           </a-col>
         </a-row>
 
-        <!-- 操作行 -->
+        <!-- 操作行：左组主操作（开采购单）靠左，右组数据操作（刷新）靠右，同一行 -->
         <div class="toolbar-actions">
-          <a-button
-            size="small"
-            :loading="loading"
-            @click="onRefresh"
-          >
-            <template #icon>
-              <IconRefresh />
-            </template>
-            刷新
-          </a-button>
+          <div class="toolbar-actions__left">
+            <a-button
+              type="primary"
+              size="small"
+              @click="onCreate"
+            >
+              <template #icon>
+                <IconPlus />
+              </template>
+              开采购单
+            </a-button>
+          </div>
+          <div class="toolbar-actions__right">
+            <a-button
+              size="small"
+              :loading="loading"
+              @click="onRefresh"
+            >
+              <template #icon>
+                <IconRefresh />
+              </template>
+              刷新
+            </a-button>
+          </div>
         </div>
       </div>
 
@@ -450,10 +455,19 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
 
 .toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.toolbar-actions__left,
+.toolbar-actions__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .table-card {

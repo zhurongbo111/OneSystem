@@ -323,55 +323,55 @@ async function onSubmitResetPassword(): Promise<void> {
           </a-col>
         </a-row>
 
-        <!-- 操作行 -->
+        <!-- 操作行：左组主操作（新增）靠左，右组视图操作（列设置/刷新）靠右，同一行 -->
         <div class="toolbar-actions">
-          <a-button
-            type="primary"
-            size="small"
-            @click="onCreate"
-          >
-            <template #icon>
-              <IconPlus />
-            </template>
-            新增
-          </a-button>
-          <a-divider
-            direction="vertical"
-            class="toolbar-actions__divider"
-          />
-          <a-dropdown trigger="click">
-            <a-button size="small">
+          <div class="toolbar-actions__left">
+            <a-button
+              type="primary"
+              size="small"
+              @click="onCreate"
+            >
               <template #icon>
-                <IconSettings />
+                <IconPlus />
               </template>
-              列设置
+              新增
             </a-button>
-            <template #content>
-              <div class="col-settings">
-                <a-checkbox-group v-model="visibleColumns">
-                  <a-space direction="vertical">
-                    <a-checkbox
-                      v-for="opt in columnOptions"
-                      :key="opt.value"
-                      :value="opt.value"
-                    >
-                      {{ opt.label }}
-                    </a-checkbox>
-                  </a-space>
-                </a-checkbox-group>
-              </div>
-            </template>
-          </a-dropdown>
-          <a-button
-            size="small"
-            :loading="loading"
-            @click="onRefresh"
-          >
-            <template #icon>
-              <IconRefresh />
-            </template>
-            刷新
-          </a-button>
+          </div>
+          <div class="toolbar-actions__right">
+            <a-dropdown trigger="click">
+              <a-button size="small">
+                <template #icon>
+                  <IconSettings />
+                </template>
+                列设置
+              </a-button>
+              <template #content>
+                <div class="col-settings">
+                  <a-checkbox-group v-model="visibleColumns">
+                    <a-space direction="vertical">
+                      <a-checkbox
+                        v-for="opt in columnOptions"
+                        :key="opt.value"
+                        :value="opt.value"
+                      >
+                        {{ opt.label }}
+                      </a-checkbox>
+                    </a-space>
+                  </a-checkbox-group>
+                </div>
+              </template>
+            </a-dropdown>
+            <a-button
+              size="small"
+              :loading="loading"
+              @click="onRefresh"
+            >
+              <template #icon>
+                <IconRefresh />
+              </template>
+              刷新
+            </a-button>
+          </div>
         </div>
       </div>
 
@@ -563,13 +563,17 @@ async function onSubmitResetPassword(): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.toolbar-actions__divider {
-  margin: 0;
+.toolbar-actions__left,
+.toolbar-actions__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .table-card {
