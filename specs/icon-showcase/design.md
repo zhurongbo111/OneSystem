@@ -54,7 +54,7 @@
 |---|---|
 | 新增「图标」tab 而非独立页面 | 与现有 5 分类同一页面组织，复用页面结构，范围最小 |
 | 三套图标同一 tab 内分组展示 | 三套图标用途同类（UI 线性图标），集中对比便于选型；以分组标题分隔避免混淆 |
-| Arco 图标段放最前 | 业务默认使用 Arco 图标，示例优先展示默认选项 |
+| Arco 图标段放最前 | 沿用既有页面段落顺序（Arco → Tabler → Lucide）；展示顺序不表达选型优先级，选型以业务语义为准并按前端规则 §4.7 的优先级取用（Tabler 优先） |
 | Lucide 选用 `@lucide/vue` 而非 `lucide-vue-next` | `lucide-vue-next@1.0.0` 已被官方标记废弃并建议改用 `@lucide/vue` |
 | 具名导入具体图标 | 符合项目按需导入约定，便于 tree-shaking，避免全量引入上千图标 |
 | Arco 颜色示例用 CSS `color`（`a-space :style`） | Arco 图标组件无 `color` prop，SVG 为 `currentColor`，CSS 继承是官方着色的标准方式 |
