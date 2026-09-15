@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using App.Api.Authentication;
 using App.Api.Http;
-using App.Core.Features.Auth.Login;
 using App.Api.Middleware;
 using App.Api.Swagger;
 using App.Core;
@@ -10,7 +9,6 @@ using App.Core.Auth;
 using App.Infrastructure;
 using App.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
 using NLog;
 using NLog.Web;
 using OpenTelemetry;
@@ -54,34 +52,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
 builder.Services.AddScoped<IClientInfo, ClientInfoAccessor>();
 
-// ========== Swagger：仅 dev 环境启用（UI /swagger，JSON /swagger/v1/swagger.json；prod 零注册零暴露）==========
-if (builder.Environment.IsDevelopment())
-{
-    var apiXmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
-    var coreXmlFile = $"{typeof(LoginRequest).Assembly.GetName().Name}.xml";
-    builder.Services.AddSwaggerGen(options =>
-    {
-        // 引入 Controller 动作与 Request/Response 模型的 XML 注释
-        options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, apiXmlFile));
-        options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, coreXmlFile));
-
-        options.SwaggerDoc("v1", new OpenApiInfo { Title = "App API", Version = "v1" });
-
-        // JWT Bearer 安全方案：UI 右上角 Authorize 粘贴 token 后可在文档页调用受保护接口
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "粘贴登录接口签发的 JWT（不带 Bearer 前缀亦可）",
-        });
-        // 不使用文档级 AddSecurityRequirement（其作用于全部 operation，无法区分匿名接口）；
-        // security 要求由 Filter 按 [AllowAnonymous] 白名单语义逐 operation 标注，UI 锁图标与真实认证一致
-        options.OperationFilter<SwaggerSecurityOperationFilter>();
-    });
-}
+// ========== Swagger：仅 dev 环境启用（UI /swagger，JSON /swagger/v1/swagger.json；prod 零注册零暴露），配置见 Swagger/SwaggerRegistration.cs ==========
+builder.Services.AddSwaggerIfDevelopment(builder.Environment);
 
 // ========== OpenTelemetry：Tracing + Metrics 自动埋点，OTLP 仅在配置 OTEL_EXPORTER_OTLP_ENDPOINT 时导出 ==========
 var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
