@@ -4,18 +4,23 @@ import { useRoute, useRouter, RouterView } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import {
-  IconMenuFold,
-  IconMenuUnfold,
-  IconUser,
-  IconHome,
   IconApps,
-  IconList,
-  IconEdit,
+  IconBuildingWarehouse,
+  IconComponents,
+  IconFileText,
   IconHistory,
-  IconStorage,
-  IconArchive,
+  IconHome,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
+  IconList,
+  IconPackage,
+  IconPackages,
+  IconReceipt,
   IconTags,
-} from '@arco-design/web-vue/es/icon'
+  IconTruckDelivery,
+  IconUser,
+  IconUsers,
+} from '@tabler/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -97,6 +102,7 @@ function onLogout(): void {
   <a-layout class="app-layout">
     <a-layout-sider
       v-model:collapsed="collapsed"
+      class="app-sider"
       :collapsed-width="64"
       :width="208"
       collapsible
@@ -132,7 +138,7 @@ function onLogout(): void {
           </template>
           <a-menu-item key="components">
             <template #icon>
-              <IconApps />
+              <IconComponents />
             </template>
             <span>组件示例</span>
           </a-menu-item>
@@ -144,7 +150,7 @@ function onLogout(): void {
           </a-menu-item>
           <a-menu-item key="form">
             <template #icon>
-              <IconEdit />
+              <IconFileText />
             </template>
             <span>表单与详情示例</span>
           </a-menu-item>
@@ -163,14 +169,14 @@ function onLogout(): void {
         </a-menu-item>
         <a-sub-menu key="erp">
           <template #icon>
-            <IconStorage />
+            <IconBuildingWarehouse />
           </template>
           <template #title>
             <span>进销存</span>
           </template>
           <a-menu-item key="products">
             <template #icon>
-              <IconStorage />
+              <IconPackage />
             </template>
             <span>商品管理</span>
           </a-menu-item>
@@ -182,25 +188,25 @@ function onLogout(): void {
           </a-menu-item>
           <a-menu-item key="partners">
             <template #icon>
-              <IconUser />
+              <IconUsers />
             </template>
             <span>往来单位</span>
           </a-menu-item>
           <a-menu-item key="inventory">
             <template #icon>
-              <IconArchive />
+              <IconPackages />
             </template>
             <span>库存查询</span>
           </a-menu-item>
           <a-menu-item key="purchases">
             <template #icon>
-              <IconStorage />
+              <IconTruckDelivery />
             </template>
             <span>采购入库</span>
           </a-menu-item>
           <a-menu-item key="sales">
             <template #icon>
-              <IconStorage />
+              <IconReceipt />
             </template>
             <span>销售开单</span>
           </a-menu-item>
@@ -216,8 +222,8 @@ function onLogout(): void {
             :aria-label="collapsed ? '展开侧边栏' : '折叠侧边栏'"
             @click="collapsed = !collapsed"
           >
-            <IconMenuUnfold v-if="collapsed" />
-            <IconMenuFold v-else />
+            <IconLayoutSidebarLeftExpand v-if="collapsed" />
+            <IconLayoutSidebarLeftCollapse v-else />
           </a-button>
           <span class="app-title">{{ collapsed ? '' : '应用管理' }}</span>
         </div>
@@ -315,6 +321,14 @@ function onLogout(): void {
 .user-icon {
   font-size: 20px;
   color: var(--color-text-3);
+}
+
+/* Tabler 图标默认 24px，统一收敛到 18px，与 Arco 菜单 / 文本按钮的视觉字号一致 */
+.app-sider :deep(svg),
+.collapse-trigger :deep(svg),
+.user-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .user-name {
