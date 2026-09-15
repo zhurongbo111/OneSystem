@@ -19,3 +19,11 @@
 - [x] G1 `specs/app-layout/requirement.md` / `design.md` 更新：侧边菜单「组件示例 / 列表示例 / 表单与详情示例」收纳进「示例页面」`a-sub-menu`（默认展开，`open-keys` 与 `@open-change` 联动）
 - [x] G2 `AppLayout.vue` 侧边菜单改为：首页 + 示例页面（子菜单：组件示例 / 列表示例 / 表单与详情示例）；子菜单默认展开
 - [x] G3 `npm run build` + `npm run lint` + `npm run test:e2e` 全通过（50 用例）
+
+## 变更：子菜单默认折叠
+
+- [x] H1 `specs/app-layout/requirement.md` / `design.md` 更新：子菜单默认折叠（`openKeys` 初始为空），仅当前路由所属分组自动展开（`watch(route.name, { immediate: true })` 只增不减）
+- [x] H2 `AppLayout.vue`：`openKeys` 初值改为 `[]`，`watch` 加 `immediate: true`（初始化即按当前路由展开所属分组）
+- [x] H3 新增 e2e 公共 helper `frontend/e2e/helpers/menu.ts`（`clickMenuItem`：子项不可见时先展开所属分组），改造各 spec 中点击子菜单项处
+- [x] H4 `app-layout.spec.ts` 新增用例：首页子菜单默认折叠、点击分组标题展开、直接访问子页面时所属分组自动展开
+- [x] H5 `npm run build` + `npm run lint` + `npm run test:e2e` 全通过（85 用例；`sale` 全链路用例首次因 `selectBySearch` 下拉回填竞态偶发失败，单独重跑全量通过）

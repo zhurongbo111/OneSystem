@@ -77,7 +77,7 @@ frontend/
 ├── src/
 │   ├── main.ts / App.vue / env.d.ts
 │   ├── api/          # request.ts（Axios 统一解包/40100 处置）、auth.ts、user.ts、loginLog.ts、product.ts、partner.ts、inventory.ts、purchase.ts、sale.ts
-│   ├── components/   # AppLayout.vue（侧边栏含「进销存」子菜单：商品管理、分类管理、往来单位、库存查询、采购管理、销售开单）
+│   ├── components/   # AppLayout.vue（侧边栏含「示例页面」「进销存」子菜单：商品管理、分类管理、往来单位、库存查询、采购管理、销售开单；子菜单默认折叠，仅当前路由所属分组自动展开）
 │   ├── composables/  # useOrderStore.ts（演示用）
 │   ├── router/       # index.ts（按功能路由懒加载）
 │   ├── stores/       # auth.ts（Pinia）
@@ -93,7 +93,7 @@ frontend/
 │       ├── SalesManagement/      # SalesView + SaleFormPage + SaleDetailView（进销存/销售开单）
 │       └── 演示页：ComponentShowcaseView、FormShowcaseView、ListShowcaseView、FormPageFormView、FormDetailView
 │            └── FormShowcase/components/OrderFormDrawer.vue
-└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / category-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts
+└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / category-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts；helpers/menu.ts（clickMenuItem：点击侧边菜单项，子菜单折叠时先展开所属分组）
 ```
 
 **基准参照**：
