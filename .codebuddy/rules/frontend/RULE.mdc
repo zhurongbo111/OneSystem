@@ -99,21 +99,23 @@ frontend/
 
 ### 4.7 图标选用（强制）
 
-> 项目并存三套图标库：Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`）、Tabler（`@tabler/icons-vue`）、Lucide（`@lucide/vue`）。三套的用法与示例见组件示例页「图标」tab（`/components`，规格 `specs/icon-showcase/`）。
+> 项目并存三套图标库：Tabler（`@tabler/icons-vue`，业务默认）、Lucide（`@lucide/vue`）、Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`）。三套的用法与示例见组件示例页「图标」tab（`/components`，规格 `specs/icon-showcase/`）。
 
 **选型优先级（从高到低，逐级回退，命中即用，禁止反向选择）**
 
 | 优先级 | 类库 | 使用场景 |
 |---:|---|---|
-| 1 | Arco 自带 `Icon*` | 首选，覆盖绝大多数 UI 场景（操作、动作、系统语义） |
-| 2 | Tabler | Arco 无对应语义图标时 |
-| 3 | Lucide | 前两者均无对应语义图标时兜底 |
+| 1 | Tabler | 首选，图标量大、业务语义覆盖全（单据、往来单位、仓储、结算等） |
+| 2 | Lucide | Tabler 无对应语义图标时 |
+| 3 | Arco 自带 `Icon*` | 前两者均无对应语义图标时兜底（Arco 组件自身内置的图标形态除外） |
 
-- 按**业务语义**查找（如「重置」→ `IconUndo`），不是按组件名猜。
-- **禁止反向选择**：不得因偏好某套风格跳过 Arco 直接用 Tabler / Lucide；不得为凑图标使用语义不符的图标（宁缺毋滥，纯装饰性图标可放宽）。
-- **Arco 组件 `#icon` 插槽**（`a-button` / `a-menu-item` / `a-select` 等，含 §5.2 操作列固定图标）一律使用 Arco 图标。
-- **来源注释**：使用 Tabler / Lucide 图标时，在 import 处加一行注释说明，如 `// 图标来源：Tabler（Arco 无对应语义）`，便于 review。
-- **一致性**：同一业务图标全项目统一用同一来源；既有用法不追溯迁移。
+- 按**业务语义**查找（如「重置」→ `IconRestore`），不是按组件名猜。
+- **禁止反向选择**：不得因偏好某套风格跳过 Tabler 直接用 Lucide / Arco；不得为凑图标使用语义不符的图标（宁缺毋滥，纯装饰性图标可放宽）。
+- **Arco 组件 `#icon` 插槽**（`a-button` / `a-menu-item` / `a-select` 等，含 §5.2 操作列固定图标）**同样优先 Tabler**，三套均可放进插槽；仅当语义只有 Arco 覆盖时才用 Arco。
+- **来源注释**：使用 Lucide / Arco 图标时，在 import 处加一行注释说明，如 `// 图标来源：Lucide（Tabler 无对应语义）`，便于 review。
+- **尺寸**：Tabler / Lucide 默认 `24px`，放入 Arco 组件插槽时用一处 `:deep(svg)` 的 scoped 样式统一收敛到场景尺寸（按钮 / 菜单 `18px`，标签 `14px`），避免逐处写 `:size`；Arco 图标用 `:size`（其默认 `1em`）。
+- **线宽**：Tabler / Lucide 默认 `stroke 2`，Arco 默认 `stroke-width 4`；同一区域（如侧边菜单）内不混用不同来源，避免线宽视觉参差。
+- **一致性**：同一业务图标全项目统一用同一来源；既有用法不追溯迁移，整体重做的区域（如侧边菜单）按本表统一。
 
 ## 5. 列表页约定
 
@@ -122,7 +124,7 @@ frontend/
 **页面布局**
 - 页面头仅放标题；操作按钮不放页面头，统一并入表格卡片上方的工具条（避免操作离列表太远）。
 - 工具条分两行，整体与表格同在一个无描边 `a-card` 内，紧贴表格：
-  - 筛选行：`a-row`（`wrap`）+ `a-col` 栅格排多列，窄屏自动换行为多行；末列放「搜索」（primary，`<IconSearch />`）+「重置」（`<IconRotateLeft />`）按钮，图标走 `#icon` 插槽（重置用 `IconRotateLeft`（回转 / 恢复初始态语义），不复用已归属「刷新」的 `IconRefresh`）；行底用边框线与操作行分隔。
+  - 筛选行：`a-row`（`wrap`）+ `a-col` 栅格排多列，窄屏自动换行为多行；末列放「搜索」（primary，`<IconSearch />`）+「重置」（`<IconRestore />`）按钮，图标走 `#icon` 插槽（重置用 `IconRestore`（恢复初始态语义），不复用已归属「刷新」的 `IconRefresh`）；行底用边框线与操作行分隔。
   - 操作行：紧贴表格，左右分组（`justify-content: space-between`）；**主操作（新增/开单）统一靠左**，其余操作（数据操作 导出、批量删除 / 视图操作 列设置、刷新）靠右且与主操作同一行，组间用竖 `a-divider` 分隔；按钮统一 `size="small"`；无主操作的只读页（库存、登录日志）整行右对齐即可。页面头不放任何创建按钮（采购/销售开单入口同样在操作行左组）。
 - 表格配置：`row-key` 必设；分页 `showTotal` + `showPageSize`（`pageSizeOptions: [10, 20, 50]`）；枚举字段（角色/状态等）用 `a-tag` 着色展示；操作列放表格末列，`a-button type="text"`，呈现细则见 §5.2 操作列约定。
 - 列宽策略：每列都设 `width`，不设无宽度弹性列（唯一无宽度列会吸收全部剩余空间，宽屏下被撑到 400px+）；长文本列固定 `width` + `ellipsis: true, tooltip: true`；表格设 `:scroll="{ x: tableScrollX }"`（`tableScrollX` = 各列 `width` 之和）——总和小于容器时剩余空间按列宽比例分摊，窄屏横向滚动。操作列宽度按 §5.2 列宽参考取值。
@@ -136,7 +138,7 @@ frontend/
 | 操作数 | 呈现 |
 |---|---|
 | ≤ 3 | 全部平铺（`a-space :size="4"`） |
-| > 3 | 保留前 3 个平铺，其余收纳进行内「更多」下拉（`a-dropdown trigger="click"` + `a-doption`，触发按钮 `type="text" size="small"` + `IconMore`） |
+| > 3 | 保留前 3 个平铺，其余收纳进行内「更多」下拉（`a-dropdown trigger="click"` + `a-doption`，触发按钮 `type="text" size="small"` + `IconDotsVertical`） |
 
 - 平铺选取：常用 / 主操作 + 危险操作优先平铺，低频操作进「更多」；「更多」触发按钮恒在末尾。
 - 列宽参考：平铺 ≤ 3 个短操作 `150~220`；含「更多」时 `200~260`。
@@ -153,23 +155,23 @@ frontend/
 | 中性 | 默认 | 详情、查看、重置密码、启用 / 重新启用 |
 | 次要 | `.action-btn-secondary`（`var(--color-text-2)`） | 改回未收 / 未付（反向撤销，视觉降级） |
 
-- 启用是恢复操作，不用 success 色；「改回未收 / 未付」降为**次要色**（次级文字灰），既不与「详情」同色，也不突出。结算切换两方向靠颜色（success / 次要）+ 图标（`IconCheckCircle` / `IconUndo`）+ 文案区分。
+- 启用是恢复操作，不用 success 色；「改回未收 / 未付」降为**次要色**（次级文字灰），既不与「详情」同色，也不突出。结算切换两方向靠颜色（success / 次要）+ 图标（`IconCircleCheck` / `IconArrowBackUp`）+ 文案区分。
 - 次要色用 scoped 样式覆盖 `.arco-btn-text` 颜色实现，**不用** `type="secondary"`（灰底实色按钮，在操作列里带背景块、视觉重量过大）。
 - 危险 / 警示操作必须 `a-popconfirm` 二次确认。
 - 「更多」菜单项不染色（Arco 菜单项无 `status` 语义位），危险语义由图标 + 二次确认承担；收纳进「更多」的危险 / 警示操作 `@click` 打开确认，禁止无确认直接执行。
 
-**图标：一操作一图标（Arco 图标，`#icon` 插槽，按需具名导入）**
+**图标：一操作一图标（Tabler 图标，`#icon` 插槽，按需具名导入）**
 
 | 操作 | 图标 | 操作 | 图标 |
 |---|---|---|---|
 | 编辑 | `IconEdit` | 重置密码 | `IconLock` |
 | 详情 / 查看 | `IconEye` | 导出 | `IconDownload` |
-| 删除 | `IconDelete` | 更多（收纳触发） | `IconMore` |
-| 启用（恢复） | `IconPlayCircle` | 禁用 / 停用 | `IconPoweroff` |
-| 作废（单据作废回冲） | `IconStop` | 结算切换：标记已收 / 已付 | `IconCheckCircle` |
-| | | 结算切换：改回未收 / 未付 | `IconUndo` |
+| 删除 | `IconTrash` | 更多（收纳触发） | `IconDotsVertical` |
+| 启用（恢复） | `IconPlayerPlay` | 禁用 / 停用 | `IconPower` |
+| 作废（单据作废回冲） | `IconBan` | 结算切换：标记已收 / 已付 | `IconCircleCheck` |
+| | | 结算切换：改回未收 / 未付 | `IconArrowBackUp` |
 
-- 表外操作选 Arco 语义最近图标，且同一图标全项目只对应一个操作。
+- 表外操作选 Tabler 语义最近图标，且同一图标全项目只对应一个操作。
 
 **密度**：Arco 文本按钮默认 `padding: 0 15px`，操作列内过宽。操作列按钮（含纯图标「更多」触发按钮）统一 `padding: 0 8px`，列表页 scoped 样式实现（`a-space` 加 `class="row-actions"`）：
 

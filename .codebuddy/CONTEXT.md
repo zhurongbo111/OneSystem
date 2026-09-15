@@ -96,6 +96,8 @@ frontend/
 └── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / category-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts；helpers/menu.ts（clickMenuItem：点击侧边菜单项，子菜单折叠时先展开所属分组）
 ```
 
+**图标选型**：业务图标默认 Tabler（`@tabler/icons-vue`）→ 回退 Lucide（`@lucide/vue`）→ 兜底 Arco 自带 `Icon*`；细则见前端规则 §4.7。侧边菜单（`AppLayout`）已整体统一为 Tabler 图标（原多处 Arco `IconStorage` / `IconApps` / `IconUser` 重复），Tabler 默认 24px 在 Arco 插槽内由 scoped `:deep(svg)` 统一收敛到 18px。
+
 **基准参照**：
 - 列表页标准实现：`src/views/ListShowcaseView.vue`（规格 `specs/list-showcase/`），新增列表页复制其结构再替换业务字段。
 - 表单/详情页形态：`specs/form-detail-showcase/`；操作列：`specs/action-column/`；按钮 loading：`specs/button-loading/`；组合式分区：`specs/composable-style/`。
