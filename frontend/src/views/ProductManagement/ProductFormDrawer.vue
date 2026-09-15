@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 
-import { createProduct, getCategories, getProduct, updateProduct } from '@/api/product'
+import { createCategory, createProduct, getCategories, getProduct, updateProduct } from '@/api/product'
 import type { Category } from '@/api/product'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance } from '@arco-design/web-vue'
-import { IconPlus } from '@arco-design/web-vue/es/icon'
-
-import CategoryManagerModal from './CategoryManagerModal.vue'
+import { IconCheck, IconPlus } from '@arco-design/web-vue/es/icon'
 
 // —— types ——
 interface ProductFormState {
@@ -69,8 +67,10 @@ const form = reactive<ProductFormState>(emptyForm())
 const categories = ref<Category[]>([])
 const categoriesLoading = ref(false)
 
-/** 分类管理弹窗（就地新建分类） */
-const categoryModalVisible = ref(false)
+/** 就地新建分类：行内输入条展开态 + 输入值 + 提交中（specs/erp-category） */
+const newCategoryVisible = ref(false)
+const newCategoryName = ref('')
+const categorySubmitting = ref(false)
 
 /** 查看态审计信息（不参与表单提交） */
 const detailCreatedAt = ref<string | null>(null)
@@ -158,12 +158,27 @@ async function loadProduct(id: string): Promise<void> {
   }
 }
 
-/** 新建分类成功后回填选中 */
-function onCategoryCreated(category: Category): void {
-  if (!categories.value.some((c) => c.id === category.id)) {
-    categories.value.push(category)
+/** 就地新建分类（行内输入，回车 / 保存按钮）：成功后刷新下拉并选中新分类 */
+async function onCreateCategory(): Promise<void> {
+  const name = newCategoryName.value.trim()
+  if (!name) {
+    Message.warning('请输入分类名称')
+    return
   }
-  form.categoryId = category.id
+  if (categorySubmitting.value) return
+  categorySubmitting.value = true
+  try {
+    const created = await createCategory(name)
+    Message.success('分类已创建')
+    newCategoryVisible.value = false
+    newCategoryName.value = ''
+    await loadCategories()
+    form.categoryId = created.id
+  } catch {
+    // 错误提示已由请求层统一处理（重名 40105）
+  } finally {
+    categorySubmitting.value = false
+  }
 }
 
 /** 关闭抽屉 */
@@ -274,13 +289,35 @@ async function onSubmit(): Promise<void> {
             />
             <a-button
               v-if="!isView"
-              @click="categoryModalVisible = true"
+              @click="newCategoryVisible = !newCategoryVisible"
             >
               <template #icon>
                 <IconPlus />
               </template>
               新建分类
             </a-button>
+            <div
+              v-if="!isView && newCategoryVisible"
+              class="category-new"
+            >
+              <a-input
+                v-model="newCategoryName"
+                class="category-new__input"
+                placeholder="输入新分类名称（1-20 字符）"
+                allow-clear
+                @press-enter="onCreateCategory"
+              />
+              <a-button
+                type="primary"
+                :loading="categorySubmitting"
+                @click="onCreateCategory"
+              >
+                <template #icon>
+                  <IconCheck />
+                </template>
+                保存
+              </a-button>
+            </div>
           </div>
         </a-form-item>
 
@@ -395,12 +432,6 @@ async function onSubmit(): Promise<void> {
         </div>
       </a-form>
     </a-spin>
-
-    <CategoryManagerModal
-      v-model:visible="categoryModalVisible"
-      @created="onCategoryCreated"
-      @saved="loadCategories"
-    />
   </a-drawer>
 </template>
 
@@ -412,8 +443,19 @@ async function onSubmit(): Promise<void> {
 
 .category-picker {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   width: 100%;
+}
+
+.category-new {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.category-new__input {
+  flex: 1;
 }
 
 .category-picker__select {

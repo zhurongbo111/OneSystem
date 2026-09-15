@@ -42,11 +42,6 @@ function totalText(page: Page): ReturnType<typeof page.locator> {
   return page.locator('text=/共 \\d+ 条/')
 }
 
-/** 分类管理弹窗（portal 到 body，独立于抽屉） */
-function categoryModal(page: Page): ReturnType<typeof page.locator> {
-  return page.locator('.arco-modal')
-}
-
 /** 抽屉标题（exact 精确匹配，避免命中列表里含同词的商品名） */
 function drawerTitle(page: Page, title: string): ReturnType<typeof page.locator> {
   return page.getByText(title, { exact: true })
@@ -58,15 +53,14 @@ async function searchByKeyword(page: Page, keyword: string): Promise<void> {
   await page.getByRole('button', { name: '搜索' }).click()
 }
 
-/** 在抽屉内打开分类管理弹窗，新建分类并回填，关闭弹窗 */
+/** 在抽屉内就地新建分类（行内输入条），成功后输入条收起且新分类被选中 */
 async function createCategoryInDrawer(page: Page, categoryName: string): Promise<void> {
   await page.getByRole('button', { name: '新建分类' }).click()
   const input = page.getByPlaceholder(CATEGORY_PLACEHOLDER)
   await expect(input).toBeVisible()
   await input.fill(categoryName)
-  await categoryModal(page).getByRole('button', { name: '新增' }).click()
+  await page.locator('.arco-drawer').getByRole('button', { name: '保存' }).click()
   await expect(page.getByText('分类已创建')).toBeVisible()
-  await categoryModal(page).getByRole('button', { name: 'Close' }).click()
   await expect(input).toHaveCount(0)
 }
 
@@ -218,42 +212,13 @@ test.describe('商品管理（集成）', () => {
     }
   })
 
-  test('分类管理弹窗：新增 / 编辑 / 删除', async ({ page }) => {
-    const catName = uniqueCategoryName()
-    const rename = `ren${Date.now().toString(36)}`
+  test('工具条「分类管理」跳转分类管理独立页', async ({ page }) => {
     await goProducts(page)
 
-    // 打开分类管理弹窗（列表页工具条）
+    // 工具条按钮跳转独立页（specs/erp-category），增删改用例见 category-management.spec.ts
     await page.getByRole('button', { name: '分类管理' }).click()
-    const modal = categoryModal(page)
-    const input = page.getByPlaceholder(CATEGORY_PLACEHOLDER)
-    await expect(input).toBeVisible()
-
-    // 新增
-    await input.fill(catName)
-    await modal.getByRole('button', { name: '新增' }).click()
-    await expect(page.getByText('分类已创建')).toBeVisible()
-    await expect(modal.locator('tbody tr', { hasText: catName }).first()).toBeVisible()
-
-    // 行内编辑改名：点击「编辑」后 name 单元格由 span 变为 input，
-    // hasText 不再匹配（input value 不计文本），改用行内编辑容器 class 定位输入框
-    await modal.locator('tbody tr', { hasText: catName }).first().getByRole('button', { name: '编辑' }).click()
-    const editInput = modal.locator('.category-manager__edit input')
-    await expect(editInput).toBeVisible()
-    await editInput.fill(rename)
-    await modal.getByRole('button', { name: '保存' }).click()
-    await expect(page.getByText('分类已更新')).toBeVisible()
-    await expect(modal.locator('tbody tr', { hasText: rename }).first()).toBeVisible()
-
-    // 删除
-    await modal.locator('tbody tr', { hasText: rename }).first().getByRole('button', { name: '删除' }).click()
-    await page.getByRole('button', { name: /确\s*定/ }).click()
-    await expect(page.getByText('分类已删除')).toBeVisible()
-    await expect(modal.getByText(rename)).toHaveCount(0)
-
-    // 关闭弹窗
-    await modal.getByRole('button', { name: 'Close' }).click()
-    await expect(input).toHaveCount(0)
+    await expect(page).toHaveURL(/\/categories$/)
+    await expect(page.getByRole('heading', { name: '分类管理' })).toBeVisible()
   })
 
   test('查询按钮点击后进入 loading，完成后恢复可点', async ({ page }) => {

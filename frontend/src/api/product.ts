@@ -110,9 +110,21 @@ export function getProductPickList(): Promise<ProductPickItem[]> {
   return get<ProductPickItem[]>('/products/pick')
 }
 
-/** 查询全部分类（创建时间正序） */
+/** 分类分页查询参数（对应后端 GetCategoriesPagedRequest） */
+export interface CategoryListQuery {
+  keyword?: string
+  page: number
+  pageSize: number
+}
+
+/** 查询全部分类（创建时间正序，下拉 / 筛选用） */
 export function getCategories(): Promise<Category[]> {
   return get<Category[]>('/categories')
+}
+
+/** 分页查询分类（名称模糊搜索 + 分页，创建时间正序，分类管理页用） */
+export function getCategoriesPaged(query: CategoryListQuery): Promise<PagedResult<Category>> {
+  return get<PagedResult<Category>>('/categories/paged', { params: query })
 }
 
 /** 新增分类（名称唯一，大小写不敏感） */
