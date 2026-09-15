@@ -372,86 +372,83 @@ function onExport(): void {
           </a-col>
         </a-row>
 
-        <!-- 操作行：右对齐，紧贴表格；按 主操作 / 数据操作 / 视图操作 分组，组间竖分隔线 -->
+        <!-- 操作行：紧贴表格；左组主操作（新增）靠左，右组数据/视图操作靠右，同一行 -->
         <div class="toolbar-actions">
-          <!-- 主操作 -->
-          <a-button
-            type="primary"
-            size="small"
-            @click="onCreate"
-          >
-            <template #icon>
-              <IconPlus />
-            </template>
-            新增
-          </a-button>
-          <a-divider
-            direction="vertical"
-            class="toolbar-actions__divider"
-          />
-          <!-- 数据操作 -->
-          <a-button
-            size="small"
-            @click="onExport"
-          >
-            <template #icon>
-              <IconDownload />
-            </template>
-            导出
-          </a-button>
-          <a-popconfirm
-            type="warning"
-            content="确认删除选中项？"
-            @ok="onBatchDelete"
-          >
+          <div class="toolbar-actions__left">
             <a-button
-              status="danger"
+              type="primary"
               size="small"
-              :disabled="selectedKeys.length === 0"
+              @click="onCreate"
             >
               <template #icon>
-                <IconDelete />
+                <IconPlus />
               </template>
-              批量删除
+              新增
             </a-button>
-          </a-popconfirm>
-          <a-divider
-            direction="vertical"
-            class="toolbar-actions__divider"
-          />
-          <!-- 视图操作 -->
-          <a-dropdown trigger="click">
-            <a-button size="small">
+          </div>
+          <div class="toolbar-actions__right">
+            <a-button
+              size="small"
+              @click="onExport"
+            >
               <template #icon>
-                <IconSettings />
+                <IconDownload />
               </template>
-              列设置
+              导出
             </a-button>
-            <template #content>
-              <div class="col-settings">
-                <a-checkbox-group v-model="visibleColumns">
-                  <a-space direction="vertical">
-                    <a-checkbox
-                      v-for="opt in columnOptions"
-                      :key="opt.value"
-                      :value="opt.value"
-                    >
-                      {{ opt.label }}
-                    </a-checkbox>
-                  </a-space>
-                </a-checkbox-group>
-              </div>
-            </template>
-          </a-dropdown>
-          <a-button
-            size="small"
-            @click="onRefresh"
-          >
-            <template #icon>
-              <IconRefresh />
-            </template>
-            刷新
-          </a-button>
+            <a-popconfirm
+              type="warning"
+              content="确认删除选中项？"
+              @ok="onBatchDelete"
+            >
+              <a-button
+                status="danger"
+                size="small"
+                :disabled="selectedKeys.length === 0"
+              >
+                <template #icon>
+                  <IconDelete />
+                </template>
+                批量删除
+              </a-button>
+            </a-popconfirm>
+            <a-divider
+              direction="vertical"
+              class="toolbar-actions__divider"
+            />
+            <a-dropdown trigger="click">
+              <a-button size="small">
+                <template #icon>
+                  <IconSettings />
+                </template>
+                列设置
+              </a-button>
+              <template #content>
+                <div class="col-settings">
+                  <a-checkbox-group v-model="visibleColumns">
+                    <a-space direction="vertical">
+                      <a-checkbox
+                        v-for="opt in columnOptions"
+                        :key="opt.value"
+                        :value="opt.value"
+                      >
+                        {{ opt.label }}
+                      </a-checkbox>
+                    </a-space>
+                  </a-checkbox-group>
+                </div>
+              </template>
+            </a-dropdown>
+            <a-button
+              size="small"
+              @click="onRefresh"
+            >
+              <template #icon>
+                <IconRefresh />
+              </template>
+              刷新
+            </a-button>
+          </div>
         </div>
       </div>
 
@@ -607,9 +604,17 @@ function onExport(): void {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.toolbar-actions__left,
+.toolbar-actions__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .toolbar-actions__divider {

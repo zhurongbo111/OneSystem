@@ -172,27 +172,29 @@ function onDelete(row: OrderRow): void {
           </a-col>
         </a-row>
 
+        <!-- 操作行：主操作（两种新增形态）靠左，本页无视图操作 -->
         <div class="toolbar-actions">
-          <a-button
-            type="primary"
-            size="small"
-            @click="onCreateDrawer"
-          >
-            <template #icon>
-              <IconPlus />
-            </template>
-            新增·抽屉
-          </a-button>
-          <a-divider direction="vertical" />
-          <a-button
-            size="small"
-            @click="onPageCreate"
-          >
-            <template #icon>
-              <IconPlus />
-            </template>
-            新增·页面
-          </a-button>
+          <div class="toolbar-actions__left">
+            <a-button
+              type="primary"
+              size="small"
+              @click="onCreateDrawer"
+            >
+              <template #icon>
+                <IconPlus />
+              </template>
+              新增·抽屉
+            </a-button>
+            <a-button
+              size="small"
+              @click="onPageCreate"
+            >
+              <template #icon>
+                <IconPlus />
+              </template>
+              新增·页面
+            </a-button>
+          </div>
         </div>
       </div>
 
@@ -321,9 +323,17 @@ function onDelete(row: OrderRow): void {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.toolbar-actions__left,
+.toolbar-actions__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .table-card {
