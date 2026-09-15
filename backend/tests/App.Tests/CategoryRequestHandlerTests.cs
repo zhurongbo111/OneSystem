@@ -3,6 +3,7 @@ using App.Core.Errors;
 using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Categories.DeleteCategory;
 using App.Core.Features.Categories.GetCategories;
+using App.Core.Features.Categories.GetCategoriesPaged;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
@@ -163,5 +164,61 @@ public class CategoryRequestHandlerTests
         Assert.Equal(2, result.Count);
         Assert.Equal("先建", result[0].Name);
         Assert.Equal("后建", result[1].Name);
+    }
+
+    [Fact]
+    public async Task 分页查询_无关键词_应全量正序()
+    {
+        var context = CreateContext();
+        var handler = new GetCategoriesPagedRequestHandler(new CategoryRepository(context));
+        var second = await SeedCategoryAsync(context, "后建");
+        var first = await SeedCategoryAsync(context, "先建");
+        second.CreatedAt = DateTimeOffset.UtcNow.AddSeconds(1);
+        await context.SaveChangesAsync();
+
+        var result = await handler.HandleAsync(new GetCategoriesPagedRequest { Page = 1, PageSize = 20 });
+
+        Assert.Equal(2, result.Total);
+        Assert.Equal("先建", result.Items[0].Name);
+        Assert.Equal("后建", result.Items[1].Name);
+    }
+
+    [Fact]
+    public async Task 分页查询_关键词模糊匹配_应命中()
+    {
+        var context = CreateContext();
+        var handler = new GetCategoriesPagedRequestHandler(new CategoryRepository(context));
+        await SeedCategoryAsync(context, "原材料A");
+        await SeedCategoryAsync(context, "原材料B");
+        await SeedCategoryAsync(context, "包装材料");
+
+        var result = await handler.HandleAsync(new GetCategoriesPagedRequest { Page = 1, PageSize = 20, Keyword = "原材料" });
+
+        Assert.Equal(2, result.Total);
+        Assert.All(result.Items, item => Assert.Equal(true, item.Name.Contains("原材料")));
+    }
+
+    [Fact]
+    public async Task 分页查询_分页切片_应正确()
+    {
+        var context = CreateContext();
+        var handler = new GetCategoriesPagedRequestHandler(new CategoryRepository(context));
+        var second = await SeedCategoryAsync(context, "二号");
+        var third = await SeedCategoryAsync(context, "三号");
+        var first = await SeedCategoryAsync(context, "一号");
+        second.CreatedAt = DateTimeOffset.UtcNow;
+        third.CreatedAt = DateTimeOffset.UtcNow.AddSeconds(1);
+        first.CreatedAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await context.SaveChangesAsync();
+
+        var page1 = await handler.HandleAsync(new GetCategoriesPagedRequest { Page = 1, PageSize = 2 });
+        var page2 = await handler.HandleAsync(new GetCategoriesPagedRequest { Page = 2, PageSize = 2 });
+
+        Assert.Equal(3, page1.Total);
+        Assert.Equal(2, page1.Items.Count);
+        Assert.Equal("一号", page1.Items[0].Name);
+        Assert.Equal("二号", page1.Items[1].Name);
+        Assert.Single(page2.Items);
+        Assert.Equal("三号", page2.Items[0].Name);
     }
 }
