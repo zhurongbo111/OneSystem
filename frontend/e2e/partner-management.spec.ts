@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { clickMenuItem } from './helpers/menu'
+
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
@@ -21,7 +23,7 @@ async function login(page: Page, username = CREDENTIALS.username, password = CRE
 /** 登录并经侧边菜单（进销存分组）进入往来单位页 */
 async function goPartners(page: Page): Promise<void> {
   await login(page)
-  await page.locator('.arco-menu-item', { hasText: '往来单位' }).click()
+  await clickMenuItem(page, '往来单位')
   await expect(page).toHaveURL(/\/partners$/)
 }
 

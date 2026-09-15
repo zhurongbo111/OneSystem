@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 
+import { clickMenuItem, menuGroup, menuItem } from './helpers/menu'
+
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
@@ -32,13 +34,31 @@ test.describe('全局页面布局（集成）', () => {
     await expect(homeItem).toHaveClass(/arco-menu-selected/)
   })
 
-  test('点击侧边菜单「组件示例」跳转且菜单选中', async ({ page }) => {
+  test('首页时子菜单默认折叠，展开分组后点击「组件示例」跳转且菜单选中', async ({ page }) => {
     await login(page)
-    await page.locator('.arco-menu-item', { hasText: '组件示例' }).click()
+    // 默认折叠：两个分组的子项均不可见
+    await expect(menuItem(page, '组件示例')).toBeHidden()
+    await expect(menuItem(page, '商品管理')).toBeHidden()
+
+    // 点击分组标题展开「示例页面」
+    await menuGroup(page, '示例页面').click()
+    await expect(menuItem(page, '组件示例')).toBeVisible()
+
+    await clickMenuItem(page, '组件示例')
     await expect(page).toHaveURL(/\/components/)
     await expect(page.getByRole('heading', { name: 'Arco Design 组件示例' })).toBeVisible()
     // 「组件示例」菜单项选中
-    await expect(page.locator('.arco-menu-item', { hasText: '组件示例' })).toHaveClass(/arco-menu-selected/)
+    await expect(menuItem(page, '组件示例')).toHaveClass(/arco-menu-selected/)
+  })
+
+  test('直接访问子页面时所属分组自动展开，其余分组仍折叠', async ({ page }) => {
+    await login(page)
+    await page.goto('/products')
+    await expect(page).toHaveURL(/\/products$/)
+    // 「进销存」自动展开，子项可见
+    await expect(menuItem(page, '商品管理')).toBeVisible()
+    // 「示例页面」不属当前路由，保持折叠
+    await expect(menuItem(page, '组件示例')).toBeHidden()
   })
 
   test('折叠按钮可收起 / 展开侧边栏', async ({ page }) => {

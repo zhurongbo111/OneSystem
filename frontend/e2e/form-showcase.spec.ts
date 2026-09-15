@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 
+import { clickMenuItem } from './helpers/menu'
+
 /** dev 测试账号（来自项目 seed 数据） */
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
 
@@ -17,7 +19,7 @@ async function login(page: Page): Promise<void> {
 /** 进入统一列表页（/form） */
 async function goList(page: Page): Promise<void> {
   await login(page)
-  await page.locator('.arco-menu-item', { hasText: '表单与详情示例' }).click()
+  await clickMenuItem(page, '表单与详情示例')
   await expect(page).toHaveURL(/\/form$/)
 }
 

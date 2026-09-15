@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { clickMenuItem } from './helpers/menu'
+
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
@@ -30,7 +32,7 @@ async function login(page: Page, username = CREDENTIALS.username, password = CRE
 /** 登录并经侧边菜单（进销存分组）进入分类管理页 */
 async function goCategories(page: Page): Promise<void> {
   await login(page)
-  await page.locator('.arco-menu-item', { hasText: '分类管理' }).click()
+  await clickMenuItem(page, '分类管理')
   await expect(page).toHaveURL(/\/categories$/)
 }
 
@@ -173,12 +175,12 @@ test.describe('分类管理（集成）', () => {
 
     // 被商品引用的分类：由 createProduct 在商品抽屉就地新建 referencedCat，再建一个挂到该分类的商品
     // 注意：不可预先 createCategory(referencedCat)，否则就地新建同名会 40105 重名失败
-    await page.locator('.arco-menu-item', { hasText: '商品管理' }).click()
+    await clickMenuItem(page, '商品管理')
     await expect(page).toHaveURL(/\/products$/)
     await createProduct(page, uniqueCode(), `E2E 引用商品${Date.now()}`, referencedCat)
 
     // 回到分类管理页删除该分类，后端 40106 拦截并统一错误提示
-    await page.locator('.arco-menu-item', { hasText: '分类管理' }).click()
+    await clickMenuItem(page, '分类管理')
     await expect(page).toHaveURL(/\/categories$/)
     await searchByKeyword(page, referencedCat)
     await dataRows(page).first().getByRole('button', { name: '删除' }).click()
