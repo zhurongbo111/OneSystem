@@ -14,7 +14,7 @@
 ```
 .page-header      标题（用户列表），仅标题
 .table-card (a-card, bordered=false)
-  .toolbar        工具条：筛选行（多列栅格）+ 操作行（右对齐），紧贴表格上方
+  .toolbar        工具条：筛选行（多列栅格）+ 操作行（主操作靠左 / 其余靠右），紧贴表格上方
   表格区          a-table（多选 + 排序 + 分页 + 列设置 + 空状态）
 ```
 
@@ -30,10 +30,9 @@
 - `a-col :span=4`：`a-select` 角色筛选（选项：管理员/编辑/访客，`allow-clear`，宽度 100%）。
 - `a-col :span=8`：`a-button type=primary` 搜索 + `a-button` 重置（间距 8，左对齐）。
 
-**操作行**（`.toolbar-actions`，`flex` 右对齐、`gap: 8`、可换行，按钮统一 `size=small`，按职责分三组，组间以 `a-divider direction=vertical` 分隔）：
-- 主操作组：新增（`a-button type=primary size=small`，`<IconPlus />`，点击 `Message.info('演示页面，暂未实现')`）。
-- 数据操作组：导出（`a-button size=small`，`<IconDownload />`，导出当前筛选结果为 CSV）、批量删除（`a-button status=danger size=small`，`<IconDelete />`，`:disabled="selectedKeys.length === 0"`，`a-popconfirm` 二次确认后移除）。
-- 视图操作组：列设置（`a-dropdown`，`<IconSettings /> size=small`，内容为 `a-checkbox-group` 勾选要显示的列）、刷新（`a-button size=small`，`<IconRefresh />`，恢复初始数据）。
+**操作行**（`.toolbar-actions`，`flex` 左右分组（`justify-content: space-between`）、`gap: 8`、可换行，按钮统一 `size=small`；无主操作的只读页整行右对齐即可）：
+- 左组 `.toolbar-actions__left`（`flex`，`gap: 8`）：主操作 新增（`a-button type=primary size=small`，`<IconPlus />`，点击 `Message.info('演示页面，暂未实现')`）。**主操作（新增/开单）统一靠左**，与右组其它按钮同一行；页面头不放任何创建按钮。
+- 右组 `.toolbar-actions__right`（`flex`，`gap: 8`，组间以 `a-divider direction=vertical` 分隔）：数据操作 导出（`a-button size=small`，`<IconDownload />`，导出当前筛选结果为 CSV）、批量删除（`a-button status=danger size=small`，`<IconDelete />`，`:disabled="selectedKeys.length === 0"`，`a-popconfirm` 二次确认后移除）；视图操作 列设置（`a-dropdown`，`<IconSettings /> size=small`，内容为 `a-checkbox-group` 勾选要显示的列）、刷新（`a-button size=small`，`<IconRefresh />`，恢复初始数据）。
 
 **分隔与贴紧**：分隔线下移到筛选行（`.toolbar-filter`）底部（`border-bottom: 1px solid var(--color-border)` + `padding-bottom` 约 12），用于区分"筛选"与"操作/表格"两个区域；操作行（`.toolbar-actions`）与表格之间不加线，仅 8px 间距，使操作按钮（尤其列设置/刷新）与表格尽量贴近。
 
@@ -89,7 +88,7 @@
 
 ### 2.7 样式
 - `scoped`；仅做布局（`page-header`/`toolbar` 的 flex 与栅格间距、卡片留白）。
-- 筛选行用 `a-row`/`a-col`（栅格自动换行）；操作行 `flex + wrap` 右对齐。
+- 筛选行用 `a-row`/`a-col`（栅格自动换行）；操作行 `flex + wrap` 左右分组（主操作靠左，其余靠右），仅视图操作（无主操作）的只读页整行右对齐。
 - 颜色、圆角、边框、间距一律使用 Arco CSS 变量（`--color-*`、`--border-radius-*`、`padding` 等），不自造色板。
 - 外层用 `a-card` 包裹表格区域，与 `app-content` 背景协调。
 
