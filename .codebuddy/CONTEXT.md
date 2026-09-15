@@ -51,7 +51,7 @@ backend/
 | LoginLogs | GetLoginLogs |
 | Users | CreateUser、GetUsers、GetUserById、GetCurrentUser（空 Request 无 Validator）、UpdateUser、UpdateUserStatus、ResetPassword |
 | Products | GetProducts、GetProductById、CreateProduct、UpdateProduct、UpdateProductStatus、GetProductPickList |
-| Categories | GetCategories、CreateCategory、UpdateCategory、DeleteCategory |
+| Categories | GetCategories、GetCategoriesPaged、CreateCategory、UpdateCategory、DeleteCategory |
 | Partners | GetPartners、CreatePartner、GetPartnerById、UpdatePartner、UpdatePartnerStatus |
 | Inventory | GetInventory |
 | Purchases | CreatePurchaseOrder、GetPurchaseOrders、GetPurchaseOrderById、VoidPurchaseOrder、UpdatePurchaseOrderSettlement |
@@ -77,7 +77,7 @@ frontend/
 ├── src/
 │   ├── main.ts / App.vue / env.d.ts
 │   ├── api/          # request.ts（Axios 统一解包/40100 处置）、auth.ts、user.ts、loginLog.ts、product.ts、partner.ts、inventory.ts、purchase.ts、sale.ts
-│   ├── components/   # AppLayout.vue（侧边栏含「进销存」子菜单：商品管理、往来单位、库存查询、采购管理、销售开单）
+│   ├── components/   # AppLayout.vue（侧边栏含「进销存」子菜单：商品管理、分类管理、往来单位、库存查询、采购管理、销售开单）
 │   ├── composables/  # useOrderStore.ts（演示用）
 │   ├── router/       # index.ts（按功能路由懒加载）
 │   ├── stores/       # auth.ts（Pinia）
@@ -86,14 +86,14 @@ frontend/
 │       ├── LoginView.vue / HomeView.vue
 │       ├── UserManagement/       # UsersView + UserDetailView + UserFormDrawer
 │       ├── LoginLogManagement/   # LoginLogsView
-│       ├── ProductManagement/    # ProductsView + ProductFormDrawer + CategoryManagerModal（进销存/商品管理）
+│       ├── ProductManagement/    # ProductsView + ProductFormDrawer（进销存/商品管理）+ CategoriesView + CategoryFormDrawer（进销存/分类管理，搜索分页 + 编辑抽屉）
 │       ├── PartnerManagement/    # PartnersView + PartnerFormDrawer（进销存/往来单位）
 │       ├── InventoryManagement/  # InventoryView（进销存/库存查询，只读）
 │       ├── PurchaseManagement/   # PurchasesView + PurchaseFormPage + PurchaseDetailView（进销存/采购管理）
 │       ├── SalesManagement/      # SalesView + SaleFormPage + SaleDetailView（进销存/销售开单）
 │       └── 演示页：ComponentShowcaseView、FormShowcaseView、ListShowcaseView、FormPageFormView、FormDetailView
 │            └── FormShowcase/components/OrderFormDrawer.vue
-└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts
+└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / category-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts
 ```
 
 **基准参照**：
@@ -125,4 +125,4 @@ frontend/
 - 工程/脚手架：`project-scaffold`、`api-swagger`
 - 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`、`frontend-e2e`
 - 业务：`user-management`
-- ERP：`erp-product`（已完成）、`erp-partner`（已完成）、`erp-inventory-query`（已完成）、`erp-purchase`（已完成）、`erp-sale`（已完成）
+- ERP：`erp-product`（已完成）、`erp-partner`（已完成）、`erp-inventory-query`（已完成）、`erp-purchase`（已完成）、`erp-sale`（已完成）、`erp-category`（已完成，分类管理独立页：搜索分页 + 编辑抽屉 + 后端分页查询接口）
