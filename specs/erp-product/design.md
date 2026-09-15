@@ -207,7 +207,7 @@ src/
 │   └── product.ts            # 商品 + 分类接口层（类型 + 请求函数）
 └── views/
     └── ProductManagement/
-        ├── ProductsView.vue      # 商品列表页（含库存列 + 分类管理入口）
+        ├── ProductsView.vue      # 商品列表页（含库存列）
         └── ProductFormDrawer.vue # 新增/编辑抽屉
 ```
 
@@ -236,7 +236,7 @@ src/
 
 **商品列表 `ProductsView.vue`**（参照 `UsersView.vue`）：
 - 筛选行：关键词（编码 / 名称）+ 分类下拉（全部 / 各分类）+ 状态下拉 + 搜索 / 重置。
-- 操作行：新增（primary，抽屉）、分类管理（打开 `CategoryManagerModal`）、刷新、列设置。
+- 操作行：新增（primary，抽屉）、刷新、列设置。（工具条曾提供「分类管理」跳转按钮，2026-09-15 移除：分类维护入口统一走侧边菜单「进销存 → 分类管理」，见 `specs/erp-category/`）
 - 表格列：序号、编码、名称、分类、单位、采购价、销售价、**库存**（低于安全阈值标红 + `a-tag warning`「低库存」）、安全库存、状态（`a-tag` 绿 / 红）、创建时间、操作列（≤3 平铺：编辑 / 停用或启用（popconfirm）/ 详情）。
 - 服务端分页，条件变化回第 1 页。
 
