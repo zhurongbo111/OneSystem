@@ -105,8 +105,8 @@
 
 | 方法 | 说明 |
 |---|---|
-| `Task<(IReadOnlyList<OrderListItem> Items, int Total)> GetPagedAsync(string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end, OrderSettlementStatus? settlement, int page, int pageSize, ...)` | 列表（keyword 匹配单号 / 往来名称快照；含作废单据；`CreatedAt DESC`）；日期范围对 `OrderDate` 闭区间比较 |
-| `Task<OrderDetail?> GetDetailAsync(Guid id, ...)` | 详情（主表 + 明细行，按明细插入顺序） |
+| `Task<(IReadOnlyList<PurchaseOrder> Items, int Total)> GetPagedAsync(string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end, OrderSettlementStatus? settlement, int page, int pageSize, ...)` | 列表（keyword 匹配单号 / 往来名称快照；含作废单据；`CreatedAt DESC`）；日期范围对 `OrderDate` 闭区间比较；直接返回实体（`AsNoTracking`），由 Mapper 映射为出参 DTO |
+| `Task<(PurchaseOrder? Order, IReadOnlyList<PurchaseOrderItem> Items)> GetDetailAsync(Guid id, ...)` | 详情（主表实体 + 明细行实体，按明细 Id 还原插入顺序）；不存在时 `Order` 为 null |
 | `Task AddAsync(PurchaseOrder, IReadOnlyList<PurchaseOrderItem>, ...)` | 新增单据 + 明细（同一仓储内 SaveChanges） |
 | `Task UpdateSettlementAsync(Guid id, OrderSettlementStatus s, ...)` | 更新结算状态 |
 | `Task UpdateStatusAsync(Guid id, OrderStatus s, ...)` | 更新状态（作废） |
