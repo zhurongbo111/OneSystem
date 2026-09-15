@@ -13,9 +13,9 @@ import {
   IconPlus,
   IconPoweroff,
   IconRefresh,
+  IconRotateLeft,
   IconSearch,
   IconSettings,
-  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 import ProductFormDrawer from './ProductFormDrawer.vue'
@@ -331,7 +331,7 @@ function formatAmount(v: number): string {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconUndo />
+                  <IconRotateLeft />
                 </template>
                 重置
               </a-button>

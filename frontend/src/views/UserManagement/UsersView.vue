@@ -16,9 +16,9 @@ import {
   IconPlus,
   IconPoweroff,
   IconRefresh,
+  IconRotateLeft,
   IconSearch,
   IconSettings,
-  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 import UserFormDrawer from './UserFormDrawer.vue'
@@ -322,7 +322,7 @@ async function onSubmitResetPassword(): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconUndo />
+                  <IconRotateLeft />
                 </template>
                 重置
               </a-button>

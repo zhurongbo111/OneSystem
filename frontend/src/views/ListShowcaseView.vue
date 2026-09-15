@@ -12,9 +12,9 @@ import {
   IconMore,
   IconPlus,
   IconRefresh,
+  IconRotateLeft,
   IconSearch,
   IconSettings,
-  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 // —— types ——
@@ -371,7 +371,7 @@ function onExport(): void {
               </a-button>
               <a-button @click="onReset">
                 <template #icon>
-                  <IconUndo />
+                  <IconRotateLeft />
                 </template>
                 重置
               </a-button>

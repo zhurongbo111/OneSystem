@@ -15,7 +15,7 @@ import {
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconPlus, IconRefresh, IconSearch, IconUndo } from '@arco-design/web-vue/es/icon'
+import { IconPlus, IconRefresh, IconRotateLeft, IconSearch } from '@arco-design/web-vue/es/icon'
 
 // —— constants ——
 const settlementOptions: { label: string; value: SettlementStatus }[] = [
@@ -286,7 +286,7 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconUndo />
+                  <IconRotateLeft />
                 </template>
                 重置
               </a-button>

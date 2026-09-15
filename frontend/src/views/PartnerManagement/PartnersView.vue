@@ -13,9 +13,9 @@ import {
   IconPlus,
   IconPoweroff,
   IconRefresh,
+  IconRotateLeft,
   IconSearch,
   IconSettings,
-  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 import PartnerFormDrawer from './PartnerFormDrawer.vue'
@@ -308,7 +308,7 @@ async function onToggleStatus(row: Partner): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconUndo />
+                  <IconRotateLeft />
                 </template>
                 重置
               </a-button>
