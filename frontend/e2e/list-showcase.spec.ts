@@ -126,6 +126,30 @@ test.describe('列表页样式参照（集成）', () => {
     await expect(firstRow.getByRole('button', { name: '删除' })).toHaveClass(/arco-btn-status-danger/)
   })
 
+  test('操作行：主操作（新增）靠左，与列设置/刷新同一行（specs/list-showcase §4 验收 13）', async ({ page }) => {
+    await goList(page)
+    const actions = page.locator('.toolbar-actions')
+    const addBtn = actions.getByRole('button', { name: '新增' })
+    const settingBtn = actions.getByRole('button', { name: '列设置' })
+    const refreshBtn = actions.getByRole('button', { name: '刷新' })
+    await expect(addBtn).toBeVisible()
+    const addBox = await addBtn.boundingBox()
+    const settingBox = await settingBtn.boundingBox()
+    const refreshBox = await refreshBtn.boundingBox()
+    if (!addBox || !settingBox || !refreshBox) return
+    // 主操作靠左：左边缘贴近操作行左边缘（允许 1px 误差）
+    const rowBox = await actions.boundingBox()
+    expect(addBox.x - (rowBox?.x ?? 0)).toBeLessThanOrEqual(1)
+    // 与列设置/刷新同一行（垂直方向重叠）
+    const overlap = (a: { y: number; height: number }, b: { y: number; height: number }) =>
+      a.y < b.y + b.height && b.y < a.y + a.height
+    expect(overlap(addBox, settingBox)).toBe(true)
+    expect(overlap(addBox, refreshBox)).toBe(true)
+    // 新增在列设置、刷新左侧
+    expect(addBox.x).toBeLessThan(settingBox.x)
+    expect(addBox.x).toBeLessThan(refreshBox.x)
+  })
+
   test('操作列按钮水平内边距收窄为 8px（密度约定）', async ({ page }) => {
     await goList(page)
     const padding = await dataRows(page)
