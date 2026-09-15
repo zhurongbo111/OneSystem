@@ -11,8 +11,8 @@ import {
   IconEdit,
   IconPlus,
   IconRefresh,
+  IconRotateLeft,
   IconSearch,
-  IconUndo,
 } from '@arco-design/web-vue/es/icon'
 
 import CategoryFormDrawer from './CategoryFormDrawer.vue'
@@ -214,7 +214,7 @@ async function onDelete(row: Category): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconUndo />
+                  <IconRotateLeft />
                 </template>
                 重置
               </a-button>
