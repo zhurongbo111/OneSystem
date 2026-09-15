@@ -123,6 +123,6 @@ frontend/
 ## 6. 现有功能规格（specs/）
 
 - 工程/脚手架：`project-scaffold`、`api-swagger`
-- 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`、`frontend-e2e`
+- 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`（`/components` 组件示例页，含 Arco 组件 + Arco/Tabler/Lucide 三套图标「图标」tab）、`frontend-e2e`、`icon-showcase`（Arco + Tabler + Lucide 图标示例，复用组件示例页「图标」tab，三套以分组标题分隔）
 - 业务：`user-management`
 - ERP：`erp-product`（已完成）、`erp-partner`（已完成）、`erp-inventory-query`（已完成）、`erp-purchase`（已完成）、`erp-sale`（已完成）、`erp-category`（已完成，分类管理独立页：搜索分页 + 编辑抽屉 + 后端分页查询接口）

@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@arco-design/web-vue": "^2.56.3",
+    "@lucide/vue": "^1.46.0",
+    "@tabler/icons-vue": "^3.46.0",
     "axios": "^1.7.9",
     "pinia": "^2.3.0",
     "vue": "^3.5.13",

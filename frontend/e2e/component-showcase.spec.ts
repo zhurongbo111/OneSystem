@@ -27,6 +27,24 @@ test.describe('组件示例页面（集成）', () => {
     await expect(page.getByText('选择器 Select')).toBeVisible()
   })
 
+  test('切换 tab 到「图标」展示 Arco / Tabler / Lucide 图标示例', async ({ page }) => {
+    await page.goto('/components')
+    await page.locator('.arco-tabs-tab-title', { hasText: '图标' }).click()
+    // 主 tabs 激活项切到「图标」，图标分类内容可见
+    await expect(page.locator('.arco-tabs-tab-active').filter({ hasText: '图标' })).toBeVisible()
+    // 图标名在两段网格中重名（如 IconHome），各段改断言卡片标题 + 该段独有图标名
+    // Arco 图标示例
+    await expect(page.getByText('Arco 常用图标')).toBeVisible()
+    await expect(page.getByText('IconNotification')).toBeVisible()
+    await expect(page.getByText('旋转 rotate / 动画 spin（Arco 特有）')).toBeVisible()
+    // Tabler 图标示例
+    await expect(page.getByText('Tabler 常用图标')).toBeVisible()
+    await expect(page.getByText('IconBell')).toBeVisible()
+    // Lucide 图标示例（断言 Lucide 独有图标名 House）
+    await expect(page.getByText('Lucide 常用图标')).toBeVisible()
+    await expect(page.getByText('House', { exact: true })).toBeVisible()
+  })
+
   test('已登录首页点击侧边菜单「组件示例」跳转到组件页', async ({ page }) => {
     await login(page)
     await page.locator('.arco-menu-item', { hasText: '组件示例' }).click()

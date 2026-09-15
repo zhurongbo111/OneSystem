@@ -1,8 +1,55 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, type Component, type FunctionalComponent } from 'vue'
 
 import { Message, Notification } from '@arco-design/web-vue'
 import type { TableColumnData, TreeNodeData, CascaderOption } from '@arco-design/web-vue'
+import {
+  IconCalendar as ArcoIconCalendar,
+  IconCloud as ArcoIconCloud,
+  IconFolder as ArcoIconFolder,
+  IconHeart as ArcoIconHeart,
+  IconHome as ArcoIconHome,
+  IconLock,
+  IconMessage,
+  IconNotification,
+  IconPlayCircle,
+  IconPlus as ArcoIconPlus,
+  IconSearch as ArcoIconSearch,
+  IconSettings as ArcoIconSettings,
+  IconStar as ArcoIconStar,
+  IconSync,
+  IconUser as ArcoIconUser,
+} from '@arco-design/web-vue/es/icon'
+import {
+  Bell,
+  Calendar,
+  Cloud,
+  Folder,
+  Heart,
+  House,
+  Mail,
+  Plus,
+  Search,
+  Settings,
+  Shield,
+  Star,
+  User,
+} from '@lucide/vue'
+import {
+  IconBell,
+  IconCalendar,
+  IconCloud,
+  IconFolder,
+  IconHeart,
+  IconHome,
+  IconMail,
+  IconPlus,
+  IconSearch,
+  IconSettings,
+  IconShield,
+  IconStar,
+  IconUser,
+} from '@tabler/icons-vue'
 
 // —— constants ——
 const selectOptions = [
@@ -41,6 +88,63 @@ const treeData: TreeNodeData[] = [
   },
   { key: '2', title: '父节点 2' },
 ]
+// Tabler 图标示例数据（@tabler/icons-vue）
+const tablerCommonIcons: { name: string; icon: FunctionalComponent }[] = [
+  { name: 'IconHome', icon: IconHome },
+  { name: 'IconSearch', icon: IconSearch },
+  { name: 'IconUser', icon: IconUser },
+  { name: 'IconBell', icon: IconBell },
+  { name: 'IconSettings', icon: IconSettings },
+  { name: 'IconCalendar', icon: IconCalendar },
+  { name: 'IconHeart', icon: IconHeart },
+  { name: 'IconStar', icon: IconStar },
+  { name: 'IconMail', icon: IconMail },
+  { name: 'IconFolder', icon: IconFolder },
+  { name: 'IconShield', icon: IconShield },
+  { name: 'IconCloud', icon: IconCloud },
+]
+// Arco 图标示例数据（@arco-design/web-vue 自带 Icon*）
+const arcoCommonIcons: { name: string; icon: Component }[] = [
+  { name: 'IconHome', icon: ArcoIconHome },
+  { name: 'IconSearch', icon: ArcoIconSearch },
+  { name: 'IconUser', icon: ArcoIconUser },
+  { name: 'IconSettings', icon: ArcoIconSettings },
+  { name: 'IconCalendar', icon: ArcoIconCalendar },
+  { name: 'IconHeart', icon: ArcoIconHeart },
+  { name: 'IconStar', icon: ArcoIconStar },
+  { name: 'IconNotification', icon: IconNotification },
+  { name: 'IconFolder', icon: ArcoIconFolder },
+  { name: 'IconCloud', icon: ArcoIconCloud },
+  { name: 'IconMessage', icon: IconMessage },
+  { name: 'IconLock', icon: IconLock },
+]
+const arcoStrokeWidths = [1, 2, 3, 4]
+const arcoRotates = [45, 90, 180]
+// 三套图标共用的尺寸 / 颜色示例数据
+const iconSizes = [16, 24, 32, 48]
+const iconColors = [
+  { name: '#165DFF', color: '#165DFF' },
+  { name: '#00B42A', color: '#00B42A' },
+  { name: '#F53F3F', color: '#F53F3F' },
+  { name: '#FF7D00', color: '#FF7D00' },
+]
+const tablerStrokeWidths = ['1', '2', '3']
+// Lucide 图标示例数据（@lucide/vue）
+const lucideCommonIcons: { name: string; icon: FunctionalComponent }[] = [
+  { name: 'House', icon: House },
+  { name: 'Search', icon: Search },
+  { name: 'User', icon: User },
+  { name: 'Bell', icon: Bell },
+  { name: 'Settings', icon: Settings },
+  { name: 'Calendar', icon: Calendar },
+  { name: 'Heart', icon: Heart },
+  { name: 'Star', icon: Star },
+  { name: 'Mail', icon: Mail },
+  { name: 'Folder', icon: Folder },
+  { name: 'Shield', icon: Shield },
+  { name: 'Cloud', icon: Cloud },
+]
+const lucideStrokeWidths = [1, 2, 3]
 
 // —— reactive state ——
 // 当前激活的分类 tab
@@ -727,6 +831,484 @@ function showNotification(): void {
           </a-col>
         </a-row>
       </a-tab-pane>
+
+      <!-- 图标 -->
+      <a-tab-pane
+        key="icon"
+        title="图标"
+      >
+        <!-- Arco 段（@arco-design/web-vue 自带 Icon*，业务默认使用） -->
+        <a-row :gutter="16">
+          <a-col :span="24">
+            <a-card
+              title="Arco 常用图标"
+              :bordered="false"
+            >
+              <div class="icon-grid">
+                <div
+                  v-for="item in arcoCommonIcons"
+                  :key="item.name"
+                  class="icon-grid-item"
+                >
+                  <component
+                    :is="item.icon"
+                    size="24"
+                  />
+                  <span class="icon-name">
+                    {{ item.name }}
+                  </span>
+                </div>
+              </div>
+            </a-card>
+          </a-col>
+
+          <a-col :span="8">
+            <a-card
+              title="尺寸 size"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <ArcoIconStar
+                  v-for="size in iconSizes"
+                  :key="size"
+                  :size="size"
+                />
+              </a-space>
+              <div class="value-preview">
+                16 / 24 / 32 / 48
+              </div>
+            </a-card>
+          </a-col>
+          <a-col :span="8">
+            <a-card
+              title="线宽 stroke-width"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <ArcoIconStar
+                  v-for="width in arcoStrokeWidths"
+                  :key="width"
+                  :size="24"
+                  :stroke-width="width"
+                />
+              </a-space>
+              <div class="value-preview">
+                1 / 2 / 3 / 4（默认 4）
+              </div>
+            </a-card>
+          </a-col>
+          <a-col :span="8">
+            <a-card
+              title="颜色 color（CSS color）"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <ArcoIconStar
+                  v-for="item in iconColors"
+                  :key="item.name"
+                  :size="24"
+                  :style="{ color: item.color }"
+                />
+              </a-space>
+              <div class="value-preview">
+                #165DFF / #00B42A / #F53F3F / #FF7D00
+              </div>
+            </a-card>
+          </a-col>
+
+          <a-col :span="12">
+            <a-card
+              title="旋转 rotate / 动画 spin（Arco 特有）"
+              :bordered="false"
+            >
+              <a-space
+                direction="vertical"
+                fill
+              >
+                <a-space align="center">
+                  <IconPlayCircle
+                    v-for="angle in arcoRotates"
+                    :key="angle"
+                    :size="24"
+                    :rotate="angle"
+                  />
+                </a-space>
+                <a-space align="center">
+                  <IconSync
+                    :size="24"
+                    spin
+                  />
+                  <span class="value-preview">
+                    IconSync :spin=&quot;true&quot;
+                  </span>
+                </a-space>
+              </a-space>
+            </a-card>
+          </a-col>
+          <a-col :span="12">
+            <a-card
+              title="按钮 / 标签 / 菜单内嵌图标"
+              :bordered="false"
+            >
+              <a-space
+                direction="vertical"
+                fill
+              >
+                <a-space>
+                  <a-button type="primary">
+                    <template #icon>
+                      <ArcoIconPlus size="16" />
+                    </template>
+                    新建
+                  </a-button>
+                  <a-button>
+                    <template #icon>
+                      <ArcoIconSearch size="16" />
+                    </template>
+                    搜索
+                  </a-button>
+                  <a-button>
+                    <template #icon>
+                      <ArcoIconSettings size="16" />
+                    </template>
+                    设置
+                  </a-button>
+                </a-space>
+                <a-space>
+                  <a-tag color="arcoblue">
+                    <template #icon>
+                      <ArcoIconHome size="14" />
+                    </template>
+                    首页
+                  </a-tag>
+                  <a-tag color="green">
+                    <template #icon>
+                      <IconLock size="14" />
+                    </template>
+                    安全
+                  </a-tag>
+                  <a-tag color="orangered">
+                    <template #icon>
+                      <ArcoIconFolder size="14" />
+                    </template>
+                    文件
+                  </a-tag>
+                </a-space>
+                <a-menu
+                  :width="180"
+                  mode="inline"
+                >
+                  <a-menu-item key="1">
+                    <template #icon>
+                      <IconNotification size="16" />
+                    </template>
+                    通知中心
+                  </a-menu-item>
+                  <a-menu-item key="2">
+                    <template #icon>
+                      <IconMessage size="16" />
+                    </template>
+                    我的消息
+                  </a-menu-item>
+                </a-menu>
+              </a-space>
+            </a-card>
+          </a-col>
+        </a-row>
+
+        <div class="icon-lib-divider">
+          Tabler Icons（@tabler/icons-vue）
+        </div>
+        <a-row :gutter="16">
+          <a-col :span="24">
+            <a-card
+              title="Tabler 常用图标"
+              :bordered="false"
+            >
+              <div class="icon-grid">
+                <div
+                  v-for="item in tablerCommonIcons"
+                  :key="item.name"
+                  class="icon-grid-item"
+                >
+                  <component
+                    :is="item.icon"
+                    size="24"
+                  />
+                  <span class="icon-name">
+                    {{ item.name }}
+                  </span>
+                </div>
+              </div>
+            </a-card>
+          </a-col>
+
+          <a-col :span="8">
+            <a-card
+              title="尺寸 size"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <IconStar
+                  v-for="size in iconSizes"
+                  :key="size"
+                  :size="size"
+                />
+              </a-space>
+              <div class="value-preview">
+                16 / 24 / 32 / 48
+              </div>
+            </a-card>
+          </a-col>
+          <a-col :span="8">
+            <a-card
+              title="线宽 stroke"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <IconStar
+                  v-for="width in tablerStrokeWidths"
+                  :key="width"
+                  :size="24"
+                  :stroke="width"
+                />
+              </a-space>
+              <div class="value-preview">
+                1 / 2 / 3
+              </div>
+            </a-card>
+          </a-col>
+          <a-col :span="8">
+            <a-card
+              title="颜色 color"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <IconStar
+                  v-for="item in iconColors"
+                  :key="item.name"
+                  :size="24"
+                  :color="item.color"
+                />
+              </a-space>
+              <div class="value-preview">
+                #165DFF / #00B42A / #F53F3F / #FF7D00
+              </div>
+            </a-card>
+          </a-col>
+
+          <a-col :span="12">
+            <a-card
+              title="按钮内嵌图标"
+              :bordered="false"
+            >
+              <a-space>
+                <a-button type="primary">
+                  <template #icon>
+                    <IconPlus size="16" />
+                  </template>
+                  新建
+                </a-button>
+                <a-button>
+                  <template #icon>
+                    <IconSearch size="16" />
+                  </template>
+                  搜索
+                </a-button>
+                <a-button>
+                  <template #icon>
+                    <IconSettings size="16" />
+                  </template>
+                  设置
+                </a-button>
+              </a-space>
+            </a-card>
+          </a-col>
+          <a-col :span="12">
+            <a-card
+              title="标签 / 菜单内嵌图标"
+              :bordered="false"
+            >
+              <a-space
+                direction="vertical"
+                fill
+              >
+                <a-space>
+                  <a-tag color="arcoblue">
+                    <template #icon>
+                      <IconHome size="14" />
+                    </template>
+                    首页
+                  </a-tag>
+                  <a-tag color="green">
+                    <template #icon>
+                      <IconShield size="14" />
+                    </template>
+                    安全
+                  </a-tag>
+                  <a-tag color="orangered">
+                    <template #icon>
+                      <IconFolder size="14" />
+                    </template>
+                    文件
+                  </a-tag>
+                </a-space>
+                <a-menu
+                  :width="180"
+                  mode="inline"
+                >
+                  <a-menu-item key="1">
+                    <template #icon>
+                      <IconBell size="16" />
+                    </template>
+                    通知中心
+                  </a-menu-item>
+                  <a-menu-item key="2">
+                    <template #icon>
+                      <IconMail size="16" />
+                    </template>
+                    我的消息
+                  </a-menu-item>
+                </a-menu>
+              </a-space>
+            </a-card>
+          </a-col>
+        </a-row>
+
+        <div class="icon-lib-divider">
+          Lucide Icons（@lucide/vue）
+        </div>
+        <a-row :gutter="16">
+          <a-col :span="24">
+            <a-card
+              title="Lucide 常用图标"
+              :bordered="false"
+            >
+              <div class="icon-grid">
+                <div
+                  v-for="item in lucideCommonIcons"
+                  :key="item.name"
+                  class="icon-grid-item"
+                >
+                  <component
+                    :is="item.icon"
+                    :size="24"
+                  />
+                  <span class="icon-name">
+                    {{ item.name }}
+                  </span>
+                </div>
+              </div>
+            </a-card>
+          </a-col>
+
+          <a-col :span="12">
+            <a-card
+              title="尺寸 size"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <Star
+                  v-for="size in iconSizes"
+                  :key="size"
+                  :size="size"
+                />
+              </a-space>
+              <div class="value-preview">
+                16 / 24 / 32 / 48
+              </div>
+            </a-card>
+          </a-col>
+          <a-col :span="12">
+            <a-card
+              title="线宽 stroke-width"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <Star
+                  v-for="width in lucideStrokeWidths"
+                  :key="width"
+                  :size="24"
+                  :stroke-width="width"
+                />
+              </a-space>
+              <div class="value-preview">
+                1 / 2 / 3
+              </div>
+            </a-card>
+          </a-col>
+          <a-col :span="12">
+            <a-card
+              title="颜色 color"
+              :bordered="false"
+            >
+              <a-space align="center">
+                <Star
+                  v-for="item in iconColors"
+                  :key="item.name"
+                  :size="24"
+                  :color="item.color"
+                />
+              </a-space>
+              <div class="value-preview">
+                #165DFF / #00B42A / #F53F3F / #FF7D00
+              </div>
+            </a-card>
+          </a-col>
+          <a-col :span="12">
+            <a-card
+              title="按钮 / 标签内嵌图标"
+              :bordered="false"
+            >
+              <a-space
+                direction="vertical"
+                fill
+              >
+                <a-space>
+                  <a-button type="primary">
+                    <template #icon>
+                      <Plus :size="16" />
+                    </template>
+                    新建
+                  </a-button>
+                  <a-button>
+                    <template #icon>
+                      <Search :size="16" />
+                    </template>
+                    搜索
+                  </a-button>
+                  <a-button>
+                    <template #icon>
+                      <Settings :size="16" />
+                    </template>
+                    设置
+                  </a-button>
+                </a-space>
+                <a-space>
+                  <a-tag color="arcoblue">
+                    <template #icon>
+                      <House :size="14" />
+                    </template>
+                    首页
+                  </a-tag>
+                  <a-tag color="green">
+                    <template #icon>
+                      <Shield :size="14" />
+                    </template>
+                    安全
+                  </a-tag>
+                  <a-tag color="orangered">
+                    <template #icon>
+                      <Folder :size="14" />
+                    </template>
+                    文件
+                  </a-tag>
+                </a-space>
+              </a-space>
+            </a-card>
+          </a-col>
+        </a-row>
+      </a-tab-pane>
     </a-tabs>
   </div>
 </template>
@@ -756,6 +1338,35 @@ function showNotification(): void {
   margin-top: 8px;
   color: var(--color-text-2);
   font-size: 13px;
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 12px;
+}
+
+.icon-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  color: var(--color-text-1);
+}
+
+.icon-name {
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.icon-lib-divider {
+  margin: 24px 0 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-2);
+  color: var(--color-text-2);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .prefix-icon {
