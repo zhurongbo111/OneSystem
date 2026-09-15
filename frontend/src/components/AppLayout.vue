@@ -47,8 +47,8 @@ const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'pur
 
 // —— reactive state ——
 
-/** 展开的子菜单 key（受控，默认展开「示例页面」「进销存」；用户手动折叠由 @update:open-keys 同步） */
-const openKeys = ref<string[]>([SHOWCASE_MENU_KEY, ERP_MENU_KEY])
+/** 展开的子菜单 key（受控，默认全部折叠；进入所属页面时自动展开对应分组，用户手动折叠由 @update:open-keys 同步） */
+const openKeys = ref<string[]>([])
 
 // —— computed ——
 
@@ -57,7 +57,7 @@ const displayName = computed<string>(() => auth.user?.displayName ?? '用户')
 
 // —— watch ——
 
-// 进入某子菜单路由时，若所属子菜单被用户手动折叠过，自动重新展开
+// 初始化与路由变化时，自动展开当前路由所属的子菜单（只增不减：不折叠用户手动展开的其他分组）
 watch(
   () => route.name,
   (name) => {
@@ -73,7 +73,8 @@ watch(
         openKeys.value = [...openKeys.value, ERP_MENU_KEY]
       }
     }
-  }
+  },
+  { immediate: true }
 )
 
 onMounted(() => {

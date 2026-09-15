@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { clickMenuItem } from './helpers/menu'
+
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
@@ -32,14 +34,14 @@ async function login(page: Page): Promise<void> {
 /** 经侧边菜单（进销存分组）进入库存查询页 */
 async function goInventory(page: Page): Promise<void> {
   await login(page)
-  await page.locator('.arco-menu-item', { hasText: '库存查询' }).click()
+  await clickMenuItem(page, '库存查询')
   await expect(page).toHaveURL(/\/inventory$/)
 }
 
 /** 经侧边菜单进入商品管理页 */
 async function goProducts(page: Page): Promise<void> {
   await login(page)
-  await page.locator('.arco-menu-item', { hasText: '商品管理' }).click()
+  await clickMenuItem(page, '商品管理')
   await expect(page).toHaveURL(/\/products$/)
 }
 

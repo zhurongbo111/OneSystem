@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 
+import { clickMenuItem } from './helpers/menu'
+
 /** dev 测试账号（来自项目 seed 数据） */
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
 
@@ -47,7 +49,7 @@ test.describe('组件示例页面（集成）', () => {
 
   test('已登录首页点击侧边菜单「组件示例」跳转到组件页', async ({ page }) => {
     await login(page)
-    await page.locator('.arco-menu-item', { hasText: '组件示例' }).click()
+    await clickMenuItem(page, '组件示例')
     await expect(page).toHaveURL(/\/components/)
     await expect(page.getByRole('heading', { name: 'Arco Design 组件示例' })).toBeVisible()
   })
