@@ -28,7 +28,7 @@
 - `a-col :span=8`：`a-input` 搜索词（placeholder "搜索名称或邮箱"，`<IconSearch />` 前缀，`allow-clear`，宽度 100%）。
 - `a-col :span=4`：`a-select` 状态筛选（选项：启用/禁用，`allow-clear`，宽度 100%）。
 - `a-col :span=4`：`a-select` 角色筛选（选项：管理员/编辑/访客，`allow-clear`，宽度 100%）。
-- `a-col :span=8`：`a-button type=primary` 搜索 + `a-button` 重置（间距 8，左对齐）。
+- `a-col :span=8`：`a-button type=primary` 搜索（`<IconSearch />`）+ `a-button` 重置（`<IconUndo />`），图标走 `#icon` 插槽（间距 8，左对齐）。重置用 `IconUndo`（还原/清空语义），不复用 `IconRefresh`（已归属「刷新」，遵循一操作一图标）。
 
 **操作行**（`.toolbar-actions`，`flex` 左右分组（`justify-content: space-between`）、`gap: 8`、可换行，按钮统一 `size=small`；无主操作的只读页整行右对齐即可）：
 - 左组 `.toolbar-actions__left`（`flex`，`gap: 8`）：主操作 新增（`a-button type=primary size=small`，`<IconPlus />`，点击 `Message.info('演示页面，暂未实现')`）。**主操作（新增/开单）统一靠左**，与右组其它按钮同一行；页面头不放任何创建按钮。
