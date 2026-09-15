@@ -64,7 +64,7 @@
 
 `ISalesOrderRepository`：**方法签名与 `IPurchaseOrderRepository` 完全同构**（`GetPagedAsync` / `GetDetailAsync` / `AddAsync` / `UpdateSettlementAsync` / `UpdateStatusAsync` / `GenerateOrderNoAsync`），仅实体类型为 `SalesOrder` / `SalesOrderItem`、默认单号前缀 `SO`（前缀参数化，照抄 Purchase 实现）。
 - 单一仓储写由仓储自身 `SaveChangesAsync` 保证；**跨仓储写**（库存 N 行扣减 + 单据主表 + 明细）用 `IUnitOfWork` 同一事务（后端规则 §3）。
-- 仓储构造函数注入 `ICurrentUser` 填充审计字段。
+- 审计字段统一由 Handler 经 `ICurrentUser` 获取后随实体 / 方法参数（`operatorId`）传入，仓储不感知当前用户。
 
 ### 3.4 用例与接口（每 API 一个用例，均经 `IMediator.Send`）
 

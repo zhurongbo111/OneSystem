@@ -132,7 +132,7 @@
 
 - `GetPagedAsync` 联查 `Inventory` 带出 `stockQuantity`；低库存标记 `isBelowSafetyStock` 由 Handler 计算（`safetyStock > 0 && stockQuantity < safetyStock`，阈值为 0 不提醒，避免零库存商品全量标红），不在仓储内计算。
 - 单一仓储写由仓储自身 `SaveChangesAsync` 保证；**跨仓储写**（商品 + 库存初始化）必须用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`，异常 `RollbackAsync` 后重抛（后端规则 §3）。
-- 仓储构造函数注入 `ICurrentUser` 填充审计字段（同 `UserRepository` 模式）。
+- 审计字段统一由 Handler 经 `ICurrentUser` 获取后随实体传入，仓储不感知当前用户。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 

@@ -79,7 +79,7 @@
 | `Task AddAsync(Partner, ...)` / `UpdateAsync(Partner, ...)` | 新增 / 更新 |
 
 - 单一仓储写由仓储自身 `SaveChangesAsync` 保证，无需 `IUnitOfWork`。
-- 仓储构造函数注入 `ICurrentUser` 填充审计字段（同 `UserRepository` 模式）。
+- 审计字段统一由 Handler 经 `ICurrentUser` 获取后随实体传入，仓储不感知当前用户。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 

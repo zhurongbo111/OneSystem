@@ -21,7 +21,7 @@
 - [x] 1.2.1 `ICategoryRepository` 接口 + `CategoryRepository`（GetAll / GetById / ExistsByName（忽略大小写）/ Add / Update / Delete / ReferencedByProducts）
 - [x] 1.2.2 `IProductRepository` 接口 + `ProductRepository`（GetById / ExistsByCode / GetPaged（联查 Inventory 出 stockQuantity）/ GetDetail / Add / Update / GetPickList（仅启用，联查当前库存））
 - [x] 1.2.3 `IInventoryRepository` 接口 + `InventoryRepository`（Add / **IncrementAsync（ExecuteUpdate 原子加）** / **TryDecrementAsync（ExecuteUpdate 条件减，返回受影响行）**）
-- [x] 1.2.4 仓储构造函数注入 `ICurrentUser` 填充审计字段（同 `UserRepository` 模式）；跨仓储写在 Handler 中用 `IUnitOfWork` 事务
+- [x] 1.2.4 审计字段由 Handler 经 `ICurrentUser` 获取后随实体传入仓储；跨仓储写在 Handler 中用 `IUnitOfWork` 事务
 
 ### 1.3 商品与分类 API
 
