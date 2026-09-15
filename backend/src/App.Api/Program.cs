@@ -2,6 +2,7 @@ using System.Diagnostics;
 using App.Api.Authentication;
 using App.Api.Http;
 using App.Api.Middleware;
+using App.Api.Observability;
 using App.Api.Swagger;
 using App.Core;
 using App.Core.Abstractions;
@@ -11,12 +12,6 @@ using App.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Web;
-using OpenTelemetry;
-using OpenTelemetry.Exporter;
-using OpenTelemetry.Instrumentation.Runtime;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,32 +50,8 @@ builder.Services.AddScoped<IClientInfo, ClientInfoAccessor>();
 // ========== Swagger：仅 dev 环境启用（UI /swagger，JSON /swagger/v1/swagger.json；prod 零注册零暴露），配置见 Swagger/SwaggerRegistration.cs ==========
 builder.Services.AddSwaggerIfDevelopment(builder.Environment);
 
-// ========== OpenTelemetry：Tracing + Metrics 自动埋点，OTLP 仅在配置 OTEL_EXPORTER_OTLP_ENDPOINT 时导出 ==========
-var otelEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-var otlpEnabled = !string.IsNullOrWhiteSpace(otelEndpoint);
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(r => r.AddService("app-api", "1.0.0"))
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation();
-        if (otlpEnabled)
-        {
-            tracing.AddOtlpExporter();
-        }
-    })
-    .WithMetrics(metrics =>
-    {
-        metrics
-            .AddAspNetCoreInstrumentation()
-            .AddRuntimeInstrumentation();
-        if (otlpEnabled)
-        {
-            metrics.AddOtlpExporter();
-        }
-    });
+// ========== OpenTelemetry：Tracing + Metrics 自动埋点，OTLP 仅在配置 OTEL_EXPORTER_OTLP_ENDPOINT 时导出，配置见 Observability/OpenTelemetryRegistration.cs ==========
+builder.Services.AddTelemetry();
 
 var app = builder.Build();
 
