@@ -38,9 +38,25 @@ Arco `a-table` 默认 `table-layout: fixed`。**某一列未设 `width` 时会�
 | 主操作 | 默认（主题色，无 `type`/`status`） | 编辑 |
 | 警示 | `status="warning"` | 禁用 / 停用（将可用对象置为不可用） |
 | 危险 | `status="danger"` | 删除 / 移除（不可逆或破坏性操作） |
+| 完成 | `status="success"` | 标记已收 / 已付（结算达成，与列表结算状态绿标签同色） |
 | 中性 | 默认（无 `type`/`status`） | 详情、查看、重置密码、启用 / 重新启用等 |
+| 次要 | `type="text"` + `.action-btn-secondary`（`color: var(--color-text-2)`） | 改回未收 / 未付（反向撤销，视觉降级） |
 
 - 「启用 / 重新启用」是恢复操作，**不用** success 色：行内文本按钮无 success 语义位，且与「禁用（warning）」保持视觉对称，降低误读为"主操作"的风险。
+- 「改回未收 / 未付」降为**次要色**（`.action-btn-secondary`，`var(--color-text-2)` 次级文字灰）：反向撤销动作不突出，且与「详情」的主题色区分开。同一行「作废」已占 warning，故不用橙，避免两个橙互相干扰。
+- 次要色为中性档内的**降级**，用于成对操作中不希望被误当主操作的那一个方向（如结算切换的撤销方向）。实现方式是在列表页 scoped 样式中覆盖文本按钮颜色：
+
+```css
+.row-actions :deep(.arco-btn-text.action-btn-secondary) {
+  color: var(--color-text-2);
+}
+
+.row-actions :deep(.arco-btn-text.action-btn-secondary:hover) {
+  color: var(--color-text-1);
+}
+```
+
+- 不用 `type="secondary"`：那是 Arco 灰底实色按钮，在全是 `type="text"` 的操作列里带背景块，视觉重量反而超过 success 按钮，与"不突出"的初衷相悖。
 - 危险 / 警示操作必须 `a-popconfirm` 二次确认（`type="warning"`，`content` 含对象名，如 `确认删除 {name}？`）。
 - 收纳进「更多」的菜单项颜色由 `a-doption` 默认样式承担，**不**给菜单项文字染色；危险 / 警示语义由图标 + 二次确认承担。
 
@@ -57,6 +73,9 @@ Arco `a-table` 默认 `table-layout: fixed`。**某一列未设 `width` 时会�
 | 禁用 / 停用 | `IconPoweroff` |
 | 重置密码 | `IconLock` |
 | 导出 | `IconDownload` |
+| 作废（单据作废回冲） | `IconStop` |
+| 结算切换：标记已收 / 已付 | `IconCheckCircle` |
+| 结算切换：改回未收 / 未付 | `IconUndo` |
 | 更多（收纳触发按钮） | `IconMore` |
 | 新增（仅工具条，参照） | `IconPlus` |
 | 刷新（仅工具条，参照） | `IconRefresh` |
@@ -116,5 +135,5 @@ Arco `a-table` 默认 `table-layout: fixed`。**某一列未设 `width` 时会�
 
 - 操作列平铺区可见「详情」「编辑」「删除」三个文本按钮，且首行出现「更多」触发按钮。
 - 点击「更多」→ 菜单出现含「重置密码」的菜单项；点击菜单项触发演示提示。
-- 「删除」平铺按钮带危险样式（`.arco-btn-danger` 类名）；「禁用」类警示样式在用户管理页既有 e2e 中已覆盖行为，不在本规格新增。
+- 「删除」平铺按钮带危险样式（`.arco-btn-status-danger` 类名；Arco 状态按钮类名统一为 `arco-btn-status-<status>`）；「禁用」类警示样式在用户管理页既有 e2e 中已覆盖行为，不在本规格新增。
 - 既有删除用例（popconfirm 确认后行数 -1）保持通过，验证二次确认链路未被破坏。
