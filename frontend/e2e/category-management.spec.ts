@@ -29,11 +29,34 @@ async function login(page: Page, username = CREDENTIALS.username, password = CRE
   await expect(page).toHaveURL(/\/$/)
 }
 
-/** 登录并经侧边菜单（进销存分组）进入分类管理页 */
+/** 登录并经侧边菜单（进销存分组）进入分类管理页（含等待首屏列表加载完成） */
 async function goCategories(page: Page): Promise<void> {
   await login(page)
   await clickMenuItem(page, '分类管理')
   await expect(page).toHaveURL(/\/categories$/)
+  await waitForListSettled(page)
+}
+
+/**
+ * 等待列表加载完成：工具条按钮脱离 loading，且表格已给出确定结果（数据行 / 空状态 / 分页总数）。
+ * 首屏请求未返回时表格既无数据行也无分页总数，此时判断「有数据 / 空状态」会误判，必须先 settle。
+ */
+async function waitForListSettled(page: Page): Promise<void> {
+  const loadingButtons = page.locator('.toolbar-actions .arco-btn-loading')
+  await expect
+    .poll(
+      async () => {
+        const [loading, rows, empty, total] = await Promise.all([
+          loadingButtons.count(),
+          dataRows(page).count(),
+          page.locator('.arco-empty').count(),
+          totalText(page).count(),
+        ])
+        return loading === 0 && (rows > 0 || empty > 0 || total > 0)
+      },
+      { timeout: 15_000, message: '分类列表首屏未在 15s 内加载完成' },
+    )
+    .toBe(true)
 }
 
 /** 当前表格数据行（排除空状态行） */
@@ -104,7 +127,8 @@ test.describe('分类管理（集成）', () => {
     await expect(page.getByRole('columnheader', { name: '创建时间' })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: '操作' })).toBeVisible()
     // 有数据：表格渲染数据行；无数据：渲染空状态（两者互斥，避免 .or() 多行触发 strict mode）
-    const hasData = (await totalText(page).count()) > 0
+    // 分支判断前必须已 settle（goCategories 内 waitForListSettled），否则首屏请求未返回时两边都为空
+    const hasData = (await dataRows(page).count()) > 0
     if (hasData) {
       await expect(dataRows(page).first()).toBeVisible()
     } else {
