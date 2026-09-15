@@ -289,6 +289,14 @@ test.describe('销售开单（集成）', () => {
     // 初始未收
     await expect(row.getByText('未收', { exact: true })).toBeVisible()
 
+    // 操作列按钮带图标：详情 / 作废 / 结算切换
+    await expect(row.getByRole('button', { name: '详情' }).locator('svg')).toHaveCount(1)
+    await expect(row.getByRole('button', { name: '作废' }).locator('svg')).toHaveCount(1)
+    await expect(row.getByRole('button', { name: '标记已收' }).locator('svg')).toHaveCount(1)
+    // 配色区分：标记已收 = success（绿），与「已收」绿标签呼应
+    await expect(row.getByRole('button', { name: '标记已收' })).toHaveClass(/arco-btn-status-success/)
+    await expect(row.getByRole('button', { name: '详情' })).not.toHaveClass(/arco-btn-status-success/)
+
     // 标记已收
     await row.getByRole('button', { name: '标记已收' }).click()
     await expect(page.getByText('确认标记为已收？')).toBeVisible()
@@ -296,6 +304,14 @@ test.describe('销售开单（集成）', () => {
     await expect(page.getByText('已标记为已收')).toBeVisible()
     const rowCollected = dataRows(page).first()
     await expect(rowCollected.getByText('已收', { exact: true })).toBeVisible()
+    // 已收态：结算按钮切为「改回未收」，次要色（灰），不再是 success 色
+    await expect(rowCollected.getByRole('button', { name: '改回未收' }).locator('svg')).toHaveCount(1)
+    await expect(rowCollected.getByRole('button', { name: '改回未收' })).toHaveClass(
+      /action-btn-secondary/,
+    )
+    await expect(rowCollected.getByRole('button', { name: '改回未收' })).not.toHaveClass(
+      /arco-btn-status-success/,
+    )
 
     // 作废：库存回冲
     await rowCollected.getByRole('button', { name: '作废' }).click()

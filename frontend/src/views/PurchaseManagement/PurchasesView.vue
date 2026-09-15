@@ -15,7 +15,16 @@ import {
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconPlus, IconRefresh, IconRotateLeft, IconSearch } from '@arco-design/web-vue/es/icon'
+import {
+  IconCheckCircle,
+  IconEye,
+  IconPlus,
+  IconRefresh,
+  IconRotateLeft,
+  IconSearch,
+  IconStop,
+  IconUndo,
+} from '@arco-design/web-vue/es/icon'
 
 // —— constants ——
 const settlementOptions: { label: string; value: SettlementStatus }[] = [
@@ -82,7 +91,7 @@ const columns: TableColumnData[] = [
   { title: '结算状态', slotName: 'settlement', width: 100, align: 'center' },
   { title: '单据状态', slotName: 'status', width: 100, align: 'center' },
   { title: '创建时间', slotName: 'createdAt', width: 172 },
-  { title: '操作', slotName: 'action', width: 250, bodyCellClass: 'action-cell' },
+  { title: '操作', slotName: 'action', width: 280, bodyCellClass: 'action-cell' },
 ]
 
 const tableScrollX = columns.reduce((sum, c) => sum + (c.width ?? 0), 0)
@@ -373,6 +382,9 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
               size="small"
               @click="onDetail(record as PurchaseOrderListItem)"
             >
+              <template #icon>
+                <IconEye />
+              </template>
               详情
             </a-button>
             <a-popconfirm
@@ -387,6 +399,9 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
                 size="small"
                 :loading="voidingId === (record as PurchaseOrderListItem).id"
               >
+                <template #icon>
+                  <IconStop />
+                </template>
                 作废
               </a-button>
             </a-popconfirm>
@@ -398,9 +413,15 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
             >
               <a-button
                 type="text"
+                :status="(record as PurchaseOrderListItem).settlementStatus === 1 ? 'normal' : 'success'"
+                :class="{ 'action-btn-secondary': (record as PurchaseOrderListItem).settlementStatus === 1 }"
                 size="small"
                 :loading="settlingId === (record as PurchaseOrderListItem).id"
               >
+                <template #icon>
+                  <IconUndo v-if="(record as PurchaseOrderListItem).settlementStatus === 1" />
+                  <IconCheckCircle v-else />
+                </template>
                 {{ (record as PurchaseOrderListItem).settlementStatus === 1 ? '改回未付' : '标记已付' }}
               </a-button>
             </a-popconfirm>
@@ -482,6 +503,15 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
 /* 操作列密度：收窄 Arco 文本按钮默认水平 padding */
 .row-actions :deep(.arco-btn-text) {
   padding: 0 8px;
+}
+
+/* 次要操作（如「改回未付」）：降为次级文字色，与「详情」主题色区分 */
+.row-actions :deep(.arco-btn-text.action-btn-secondary) {
+  color: var(--color-text-2);
+}
+
+.row-actions :deep(.arco-btn-text.action-btn-secondary:hover) {
+  color: var(--color-text-1);
 }
 
 /* 操作列兜底：按钮组不折行 */
