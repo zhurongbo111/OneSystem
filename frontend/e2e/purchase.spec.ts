@@ -129,14 +129,16 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   await page.getByRole('button', { name: '新建分类' }).click()
   await page.getByPlaceholder(CATEGORY_PLACEHOLDER).fill(uniqueCategoryName())
   await page.locator('.arco-modal').getByRole('button', { name: '新增' }).click()
-  await expect(page.getByText('分类已创建')).toBeVisible()
+  // Arco message DOM 残留（同 popconfirm），本用例创建 2 个商品会累积 2 条同文案提示，取最新一条
+  await expect(page.getByText('分类已创建').last()).toBeVisible()
   await page.locator('.arco-modal').getByRole('button', { name: 'Close' }).click()
   // 金额 / 安全库存均为 a-input-number：第 0 / 1 个是采购 / 销售价
   const numberInputs = page.locator('.arco-drawer .arco-input-number input')
   await numberInputs.nth(0).fill('10.00')
   await numberInputs.nth(1).fill('20.00')
   await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('商品已创建')).toBeVisible()
+  // 同「分类已创建」：Arco message DOM 残留，取最新一条
+  await expect(page.getByText('商品已创建').last()).toBeVisible()
   await expect(drawerTitle(page, '新增商品')).toHaveCount(0)
 }
 
