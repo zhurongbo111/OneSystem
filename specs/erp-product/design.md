@@ -207,10 +207,11 @@ src/
 │   └── product.ts            # 商品 + 分类接口层（类型 + 请求函数）
 └── views/
     └── ProductManagement/
-        ├── ProductsView.vue      # 商品列表页（含库存列 + 分类管理弹窗入口）
-        ├── ProductFormDrawer.vue # 新增/编辑抽屉
-        └── CategoryManagerModal.vue # 分类维护弹窗（列表 + 新增/编辑 + 删除确认）
+        ├── ProductsView.vue      # 商品列表页（含库存列 + 分类管理入口）
+        └── ProductFormDrawer.vue # 新增/编辑抽屉
 ```
+
+> **演进（erp-category）**：分类维护弹窗 `CategoryManagerModal.vue` 已升级为独立页面 `CategoriesView.vue`（路由 `categories`），商品抽屉「新建分类」改为就地行内输入；本目录结构为原始设计记录，现行为准见 `specs/erp-category/`。
 
 - 商品字段 ≤ 8，新增 / 编辑用**抽屉**（`a-drawer`，`unmount-on-close`，底部自定义操作栏）；分类维护用**弹窗**（轻交互，列表 + 行内新增 / 编辑）。
 - 商品详情：列表操作列「详情」复用 `ProductFormDrawer` 的查看态（disabled）；字段虽多但复用表单组件展示，不另设独立详情页（与 `user-management` 的详情抽屉惯例一致，design 记录该决策）。

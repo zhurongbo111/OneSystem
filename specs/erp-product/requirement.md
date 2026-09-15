@@ -8,6 +8,7 @@
 |---|---|---|
 | **erp-product（本规格）** | 商品分类 / 商品档案 / 库存台账 | 无（可与 erp-partner 并行） |
 | erp-partner | 往来单位（供应商 / 客户） | 无（可与本规格并行） |
+| erp-category | 商品分类独立管理页（本规格分类弹窗的前端形态演进，后端零改动） | 本规格 |
 | erp-inventory-query | 库存查询页 | 本规格 |
 | erp-purchase | 采购入库单 | 本规格 + erp-partner |
 | erp-sale | 销售出库单 | erp-purchase（单据域共用约定）+ 本规格 + erp-partner |
