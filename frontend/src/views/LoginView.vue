@@ -57,7 +57,7 @@ async function onSubmit(): Promise<void> {
         layout="vertical"
         @submit-success="onSubmit"
       >
-        <a-form-field
+        <a-form-item
           field="username"
           label="用户名"
         >
@@ -66,8 +66,8 @@ async function onSubmit(): Promise<void> {
             placeholder="请输入用户名"
             allow-clear
           />
-        </a-form-field>
-        <a-form-field
+        </a-form-item>
+        <a-form-item
           field="password"
           label="密码"
         >
@@ -76,8 +76,8 @@ async function onSubmit(): Promise<void> {
             placeholder="请输入密码"
             allow-clear
           />
-        </a-form-field>
-        <a-form-field>
+        </a-form-item>
+        <a-form-item>
           <a-button
             type="primary"
             long
@@ -86,7 +86,7 @@ async function onSubmit(): Promise<void> {
           >
             登录
           </a-button>
-        </a-form-field>
+        </a-form-item>
       </a-form>
       <a-typography-text type="secondary">
         测试账号：admin / admin123
