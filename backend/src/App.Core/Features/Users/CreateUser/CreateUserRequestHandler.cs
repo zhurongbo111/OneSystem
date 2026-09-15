@@ -55,7 +55,7 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
         }
 
         var now = DateTimeOffset.UtcNow;
-        var operatorId = UserInputNormalizer.CurrentUserId(_currentUser);
+        var operatorId = _currentUser.UserId();
         var user = new User
         {
             Id = Guid.NewGuid(),

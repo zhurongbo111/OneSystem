@@ -64,7 +64,7 @@ public sealed class UpdateProductRequestHandler : IRequestHandler<UpdateProductR
         product.SafetyStock = request.SafetyStock;
         product.Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
         product.UpdatedAt = DateTimeOffset.UtcNow;
-        product.UpdatedBy = ProductInputNormalizer.CurrentUserId(_currentUser);
+        product.UpdatedBy = _currentUser.UserId();
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try

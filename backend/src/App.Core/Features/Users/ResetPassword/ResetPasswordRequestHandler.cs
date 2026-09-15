@@ -40,7 +40,7 @@ public sealed class ResetPasswordRequestHandler : IRequestHandler<ResetPasswordR
 
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
         user.UpdatedAt = DateTimeOffset.UtcNow;
-        user.UpdatedBy = UserInputNormalizer.CurrentUserId(_currentUser);
+        user.UpdatedBy = _currentUser.UserId();
 
         await _userRepository.UpdateAsync(user, cancellationToken);
         return null;

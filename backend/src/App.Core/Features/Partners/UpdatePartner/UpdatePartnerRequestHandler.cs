@@ -42,7 +42,7 @@ public sealed class UpdatePartnerRequestHandler : IRequestHandler<UpdatePartnerR
         partner.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
         partner.Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
         partner.UpdatedAt = DateTimeOffset.UtcNow;
-        partner.UpdatedBy = Guid.TryParse(_currentUser.Id, out var id) ? (Guid?)id : null;
+        partner.UpdatedBy = _currentUser.UserId();
 
         await _partnerRepository.UpdateAsync(partner, cancellationToken);
         return PartnerDtoMapper.ToPartnerDto(partner);

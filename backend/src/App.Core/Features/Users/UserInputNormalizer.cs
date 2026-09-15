@@ -1,5 +1,3 @@
-using App.Core.Abstractions;
-
 namespace App.Core.Features.Users;
 
 /// <summary>
@@ -20,11 +18,4 @@ internal static class UserInputNormalizer
     /// <param name="value">原始邮箱文本</param>
     public static string? NormalizeEmail(string? value)
         => NullIfWhiteSpace(value)?.ToLowerInvariant();
-
-    /// <summary>
-    /// 解析当前登录用户 id；claims 缺失或非法时返回 null（审计字段允许为空）
-    /// </summary>
-    /// <param name="currentUser">当前登录用户抽象</param>
-    public static Guid? CurrentUserId(ICurrentUser currentUser)
-        => Guid.TryParse(currentUser.Id, out var id) ? id : null;
 }

@@ -159,7 +159,7 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
     public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var operatorId = CurrentUserId();
+        var operatorId = _currentUser.UserId();
         return _dbContext.PurchaseOrders
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s
@@ -173,7 +173,7 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
     public Task UpdateStatusAsync(Guid id, OrderStatus status, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var operatorId = CurrentUserId();
+        var operatorId = _currentUser.UserId();
         return _dbContext.PurchaseOrders
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s
@@ -193,9 +193,4 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
         return $"{pattern}{(count + 1):D4}";
     }
 
-    /// <summary>
-    /// 解析当前登录用户 id；claims 缺失或非法时返回 null（审计字段允许为空）
-    /// </summary>
-    private Guid? CurrentUserId()
-        => Guid.TryParse(_currentUser.Id, out var id) ? id : null;
 }

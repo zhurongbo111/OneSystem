@@ -38,7 +38,7 @@ public sealed class CreatePartnerRequestHandler : IRequestHandler<CreatePartnerR
         }
 
         var now = DateTimeOffset.UtcNow;
-        var operatorId = Guid.TryParse(_currentUser.Id, out var id) ? (Guid?)id : null;
+        var operatorId = _currentUser.UserId();
         var partner = new Partner
         {
             Id = Guid.NewGuid(),

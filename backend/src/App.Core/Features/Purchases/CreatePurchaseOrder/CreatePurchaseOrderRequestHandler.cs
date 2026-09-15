@@ -102,7 +102,7 @@ public sealed class CreatePurchaseOrderRequestHandler : IRequestHandler<CreatePu
         }
 
         var now = DateTimeOffset.UtcNow;
-        var operatorId = Guid.TryParse(_currentUser.Id, out var id) ? (Guid?)id : null;
+        var operatorId = _currentUser.UserId();
 
         // 事务：插单 + 明细 + 逐行库存 +=；单号冲突（唯一索引）时回滚后重新生成单号重试
         for (var attempt = 1; ; attempt++)

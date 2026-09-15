@@ -37,7 +37,7 @@ public sealed class UpdatePartnerStatusRequestHandler : IRequestHandler<UpdatePa
 
         partner.Status = request.Status == (int)PartnerStatus.Disabled ? PartnerStatus.Disabled : PartnerStatus.Enabled;
         partner.UpdatedAt = DateTimeOffset.UtcNow;
-        partner.UpdatedBy = Guid.TryParse(_currentUser.Id, out var id) ? (Guid?)id : null;
+        partner.UpdatedBy = _currentUser.UserId();
 
         await _partnerRepository.UpdateAsync(partner, cancellationToken);
         return PartnerDtoMapper.ToPartnerDto(partner);

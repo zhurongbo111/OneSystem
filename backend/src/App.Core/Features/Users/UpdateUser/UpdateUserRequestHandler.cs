@@ -49,7 +49,7 @@ public sealed class UpdateUserRequestHandler : IRequestHandler<UpdateUserRequest
         user.Email = email;
         user.Phone = phone;
         user.UpdatedAt = DateTimeOffset.UtcNow;
-        user.UpdatedBy = UserInputNormalizer.CurrentUserId(_currentUser);
+        user.UpdatedBy = _currentUser.UserId();
 
         await _userRepository.UpdateAsync(user, cancellationToken);
         return UserDtoMapper.ToUserDetailDto(user);
