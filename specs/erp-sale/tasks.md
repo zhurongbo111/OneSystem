@@ -20,7 +20,7 @@
 ### 1.2 仓储接口与实现
 
 - [x] 1.2.1 `ISalesOrderRepository` 接口 + `SalesOrderRepository`（同构 `IPurchaseOrderRepository`：GetPaged / GetDetail / Add / UpdateSettlement / UpdateStatus / GenerateOrderNo（前缀 `SO`））
-- [x] 1.2.2 仓储构造函数注入 `ICurrentUser` 填充审计字段；跨仓储写在 Handler 中用 `IUnitOfWork` 事务
+- [x] 1.2.2 审计字段由 Handler 经 `ICurrentUser` 获取后随实体 / `operatorId` 参数传入仓储；跨仓储写在 Handler 中用 `IUnitOfWork` 事务
 
 ### 1.3 销售单 API
 

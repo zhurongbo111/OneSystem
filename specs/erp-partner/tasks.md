@@ -17,7 +17,7 @@
 ### 1.2 仓储接口与实现
 
 - [x] 1.2.1 `IPartnerRepository` 接口 + `PartnerRepository`（GetById / ExistsByName（忽略大小写）/ GetPaged（keyword 匹配名称 / 联系人）/ Add / Update）
-- [x] 1.2.2 仓储构造函数注入 `ICurrentUser` 填充审计字段（同 `UserRepository` 模式）
+- [x] 1.2.2 审计字段由 Handler 经 `ICurrentUser` 获取后随实体传入仓储
 
 ### 1.3 往来单位 API
 

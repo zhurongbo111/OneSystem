@@ -113,7 +113,7 @@
 | `Task<string> GenerateOrderNoAsync(string prefix, DateTimeOffset orderDate, ...)` | 生成单号（见 §3.6） |
 
 - 单一仓储写（主表 + 明细一次 SaveChanges）由仓储自身保证；**跨仓储写**（单据主表 + 明细 + 库存 N 行）必须用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`，异常 `RollbackAsync` 后重抛（后端规则 §3）。
-- 仓储构造函数注入 `ICurrentUser` 填充审计字段（同 `UserRepository` 模式）。
+- 审计字段统一由 Handler 经 `ICurrentUser` 获取后随实体 / 方法参数（`operatorId`）传入，仓储不感知当前用户。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 
