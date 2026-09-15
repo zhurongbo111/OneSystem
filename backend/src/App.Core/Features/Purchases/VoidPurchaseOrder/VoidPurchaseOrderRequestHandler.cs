@@ -38,13 +38,13 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<PurchaseOrderDetailDto> HandleAsync(VoidPurchaseOrderRequest request, CancellationToken cancellationToken = default)
     {
-        var detail = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (detail is null)
+        var (order, items) = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");
         }
 
-        if (detail.Status == OrderStatus.Voided)
+        if (order.Status == OrderStatus.Voided)
         {
             // 已作废禁止再操作（防重复作废 / 重复回冲）
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
@@ -55,7 +55,7 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
         try
         {
             // 回冲：逐行库存 -= 数量（与入库同一事务；允许冲负，见 design.md §5 决策）
-            foreach (var item in detail.Items)
+            foreach (var item in items)
             {
                 await _inventoryRepository.IncrementAsync(item.ProductId, -item.Quantity, cancellationToken);
             }
@@ -69,12 +69,12 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
             throw;
         }
 
-        var updated = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (updated is null)
+        var (updatedOrder, updatedItems) = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (updatedOrder is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");
         }
 
-        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(updated);
+        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(updatedOrder, updatedItems);
     }
 }

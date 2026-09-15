@@ -28,7 +28,7 @@ backend/
 │   │   └── appsettings*.json / nlog.config
 │   ├── App.Core/         # 业务核心（禁止反向依赖）
 │   │   ├── DependencyInjection.cs     # AddCore：注册 Mediator、Handler、Validator
-│   │   ├── Abstractions/              # IMediator、IRequest、IRequestHandler、IUnitOfWork、ICurrentUser、ICurrentUserExtensions、IClientInfo、IUserRepository、IUserLoginLogRepository、ICategoryRepository、IProductRepository、IInventoryRepository、IPartnerRepository、IPurchaseOrderRepository、ISalesOrderRepository、ProductListItem、ProductDetail、ProductPickItem、InventoryItem、PurchaseOrderListItem、PurchaseOrderDetail、SalesOrderListItem、SalesOrderDetail
+│   │   ├── Abstractions/              # IMediator、IRequest、IRequestHandler、IUnitOfWork、ICurrentUser、ICurrentUserExtensions、IClientInfo、IUserRepository、IUserLoginLogRepository、ICategoryRepository、IProductRepository、IInventoryRepository、IPartnerRepository、IPurchaseOrderRepository、ISalesOrderRepository、ProductListItem、ProductDetail、ProductPickItem、InventoryItem
 │   │   ├── Auth/                      # JwtOptions、PasswordHasher、TokenService
 │   │   ├── Entities/                  # User、UserLoginLog、UserStatus、UserFieldConstraints、Product、Category、Inventory、ProductStatus、ProductFieldConstraints、CategoryFieldConstraints、Partner、PartnerType、PartnerStatus、PartnerFieldConstraints、PurchaseOrder、PurchaseOrderItem、SalesOrder、SalesOrderItem、OrderStatus、OrderSettlementStatus、OrderFieldConstraints
 │   │   ├── Errors/                    # BusinessException、ErrorCode、OrderNoConflictException

@@ -78,7 +78,6 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
 
         // 查库约束：商品逐行存在 / 启用；同时收集名称 / 单位快照，后端重算小计 / 总额（不信任前端传值）
         var products = new Dictionary<Guid, Product>(request.Items.Count);
-        var subtotals = new List<decimal>(request.Items.Count);
         var totalAmount = 0m;
         foreach (var line in request.Items)
         {
@@ -99,7 +98,6 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
             }
 
             var subtotal = line.Quantity * line.UnitPrice;
-            subtotals.Add(subtotal);
             totalAmount += subtotal;
         }
 
@@ -147,7 +145,6 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
                 // 明细行按请求顺序生成顺序 Guid（SequentialGuidGenerator，见 erp-purchase design.md §3.1），
                 // 保证持久化顺序与请求顺序一致（仓储按 Id 排序还原明细顺序）
                 var items = new List<SalesOrderItem>(request.Items.Count);
-                var subtotalIndex = 0;
                 foreach (var line in request.Items)
                 {
                     var p = products[line.ProductId];
@@ -160,17 +157,20 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
                         Unit = p.Unit,
                         Quantity = line.Quantity,
                         UnitPrice = line.UnitPrice,
-                        Subtotal = subtotals[subtotalIndex++],
+                        Subtotal = line.UnitPrice * line.Quantity,
                     });
                 }
 
                 await _salesOrderRepository.AddAsync(order, items, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                return (await _salesOrderRepository.GetDetailAsync(order.Id, cancellationToken))!
-                    is SalesOrderDetail detail
-                    ? SalesDtoMapper.ToSalesOrderDetailDto(detail)
-                    : throw new BusinessException(ErrorCode.NotFound, "销售单创建后读取失败");
+                var (createdOrder, createdItems) = await _salesOrderRepository.GetDetailAsync(order.Id, cancellationToken);
+                if (createdOrder is null)
+                {
+                    throw new BusinessException(ErrorCode.NotFound, "销售单创建后读取失败");
+                }
+
+                return SalesDtoMapper.ToSalesOrderDetailDto(createdOrder, createdItems);
             }
             catch (OrderNoConflictException) when (attempt < MaxOrderNoAttempts)
             {

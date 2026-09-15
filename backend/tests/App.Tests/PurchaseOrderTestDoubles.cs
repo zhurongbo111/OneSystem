@@ -26,23 +26,23 @@ internal sealed class FakePurchaseOrderRepository : IPurchaseOrderRepository
         _items[order.Id] = items.ToList();
     }
 
-    public Task<(IReadOnlyList<PurchaseOrderListItem> Items, int Total)> GetPagedAsync(
+    public Task<(IReadOnlyList<PurchaseOrder> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end,
         OrderSettlementStatus? settlement, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<PurchaseOrderListItem> empty = Array.Empty<PurchaseOrderListItem>();
+        IReadOnlyList<PurchaseOrder> empty = Array.Empty<PurchaseOrder>();
         return Task.FromResult((empty, 0));
     }
 
-    public Task<PurchaseOrderDetail?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<(PurchaseOrder? Order, IReadOnlyList<PurchaseOrderItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         if (!_orders.TryGetValue(id, out var order))
         {
-            return Task.FromResult<PurchaseOrderDetail?>(null);
+            return Task.FromResult<(PurchaseOrder?, IReadOnlyList<PurchaseOrderItem>)>((null, Array.Empty<PurchaseOrderItem>()));
         }
 
-        var items = _items[id].OrderBy(i => i.Id).ToList(); // 与真实仓储一致：按 Id 还原插入顺序
-        return Task.FromResult<PurchaseOrderDetail?>(ToDetail(order, items));
+        IReadOnlyList<PurchaseOrderItem> items = _items[id].OrderBy(i => i.Id).ToList(); // 与真实仓储一致：按 Id 还原插入顺序
+        return Task.FromResult((Order: (PurchaseOrder?)order, Items: items));
     }
 
     public Task AddAsync(PurchaseOrder order, IReadOnlyList<PurchaseOrderItem> items, CancellationToken cancellationToken = default)
@@ -87,32 +87,6 @@ internal sealed class FakePurchaseOrderRepository : IPurchaseOrderRepository
         var seq = _orders.Values.Count(o => o.OrderNo.StartsWith(pattern)) + 1;
         return Task.FromResult($"{pattern}{seq:D4}");
     }
-
-    private static PurchaseOrderDetail ToDetail(PurchaseOrder order, IReadOnlyList<PurchaseOrderItem> items)
-        => new()
-        {
-            Id = order.Id,
-            OrderNo = order.OrderNo,
-            PartnerId = order.PartnerId,
-            PartnerName = order.PartnerName,
-            OrderDate = order.OrderDate,
-            TotalAmount = order.TotalAmount,
-            SettlementStatus = order.SettlementStatus,
-            Status = order.Status,
-            Remark = order.Remark,
-            CreatedBy = order.CreatedBy,
-            CreatedAt = order.CreatedAt,
-            Items = items.Select(i => new PurchaseOrderDetailItem
-            {
-                Id = i.Id,
-                ProductId = i.ProductId,
-                ProductName = i.ProductName,
-                Unit = i.Unit,
-                Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice,
-                Subtotal = i.Subtotal,
-            }).ToList(),
-        };
 }
 
 /// <summary>

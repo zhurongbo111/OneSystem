@@ -26,12 +26,12 @@ public sealed class GetSalesOrderByIdRequestHandler : IRequestHandler<GetSalesOr
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<SalesOrderDetailDto> HandleAsync(GetSalesOrderByIdRequest request, CancellationToken cancellationToken = default)
     {
-        var detail = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (detail is null)
+        var (order, items) = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");
         }
 
-        return SalesDtoMapper.ToSalesOrderDetailDto(detail);
+        return SalesDtoMapper.ToSalesOrderDetailDto(order, items);
     }
 }

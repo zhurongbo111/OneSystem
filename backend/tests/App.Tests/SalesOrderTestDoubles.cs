@@ -26,23 +26,23 @@ internal sealed class FakeSalesOrderRepository : ISalesOrderRepository
         _items[order.Id] = items.ToList();
     }
 
-    public Task<(IReadOnlyList<SalesOrderListItem> Items, int Total)> GetPagedAsync(
+    public Task<(IReadOnlyList<SalesOrder> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end,
         OrderSettlementStatus? settlement, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<SalesOrderListItem> empty = Array.Empty<SalesOrderListItem>();
+        IReadOnlyList<SalesOrder> empty = Array.Empty<SalesOrder>();
         return Task.FromResult((empty, 0));
     }
 
-    public Task<SalesOrderDetail?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<(SalesOrder? Order, IReadOnlyList<SalesOrderItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         if (!_orders.TryGetValue(id, out var order))
         {
-            return Task.FromResult<SalesOrderDetail?>(null);
+            return Task.FromResult<(SalesOrder?, IReadOnlyList<SalesOrderItem>)>((null, Array.Empty<SalesOrderItem>()));
         }
 
-        var items = _items[id].OrderBy(i => i.Id).ToList(); // 与真实仓储一致：按 Id 还原插入顺序
-        return Task.FromResult<SalesOrderDetail?>(ToDetail(order, items));
+        IReadOnlyList<SalesOrderItem> items = _items[id].OrderBy(i => i.Id).ToList(); // 与真实仓储一致：按 Id 还原插入顺序
+        return Task.FromResult((Order: (SalesOrder?)order, Items: items));
     }
 
     public Task AddAsync(SalesOrder order, IReadOnlyList<SalesOrderItem> items, CancellationToken cancellationToken = default)
@@ -87,30 +87,4 @@ internal sealed class FakeSalesOrderRepository : ISalesOrderRepository
         var seq = _orders.Values.Count(o => o.OrderNo.StartsWith(pattern)) + 1;
         return Task.FromResult($"{pattern}{seq:D4}");
     }
-
-    private static SalesOrderDetail ToDetail(SalesOrder order, IReadOnlyList<SalesOrderItem> items)
-        => new()
-        {
-            Id = order.Id,
-            OrderNo = order.OrderNo,
-            PartnerId = order.PartnerId,
-            PartnerName = order.PartnerName,
-            OrderDate = order.OrderDate,
-            TotalAmount = order.TotalAmount,
-            SettlementStatus = order.SettlementStatus,
-            Status = order.Status,
-            Remark = order.Remark,
-            CreatedBy = order.CreatedBy,
-            CreatedAt = order.CreatedAt,
-            Items = items.Select(i => new SalesOrderDetailItem
-            {
-                Id = i.Id,
-                ProductId = i.ProductId,
-                ProductName = i.ProductName,
-                Unit = i.Unit,
-                Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice,
-                Subtotal = i.Subtotal,
-            }).ToList(),
-        };
 }

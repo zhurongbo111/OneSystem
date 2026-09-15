@@ -23,7 +23,7 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<PurchaseOrderListItem> Items, int Total)> GetPagedAsync(
+    public async Task<(IReadOnlyList<PurchaseOrder> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         DateTimeOffset? start,
@@ -71,68 +71,29 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
             .OrderByDescending(o => o.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(o => new PurchaseOrderListItem
-            {
-                Id = o.Id,
-                OrderNo = o.OrderNo,
-                PartnerId = o.PartnerId,
-                PartnerName = o.PartnerName,
-                OrderDate = o.OrderDate,
-                TotalAmount = o.TotalAmount,
-                SettlementStatus = o.SettlementStatus,
-                Status = o.Status,
-                CreatedAt = o.CreatedAt,
-            })
             .ToListAsync(cancellationToken);
 
         return (items, total);
     }
 
     /// <inheritdoc />
-    public async Task<PurchaseOrderDetail?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<(PurchaseOrder? Order, IReadOnlyList<PurchaseOrderItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var order = await _dbContext.PurchaseOrders.AsNoTracking()
-            .Where(o => o.Id == id)
-            .Select(o => new PurchaseOrderDetail
-            {
-                Id = o.Id,
-                OrderNo = o.OrderNo,
-                PartnerId = o.PartnerId,
-                PartnerName = o.PartnerName,
-                OrderDate = o.OrderDate,
-                TotalAmount = o.TotalAmount,
-                SettlementStatus = o.SettlementStatus,
-                Status = o.Status,
-                Remark = o.Remark,
-                CreatedBy = o.CreatedBy,
-                CreatedAt = o.CreatedAt,
-                // 占位：明细行下方单独查询后填充（EF 嵌套投影需引用 _dbContext 集合而非 o.Id 关联）
-                Items = new List<PurchaseOrderDetailItem>(),
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
 
         if (order is null)
         {
-            return null;
+            return (null, Array.Empty<PurchaseOrderItem>());
         }
 
         // 明细行按插入顺序（明细 Id 为顺序 Guid，与 AddRange 顺序一致）
         var items = await _dbContext.PurchaseOrderItems.AsNoTracking()
             .Where(i => i.OrderId == id)
             .OrderBy(i => i.Id)
-            .Select(i => new PurchaseOrderDetailItem
-            {
-                Id = i.Id,
-                ProductId = i.ProductId,
-                ProductName = i.ProductName,
-                Unit = i.Unit,
-                Quantity = i.Quantity,
-                UnitPrice = i.UnitPrice,
-                Subtotal = i.Subtotal,
-            })
             .ToListAsync(cancellationToken);
 
-        return order with { Items = items };
+        return (order, items);
     }
 
     /// <inheritdoc />

@@ -33,28 +33,28 @@ public sealed class UpdatePurchaseOrderSettlementRequestHandler : IRequestHandle
     {
         var target = (OrderSettlementStatus)request.SettlementStatus;
 
-        var detail = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (detail is null)
+        var (order, _) = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");
         }
 
-        if (detail.Status == OrderStatus.Voided)
+        if (order.Status == OrderStatus.Voided)
         {
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
         }
 
-        if (detail.SettlementStatus != target)
+        if (order.SettlementStatus != target)
         {
             await _purchaseOrderRepository.UpdateSettlementAsync(request.Id, target, _currentUser.UserId(), cancellationToken);
         }
 
-        var updated = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (updated is null)
+        var (updatedOrder, updatedItems) = await _purchaseOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (updatedOrder is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");
         }
 
-        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(updated);
+        return PurchaseDtoMapper.ToPurchaseOrderDetailDto(updatedOrder, updatedItems);
     }
 }

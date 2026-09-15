@@ -34,28 +34,28 @@ public sealed class UpdateSalesOrderSettlementRequestHandler : IRequestHandler<U
     {
         var target = (OrderSettlementStatus)request.SettlementStatus;
 
-        var detail = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (detail is null)
+        var (order, _) = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");
         }
 
-        if (detail.Status == OrderStatus.Voided)
+        if (order.Status == OrderStatus.Voided)
         {
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
         }
 
-        if (detail.SettlementStatus != target)
+        if (order.SettlementStatus != target)
         {
             await _salesOrderRepository.UpdateSettlementAsync(request.Id, target, _currentUser.UserId(), cancellationToken);
         }
 
-        var updated = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
-        if (updated is null)
+        var (updatedOrder, updatedItems) = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        if (updatedOrder is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");
         }
 
-        return SalesDtoMapper.ToSalesOrderDetailDto(updated);
+        return SalesDtoMapper.ToSalesOrderDetailDto(updatedOrder, updatedItems);
     }
 }

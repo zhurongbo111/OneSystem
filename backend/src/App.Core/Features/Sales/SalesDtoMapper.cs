@@ -1,30 +1,30 @@
-using App.Core.Abstractions;
+using App.Core.Entities;
 
 namespace App.Core.Features.Sales;
 
 /// <summary>
-/// 销售单读模型 → 出参映射（读模型为实体快照，映射为纯赋值，禁止反向依赖实体暴露）
+/// 销售单实体 → 出参映射（实体字段直接映射为 DTO，禁止把实体暴露到 API）
 /// </summary>
 internal static class SalesDtoMapper
 {
     /// <summary>
-    /// 详情读模型转 DTO
+    /// 主表实体 + 明细行实体转详情 DTO
     /// </summary>
-    public static SalesOrderDetailDto ToSalesOrderDetailDto(SalesOrderDetail detail)
+    public static SalesOrderDetailDto ToSalesOrderDetailDto(SalesOrder order, IReadOnlyList<SalesOrderItem> items)
         => new()
         {
-            Id = detail.Id.ToString(),
-            OrderNo = detail.OrderNo,
-            PartnerId = detail.PartnerId.ToString(),
-            PartnerName = detail.PartnerName,
-            OrderDate = detail.OrderDate,
-            TotalAmount = detail.TotalAmount,
-            SettlementStatus = (int)detail.SettlementStatus,
-            Status = (int)detail.Status,
-            Remark = detail.Remark,
-            CreatedBy = detail.CreatedBy?.ToString(),
-            CreatedAt = detail.CreatedAt,
-            Items = detail.Items.Select(i => new SalesOrderItemDto
+            Id = order.Id.ToString(),
+            OrderNo = order.OrderNo,
+            PartnerId = order.PartnerId.ToString(),
+            PartnerName = order.PartnerName,
+            OrderDate = order.OrderDate,
+            TotalAmount = order.TotalAmount,
+            SettlementStatus = (int)order.SettlementStatus,
+            Status = (int)order.Status,
+            Remark = order.Remark,
+            CreatedBy = order.CreatedBy?.ToString(),
+            CreatedAt = order.CreatedAt,
+            Items = items.Select(i => new SalesOrderItemDto
             {
                 Id = i.Id.ToString(),
                 ProductId = i.ProductId.ToString(),
@@ -37,19 +37,19 @@ internal static class SalesDtoMapper
         };
 
     /// <summary>
-    /// 列表读模型转 DTO
+    /// 主表实体转列表 DTO
     /// </summary>
-    public static SalesOrderListItemDto ToSalesOrderListItemDto(SalesOrderListItem item)
+    public static SalesOrderListItemDto ToSalesOrderListItemDto(SalesOrder order)
         => new()
         {
-            Id = item.Id.ToString(),
-            OrderNo = item.OrderNo,
-            PartnerId = item.PartnerId.ToString(),
-            PartnerName = item.PartnerName,
-            OrderDate = item.OrderDate,
-            TotalAmount = item.TotalAmount,
-            SettlementStatus = (int)item.SettlementStatus,
-            Status = (int)item.Status,
-            CreatedAt = item.CreatedAt,
+            Id = order.Id.ToString(),
+            OrderNo = order.OrderNo,
+            PartnerId = order.PartnerId.ToString(),
+            PartnerName = order.PartnerName,
+            OrderDate = order.OrderDate,
+            TotalAmount = order.TotalAmount,
+            SettlementStatus = (int)order.SettlementStatus,
+            Status = (int)order.Status,
+            CreatedAt = order.CreatedAt,
         };
 }

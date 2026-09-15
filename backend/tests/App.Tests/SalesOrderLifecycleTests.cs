@@ -80,7 +80,7 @@ public class SalesOrderLifecycleTests
         Assert.Equal(10, inventory.GetQuantity(p2.Id)); // 8 + 2
 
         // 状态置作废（事务序列：Begin → Increment ×2 → UpdateStatus → Commit）
-        var afterVoid = await orders.GetDetailAsync(order.Id);
+        var (afterVoid, _) = await orders.GetDetailAsync(order.Id);
         Assert.Equal(OrderStatus.Voided, afterVoid!.Status);
         Assert.Equal(user.UserId, order.UpdatedBy);
         Assert.Equal((int)OrderStatus.Voided, result.Status);
@@ -129,7 +129,7 @@ public class SalesOrderLifecycleTests
             new UpdateSalesOrderSettlementRequest { Id = order.Id, SettlementStatus = (int)OrderSettlementStatus.Settled });
 
         Assert.Equal((int)OrderSettlementStatus.Settled, result.SettlementStatus);
-        var afterSettle = await orders.GetDetailAsync(order.Id);
+        var (afterSettle, _) = await orders.GetDetailAsync(order.Id);
         Assert.Equal(OrderSettlementStatus.Settled, afterSettle!.SettlementStatus);
         Assert.Equal(user.UserId, order.UpdatedBy);
         Assert.Contains("UpdateSettlement", calls);
