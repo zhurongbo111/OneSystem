@@ -8,23 +8,20 @@ namespace App.Infrastructure.Repositories;
 
 /// <summary>
 /// 销售单仓储的 EF Core 实现（PostgreSQL）。只做数据访问，不做业务判定。
-/// 构造函数注入 ICurrentUser 填充更新操作的审计字段（同 UserRepository 模式）；
-/// 创建场景的审计字段由 Handler 在实体上填充。
+/// 审计字段统一由 Handler 经 ICurrentUser 获取后随方法参数 / 实体传入，仓储不感知当前用户。
 /// 跨表一致性：主表 + 明细在仓储内一次 SaveChanges；跨仓储写（库存扣减 + 单据）由 Handler
 /// 用 IUnitOfWork 包成同一 PostgreSQL 事务（见 erp-sale design.md §3.4）。
 /// </summary>
 public sealed class SalesOrderRepository : ISalesOrderRepository
 {
     private readonly AppDbContext _dbContext;
-    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化销售单仓储
     /// </summary>
-    public SalesOrderRepository(AppDbContext dbContext, ICurrentUser currentUser)
+    public SalesOrderRepository(AppDbContext dbContext)
     {
         _dbContext = dbContext;
-        _currentUser = currentUser;
     }
 
     /// <inheritdoc />
@@ -155,10 +152,9 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
     }
 
     /// <inheritdoc />
-    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, CancellationToken cancellationToken = default)
+    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var operatorId = _currentUser.UserId();
         return _dbContext.SalesOrders
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s
@@ -169,10 +165,9 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
     }
 
     /// <inheritdoc />
-    public Task UpdateStatusAsync(Guid id, OrderStatus status, CancellationToken cancellationToken = default)
+    public Task UpdateStatusAsync(Guid id, OrderStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var operatorId = _currentUser.UserId();
         return _dbContext.SalesOrders
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s

@@ -120,10 +120,14 @@ internal sealed class StubCurrentUser : ICurrentUser
 {
     public StubCurrentUser(Guid id, string username = "admin", string displayName = "管理员")
     {
+        UserId = id;
         Id = id.ToString();
         Username = username;
         DisplayName = displayName;
     }
+
+    /// <summary>原始 Guid 形式的用户 id（用于断言审计字段）</summary>
+    public Guid UserId { get; }
 
     public string Id { get; }
 

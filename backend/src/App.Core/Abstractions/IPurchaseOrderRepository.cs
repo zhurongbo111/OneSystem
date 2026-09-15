@@ -46,20 +46,22 @@ public interface IPurchaseOrderRepository
     Task AddAsync(PurchaseOrder order, IReadOnlyList<PurchaseOrderItem> items, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 更新结算状态并持久化（更新审计字段由仓储填充）
+    /// 更新结算状态并持久化（同时写入 UpdatedBy / UpdatedAt 审计字段）
     /// </summary>
     /// <param name="id">采购单 id</param>
     /// <param name="settlement">目标结算状态</param>
+    /// <param name="operatorId">操作人 id（由 Handler 取 ICurrentUser 传入，可空）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, CancellationToken cancellationToken = default);
+    Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 更新单据状态（作废）并持久化（更新审计字段由仓储填充）
+    /// 更新单据状态（作废）并持久化（同时写入 UpdatedBy / UpdatedAt 审计字段）
     /// </summary>
     /// <param name="id">采购单 id</param>
     /// <param name="status">目标状态</param>
+    /// <param name="operatorId">操作人 id（由 Handler 取 ICurrentUser 传入，可空）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task UpdateStatusAsync(Guid id, OrderStatus status, CancellationToken cancellationToken = default);
+    Task UpdateStatusAsync(Guid id, OrderStatus status, Guid? operatorId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 生成单号：前缀 + yyyyMMdd + 4 位序号（当天同前缀已有单号数 + 1）；

@@ -8,21 +8,18 @@ namespace App.Infrastructure.Repositories;
 
 /// <summary>
 /// 采购单仓储的 EF Core 实现（PostgreSQL）。只做数据访问，不做业务判定。
-/// 构造函数注入 ICurrentUser 填充更新操作的审计字段（同 UserRepository 模式）；
-/// 创建场景的审计字段由 Handler 在实体上填充。
+/// 审计字段统一由 Handler 经 ICurrentUser 获取后随方法参数 / 实体传入，仓储不感知当前用户。
 /// </summary>
 public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
 {
     private readonly AppDbContext _dbContext;
-    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化采购单仓储
     /// </summary>
-    public PurchaseOrderRepository(AppDbContext dbContext, ICurrentUser currentUser)
+    public PurchaseOrderRepository(AppDbContext dbContext)
     {
         _dbContext = dbContext;
-        _currentUser = currentUser;
     }
 
     /// <inheritdoc />
@@ -156,10 +153,9 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
     }
 
     /// <inheritdoc />
-    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, CancellationToken cancellationToken = default)
+    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var operatorId = _currentUser.UserId();
         return _dbContext.PurchaseOrders
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s
@@ -170,10 +166,9 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
     }
 
     /// <inheritdoc />
-    public Task UpdateStatusAsync(Guid id, OrderStatus status, CancellationToken cancellationToken = default)
+    public Task UpdateStatusAsync(Guid id, OrderStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var operatorId = _currentUser.UserId();
         return _dbContext.PurchaseOrders
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s
