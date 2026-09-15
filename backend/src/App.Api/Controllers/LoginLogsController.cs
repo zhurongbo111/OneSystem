@@ -29,7 +29,6 @@ public class LoginLogsController : ControllerBase
     /// 分页查询登录日志（支持登录名与登录时间范围筛选，登录时间倒序）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<LoginLogListItemDto>>))]
-    [ProducesResponseType(401)]
     [HttpGet]
     public async Task<ApiResponse<PagedResult<LoginLogListItemDto>>> GetLoginLogs(
         [FromQuery] GetLoginLogsRequest request,

@@ -32,10 +32,9 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// 获取当前登录用户（未登录实际返回 HTTP 200 + code 40100，下方 401 仅为 Swagger 语义标注）
+    /// 获取当前登录用户（未登录实际返回 HTTP 200 + code 40100）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDto>))]
-    [ProducesResponseType(401)]
     [HttpGet("me")]
     public async Task<ApiResponse<UserDto>> Me(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetCurrentUserRequest(), cancellationToken));
@@ -44,7 +43,6 @@ public class UsersController : ControllerBase
     /// 分页查询用户（支持关键词与状态筛选）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<UserListItemDto>>))]
-    [ProducesResponseType(401)]
     [HttpGet]
     public async Task<ApiResponse<PagedResult<UserListItemDto>>> GetUsers([FromQuery] GetUsersRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
@@ -53,7 +51,6 @@ public class UsersController : ControllerBase
     /// 新增用户（管理员设置初始密码）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpPost]
     public async Task<ApiResponse<UserDetailDto>> CreateUser([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
@@ -62,7 +59,6 @@ public class UsersController : ControllerBase
     /// 查询用户详情
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpGet("{id:guid}")]
     public async Task<ApiResponse<UserDetailDto>> GetUserById([FromRoute] Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetUserByIdRequest { Id = id }, cancellationToken));
@@ -71,7 +67,6 @@ public class UsersController : ControllerBase
     /// 编辑用户（用户名创建后不可修改）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}")]
     public async Task<ApiResponse<UserDetailDto>> UpdateUser(
         [FromRoute] Guid id,
@@ -93,7 +88,6 @@ public class UsersController : ControllerBase
     /// 启用 / 禁用用户（禁用后不能登录；不能禁用当前登录账号）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}/status")]
     public async Task<ApiResponse<UserDetailDto>> UpdateUserStatus(
         [FromRoute] Guid id,
@@ -108,7 +102,6 @@ public class UsersController : ControllerBase
     /// 重置用户密码（管理员操作，无需原密码）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<object>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}/password")]
     public async Task<ApiResponse<object?>> ResetPassword(
         [FromRoute] Guid id,

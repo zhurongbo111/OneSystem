@@ -36,7 +36,6 @@ public sealed class PurchaseOrderController : ControllerBase
     /// <param name="request">分页查询请求（Query 绑定）</param>
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<PurchaseOrderListItemDto>>))]
-    [ProducesResponseType(401)]
     [HttpGet]
     public async Task<ApiResponse<PagedResult<PurchaseOrderListItemDto>>> GetPaged([FromQuery] GetPurchaseOrdersRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
@@ -47,7 +46,6 @@ public sealed class PurchaseOrderController : ControllerBase
     /// <param name="id">采购单 id</param>
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseOrderDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpGet("{id:guid}")]
     public async Task<ApiResponse<PurchaseOrderDetailDto>> GetDetail(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetPurchaseOrderByIdRequest { Id = id }, cancellationToken));
@@ -58,7 +56,6 @@ public sealed class PurchaseOrderController : ControllerBase
     /// <param name="request">新增请求</param>
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseOrderDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpPost]
     public async Task<ApiResponse<PurchaseOrderDetailDto>> Create([FromBody] CreatePurchaseOrderRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
@@ -69,7 +66,6 @@ public sealed class PurchaseOrderController : ControllerBase
     /// <param name="id">采购单 id</param>
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseOrderDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}/void")]
     public async Task<ApiResponse<PurchaseOrderDetailDto>> Void(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new VoidPurchaseOrderRequest { Id = id }, cancellationToken));
@@ -81,7 +77,6 @@ public sealed class PurchaseOrderController : ControllerBase
     /// <param name="request">结算更新请求</param>
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseOrderDetailDto>))]
-    [ProducesResponseType(401)]
     [HttpPut("{id:guid}/settlement")]
     public async Task<ApiResponse<PurchaseOrderDetailDto>> UpdateSettlement(
         [FromRoute] Guid id,

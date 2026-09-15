@@ -29,7 +29,6 @@ public class InventoryController : ControllerBase
     /// 分页查询库存（关键词 / 分类筛选，仅启用商品，按编码升序）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<InventoryItemDto>>))]
-    [ProducesResponseType(401)]
     [HttpGet]
     public async Task<ApiResponse<PagedResult<InventoryItemDto>>> GetInventory([FromQuery] GetInventoryRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
