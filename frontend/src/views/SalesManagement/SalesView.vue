@@ -333,12 +333,7 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
           {{ (page - 1) * pageSize + rowIndex + 1 }}
         </template>
         <template #orderNo="{ record }">
-          <a-link
-            :ellipsis="true"
-            @click="onDetail(record as SalesOrderListItem)"
-          >
-            {{ (record as SalesOrderListItem).orderNo }}
-          </a-link>
+          {{ (record as SalesOrderListItem).orderNo }}
         </template>
         <template #orderDate="{ record }">
           {{ formatDateTime((record as SalesOrderListItem).orderDate).slice(0, 10) }}
