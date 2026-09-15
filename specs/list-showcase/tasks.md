@@ -16,6 +16,7 @@
 - [x] T12 操作行左右分组：主操作（新增/开单）统一靠左、其余操作靠右且同一行；采购/销售开单按钮从页面头移入操作行左组（页面头仅留标题）；全列表页对齐该约定，补 e2e 布局断言，重新验证 build/lint/e2e
 - [x] T13 筛选行「搜索/重置」按钮补图标（搜索 `IconSearch`、重置 `IconUndo`，`#icon` 插槽），全列表页对齐该约定，补 e2e 图标断言，重新验证 build/lint/e2e
 - [x] T14 重置按钮图标 `IconUndo` 调整为 `IconRotateLeft`（「撤销」语义不贴切「清空筛选条件」，`IconRotateLeft` 为回转 / 恢复初始态语义），全列表页对齐，e2e 图标断言改为精确 class，重新验证 build/lint/e2e
+- [x] T15 列设置补齐到销售开单 / 采购入库页（此前两页无列设置）：`columns` 由静态常量改为 computed 按 `visibleColumns` 拼列（§2.4），序号与操作列固定显示、不参与设置（specs/action-column §5），补 e2e 断言，重新验证 build/lint/e2e
 
 ## 完成定义
 
