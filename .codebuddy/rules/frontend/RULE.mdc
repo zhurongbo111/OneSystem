@@ -113,9 +113,9 @@ frontend/
 - **禁止反向选择**：不得因偏好某套风格跳过 Tabler 直接用 Lucide / Arco；不得为凑图标使用语义不符的图标（宁缺毋滥，纯装饰性图标可放宽）。
 - **Arco 组件 `#icon` 插槽**（`a-button` / `a-menu-item` / `a-select` 等，含 §5.2 操作列固定图标）**同样优先 Tabler**，三套均可放进插槽；仅当语义只有 Arco 覆盖时才用 Arco。
 - **来源注释**：使用 Lucide / Arco 图标时，在 import 处加一行注释说明，如 `// 图标来源：Lucide（Tabler 无对应语义）`，便于 review。
-- **尺寸**：Tabler / Lucide 默认 `24px`，放入 Arco 组件插槽时用一处 `:deep(svg)` 的 scoped 样式统一收敛到场景尺寸（按钮 / 菜单 `18px`，标签 `14px`），避免逐处写 `:size`；Arco 图标用 `:size`（其默认 `1em`）。
-- **线宽**：Tabler / Lucide 默认 `stroke 2`，Arco 默认 `stroke-width 4`；同一区域（如侧边菜单）内不混用不同来源，避免线宽视觉参差。
-- **一致性**：同一业务图标全项目统一用同一来源；既有用法不追溯迁移，整体重做的区域（如侧边菜单）按本表统一。
+- **尺寸**：Tabler / Lucide 默认 `24px`，全局样式（`src/App.vue`）已统一收敛：Arco 按钮 / 下拉项内为 `1em`（与 Arco 自带图标同视觉重量），侧边菜单为辅以 `AppLayout` scoped 规则的 `18px` + `stroke-width 2.5`；其余场景在空间不足时再按需用 `:size`，避免逐处写。
+- **线宽**：Tabler / Lucide 默认 `stroke 2`，Arco 默认 `stroke-width 4`；同一区域（如侧边菜单）内不混用不同来源，避免线宽视觉参差；小尺寸（≤ 18px）场景可将 Tabler 提到 `2.5` 补清晰度。
+- **迁移状态**：侧边菜单、列表工具条与操作列的业务图标已完成 Tabler 迁移，仅「图标」示例页（`/components` 图标 tab，规格 `specs/icon-showcase/`）为演示保留三套并存。新增 / 修改图标一律按本表选 Tabler，且同一业务图标全项目统一用同一来源。
 
 ## 5. 列表页约定
 
