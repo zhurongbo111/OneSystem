@@ -19,7 +19,7 @@
 
 - [x] T13 规格更新：`requirement.md` / `design.md` 改写为「单一列表 + 双形态入口 + 统一详情」
 - [x] T14 统一列表页 `FormShowcaseView.vue`（工具条「新增·抽屉」primary +「新增·页面」次级；操作列 查看/编辑（dropdown 形态菜单：用抽屉/用页面）/删除）
-- [x] T15 抽屉表单迁移至 `FormShowcase/components/OrderFormDrawer.vue`（行为不变）
+- [x] T15 抽屉表单迁移至 `Showcase/OrderFormDrawer.vue`（行为不变）
 - [x] T16 独立表单页 `FormPageFormView.vue` 适配新路由名（`formNew` / `formEdit`，提交跳 `formDetail`）
 - [x] T17 统一详情页 `FormDetailView.vue`（descriptions 全字段 + 商品明细子表格 + 编辑走抽屉 + 404 空态）
 - [x] T18 路由替换为 `/form`、`/form/new`、`/form/edit/:id`、`/form/detail/:id`；侧边菜单 `key="form"`；删除 4 个旧页面与 `FormDrawerShowcase/` 目录

@@ -6,12 +6,12 @@
 
 ## 2. 路由设计
 
-- 新增路由：`path: '/components'`，`name: 'components'`，`component: () => import('@/views/ComponentShowcaseView.vue')`，`meta: { public: true }`。
+- 新增路由：`path: '/components'`，`name: 'components'`，`component: () => import('@/views/Showcase/ComponentShowcaseView.vue')`，`meta: { public: true }`。
 - 懒加载（`() => import(...)`，前端规则 §5）。
 - `public`：无需登录即可访问（示例 / 参考性质，便于直接访问与 e2e 前置最小）。
 - 在 `src/router/index.ts` 的 `routes` 数组注册，位置在兜底 `/:pathMatch(.*)*` 重定向之前。
 
-## 3. 页面设计（`src/views/ComponentShowcaseView.vue`）
+## 3. 页面设计（`src/views/Showcase/ComponentShowcaseView.vue`）
 
 - 结构：
   - 顶部标题栏：页面标题"Arco Design 组件示例" + "返回首页"入口（`router.push({ name: 'home' })`，未登录会经守卫跳登录页，属预期行为）。

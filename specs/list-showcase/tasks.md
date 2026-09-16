@@ -2,7 +2,7 @@
 
 ## 任务
 
-- [x] T1 新建 `frontend/src/views/ListShowcaseView.vue`（静态数据 + 搜索/筛选/重置）
+- [x] T1 新建 `frontend/src/views/Showcase/ListShowcaseView.vue`（静态数据 + 搜索/筛选/重置）
 - [x] T2 表格增强：多选 + 批量删除、排序、列显示设置、空状态
 - [x] T3 工具操作：新增（提示）、导出 CSV、刷新恢复
 - [x] T4 分页（10/20/50，显示总数）与条件变化回第 1 页
