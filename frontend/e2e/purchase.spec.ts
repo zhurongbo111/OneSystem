@@ -229,7 +229,7 @@ test.describe('采购入库（集成）', () => {
     }
   })
 
-  test('开单 → 库存增加 → 标记已付 → 作废回冲（全链路）', async ({ page }) => {
+  test('开单 → 库存增加 → 标记已结算 → 作废回冲（全链路）', async ({ page }) => {
     const codeA = uniqueProductCode('po_a')
     const codeB = uniqueProductCode('po_b')
     const supplier = uniquePartnerName()
@@ -265,35 +265,42 @@ test.describe('采购入库（集成）', () => {
     await page.getByRole('button', { name: '搜索', exact: true }).click()
     const row = dataRows(page).first()
     await expect(row).toContainText(orderNo)
-    // 初始未付
-    await expect(row.getByText('未付', { exact: true })).toBeVisible()
+    // 初始未结算
+    await expect(row.getByText('未结算', { exact: true })).toBeVisible()
 
-    // 操作列按钮带图标：详情 / 作废 / 结算切换
+    // 操作列按钮带图标：详情 / 结算切换 / 作废
     await expect(row.getByRole('button', { name: '详情' }).locator('svg')).toHaveCount(1)
     await expect(row.getByRole('button', { name: '作废' }).locator('svg')).toHaveCount(1)
-    await expect(row.getByRole('button', { name: '标记已付' }).locator('svg')).toHaveCount(1)
-    // 配色区分：标记已付 = success（绿），与「已付」绿标签呼应
-    await expect(row.getByRole('button', { name: '标记已付' })).toHaveClass(/arco-btn-status-success/)
+    await expect(row.getByRole('button', { name: '标记已结算' }).locator('svg')).toHaveCount(1)
+    // 按钮顺序：详情 → 标记已结算 → 作废（specs/action-column §5.1 主操作 → 中性 → 完成 → 警示 → 危险）
+    const rowActions = row.locator('td.action-cell button')
+    await expect(rowActions).toHaveCount(3)
+    await expect(rowActions.nth(0)).toHaveText(/详情/)
+    await expect(rowActions.nth(1)).toHaveText(/标记已结算/)
+    await expect(rowActions.nth(2)).toHaveText(/作废/)
+    // 配色区分：标记已结算 = success（绿），与「已结算」绿标签呼应；作废 = danger（红），与「已作废」红标签呼应
+    await expect(row.getByRole('button', { name: '标记已结算' })).toHaveClass(/arco-btn-status-success/)
+    await expect(row.getByRole('button', { name: '作废' })).toHaveClass(/arco-btn-status-danger/)
     await expect(row.getByRole('button', { name: '详情' })).not.toHaveClass(/arco-btn-status-success/)
 
-    // 标记已付
-    await row.getByRole('button', { name: '标记已付' }).click()
-    await expect(page.getByText('确认标记为已付？')).toBeVisible()
-    await confirmPopconfirm(page, '确认标记为已付？')
-    await expect(page.getByText('已标记为已付')).toBeVisible()
-    const rowPaid = dataRows(page).first()
-    await expect(rowPaid.getByText('已付', { exact: true })).toBeVisible()
-    // 已付态：结算按钮切为「改回未付」，次要色（灰），不再是 success 色
-    await expect(rowPaid.getByRole('button', { name: '改回未付' }).locator('svg')).toHaveCount(1)
-    await expect(rowPaid.getByRole('button', { name: '改回未付' })).toHaveClass(
+    // 标记已结算
+    await row.getByRole('button', { name: '标记已结算' }).click()
+    await expect(page.getByText('确认标记为已结算？')).toBeVisible()
+    await confirmPopconfirm(page, '确认标记为已结算？')
+    await expect(page.getByText('已标记为已结算')).toBeVisible()
+    const rowSettled = dataRows(page).first()
+    await expect(rowSettled.getByText('已结算', { exact: true })).toBeVisible()
+    // 已结算态：结算按钮切为「改回未结算」，次要色（灰），不再是 success 色
+    await expect(rowSettled.getByRole('button', { name: '改回未结算' }).locator('svg')).toHaveCount(1)
+    await expect(rowSettled.getByRole('button', { name: '改回未结算' })).toHaveClass(
       /action-btn-secondary/,
     )
-    await expect(rowPaid.getByRole('button', { name: '改回未付' })).not.toHaveClass(
+    await expect(rowSettled.getByRole('button', { name: '改回未结算' })).not.toHaveClass(
       /arco-btn-status-success/,
     )
 
     // 作废：库存回冲
-    await rowPaid.getByRole('button', { name: '作废' }).click()
+    await rowSettled.getByRole('button', { name: '作废' }).click()
     await expect(page.getByText('确认作废该采购单？')).toBeVisible()
     await confirmPopconfirm(page, '确认作废该采购单？')
     await expect(page.getByText('已作废，库存已回冲')).toBeVisible()
@@ -302,8 +309,8 @@ test.describe('采购入库（集成）', () => {
     const rowVoided = dataRows(page).first()
     await expect(rowVoided.getByText('已作废', { exact: true })).toBeVisible()
     await expect(rowVoided.getByRole('button', { name: '作废' })).toHaveCount(0)
-    await expect(rowVoided.getByRole('button', { name: '标记已付' })).toHaveCount(0)
-    await expect(rowVoided.getByRole('button', { name: '改回未付' })).toHaveCount(0)
+    await expect(rowVoided.getByRole('button', { name: '标记已结算' })).toHaveCount(0)
+    await expect(rowVoided.getByRole('button', { name: '改回未结算' })).toHaveCount(0)
 
     // 库存回冲：A → 0，B → 0
     await goInventory(page)

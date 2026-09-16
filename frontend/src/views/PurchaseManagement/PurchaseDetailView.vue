@@ -91,14 +91,14 @@ async function onVoid(): Promise<void> {
   }
 }
 
-/** 结算切换：未付 ↔ 已付（库存不变） */
+/** 结算切换：未结算 ↔ 已结算（库存不变） */
 async function onToggleSettlement(): Promise<void> {
   if (settlingId.value || !detail.value) return
   settlingId.value = detail.value.id
   try {
     const next: SettlementStatus = detail.value.settlementStatus === 1 ? 0 : 1
     await updatePurchaseOrderSettlement(detail.value.id, next)
-    Message.success(next === 1 ? '已标记为已付' : '已改回未付')
+    Message.success(next === 1 ? '已标记为已结算' : '已改回未结算')
     detail.value = await getPurchaseOrder(detail.value.id)
   } catch {
     // 错误提示已由请求层统一处理
@@ -154,12 +154,12 @@ async function onToggleSettlement(): Promise<void> {
             <span class="amount">¥ {{ detail.totalAmount.toFixed(2) }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="结算状态">
-            <a-tag :color="detail.settlementStatus === 1 ? 'green' : 'orange'">
-              {{ detail.settlementStatus === 1 ? '已付' : '未付' }}
+            <a-tag :color="detail.settlementStatus === 1 ? 'green' : 'gray'">
+              {{ detail.settlementStatus === 1 ? '已结算' : '未结算' }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="单据状态">
-            <a-tag :color="detail.status === 1 ? 'green' : 'gray'">
+            <a-tag :color="detail.status === 1 ? 'green' : 'red'">
               {{ detail.status === 1 ? '正常' : '已作废' }}
             </a-tag>
           </a-descriptions-item>
@@ -214,7 +214,7 @@ async function onToggleSettlement(): Promise<void> {
             @ok="onVoid"
           >
             <a-button
-              status="warning"
+              status="danger"
               :loading="voidingId === detail.id"
             >
               作废
@@ -222,14 +222,14 @@ async function onToggleSettlement(): Promise<void> {
           </a-popconfirm>
           <a-popconfirm
             type="info"
-            :content="detail.settlementStatus === 1 ? '确认改回未付？' : '确认标记为已付？'"
+            :content="detail.settlementStatus === 1 ? '确认改回未结算？' : '确认标记为已结算？'"
             @ok="onToggleSettlement"
           >
             <a-button
               :type="detail.settlementStatus === 1 ? 'outline' : 'primary'"
               :loading="settlingId === detail.id"
             >
-              {{ detail.settlementStatus === 1 ? '改回未付' : '标记已付' }}
+              {{ detail.settlementStatus === 1 ? '改回未结算' : '标记已结算' }}
             </a-button>
           </a-popconfirm>
         </a-space>

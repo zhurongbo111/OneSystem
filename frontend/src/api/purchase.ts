@@ -1,7 +1,7 @@
 import type { PagedResult } from './product'
 import { get, post, put } from './request'
 
-/** 结算状态（0 未付 / 1 已付） */
+/** 结算状态（0 未结算 / 1 已结算） */
 export type SettlementStatus = 0 | 1
 
 /** 单据状态（0 已作废 / 1 正常） */
@@ -114,7 +114,7 @@ export function voidPurchaseOrder(id: string): Promise<PurchaseOrderDetail> {
   return put<PurchaseOrderDetail>(`/purchase-orders/${id}/void`)
 }
 
-/** 更新结算状态（仅 未付 ↔ 已付；库存不变） */
+/** 更新结算状态（仅 未结算 ↔ 已结算；库存不变） */
 export function updatePurchaseOrderSettlement(id: string, settlementStatus: SettlementStatus): Promise<PurchaseOrderDetail> {
   return put<PurchaseOrderDetail>(`/purchase-orders/${id}/settlement`, { settlementStatus })
 }
