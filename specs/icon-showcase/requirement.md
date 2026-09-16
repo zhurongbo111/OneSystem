@@ -2,7 +2,7 @@
 
 ## 1. 背景
 
-前端组件示例页（`frontend-component-showcase`）集中展示各图标库的用法，作为业务页面选图标的参考。涉及三套图标库：Tabler Icons（`@tabler/icons-vue`，业务默认选用）、Lucide Icons（`@lucide/vue`，回退补充）与 Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`，兜底；三套均为线性风格）。三者在示例页「图标」tab 内分组展示，供对照选用。选型优先级与落地约定见前端规则 §4.7。
+前端组件示例页（`frontend-component-showcase`）集中展示各图标库的用法，作为业务页面选图标的参考。涉及三套图标库：Tabler Icons（`@tabler/icons-vue`，业务默认选用）、Lucide Icons（`@lucide/vue`，回退补充）与 Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`，兜底；三套均为线性风格）。三者在示例页「图标」tab 内分组展示，供对照选用。选型优先级与落地约定见本规格 `design.md` §0。
 
 ## 2. 目标
 

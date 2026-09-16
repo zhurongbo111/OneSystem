@@ -12,13 +12,13 @@
 
 ## 功能点
 
-1. 规则文件（`.codebuddy/rules/frontend/RULE.mdc`）新增「组合式 API 分区书写规范」章节。
+1. 「组合式 API 分区书写规范」正文落在本规格 `design.md` §0。
 2. ESLint 接入 `eslint-plugin-perfectionist`，启用 import 排序、类型先于变量、script setup 声明顺序、模板 ref 命名规则。
 3. 存量 `.vue` / composable 的 script 块按分区顺序重构，加分区注释。
 
 ## 验收标准
 
-- [ ] 规则文件包含分区规范章节（11 区顺序 + 模板 ref 命名 + composable 顺序）。
+- [ ] 规格 `design.md` §0 含分区规范（11 区顺序 + 模板 ref 命名 + composable 顺序）。
 - [ ] `npm run lint` 通过；**import 顺序**（vue 生态 → 第三方 → `@/` 内部）由 `perfectionist/sort-imports` 强制，乱序会报错。
 - [ ] `npm run type-check` 通过。
 - [ ] 全部 `.vue` 与 `composables/` 文件的 script 块符合分区顺序并带分区注释。
