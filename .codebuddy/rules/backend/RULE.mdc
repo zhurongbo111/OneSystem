@@ -64,7 +64,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 - **Request**：实现标记接口 `IRequest<TResponse>`（声明响应类型），供中介分发时确定响应类型。
 - **RequestValidator（强制）**：只做格式层校验，禁止访问仓储 / 查库；需要查询数据的约束（存在性、唯一性、状态流转等）一律放到 `RequestHandler` 中判断。字段长度 / 区间 / 正则必须取自 §5.3 的字段约束单一来源，禁止硬编码（须与"数据规则"一致）。
-- **RequestHandler（强制）**：本用例唯一业务编排点，直接依赖仓储接口与无状态技术组件（如 JWT 的 `TokenService`）；**不设 Service 层**——禁止新增业务编排类 `*Service` / `*Handler`（聚合型），通用无状态技术组件按职责命名（不参与业务编排）。实现 `IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖；单测可直接测该实现，也可经 `IMediator` 验证分发。
+- **RequestHandler（强制）**：本用例唯一业务编排点，直接依赖仓储接口与无状态技术组件；**不设 Service 层**——禁止新增**参与业务编排**的 `*Service`（如 `OrderService`），也不得再引入聚合型 Handler；通用无状态技术组件不受此限，按职责命名（如 `Auth/TokenService`、`PasswordHasher`）。实现 `IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖；单测可直接测该实现，也可经 `IMediator` 验证分发。
 - 无请求参数的用例（如"获取当前用户"）也定义一个空 `Request` 模型（如 `GetCurrentUserRequest`）占位以统一签名，但不定义 `Validator`；纯内存用例在实现内同步计算后 `return Task.FromResult(result)`，无需 `async` 关键字。
 - **用例不接触 HTTP（强制）**：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；需要"当前用户"的用例注入 `App.Core/Abstractions/ICurrentUser`（实现由 `App.Api` 基于 ClaimsPrincipal 提供）。
 - **当前用户与审计字段（强制）**：id 解析统一用 `Abstractions/ICurrentUserExtensions.UserId()` 扩展方法（claims 缺失 / 非法返回 `null`），禁止内联 `Guid.TryParse` 或私有解析方法；审计字段（CreatedBy / UpdatedBy）一律由 Handler 经 `ICurrentUser` 获取后随实体 / `operatorId` 参数传入，仓储不注入 `ICurrentUser`、不感知当前用户。
@@ -75,6 +75,8 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 - **中介分发（强制）**：Controller / 中间层只注入 `App.Core/Abstractions/IMediator`，用 `await _mediator.Send(request)` 触发用例，禁止直接依赖或 `new` 具体 Handler。分发实现 `App.Core/Mediation/Mediator`（自研简化 MediatR）：按请求运行时类型经 DI 解析已注册的 `IRequestHandler<TRequest,TResponse>` 后调用其 `HandleAsync`。
 - **格式校验全局统一（强制）**：格式校验由 `Mediator` 在分发到 Handler 之前统一执行——`Send` 内按请求运行时类型经 DI 解析已注册的 `IValidator<TRequest>` 并 `await ValidateAsync`，失败抛 `BusinessException(ErrorCode.Validation, 首条错误信息)`，未注册校验器的请求（如空请求用例）自动跳过。`RequestHandler` 不再注入 / 执行校验器，`HandleAsync` 只写业务逻辑与查库约束；Controller 不做参数校验。
+- **路由约定（强制）**：Controller 路由统一 `/api/<资源复数>`（`AGENTS.md` §4.4）；动作用 HTTP 动词 + 资源 / 子资源路径（如 `GET /api/categories/paged`、`PUT /api/users/{id}/status`），用例名不进路径，不在路径中暴露实现细节。
+- **分页入参（强制）**：`page` ≥ 1、`pageSize` 默认 20、上限 100（`AGENTS.md` §4.3）；Validator 用 `InclusiveBetween` 等表达该边界，越界由全局校验统一返回 `40000`。
 
 ### 4.3 DTO 与读模型
 
@@ -108,7 +110,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 - **实体 / DTO（Request / Response）/ 仓储方法签名**中的所有时间字段统一用 `DateTimeOffset`（可空用 `DateTimeOffset?`），**禁止 `DateTime`**。理由：`DateTime.Kind` 在 JSON 序列化与跨层传递中会丢失，导致 UTC 与本地时间混用；`DateTimeOffset` 自带偏移量，语义明确。
 - 取当前时间统一 `DateTimeOffset.UtcNow`；禁止 `DateTime.Now`，禁止直接调用 `DateTime.UtcNow`（确需 `DateTime` 值的场景见下条边界例外，用 `.UtcDateTime` 转换得到，不让裸 `DateTime` 进入业务层）。
-- Npgsql 将 `DateTimeOffset` 映射为 `timestamptz`，库内按 UTC 存储，接口出入参保留偏移量。由此 `DateTime` → `DateTimeOffset` 的改造若不影响 DDL，**迁移可以 Up/Down 为空**（参照 `20260910070346_ConvertTimestampsToDateTimeOffset`），属正常情况，不要为了"迁移有内容"去改列类型。
+- Npgsql 将 `DateTimeOffset` 映射为 `timestamptz`，库内按 UTC 存储，接口出入参保留偏移量。类型改造若不影响 DDL，允许生成 Up/Down 为空的迁移，不要为了"迁移有内容"去改列类型。
 - 时间范围筛选入参为 `DateTimeOffset`（前端传 UTC ISO 串），偏移量显式，后端**不做时区推断 / 不做 UTC 归一化**；闭区间比较直接依赖 `timestamptz` 语义。
 - **唯一例外**：第三方 API 只接受 `DateTime` 时（如 `JwtSecurityToken` 的 `notBefore` / `expires`），在调用边界显式 `.UtcDateTime` 转换并加注释说明（参照 `TokenService.Issue`）。
 - 新增时间字段时同步更新各功能 `design.md` 的数据模型表与表结构表（§5.3 规格侧事实源）。
@@ -137,7 +139,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 ## 7. 日志与可观测性
 
 - 日志集成 NLog 并对接默认 `ILogger<T>`（Microsoft.Extensions.Logging）；业务代码只注入使用 `ILogger<T>`，禁止直接调用 NLog。
-- NLog 配置放在 `App.Api`，输出控制台 + 滚动文件；日志级别：dev 为 Info，prod 为 Warning（日志上下文含 traceId 的要求见 `AGENTS.md` §5）。
+- NLog 配置放在 `App.Api`，输出控制台 + 滚动文件；日志级别：**dev / prod 均 Info 起**（prod 同样保留业务日志），框架日志（`Microsoft.*` / `System.*`）单独以 Warn 起压噪（见 `nlog.config`）——不靠整体降到 Warning 来减少噪音，否则会连带丢弃 Info 级业务日志。日志上下文含 traceId 的要求见 `AGENTS.md` §5。
 - 可观测性集成 OpenTelemetry（Tracing + Metrics）：在 `App.Api` 引入 SDK，自动埋点 ASP.NET Core 与 EF Core；导出目标按环境配置（dev 可不导出，prod 导出至 collector）。
 
 ## 8. 环境配置
@@ -148,7 +150,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 ## 9. 测试
 
 - 单元测试项目：`tests/App.Tests`（xUnit）；覆盖重点（RequestHandler 业务逻辑）与测试门槛见 `AGENTS.md` §6。
-- Repository 实现可用 EF Core InMemory 提供程序测试。
-- **InMemory 限制（强制）**：InMemory 提供程序**不支持 `ExecuteUpdateAsync` / 行锁等关系型特性**；依赖这类写操作的仓储与生命周期测试须用行为型假实现规避（参照 `PurchaseOrderTestDoubles` / `SalesOrderTestDoubles` 及其生命周期测试）。
+- 仓储与用例测试**优先用行为型假实现**（参照 `PurchaseOrderTestDoubles` / `SalesOrderTestDoubles` 及其生命周期测试）；EF Core InMemory 提供程序仅用于不依赖关系型特性的简单读场景。
+- **InMemory 限制（强制）**：InMemory **不支持 `ExecuteUpdateAsync` / 行锁等关系型特性**，依赖这类写操作的仓储与生命周期测试必须用行为型假实现规避。
 - 测试命名：`{类名}_{方法名}_{场景}`；RequestHandler 的公共方法必须有对应单测。
 - **测试用例要求（强制）**：凡涉及后端改动的功能，交付前必须为改动新增 / 变更的业务逻辑补充正常分支 + 异常分支的测试用例；无对应测试用例视为未完成，不得勾选规格 `tasks.md` 中对应任务。
