@@ -59,9 +59,9 @@ backend/
 
 共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`、`LoginLogDtoMapper`；`Features/Products/ProductDto`、`ProductPickDto`、`ProductDtoMapper`；`Features/Categories/CategoryDto`、`CategoryDtoMapper`；`Features/Partners/PartnerDto`、`PartnerDtoMapper`；`Features/Inventory/InventoryItemDto`、`InventoryDtoMapper`；`Features/Purchases/PurchaseOrderDto`、`PurchaseDtoMapper`；`Features/Sales/SalesOrderDto`、`SalesDtoMapper`。
 
-**当前用户与审计字段**：id 解析统一用 `Abstractions/ICurrentUserExtensions.UserId()` 扩展方法（claims 缺失 / 非法返回 `null`），禁止内联 `Guid.TryParse` 或私有解析方法。审计字段（CreatedBy / UpdatedBy）一律由 Handler 经 `ICurrentUser` 获取后随实体 / `operatorId` 参数传入，仓储不注入 `ICurrentUser`、不感知当前用户。
+**当前用户与审计字段**：id 解析入口为 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
 
-**DTO 映射**：每个功能在 `Features/<Feature>/` 下放 `internal static class <Feature>DtoMapper` 集中正向映射（实体 / 读模型 → 出参 DTO），方法名 `To` + 目标 DTO 类型名（如 `UserDtoMapper.ToUserDetailDto`、`ProductDtoMapper.ToProductDto`）；Handler 内禁止内联 `new XxxDto` / 私有 `ToDto` 重复拼装；反向（入参 Request → 实体）当前为各用例 Handler 内联拼装，若抽取工厂方法须用 `From` + 源类型名区分方向。约定见 `rules/backend/RULE.mdc` §4.3。
+**DTO 映射**：各功能在 `Features/<Feature>/` 下提供 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
 
 **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）。
 
@@ -96,7 +96,7 @@ frontend/
 └── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / category-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts；helpers/menu.ts（clickMenuItem：点击侧边菜单项，子菜单折叠时先展开所属分组）
 ```
 
-**图标选型**：业务图标默认 Tabler（`@tabler/icons-vue`）→ 回退 Lucide（`@lucide/vue`）→ 兜底 Arco 自带 `Icon*`；细则见前端规则 §4.7。业务代码（侧边菜单、列表工具条、操作列）已全部迁移为 Tabler，仅「图标」示例页（`/components` 图标 tab）为演示保留三套并存；Tabler 默认 24px 由 `App.vue` 全局样式在 Arco 按钮 / 下拉项内收敛到 1em、侧边菜单收敛到 18px（stroke 2.5）。
+**图标选型**：业务代码（侧边菜单、列表工具条、操作列）图标已统一为 Tabler（`@tabler/icons-vue`），仅「图标」示例页（`/components` 图标 tab）为演示保留三套并存；选型优先级与尺寸 / 线宽约定见前端规则 §4.7。
 
 **基准参照**：
 - 列表页标准实现：`src/views/Showcase/ListShowcaseView.vue`（规格 `specs/list-showcase/`），新增列表页复制其结构再替换业务字段。
@@ -107,7 +107,7 @@ frontend/
 
 | 动作 | 命令 |
 |---|---|
-| 后端启动（dev，端口 5080） | `cd backend; dotnet run --project src/App.Api` |
+| 后端启动（dev，端口 5080） | `cd backend; dotnet run --project src/App.Api`（dev 连接串取自 `appsettings.Development.json`） |
 | 后端单测 | `cd backend; dotnet test` |
 | 前端启动（dev，端口 5173） | `cd frontend; npm run dev` |
 | 前端 e2e（先起后端 5080 + 前端 5173） | `cd frontend; npm run test:e2e` |
@@ -119,9 +119,9 @@ frontend/
 
 | 项 | 值 |
 |---|---|
-| 数据库 | PostgreSQL，localhost:5432，库 `app`，admin/admin123（见 `appsettings.Development.json`） |
+| 数据库 | PostgreSQL，localhost:5432，库 `app`；dev 连接串明文存于 `appsettings.Development.json`（仅本地开发库，例外见 `AGENTS.md` §7） |
 | 前端 dev API | `VITE_API_BASE_URL=/api`，Vite proxy 转发 `/api` → `http://localhost:5080` |
-| 敏感配置 | 只从环境变量读取（数据库连接串、JWT 密钥、OTel 端点），禁止入库/硬编码 |
+| 敏感配置 | prod 只从环境变量读取：数据库连接串 `ConnectionStrings__Default`、JWT 密钥 `JWT__SECRET`（dev 缺失时用随机兜底密钥）、OTel 端点；dev 允许连接串明文存配置文件；代码内一律禁止硬编码 |
 
 ## 6. 现有功能规格（specs/）
 
