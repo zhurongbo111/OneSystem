@@ -1,6 +1,6 @@
 # 需求规格：按钮交互反馈（loading）
 
-> 规则落地见 `.codebuddy/rules/frontend/RULE.mdc` §4.6；本规格是该规则的**规格侧事实源**（`AGENTS.md` §2.3）。
+> **约定正文见本规格 `design.md` §0（唯一事实源）**；前端规则 `.codebuddy/rules/frontend/RULE.mdc` §4.6 只留判据与指针（`AGENTS.md` §2.3 / §10）。
 
 ## 背景
 
@@ -21,7 +21,7 @@
 
 ## 功能点
 
-1. **规则**：`.codebuddy/rules/frontend/RULE.mdc` 新增「按钮交互反馈（强制）」章节（§4.6），并在列表页约定的交互模式（§5）补齐查询并发与请求序号的关系。
+1. **约定正文**：落在本规格 `design.md` §0（状态命名与绑定表 + 实现要求 + e2e 门槛）；查询并发与请求序号的关系见 `specs/list-showcase/design.md` §0「交互模式」。
 2. **存量改造**：
    - `views/LoginLogManagement/LoginLogsView.vue`：搜索 / 重置 / 刷新按钮绑定查询 `loading`。
    - `views/UserManagement/UsersView.vue`：搜索 / 重置 / 刷新按钮绑定查询 `loading`；行内启用 / 禁用按钮绑定新增的 `togglingId`，并在 handler 内防重入。
@@ -31,7 +31,7 @@
 
 ## 验收标准
 
-- [ ] 前端规则包含「按钮交互反馈」章节（操作级绑定 + 命名表 + 实现要求 + e2e 门槛）。
+- [ ] 规格 `design.md` §0 含「按钮交互反馈」约定（操作级绑定 + 命名表 + 实现要求 + e2e 门槛）。
 - [ ] `LoginLogsView.vue` 的搜索 / 重置 / 刷新按钮点击后进入 loading，请求结束后恢复可点。
 - [ ] `UsersView.vue` 的搜索 / 重置 / 刷新按钮点击后进入 loading，请求结束后恢复可点。
 - [ ] `UsersView.vue` 的启用 / 禁用按钮点击确认后，**仅该行**按钮进入 loading；操作进行中重复确认不再发出请求。

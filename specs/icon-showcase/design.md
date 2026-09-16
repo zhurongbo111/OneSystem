@@ -1,5 +1,26 @@
 # 设计规格：图标示例（icon-showcase）
 
+> **选型与落地约定的唯一事实源是本规格 §0**（前端规则 `.codebuddy/rules/frontend/RULE.mdc` §4.7 只留判据与指针）；§1 起描述本示例页自身的设计。
+
+## 0. 约定正文（唯一事实源）
+
+> 项目并存三套图标库：Tabler（`@tabler/icons-vue`，业务默认）、Lucide（`@lucide/vue`）、Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`）。三套的用法与示例见本规格 §3 的「图标」tab（`/components`）。
+
+**选型优先级（从高到低，逐级回退，命中即用，禁止反向选择）**
+
+| 优先级 | 类库 | 使用场景 |
+|---:|---|---|
+| 1 | Tabler | 首选，图标量大、业务语义覆盖全（单据、往来单位、仓储、结算等） |
+| 2 | Lucide | Tabler 无对应语义图标时 |
+| 3 | Arco 自带 `Icon*` | 前两者均无对应语义图标时兜底（Arco 组件自身内置的图标形态除外） |
+
+- 按**业务语义**查找（如「重置」→ `IconRestore`），不是按组件名猜。
+- **禁止反向选择**：不得因偏好某套风格跳过 Tabler 直接用 Lucide / Arco；不得为凑图标使用语义不符的图标（宁缺毋滥，纯装饰性图标可放宽）。
+- **Arco 组件 `#icon` 插槽**（`a-button` / `a-menu-item` / `a-select` 等，含 `specs/action-column/design.md` §0 的操作列固定图标）**同样优先 Tabler**，三套均可放进插槽；仅当语义只有 Arco 覆盖时才用 Arco。
+- **来源注释**：使用 Lucide / Arco 图标时，在 import 处加一行注释说明，如 `// 图标来源：Lucide（Tabler 无对应语义）`，便于 review。
+- **尺寸与线宽**：全局样式（`src/App.vue` + `AppLayout` scoped）已统一收敛——Arco 按钮 / 下拉项内 `1em`、侧边菜单 `18px`（`stroke-width 2.5`）；其余场景空间不足时再用 `:size`，不逐处写。同一区域内不混用不同来源（线宽：Tabler / Lucide 默认 `2`，Arco 默认 `4`）。
+- **现状**：侧边菜单、列表工具条、操作列的业务图标已统一为 Tabler；仅本示例页为演示保留三套。新增 / 修改一律按本表，且同一业务图标全项目同来源。
+
 ## 1. 总体设计
 
 纯前端改动：安装 `@tabler/icons-vue`、`@lucide/vue` 依赖，在既有组件示例页 `src/views/Showcase/ComponentShowcaseView.vue` 的 `a-tabs` 中新增第 6 个 tab「图标」，分三段展示 Arco、Tabler、Lucide 三套图标的用法。不新增视图、不新增路由、不改接口层与后端。
@@ -54,7 +75,7 @@
 |---|---|
 | 新增「图标」tab 而非独立页面 | 与现有 5 分类同一页面组织，复用页面结构，范围最小 |
 | 三套图标同一 tab 内分组展示 | 三套图标用途同类（UI 线性图标），集中对比便于选型；以分组标题分隔避免混淆 |
-| Arco 图标段放最前 | 沿用既有页面段落顺序（Arco → Tabler → Lucide）；展示顺序不表达选型优先级，选型以业务语义为准并按前端规则 §4.7 的优先级取用（Tabler 优先） |
+| Arco 图标段放最前 | 沿用既有页面段落顺序（Arco → Tabler → Lucide）；展示顺序不表达选型优先级，选型以业务语义为准并按本规格 §0 的优先级取用（Tabler 优先） |
 | Lucide 选用 `@lucide/vue` 而非 `lucide-vue-next` | `lucide-vue-next@1.0.0` 已被官方标记废弃并建议改用 `@lucide/vue` |
 | 具名导入具体图标 | 符合项目按需导入约定，便于 tree-shaking，避免全量引入上千图标 |
 | Arco 颜色示例用 CSS `color`（`a-space :style`） | Arco 图标组件无 `color` prop，SVG 为 `currentColor`，CSS 继承是官方着色的标准方式 |

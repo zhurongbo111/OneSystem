@@ -1,11 +1,32 @@
 # 设计规格：按钮交互反馈（loading）
 
 > 遵循 `AGENTS.md`（测试门槛 §6）与前端规则。
-> **约定正文的唯一事实源**是前端规则 `.codebuddy/rules/frontend/RULE.mdc` §4.6（状态命名与绑定粒度表、触发即置位 / `try/finally` 复位 / 防重入 / 查询类不判空 / 不置 loading 的情形）与 §5「交互模式」（请求序号仲裁）。本规格只记录决策理由、存量改造点、e2e 与风险。
+> **约定正文的唯一事实源是本规格 §0**（前端规则 `.codebuddy/rules/frontend/RULE.mdc` §4.6 只留判据与指针）；§1 起记录决策理由、存量改造点、e2e 与风险。
+
+## 0. 约定正文（唯一事实源）
+
+**绑定粒度：loading 属于「操作」而非「按钮」。** 同一个异步操作无论有几个触发入口（按钮 / 输入框回车 / 分页器 / 行内按钮），共用同一个 loading 状态；不同操作各用独立状态，**禁止多个按钮共用一个 `loading`**。
+
+| 操作类型 | 状态命名 | 绑定方式 |
+|---|---|---|
+| 列表查询（搜索 / 重置 / 刷新 / 翻页 / 每页条数） | `loading` | 按钮 + 回车 `:loading="loading"`，同时 `<a-table :loading="loading">` |
+| 表单提交（新增 / 编辑） | `submitting` | 提交按钮 `:loading="submitting"` |
+| 弹窗确认（重置密码 / 改状态等） | `xxSubmitting` | `a-modal :ok-loading="xxSubmitting"` |
+| 行内操作（启用 / 禁用 / 单行删除） | `xxingId`（如 `togglingId`） | `:loading="togglingId === row.id"` |
+| 批量操作（批量删除 / 批量改状态） | `batchXxing`（如 `batchDeleting`） | 触发按钮 `:loading="batchDeleting"`，与 `:disabled="!selectedIds.length"` 叠加 |
+
+**实现要求**
+
+- **触发即置位**：handler 内先 `xxLoading.value = true` 再 `await`；用 `try/finally` 复位，成功与失败路径都要复位。
+- **防重入**：动作类（提交 / 删除 / 启停）handler 开头 `if (xxLoading.value) return`——Arco 的 `loading` 只表现为不可点击，**不阻止事件重入**（回车 + 点击、弹窗确认连点）。
+- **查询类不丢弃点击**：搜索 / 翻页等查询动作不加判空，最新意图必须生效；用请求序号仲裁乱序响应（见 `specs/list-showcase/design.md` §0「交互模式」）。
+- **不置 loading 的情形**：同步瞬时动作（打开抽屉 / 弹窗、路由跳转、本地导出 CSV、复制文本）不置；只有「发起请求并等待结果」才置。
+- **与业务 `:disabled` 叠加**：如 `:disabled="!selectedIds.length"` + `:loading="loading"`；`a-button` 的 `loading` 已隐含不可点击，无需为它另写 `:disabled`。
+- **e2e**：按钮 loading 属用户可感知行为，相关功能交付前须有 e2e 断言（`AGENTS.md` §6）。
 
 ## 1. 核心决策与理由
 
-**loading 属于「操作」，不属于「按钮」。** 同一异步操作无论有几个触发入口（按钮点击、输入框回车、分页器、行内操作）都共用同一个状态；不同操作各用独立状态。命名与绑定方式见前端规则 §4.6 表。
+**loading 属于「操作」，不属于「按钮」。** 同一异步操作无论有几个触发入口（按钮点击、输入框回车、分页器、行内操作）都共用同一个状态；不同操作各用独立状态。命名与绑定方式见本规格 §0 表。
 
 - **为什么查询类与表格共用 `loading`**：两者描述的是同一个事实（"正在查询"）。共用后天然互斥，也避免"表格在转但按钮可点"造成重复提交；代价是翻页时搜索按钮也会转——语义上正确。
 - **为什么行内操作用行 id 而不是布尔值**：操作对象是"某一行"，`togglingId === row.id` 只让被点行转圈；若用整表共用的布尔值，整列按钮会一起转，用户无法判断是哪一行在处理。

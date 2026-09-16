@@ -20,7 +20,7 @@
 
 ## 变更：图标与命名同步（2026-09-16）
 
-- [x] T16 重置按钮图标由 T14 的 `IconRotateLeft` 统一为 Tabler `IconRestore`（恢复初始态语义，且与已归属「刷新」的 `IconRefresh` 区分）——前端规则 §5 已按此更新，T13 / T14 中的旧图标名作废，**以规则为准**
+- [x] T16 重置按钮图标由 T14 的 `IconRotateLeft` 统一为 Tabler `IconRestore`（恢复初始态语义，且与已归属「刷新」的 `IconRefresh` 区分）——T13 / T14 中的旧图标名作废，**以本规格 `design.md` §0 的图标约定为准**
 
 ## 完成定义
 
