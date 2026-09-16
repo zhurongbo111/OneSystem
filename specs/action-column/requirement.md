@@ -13,7 +13,7 @@
 ## 2. 目标
 
 - 明确操作列的操作数量阈值：超过阈值时收纳进「更多」下拉，控制列宽与操作密度。
-- 统一操作按钮的**颜色**语义（按操作类型固定）与**图标**映射（Arco 图标，一操作一图标）。
+- 统一操作按钮的**颜色**语义（按操作类型固定）与**图标**映射（Tabler 图标，一操作一图标）。
 - 约定落在前端规则（`.codebuddy/rules/frontend/RULE.mdc` §5.2），并以 `ListShowcaseView.vue` 为参照实现；用户管理列表同步对齐。
 - 约定不改变既有交互语义：危险操作仍走 `a-popconfirm`，行内写操作 loading 仍按 `specs/button-loading/` 约定绑定。
 
@@ -25,7 +25,7 @@
 |---|---|
 | 数量约定 | 操作数 ≤ 3 平铺；> 3 时保留前 3 个，其余收纳进「更多」下拉（`a-dropdown` + `a-doption`） |
 | 颜色约定 | 危险 / 警示 / 普通 / 主操作 四类固定按钮颜色语义 |
-| 图标约定 | 常用操作 → Arco 图标固定映射（编辑 / 详情 / 删除 / 启用 / 禁用 / 重置密码 / 导出 / 更多） |
+| 图标约定 | 常用操作 → Tabler 图标固定映射（编辑 / 详情 / 删除 / 启用 / 禁用 / 重置密码 / 导出 / 更多） |
 | 呈现约定 | 行内按钮统一 `type="text" size="small"`；`a-popconfirm` 包裹方式 |
 | 规则落地 | 前端规则 §5.2 操作列小节 |
 | 参照对齐 | `ListShowcaseView.vue`（4 个演示操作，覆盖平铺 / 收纳两种形态） |
@@ -41,8 +41,8 @@
 ## 4. 验收标准
 
 1. 前端规则 `.codebuddy/rules/frontend/RULE.mdc` 存在 §5.2「操作列约定」，含数量阈值、颜色表、图标表、呈现要求，与参照实现一致。
-2. `ListShowcaseView.vue` 操作列 4 个操作：平铺「编辑」（`IconEdit`）「详情」（`IconEye`）「删除」（danger + `IconDelete`），「更多」下拉内含「重置密码」（`IconLock`）；操作列不溢出、不挤压其他列。
-3. `UsersView.vue` 操作列：平铺「编辑」（`IconEdit`）「详情」（`IconEye`）「禁用」（warning + `IconPoweroff`，已禁用行显示「启用」+ `IconPlayCircle`），「更多」下拉内含「重置密码」（`IconLock`）；既有编辑 / 详情 / 启停 / 重置密码功能行为不变。
+2. `ListShowcaseView.vue` 操作列 4 个操作：平铺「编辑」（`IconEdit`）「详情」（`IconEye`）「删除」（danger + `IconTrash`），「更多」下拉内含「重置密码」（`IconLock`）；操作列不溢出、不挤压其他列。
+3. `UsersView.vue` 操作列：平铺「编辑」（`IconEdit`）「详情」（`IconEye`）「禁用」（warning + `IconPower`，已禁用行显示「启用」+ `IconPlayerPlay`），「更多」下拉内含「重置密码」（`IconLock`）；既有编辑 / 详情 / 启停 / 重置密码功能行为不变。
 4. 危险操作（删除 / 禁用）保持 `a-popconfirm` 二次确认，确认后行为与改动前一致。
 5. 行内写操作 loading（`togglingId` 等）行为不变，收纳进下拉的写操作同样受行内 loading 约束（互斥、只转被点行）。
 6. `npm run build`、`npm run lint` 通过；`npm run test:e2e` 中 `list-showcase.spec.ts`、`user-management.spec.ts` 全绿。
