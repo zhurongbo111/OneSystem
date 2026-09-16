@@ -35,6 +35,7 @@ public class UsersController : ControllerBase
     /// 获取当前登录用户（未登录实际返回 HTTP 200 + code 40100）
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDto>))]
+    [ProducesResponseType(statusCode: StatusCodes.Status401Unauthorized)]
     [HttpGet("me")]
     public async Task<ApiResponse<UserDto>> Me(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetCurrentUserRequest(), cancellationToken));
