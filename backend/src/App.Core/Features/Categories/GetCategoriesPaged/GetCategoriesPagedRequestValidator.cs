@@ -18,8 +18,8 @@ public sealed class GetCategoriesPagedRequestValidator : AbstractValidator<GetCa
 
         // 长度统一取自 CategoryFieldConstraints（禁止硬编码）
         RuleFor(x => x.Keyword)
-            .MaximumLength(CategoryFieldConstraints.NameMaxLength)
-            .WithMessage($"关键词长度不能超过 {CategoryFieldConstraints.NameMaxLength} 个字符")
+            .MaximumLength(CategoryFieldConstraints.KeywordMaxLength)
+            .WithMessage($"关键词长度不能超过 {CategoryFieldConstraints.KeywordMaxLength} 个字符")
             .When(x => x.Keyword is not null);
     }
 }
