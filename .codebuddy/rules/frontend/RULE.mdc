@@ -36,6 +36,7 @@ frontend/
 ## 3. 接口层
 
 - 所有接口请求集中在 `src/api/`，按业务域拆分文件（如 `user.ts`）。
+- **归属判定**：默认一个功能域一个文件；**从属 / 紧密关联的资源可并入其主域文件**——典型：分类（后端 `Features/Categories`、路由 `/categories`）的接口置于 `src/api/product.ts`，因分类作为商品主数据与商品域强耦合（商品列表筛选、商品抽屉就地新建、库存筛选三处共用，见 `specs/erp-category/design.md` §1 / §4）。此类并入**必须在功能 `design.md` 中写明归属**，不得随手乱放。
 - 统一封装：基于 Axios 拦截器解包 `{ code, message, data }`；`code !== 0` 时用 Arco `Message.error` 提示 `message` 并 reject。
 - 请求参数与响应定义 TS 类型，与后端 DTO（camelCase）一一对应。
 - 组件内禁止直接调用 `axios/fetch`，必须经 `src/api/` 模块。
@@ -76,9 +77,10 @@ frontend/
 
 - 同一分区内「被引用者在前」：`computed` 依赖的 `ref` 在前、派生 `computed` 在后。
 - 分区注释：`// —— reactive state ——` 形式；分区内声明 > 1 个或为 methods 区时必须写，单声明小分区可省略。
-- **模板 ref 命名强制 `xxxRef`**（如 `formRef`），与 `eslint-plugin-perfectionist` 规则一致。
+- **模板 ref 命名强制 `xxxRef`**（如 `formRef`）。
 - **composable（`composables/*.ts`）**：`imports → types → constants（含模块级单例 ref，需注释）→ helpers → export function useXxx()`；函数体内同样遵守 reactive state → computed → watch → methods 相对顺序。
-- lint 强制项（import 排序、types 先于变量、ref 命名）见 `eslint.config.js`；分区顺序以本表为准 + code review 把关。
+- lint 自动强制项：import 分组排序（`perfectionist/sort-imports`）与禁用 `any`（`@typescript-eslint/no-explicit-any`），见 `eslint.config.js`。
+- 分区顺序、`types` 先于变量、ref 命名当前无 lint 规则覆盖，由 code review 把关。
 
 ### 4.6 按钮交互反馈（强制）
 
