@@ -129,7 +129,7 @@ const columns = computed<TableColumnData[]>(() => {
   if (visibleColumns.value.includes('createdAt')) {
     cols.push({ title: '创建时间', slotName: 'createdAt', width: 172 })
   }
-  // 操作列：3 个操作 ≤ 3 平铺（编辑 / 停用或启用 / 详情），宽度按实测取 210（specs/action-column §2）
+  // 操作列：3 个操作 ≤ 3 平铺（编辑 / 停用或启用 / 详情），宽度按实测取 210（specs/011-action-column §2）
   cols.push({ title: '操作', slotName: 'action', width: 210, bodyCellClass: 'action-cell' })
   return cols
 })
@@ -395,7 +395,7 @@ async function onToggleStatus(row: Partner): Promise<void> {
         <template #createdAt="{ record }">
           {{ formatDateTime((record as Partner).createdAt) }}
         </template>
-        <!-- 操作列（specs/action-column）：3 个操作 ≤ 3，平铺 编辑 / 停用或启用 / 详情 -->
+        <!-- 操作列（specs/011-action-column）：3 个操作 ≤ 3，平铺 编辑 / 停用或启用 / 详情 -->
         <template #action="{ record }">
           <a-space
             class="row-actions"
@@ -461,7 +461,7 @@ async function onToggleStatus(row: Partner): Promise<void> {
   width: 100%;
 }
 
-/* 操作列密度（specs/action-column §5）：收窄 Arco 文本按钮默认水平 padding */
+/* 操作列密度（specs/011-action-column §5）：收窄 Arco 文本按钮默认水平 padding */
 .row-actions :deep(.arco-btn-text) {
   padding: 0 8px;
 }

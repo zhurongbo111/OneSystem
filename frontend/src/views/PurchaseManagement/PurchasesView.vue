@@ -82,7 +82,7 @@ const pagination = computed(() => ({
   pageSizeOptions: [10, 20, 50],
 }))
 
-/** 可选列（序号与操作列固定显示，不参与列设置：specs/action-column §5） */
+/** 可选列（序号与操作列固定显示，不参与列设置：specs/011-action-column §5） */
 const columnOptions = [
   { label: '单号', value: 'orderNo' },
   { label: '供应商', value: 'partnerName' },
@@ -138,7 +138,7 @@ const columns = computed<TableColumnData[]>(() => {
   return cols
 })
 
-/** 各列固定宽度之和，作为表格横向滚动最小宽度（specs/action-column §2 列宽策略） */
+/** 各列固定宽度之和，作为表格横向滚动最小宽度（specs/011-action-column §2 列宽策略） */
 const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width ?? 0), 0))
 
 // —— lifecycle ——

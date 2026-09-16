@@ -59,7 +59,7 @@ const columns = computed<TableColumnData[]>(() => [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '分类名称', dataIndex: 'name', width: 240, ellipsis: true, tooltip: true },
   { title: '创建时间', slotName: 'createdAt', width: 172 },
-  // 操作列：2 个操作 ≤ 3 平铺（编辑 / 删除），宽度 150（specs/action-column §2）
+  // 操作列：2 个操作 ≤ 3 平铺（编辑 / 删除），宽度 150（specs/011-action-column §2）
   { title: '操作', slotName: 'action', width: 150, bodyCellClass: 'action-cell' },
 ])
 
@@ -268,7 +268,7 @@ async function onDelete(row: Category): Promise<void> {
         <template #createdAt="{ record }">
           {{ formatDateTime((record as Category).createdAt) }}
         </template>
-        <!-- 操作列（specs/action-column）：2 个操作 ≤ 3，平铺 编辑 / 删除 -->
+        <!-- 操作列（specs/011-action-column）：2 个操作 ≤ 3，平铺 编辑 / 删除 -->
         <template #action="{ record }">
           <a-space
             class="row-actions"
@@ -324,7 +324,7 @@ async function onDelete(row: Category): Promise<void> {
   width: 100%;
 }
 
-/* 操作列密度（specs/action-column §5）：收窄 Arco 文本按钮默认水平 padding */
+/* 操作列密度（specs/011-action-column §5）：收窄 Arco 文本按钮默认水平 padding */
 .row-actions :deep(.arco-btn-text) {
   padding: 0 8px;
 }

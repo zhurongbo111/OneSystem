@@ -197,7 +197,7 @@ test.describe('用户管理（集成）', () => {
     await createUser(page, username, 'E2E 重置')
     const row = await openUserRow(page, username)
 
-    // 「重置密码」收纳进行内「更多」下拉（specs/action-column：> 3 个操作收纳）
+    // 「重置密码」收纳进行内「更多」下拉（specs/011-action-column：> 3 个操作收纳）
     await row.getByRole('button', { name: '更多操作' }).click()
     await page.locator('.arco-dropdown-option', { hasText: '重置密码' }).click()
     // 以弹窗内的密码输入框确认模态已打开（模态标题与行按钮同文案，避免按文本定位歧义）

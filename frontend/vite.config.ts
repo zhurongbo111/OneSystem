@@ -14,7 +14,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // dev 联调：/api 转发到后端（见 specs/project-scaffold/design.md 3.6）
+      // dev 联调：/api 转发到后端（见 specs/001-project-scaffold/design.md 3.6）
       '/api': {
         target: 'http://localhost:5080',
         changeOrigin: true,

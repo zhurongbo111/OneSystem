@@ -67,7 +67,7 @@ const form = reactive<ProductFormState>(emptyForm())
 const categories = ref<Category[]>([])
 const categoriesLoading = ref(false)
 
-/** 就地新建分类：行内输入条展开态 + 输入值 + 提交中（specs/erp-category） */
+/** 就地新建分类：行内输入条展开态 + 输入值 + 提交中（specs/017-erp-category） */
 const newCategoryVisible = ref(false)
 const newCategoryName = ref('')
 const categorySubmitting = ref(false)

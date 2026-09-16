@@ -95,7 +95,7 @@ frontend/
 
 **基准参照**：
 
-- 列表页标准实现 `views/Showcase/ListShowcaseView.vue`（正文见 `specs/list-showcase/design.md` §0），新增列表页复制其结构再替换业务字段。
+- 列表页标准实现 `views/Showcase/ListShowcaseView.vue`（正文见 `specs/006-list-showcase/design.md` §0），新增列表页复制其结构再替换业务字段。
 - 表单 / 详情参照 `views/Showcase/` 的 `FormShowcaseView.vue`、`OrderFormDrawer.vue`、`FormPageFormView.vue`、`FormDetailView.vue`；接口层写法读 `api/request.ts` + 本次要用的 `api/<entity>.ts`；仅新增页面 / 菜单项时读 `router/index.ts`、`components/AppLayout.vue`。
 - 页面命名 / 目录归属见前端规则 §4.1；各交互约定（列表页 / 操作列 / 按钮 loading / 组合式分区 / 图标 / 表单详情）的规格 §0 正文位置见前端规则 §2.1 第 3 项。
 
@@ -123,20 +123,20 @@ frontend/
 
 ## 6. 现有功能规格（specs/）
 
-`specs/` 下 kebab-case 目录名即功能名，**完整清单用目录列表获取**；分类如下：
+`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = 创建顺序（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即创建时间正序**；**完整清单用目录列表获取**，功能名指代不含序号。分类如下：
 
-- 工程 / 脚手架：`project-scaffold`、`api-swagger`
-- 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`、`frontend-e2e`、`icon-showcase`
-- 业务：`user-management`
-- ERP（均已实现）：`erp-product`、`erp-partner`、`erp-inventory-query`、`erp-purchase`、`erp-sale`、`erp-category`
+- 工程 / 脚手架：`001-project-scaffold`、`003-api-swagger`
+- 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
+- 业务：`009-user-management`
+- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`
 
 **交互约定「改动类型 → 规格 §0 正文」对照表**（前端规则 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 只留判据，正文在下列 §0；**新增交互约定只更新本表，不改规则**）：
 
 | 改动类型 | 正文位置 |
 |---|---|
-| 列表页 | `specs/list-showcase/design.md` §0 |
-| 操作列 | `specs/action-column/design.md` §0 |
-| 按钮 loading | `specs/button-loading/design.md` §0 |
-| 组合式分区 | `specs/composable-style/design.md` §0 |
-| 图标 | `specs/icon-showcase/design.md` §0 |
-| 表单 / 详情 | `specs/form-detail-showcase/design.md` §0 |
+| 列表页 | `specs/006-list-showcase/design.md` §0 |
+| 操作列 | `specs/011-action-column/design.md` §0 |
+| 按钮 loading | `specs/010-button-loading/design.md` §0 |
+| 组合式分区 | `specs/008-composable-style/design.md` §0 |
+| 图标 | `specs/018-icon-showcase/design.md` §0 |
+| 表单 / 详情 | `specs/007-form-detail-showcase/design.md` §0 |

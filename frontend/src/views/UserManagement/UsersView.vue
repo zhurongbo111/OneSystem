@@ -134,12 +134,12 @@ const columns = computed<TableColumnData[]>(() => {
     cols.push({ title: '创建时间', dataIndex: 'createdAt', width: 172, slotName: 'createdAt' })
   }
   // 列宽按实测内容 238px（3×66 文本按钮 + 28 纯图标「更多」+ 3×4 间距）取 240，
-  // 防止列宽小于内容时 td 内容溢出、表头与内容错位（specs/action-column §2）
+  // 防止列宽小于内容时 td 内容溢出、表头与内容错位（specs/011-action-column §2）
   cols.push({ title: '操作', slotName: 'action', width: 240, bodyCellClass: 'action-cell' })
   return cols
 })
 
-/** 各列固定宽度之和，作为表格横向滚动最小宽度（specs/action-column §2 列宽策略） */
+/** 各列固定宽度之和，作为表格横向滚动最小宽度（specs/011-action-column §2 列宽策略） */
 const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width ?? 0), 0))
 
 // —— lifecycle ——
@@ -407,7 +407,7 @@ async function onSubmitResetPassword(): Promise<void> {
         <template #createdAt="{ record }">
           {{ formatDateTime((record as UserListItem).createdAt) }}
         </template>
-        <!-- 操作列（specs/action-column）：4 个操作 > 3，平铺 编辑/详情/禁用，「重置密码」收纳进「更多」 -->
+        <!-- 操作列（specs/011-action-column）：4 个操作 > 3，平铺 编辑/详情/禁用，「重置密码」收纳进「更多」 -->
         <template #action="{ record }">
           <a-space
             class="row-actions"
@@ -521,13 +521,13 @@ async function onSubmitResetPassword(): Promise<void> {
   width: 100%;
 }
 
-/* 操作列密度（specs/action-column §5）：收窄 Arco 文本/纯图标按钮默认 0 15px 的水平 padding，避免相邻操作视觉间距过大 */
+/* 操作列密度（specs/011-action-column §5）：收窄 Arco 文本/纯图标按钮默认 0 15px 的水平 padding，避免相邻操作视觉间距过大 */
 .row-actions :deep(.arco-btn-text),
 .row-actions :deep(.arco-btn-only-icon) {
   padding: 0 8px;
 }
 
-/* 操作列兜底（specs/action-column §5）：按钮组不折行，防止列宽不足时按钮换行导致行高异常 */
+/* 操作列兜底（specs/011-action-column §5）：按钮组不折行，防止列宽不足时按钮换行导致行高异常 */
 :deep(.action-cell) {
   white-space: nowrap;
 }

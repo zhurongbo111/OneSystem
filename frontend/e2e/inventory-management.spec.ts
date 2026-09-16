@@ -68,7 +68,7 @@ async function createProduct(page: Page, code: string, name: string, safetyStock
   await page.getByPlaceholder('2-32 位字母、数字、下划线或连字符').fill(code)
   await page.getByPlaceholder('2-50 字符').fill(name)
   await page.getByPlaceholder('如：个 / 箱 / 斤').fill('个')
-  // 就地行内新建分类（specs/erp-category：抽屉内联输入条 + 保存）
+  // 就地行内新建分类（specs/017-erp-category：抽屉内联输入条 + 保存）
   await page.getByRole('button', { name: '新建分类' }).click()
   const catInput = page.getByPlaceholder(CATEGORY_PLACEHOLDER)
   await expect(catInput).toBeVisible()
