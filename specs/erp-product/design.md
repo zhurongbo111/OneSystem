@@ -1,7 +1,7 @@
 # 设计规格：商品管理（erp-product）
 
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
-> 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §4.3）同样适用。
+> 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格为进销存功能组商品域底座，库存台账与开单商品选择接口的消费方为 erp-inventory-query / erp-purchase / erp-sale。
 
 ## 1. 总体设计
@@ -22,7 +22,7 @@
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §4.2）。
+> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §5.2）。
 > 状态枚举统一 `Enabled = 1 / Disabled = 0` 小整数，PG `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/Category.cs` 与表 `Categories`
@@ -67,7 +67,7 @@
 | `UpdatedAt` | `DateTimeOffset` | `timestamptz` | NOT NULL | 最近变动时间 |
 
 - 无软删除（商品停用不删库存行）；无 `WarehouseId`（单仓库；未来多仓库加该列并把唯一约束改为 `(WarehouseId, ProductId)`，其余结构不动）。
-- **原子增减**（EF Core `ExecuteUpdateAsync` 表达，无裸 SQL，满足后端规则 §4.1）：
+- **原子增减**（EF Core `ExecuteUpdateAsync` 表达，无裸 SQL，满足后端规则 §5.1）：
   - `Task IncrementAsync(Guid productId, int delta, ...)` —— `Quantity = Quantity + delta, UpdatedAt = now WHERE ProductId = @id`；
   - `Task<bool> TryDecrementAsync(Guid productId, int amount, ...)` —— `Quantity = Quantity - amount WHERE ProductId = @id AND Quantity >= amount`，返回受影响行数是否 ≥ 1（**数据库层防超卖**，并发下无需行锁）。
 - 商品新增时在同一事务内 `AddAsync` 一条 `Quantity = 0` 的库存行。
@@ -131,7 +131,7 @@
 | `Task<bool> TryDecrementAsync(Guid productId, int amount, ...)` | 原子扣减且 `Quantity >= amount` 前置，返回是否成功（由 erp-sale 消费） |
 
 - `GetPagedAsync` 联查 `Inventory` 带出 `stockQuantity`；低库存标记 `isBelowSafetyStock` 由 Handler 计算（`safetyStock > 0 && stockQuantity < safetyStock`，阈值为 0 不提醒，避免零库存商品全量标红），不在仓储内计算。
-- 单一仓储写由仓储自身 `SaveChangesAsync` 保证；**跨仓储写**（商品 + 库存初始化）必须用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`，异常 `RollbackAsync` 后重抛（后端规则 §3）。
+- 单一仓储写由仓储自身 `SaveChangesAsync` 保证；**跨仓储写**（商品 + 库存初始化）必须用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`，异常 `RollbackAsync` 后重抛（后端规则 §4.4）。
 - 审计字段统一由 Handler 经 `ICurrentUser` 获取后随实体传入，仓储不感知当前用户。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
@@ -191,7 +191,7 @@
 | `CreateCategoryRequest` / `UpdateCategoryRequest` | `name` 必填 1–20 |
 | `GetProductsRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 50（`KeywordMaxLength`）；`categoryId` / `status` 可空或合法值 |
 
-- 存在性 / 唯一性等业务约束一律在 Handler 判断（后端规则 §3）。
+- 存在性 / 唯一性等业务约束一律在 Handler 判断（后端规则 §4.1）。
 
 ### 3.6 Swagger
 

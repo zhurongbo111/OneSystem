@@ -104,7 +104,7 @@ public static class ApiResponseExtensions
 
 ### 2.7 用例结构、仓储与示例账号
 
-每个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下一组文件（Request / RequestValidator / RequestHandler / Response，详见后端规则第 3 节），不设 Service 层；用例请求实现 `IRequest<TResponse>` 标记、处理器实现 `IRequestHandler<TRequest, TResponse>`，Controller 只依赖 `Abstractions/IMediator` 经 `Send(Request)` 分发：
+每个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下一组文件（Request / RequestValidator / RequestHandler / Response，详见后端规则 §4.1），不设 Service 层；用例请求实现 `IRequest<TResponse>` 标记、处理器实现 `IRequestHandler<TRequest, TResponse>`，Controller 只依赖 `Abstractions/IMediator` 经 `Send(Request)` 分发：
 
 - `Features/Auth/Login/`：`LoginRequest`（实现 `IRequest<LoginResponse>`）+ `LoginRequestValidator`（FluentValidation，仅格式校验、不查库）+ `LoginRequestHandler`（实现 `IRequestHandler<LoginRequest, LoginResponse>`）+ `LoginResponse`：
   - 格式校验由 `Mediator` 全局统一执行（见技术决策），失败 → `BusinessException(40000)`；

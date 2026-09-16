@@ -1,7 +1,7 @@
 # 设计规格：销售出库（erp-sale）
 
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
-> 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §4.3）同样适用。
+> 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > **本规格继承 erp-purchase design §0「单据域共用约定」**：`SalesOrders` / `SalesOrderItems` 与 `PurchaseOrders` / `PurchaseOrderItems` 结构完全同构，实现时照抄 erp-purchase 模板并按 §1 替换规则做三处差异替换；共用枚举（`OrderStatus` / `OrderSettlementStatus`）、常量（`OrderFieldConstraints` + `ProductFieldConstraints` 的 quantity / unitPrice 边界）、单号生成（`GenerateOrderNoAsync`，前缀参数化）、校验结构**均不重复定义**。本规格只定义销售特有差异。
 
 ## 1. 相对 erp-purchase 的替换规则
@@ -63,7 +63,7 @@
 ### 3.3 仓储接口（新增，`App.Core/Abstractions/`）
 
 `ISalesOrderRepository`：**方法签名与 `IPurchaseOrderRepository` 完全同构**（`GetPagedAsync` / `GetDetailAsync` / `AddAsync` / `UpdateSettlementAsync` / `UpdateStatusAsync` / `GenerateOrderNoAsync`），仅实体类型为 `SalesOrder` / `SalesOrderItem`、默认单号前缀 `SO`（前缀参数化，照抄 Purchase 实现）。
-- 单一仓储写由仓储自身 `SaveChangesAsync` 保证；**跨仓储写**（库存 N 行扣减 + 单据主表 + 明细）用 `IUnitOfWork` 同一事务（后端规则 §3）。
+- 单一仓储写由仓储自身 `SaveChangesAsync` 保证；**跨仓储写**（库存 N 行扣减 + 单据主表 + 明细）用 `IUnitOfWork` 同一事务（后端规则 §4.4）。
 - 审计字段统一由 Handler 经 `ICurrentUser` 获取后随实体 / 方法参数（`operatorId`）传入，仓储不感知当前用户。
 
 ### 3.4 用例与接口（每 API 一个用例，均经 `IMediator.Send`）
@@ -100,7 +100,7 @@
 | `GetSalesOrdersRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 20（`OrderFieldConstraints.KeywordMaxLength`）；`customerId` / `settlement` 可空或合法值；`start` / `end` 可空，闭区间 `start <= end` |
 | `UpdateSalesOrderSettlementRequest` | `settlementStatus` ∈ {0, 1} |
 
-- 存在性 / 唯一性 / 类型匹配 / 库存等业务约束一律在 Handler 判断（后端规则 §3）。
+- 存在性 / 唯一性 / 类型匹配 / 库存等业务约束一律在 Handler 判断（后端规则 §4.1）。
 
 ### 3.7 Swagger
 

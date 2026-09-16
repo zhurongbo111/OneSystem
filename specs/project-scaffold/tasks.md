@@ -16,7 +16,7 @@
 - [x] B12 编写单元测试：统一响应、全局异常、登录 / 当前用户用例、集成测试；`dotnet build` 与 `dotnet test` 通过
 - [x] B13 新增统一入口接口 `IRequestHandler<TRequest,TResponse>`（App.Core/Abstractions）：登录 / 获取当前用户两个用例实现接口并保持同一 `HandleAsync(Request, ct)` 签名；Controller 面向接口注入；`AddCore` 注册改为接口映射；单测同步；`dotnet build` 与 `dotnet test` 通过
 - [x] B14 实现自研用例中介（简化版 MediatR）：`Abstractions` 新增 `IRequest<TResponse>` / `IMediator`，`Mediation/Mediator` 按请求运行时类型经 DI 分发到已注册 `IRequestHandler`；登录 / 获取当前用户请求实现 `IRequest` 标记；Controller 改为只注入 `IMediator`；`AddCore` 注册 `IMediator`；新增 `MediatorTests`；`dotnet build` 与 `dotnet test` 通过
-- [x] B16 格式校验全局统一（后端规则 §3）：`Mediator.Send` 分发前按请求运行时类型经 DI 解析 `IValidator<TRequest>` 统一执行，失败抛 `BusinessException(40000)`，未注册校验器自动跳过；`LoginRequestHandler` 移除校验器注入与校验逻辑；单测同步（Mediator 新增校验用例）；`dotnet build` 与 `dotnet test` 通过
+- [x] B16 格式校验全局统一（后端规则 §4.2）：`Mediator.Send` 分发前按请求运行时类型经 DI 解析 `IValidator<TRequest>` 统一执行，失败抛 `BusinessException(40000)`，未注册校验器自动跳过；`LoginRequestHandler` 移除校验器注入与校验逻辑；单测同步（Mediator 新增校验用例）；`dotnet build` 与 `dotnet test` 通过
 - [x] B15 将 JWT 校验改为 ASP.NET Core 默认认证：`AddAuthentication().AddJwtBearer()`（`TokenValidationParameters` 与签发共用 `JwtOptions`）+ `FallbackPolicy` 默认要求登录，`JwtBearerEvents.OnChallenge` 统一返回 `code: 40100`（HTTP 200）；`AuthController.Login` / `HealthController` 标注 `[AllowAnonymous]`、`UsersController` 标注 `[Authorize]`；删除 `JwtAuthenticationMiddleware` 与 `TokenService.Validate`，同步单测；`dotnet build` 与 `dotnet test` 通过
 
 ## 前端
