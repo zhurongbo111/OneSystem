@@ -13,7 +13,7 @@
 ## 3. 功能点
 
 - F1 依赖：`frontend` 安装 `@tabler/icons-vue`、`@lucide/vue`。
-- F2 图标示例 tab：`src/views/ComponentShowcaseView.vue` 的 `a-tabs` 新增第 6 个 tab「图标」（`key="icon"`），用 `a-card` 分块展示 Arco、Tabler、Lucide 三套图标用法（三套以分组标题分隔，顺序：Arco → Tabler → Lucide）。
+- F2 图标示例 tab：`src/views/Showcase/ComponentShowcaseView.vue` 的 `a-tabs` 新增第 6 个 tab「图标」（`key="icon"`），用 `a-card` 分块展示 Arco、Tabler、Lucide 三套图标用法（三套以分组标题分隔，顺序：Arco → Tabler → Lucide）。
 - F3 覆盖示例（非穷举），每套图标库各覆盖：
   - 基础用法：若干常用图标图标网格，标注图标组件名（Arco 如 `IconHome`，Tabler 如 `IconHome`，Lucide 如 `House` / `Search`）。
   - 尺寸：同一图标不同 `size` 对比。

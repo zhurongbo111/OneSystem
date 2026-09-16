@@ -52,10 +52,10 @@ interface OrderRow {
 
 | path | name | component | meta |
 |---|---|---|---|
-| `/form` | `form` | `() => import('@/views/FormShowcaseView.vue')` | `{ requiresAuth: true }` |
-| `/form/new` | `formNew` | `() => import('@/views/FormPageFormView.vue')` | `{ requiresAuth: true }` |
+| `/form` | `form` | `() => import('@/views/Showcase/FormShowcaseView.vue')` | `{ requiresAuth: true }` |
+| `/form/new` | `formNew` | `() => import('@/views/Showcase/FormPageFormView.vue')` | `{ requiresAuth: true }` |
 | `/form/edit/:id` | `formEdit` | 同上（组件内按 `route.name` 区分模式） | `{ requiresAuth: true }` |
-| `/form/detail/:id` | `formDetail` | `() => import('@/views/FormDetailView.vue')` | `{ requiresAuth: true }` |
+| `/form/detail/:id` | `formDetail` | `() => import('@/views/Showcase/FormDetailView.vue')` | `{ requiresAuth: true }` |
 
 均为 `AppLayout` 子路由。侧边菜单：「列表示例」后「表单与详情示例」（`key="form"`，图标 `IconEdit`）。
 
@@ -73,7 +73,7 @@ interface OrderRow {
   - `删除` → `a-popconfirm` 确认后 `remove(id)`。
 - 数据源：`useOrderData()` 模块级单例（见 3.5）。
 
-### 3.3 抽屉表单（`FormShowcase/components/OrderFormDrawer.vue`，新增/编辑共用）
+### 3.3 抽屉表单（`Showcase/OrderFormDrawer.vue`，新增/编辑共用）
 
 - Props：`visible: boolean`；`mode: 'create' | 'edit'`；`editId?: string`（编辑时的行 id）。
 - Emits：`update:visible`、`saved`（提交成功后通知列表）。
@@ -140,10 +140,10 @@ interface OrderRow {
 | 文件 | 操作 |
 |---|---|
 | `frontend/src/composables/useOrderStore.ts` | 保留（注释按新结构微调） |
-| `frontend/src/views/FormShowcaseView.vue` | 新增（统一列表，双新增按钮 + 编辑形态菜单） |
-| `frontend/src/views/FormShowcase/components/OrderFormDrawer.vue` | 迁移（自 `FormDrawerShowcase/components/`，行为不变） |
-| `frontend/src/views/FormPageFormView.vue` | 保留（路由名 `formPageNew/formPageEdit` → `formNew/formEdit`，跳转目标改 `formDetail`） |
-| `frontend/src/views/FormDetailView.vue` | 新增（统一详情，合并两详情 + 明细子表格，编辑走抽屉） |
+| `frontend/src/views/Showcase/FormShowcaseView.vue` | 新增（统一列表，双新增按钮 + 编辑形态菜单） |
+| `frontend/src/views/Showcase/OrderFormDrawer.vue` | 迁移（自 `FormDrawerShowcase/components/`，行为不变） |
+| `frontend/src/views/Showcase/FormPageFormView.vue` | 保留（路由名 `formPageNew/formPageEdit` → `formNew/formEdit`，跳转目标改 `formDetail`） |
+| `frontend/src/views/Showcase/FormDetailView.vue` | 新增（统一详情，合并两详情 + 明细子表格，编辑走抽屉） |
 | `frontend/src/views/FormDrawerShowcaseView.vue` | 删除 |
 | `frontend/src/views/FormDrawerDetailView.vue` | 删除 |
 | `frontend/src/views/FormPageShowcaseView.vue` | 删除 |

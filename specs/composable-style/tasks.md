@@ -12,11 +12,11 @@
 
 ## 存量对齐
 
-- [x] 5. 重构 `views/ListShowcaseView.vue` script 分区
-- [x] 6. 重构 `views/FormShowcaseView.vue` script 分区
-- [x] 7. 重构 `views/FormPageFormView.vue` script 分区（`editId`/`isEdit` 由 computed 改常量，同步修正引用）
-- [x] 8. 重构 `views/FormDetailView.vue` script 分区
-- [x] 9. 重构 `views/FormShowcase/components/OrderFormDrawer.vue` script 分区
+- [x] 5. 重构 `views/Showcase/ListShowcaseView.vue` script 分区
+- [x] 6. 重构 `views/Showcase/FormShowcaseView.vue` script 分区
+- [x] 7. 重构 `views/Showcase/FormPageFormView.vue` script 分区（`editId`/`isEdit` 由 computed 改常量，同步修正引用）
+- [x] 8. 重构 `views/Showcase/FormDetailView.vue` script 分区
+- [x] 9. 重构 `views/Showcase/OrderFormDrawer.vue` script 分区
 - [x] 10. 重构 `views/LoginView.vue` / `HomeView.vue` / `AppLayout.vue` / `App.vue` / `ComponentShowcaseView.vue`
 - [x] 11. 重构 `composables/useOrderStore.ts` 分区（types → constants → helpers → hook body）
 

@@ -4,10 +4,10 @@
 
 ## 1. 路由与菜单
 
-- 路由：`/list`，`name: 'list'`，`component: () => import('@/views/ListShowcaseView.vue')`，`meta: { requiresAuth: true }`，作为 `AppLayout` 子路由（`/` 父路由下）。
+- 路由：`/list`，`name: 'list'`，`component: () => import('@/views/Showcase/ListShowcaseView.vue')`，`meta: { requiresAuth: true }`，作为 `AppLayout` 子路由（`/` 父路由下）。
 - 侧边菜单：在"组件示例"后追加"列表示例"菜单项（`key="list"`，图标 `IconUnorderedList` 或 `IconList`）。
 
-## 2. 视图结构（`src/views/ListShowcaseView.vue`）
+## 2. 视图结构（`src/views/Showcase/ListShowcaseView.vue`）
 
 自上而下：
 
@@ -116,7 +116,7 @@
 
 | 文件 | 操作 |
 |---|---|
-| `frontend/src/views/ListShowcaseView.vue` | 新增 |
+| `frontend/src/views/Showcase/ListShowcaseView.vue` | 新增 |
 | `frontend/src/router/index.ts` | 修改（加 `/list` 子路由） |
 | `frontend/src/components/AppLayout.vue` | 修改（加"列表示例"菜单项 + 图标 import） |
 | `frontend/e2e/list-showcase.spec.ts` | 新增 |

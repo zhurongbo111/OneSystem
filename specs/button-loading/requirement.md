@@ -25,7 +25,7 @@
 2. **存量改造**：
    - `views/LoginLogManagement/LoginLogsView.vue`：搜索 / 重置 / 刷新按钮绑定查询 `loading`。
    - `views/UserManagement/UsersView.vue`：搜索 / 重置 / 刷新按钮绑定查询 `loading`；行内启用 / 禁用按钮绑定新增的 `togglingId`，并在 handler 内防重入。
-   - 表单提交类（`UserFormDrawer.vue`、`FormPageFormView.vue`、`FormShowcase/components/OrderFormDrawer.vue`、`LoginView.vue`）已符合规则，**无需改动**。
+   - 表单提交类（`UserFormDrawer.vue`、`Showcase/FormPageFormView.vue`、`Showcase/OrderFormDrawer.vue`、`LoginView.vue`）已符合规则，**无需改动**。
    - 纯同步页面（`ListShowcaseView.vue`、`FormShowcaseView.vue`、`FormDetailView.vue`、`UserDetailView.vue`、`ComponentShowcaseView.vue`）不发起需等待的请求（或只有路由跳转 / 本地导出等同步动作），按规则**不置 loading**，保持不变。
 3. **e2e**：为查询按钮与行内操作按钮的 loading 行为补用例（`frontend/e2e/user-management.spec.ts`、`frontend/e2e/login-log.spec.ts`）。
 

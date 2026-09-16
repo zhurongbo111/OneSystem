@@ -2,7 +2,7 @@
 
 ## 1. 总体设计
 
-纯前端改动：安装 `@tabler/icons-vue`、`@lucide/vue` 依赖，在既有组件示例页 `src/views/ComponentShowcaseView.vue` 的 `a-tabs` 中新增第 6 个 tab「图标」，分三段展示 Arco、Tabler、Lucide 三套图标的用法。不新增视图、不新增路由、不改接口层与后端。
+纯前端改动：安装 `@tabler/icons-vue`、`@lucide/vue` 依赖，在既有组件示例页 `src/views/Showcase/ComponentShowcaseView.vue` 的 `a-tabs` 中新增第 6 个 tab「图标」，分三段展示 Arco、Tabler、Lucide 三套图标的用法。不新增视图、不新增路由、不改接口层与后端。
 
 ## 2. 依赖
 
@@ -11,7 +11,7 @@
 - `@lucide/vue`：Lucide 官方 Vue 图标组件封装（原 `lucide-vue-next` 已废弃并改名）。具名导入 PascalCase 图标（如 `House` / `Search`，无 `Icon` 前缀；注意新版 `Home` 已改名为 `House`）；`LucideProps` 含 `size?: number`、`strokeWidth?: number | string`、`color` 等。
 - 三套图标组件均为 `FunctionalComponent`，同页共存无冲突（Arco 与 Tabler 同名图标如 `IconHome` 因导入来源不同，模板中按所在段使用）。
 
-## 3. 页面设计（`src/views/ComponentShowcaseView.vue`）
+## 3. 页面设计（`src/views/Showcase/ComponentShowcaseView.vue`）
 
 在现有 `a-tabs` 内、`导航` tab 之后新增 `<a-tab-pane key="icon" title="图标">`。tab 内分三段，各一段一个 `a-row` + 若干 `a-card`，段间以 `icon-lib-divider` 分组标题分隔，顺序：Arco → Tabler → Lucide。
 

@@ -62,7 +62,7 @@ a-layout (layout="has-sider", class=app-layout)
   - 仅保留 `a-layout-content` 内的"欢迎"卡片与当前用户 `a-descriptions`（`a-spin` 加载态保留）。
   - 移除 `onMounted` 的 `fetchCurrentUser`（上移到布局）、`onLogout`、`goComponents` 及其样式。
   - 根节点改为内容容器（`div.home-page` 保留内边距交给布局 content，本页可简化为直接渲染卡片）。
-- `src/views/ComponentShowcaseView.vue`：
+- `src/views/Showcase/ComponentShowcaseView.vue`：
   - 移除顶部标题栏的"返回首页"按钮（导航由侧边菜单承担）。
   - 保留页面标题"Arco Design 组件示例"与 `a-tabs` 主体（页面标题可作为内容区顶部说明，保留 `h` 级标题供 e2e 断言）。
 

@@ -12,7 +12,7 @@
 
 ## 3. 功能点
 
-- F1 组件示例页：`src/views/ComponentShowcaseView.vue`，按分类（基础 / 表单 / 数据展示 / 反馈 / 导航）分组展示 Arco Design 组件。
+- F1 组件示例页：`src/views/Showcase/ComponentShowcaseView.vue`，按分类（基础 / 表单 / 数据展示 / 反馈 / 导航）分组展示 Arco Design 组件。
 - F2 路由：`/components` 独立可访问（`public`，无需登录）。
 - F3 导航入口：首页头部新增"组件示例"入口，可跳转组件示例页。
 - F4 覆盖组件（示例，非穷举）：
