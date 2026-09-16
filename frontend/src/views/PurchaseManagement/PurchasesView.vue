@@ -29,8 +29,8 @@ import {
 
 // —— constants ——
 const settlementOptions: { label: string; value: SettlementStatus }[] = [
-  { label: '未付', value: 0 },
-  { label: '已付', value: 1 },
+  { label: '未结算', value: 0 },
+  { label: '已结算', value: 1 },
 ]
 
 /** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
@@ -252,14 +252,14 @@ async function onVoid(row: PurchaseOrderListItem): Promise<void> {
   }
 }
 
-/** 结算切换：未付 ↔ 已付（库存不变） */
+/** 结算切换：未结算 ↔ 已结算（库存不变） */
 async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
   if (settlingId.value) return
   settlingId.value = row.id
   try {
     const next: SettlementStatus = row.settlementStatus === 1 ? 0 : 1
     await updatePurchaseOrderSettlement(row.id, next)
-    Message.success(next === 1 ? '已标记为已付' : '已改回未付')
+    Message.success(next === 1 ? '已标记为已结算' : '已改回未结算')
     void fetchList()
   } catch {
     // 错误提示已由请求层统一处理
@@ -427,12 +427,12 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
           </span>
         </template>
         <template #settlement="{ record }">
-          <a-tag :color="(record as PurchaseOrderListItem).settlementStatus === 1 ? 'green' : 'orange'">
-            {{ (record as PurchaseOrderListItem).settlementStatus === 1 ? '已付' : '未付' }}
+          <a-tag :color="(record as PurchaseOrderListItem).settlementStatus === 1 ? 'green' : 'gray'">
+            {{ (record as PurchaseOrderListItem).settlementStatus === 1 ? '已结算' : '未结算' }}
           </a-tag>
         </template>
         <template #status="{ record }">
-          <a-tag :color="(record as PurchaseOrderListItem).status === 1 ? 'green' : 'gray'">
+          <a-tag :color="(record as PurchaseOrderListItem).status === 1 ? 'green' : 'red'">
             {{ (record as PurchaseOrderListItem).status === 1 ? '正常' : '已作废' }}
           </a-tag>
         </template>
@@ -455,28 +455,11 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
               </template>
               详情
             </a-button>
-            <a-popconfirm
-              v-if="(record as PurchaseOrderListItem).status === 1"
-              type="warning"
-              content="确认作废该采购单？作废后库存将回冲，且不可恢复"
-              @ok="onVoid(record as PurchaseOrderListItem)"
-            >
-              <a-button
-                type="text"
-                status="warning"
-                size="small"
-                :loading="voidingId === (record as PurchaseOrderListItem).id"
-              >
-                <template #icon>
-                  <IconBan />
-                </template>
-                作废
-              </a-button>
-            </a-popconfirm>
+
             <a-popconfirm
               v-if="(record as PurchaseOrderListItem).status === 1"
               type="info"
-              :content="(record as PurchaseOrderListItem).settlementStatus === 1 ? '确认改回未付？' : '确认标记为已付？'"
+              :content="(record as PurchaseOrderListItem).settlementStatus === 1 ? '确认改回未结算？' : '确认标记为已结算？'"
               @ok="onToggleSettlement(record as PurchaseOrderListItem)"
             >
               <a-button
@@ -490,7 +473,25 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
                   <IconArrowBackUp v-if="(record as PurchaseOrderListItem).settlementStatus === 1" />
                   <IconCircleCheck v-else />
                 </template>
-                {{ (record as PurchaseOrderListItem).settlementStatus === 1 ? '改回未付' : '标记已付' }}
+                {{ (record as PurchaseOrderListItem).settlementStatus === 1 ? '改回未结算' : '标记已结算' }}
+              </a-button>
+            </a-popconfirm>
+            <a-popconfirm
+              v-if="(record as PurchaseOrderListItem).status === 1"
+              type="warning"
+              content="确认作废该采购单？作废后库存将回冲，且不可恢复"
+              @ok="onVoid(record as PurchaseOrderListItem)"
+            >
+              <a-button
+                type="text"
+                size="small"
+                status="danger"
+                :loading="voidingId === (record as PurchaseOrderListItem).id"
+              >
+                <template #icon>
+                  <IconBan />
+                </template>
+                作废
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -582,7 +583,7 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
   padding: 0 8px;
 }
 
-/* 次要操作（如「改回未付」）：降为次级文字色，与「详情」主题色区分 */
+/* 次要操作（如「改回未结算」）：降为次级文字色，与「详情」主题色区分 */
 .row-actions :deep(.arco-btn-text.action-btn-secondary) {
   color: var(--color-text-2);
 }
