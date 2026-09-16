@@ -6,7 +6,7 @@ enabled: true
 
 # 后端实现规则
 
-> 总则见根目录 `AGENTS.md`（SDD 工作流、API 契约、错误码、通用约定与测试门槛）。本文件只写后端专属实现约定，总则已规定的条款不再重复列出；确需引用时标注章节（如 `AGENTS.md` §4.5 / §6）。
+> 总则见根目录 `AGENTS.md`（SDD 工作流、API 契约、错误码、通用约定与测试门槛）；本文件只写后端专属实现约定，总则已规定的条款不重复列出（确需引用时标注章节，如 `AGENTS.md` §4.5）。
 > 开发功能前：先读 `specs/<feature>/` 规格（`AGENTS.md` §2.2），再按本文件实现。
 
 ## 1. 技术栈
@@ -17,9 +17,8 @@ enabled: true
 
 ## 2. 编码约定
 
-> **C# 的格式与代码风格以 `backend/.editorconfig` 为唯一事实源**（缩进 4 空格 / CRLF / 大括号与换行、`using` 排序与分组（System 在前、组间空行）、命名规则：接口 `I` 前缀、类型 / 方法 / 属性 PascalCase、私有只读字段 `_camelCase`、参数 camelCase，以及 IDE / CA 分析器 severity）。本文件不重复其条目；调整风格只改 `.editorconfig`，不在本文件另写一套。
-> - 生效范围：`CA*`（代码质量）规则随 `dotnet build` 生效；`IDE*`（代码风格）规则需 IDE 支持，或在项目开启 `EnforceCodeStyleInBuild` 后才随构建生效——**当前未开启**，故 IDE 风格规则以 IDE 提示 + code review 为准（若改为构建强制，须同步本节说明）。
-> - `backend/.editorconfig` 为 `root = true`，仅作用于 `backend/` 下的 C# 文件；`Migrations/*.cs` 标记为 `generated_code`，不参与风格 / 质量分析。
+> **C# 的格式与代码风格以 `backend/.editorconfig` 为唯一事实源**（缩进 4 空格 / CRLF / 大括号与换行、`using` 排序与分组、命名规则、IDE / CA severity）；本文件不重复其条目，调整风格只改 `.editorconfig`。
+> 生效范围：`CA*`（代码质量）随 `dotnet build` 生效；`IDE*`（代码风格）**当前未随构建强制**（未开启 `EnforceCodeStyleInBuild`），以 IDE 提示 + code review 为准；`Migrations/*.cs` 标记 `generated_code`，不参与分析。
 
 本规则只写 `.editorconfig` 无法表达的工程约定：
 
@@ -29,38 +28,16 @@ enabled: true
 
 ## 3. 项目结构
 
-```
-backend/
-├── App.sln
-├── src/
-│   ├── App.Api/            # Controller、中间件、ICurrentUser 实现、全局异常处理、统一响应
-│   ├── App.Core/           # 业务核心：Features（用例）、Abstractions（仓储接口 / IUnitOfWork / IRequest / IRequestHandler / IMediator）、Entities、公共组件
-│   └── App.Infrastructure/ # DbContext、Repository 实现、UnitOfWork 实现
-└── tests/
-    └── App.Tests/          # 单元测试（xUnit）
-```
+`backend/` 分 `src/App.Api`（Web 层：Controller / 中间件 / 认证 / 全局异常 / 统一响应）、`src/App.Core`（业务核心：Features 用例、Abstractions、Entities、Errors、Mediation）、`src/App.Infrastructure`（数据访问：DbContext / 仓储实现 / UnitOfWork）与 `tests/App.Tests`（xUnit）；目录与文件完整清单以 `.codebuddy/CONTEXT.md` §2 为准（本文件不重复，避免两处维护漂移）。
 
-- 依赖方向单向（禁止反向依赖）：
-  - `App.Api` → `App.Core`，`App.Api` → `App.Infrastructure`
-  - `App.Infrastructure` → `App.Core`
-- 目录内文件的完整清单以 `.codebuddy/CONTEXT.md` §2 为准（本文件只保留骨架，避免两处维护漂移）。
+- 依赖方向单向（禁止反向依赖）：`App.Api → App.Core`、`App.Api → App.Infrastructure`、`App.Infrastructure → App.Core`。
 
 ### 3.1 实现前最小读取集（强制）
 
 > 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；本节只列**后端侧**的端内固定集合，同样**禁止为"了解项目"做全仓探索或目录级遍历**。
 
-1. **脚手架基准范例（首次进入后端开发读一次，之后按需回看）**：
-   - 四件套结构 → `App.Core/Features/Auth/Login/`；
-   - 空请求（无参）用例形态 → `App.Core/Features/Users/GetCurrentUser/`；
-   - 分发与全局校验 → `App.Core/Mediation/Mediator.cs`；
-   - 本次要改的 Controller → `App.Api/Controllers/<X>Controller.cs`。
-2. **本功能要碰的既有代码（按改动面选读，不预先全读）**：
-   - 改字段 → `Entities/<实体>.cs` + `Entities/<实体>FieldConstraints.cs`；
-   - 改列 / 索引 → `Persistence/Configurations/<实体>Configuration.cs`；
-   - 新增查询 → `Abstractions/I<实体>Repository.cs` + `Repositories/<实体>Repository.cs`，有联查字段时读 `Abstractions/` 下对应读模型；
-   - 组织新用例 → **同 `Feature` 目录下已有的 `<Action>/`**（照结构一比一组织）；
-   - 新增用例 / 仓储必读必改 → `App.Core/DependencyInjection.cs`（`App.Infrastructure/DependencyInjection.cs` 仅新增仓储时）。
-3. **测试侧**：`tests/App.Tests/TestSupport.cs` + 同域既有测试文件（`<实体>RequestHandlerTests.cs` 等）+ 需要假实现时的 `*TestDoubles.cs`；字段约束改动须读 `FieldValidationConsistencyTests.cs`（或同域 `<实体>FieldConsistencyTests.cs`）。
+1. **脚手架基准范例（首次进入后端开发读一次，之后按需回看）**：四件套 → `Features/Auth/Login/`；空请求用例形态 → `Features/Users/GetCurrentUser/`；分发与全局校验 → `Core/Mediation/Mediator.cs`；本次要改的 Controller → `App.Api/Controllers/<X>Controller.cs`（完整清单见 `.codebuddy/CONTEXT.md` §2「基准参照」）。
+2. **本功能要碰的既有代码**：按 `.codebuddy/CONTEXT.md` §2「改动面 → 必读 / 必改文件」对照表选读（改字段 / 改列索引 / 新增查询 / 测试支撑等），**不预先全读**；组织新用例照同 `Feature` 目录下已有的 `<Action>/` 一比一进行。
 4. **禁止**：遍历 `Features/` 全部用例目录；读与本功能无关的 Feature；为"了解架构"通读 `Migrations/`（改表结构时只看最近 1~2 个迁移的命名与写法）。
 
 ## 4. 分层架构（每 API 一个用例）
@@ -71,45 +48,34 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ### 4.1 用例结构
 
-**一个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下的一组文件**（`<Action>` 为用例名，如 `Login`、`CreateUser`），命名空间 `App.Core.Features.<Feature>.<Action>`：
+**一个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下的一组文件**（`<Action>` 为用例名，如 `Login`、`CreateUser`），命名空间 `App.Core.Features.<Feature>.<Action>`，四件套：
 
-| 文件 | 职责 |
-|---|---|
-| `<Action>Request.cs` | 入参模型，与前端请求参数 camelCase 一一对应；属性用 `init`，字符串默认 `string.Empty`；实现标记接口 `IRequest<TResponse>`（声明响应类型） |
-| `<Action>RequestValidator.cs` | 数据格式校验（必填、长度、格式、枚举、范围等），基于 FluentValidation |
-| `<Action>RequestHandler.cs` | 业务逻辑 + 查库约束 + 事务，本用例的唯一编排点 |
-| `<Action>Response.cs` | 出参模型（即 `data` 的模型） |
+- **`<Action>Request.cs`**：入参模型，与前端请求参数 camelCase 一一对应；属性用 `init`，字符串默认 `string.Empty`；实现标记接口 `IRequest<TResponse>`（声明响应类型，供中介分发确定类型）。
+- **`<Action>RequestValidator.cs`**：基于 FluentValidation 的格式校验（必填 / 长度 / 格式 / 枚举 / 范围），**禁止访问仓储 / 查库**——存在性、唯一性、状态流转等约束放 Handler；长度 / 区间 / 正则按 §5.3 取字段约束常量，禁止硬编码。
+- **`<Action>RequestHandler.cs`**：业务逻辑 + 查库约束 + 事务，**本用例唯一编排点**；实现 `IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖。**不设 Service 层**：禁止新增参与业务编排的 `*Service`、不得引入聚合型 Handler，通用无状态技术组件按职责命名（如 `Auth/TokenService`）。`Request → 实体`、`实体 → Response` 映射在此完成，禁止暴露实体到 API；业务失败统一抛 `BusinessException`，错误码用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2），功能专属业务码先在功能 `design.md` 定义。
+- **`<Action>Response.cs`**：出参模型（即 `data` 的模型）；跨用例复用的出参模型放 `Features/<Feature>/` 下，不放进用例目录。
 
-以脚手架为**基准范例**：`Features/Auth/Login`（Request / RequestValidator / RequestHandler / Response 四件套）、`Features/Users/GetCurrentUser`（无参用例以空 `Request` 占位 + 复用共享出参 `UserDto`）；新增功能照此结构一比一组织。
+基准范例：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（空 `Request` 占位 + 复用共享出参 `UserDto`，不定义 Validator，纯内存用例同步计算后 `return Task.FromResult(result)`）；新增功能一比一照此组织。单测可直接测 Handler，也可经 `IMediator` 验证分发。
 
-用例结构细则：
-
-- **Request**：实现标记接口 `IRequest<TResponse>`（声明响应类型），供中介分发时确定响应类型。
-- **RequestValidator（强制）**：只做格式层校验，禁止访问仓储 / 查库；需要查询数据的约束（存在性、唯一性、状态流转等）一律放到 `RequestHandler` 中判断。字段长度 / 区间 / 正则必须取自 §5.3 的字段约束单一来源，禁止硬编码（须与"数据规则"一致）。
-- **RequestHandler（强制）**：本用例唯一业务编排点，直接依赖仓储接口与无状态技术组件；**不设 Service 层**——禁止新增**参与业务编排**的 `*Service`（如 `OrderService`），也不得再引入聚合型 Handler；通用无状态技术组件不受此限，按职责命名（如 `Auth/TokenService`、`PasswordHasher`）。实现 `IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖；单测可直接测该实现，也可经 `IMediator` 验证分发。
-- 无请求参数的用例（如"获取当前用户"）也定义一个空 `Request` 模型（如 `GetCurrentUserRequest`）占位以统一签名，但不定义 `Validator`；纯内存用例在实现内同步计算后 `return Task.FromResult(result)`，无需 `async` 关键字。
-- **用例不接触 HTTP（强制）**：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；需要"当前用户"的用例注入 `App.Core/Abstractions/ICurrentUser`（实现由 `App.Api` 基于 ClaimsPrincipal 提供）。
-- **当前用户与审计字段（强制）**：id 解析统一用 `Abstractions/ICurrentUserExtensions.UserId()` 扩展方法（claims 缺失 / 非法返回 `null`），禁止内联 `Guid.TryParse` 或私有解析方法；审计字段（CreatedBy / UpdatedBy）一律由 Handler 经 `ICurrentUser` 获取后随实体 / `operatorId` 参数传入，仓储不注入 `ICurrentUser`、不感知当前用户。
-- **业务失败（强制）**：统一抛 `BusinessException`，错误码使用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2）；功能专属业务码（如登录失败 `40001`）必须先在各功能 `design.md` 定义再使用。
-- **映射**：`Request → 实体` 与 `实体 → Response` 在 `RequestHandler` 内完成，禁止把实体直接返回 Controller / 暴露到 API。出参复用：跨用例 / 多次复用的出参模型（如 `UserDto`）放 `Features/<Feature>/` 下，不放进单个用例目录。
+**用例不接触 HTTP / 当前用户（强制）**：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；当前用户经 `Abstractions/ICurrentUser` 获取（实现由 `App.Api` 基于 ClaimsPrincipal 提供），id 解析统一用 `ICurrentUserExtensions.UserId()`，禁止内联 `Guid.TryParse`；审计字段（CreatedBy / UpdatedBy）由 Handler 随实体 / `operatorId` 参数传入，仓储不感知当前用户。
 
 ### 4.2 中介分发与格式校验
 
-- **中介分发（强制）**：Controller / 中间层只注入 `App.Core/Abstractions/IMediator`，用 `await _mediator.Send(request)` 触发用例，禁止直接依赖或 `new` 具体 Handler。分发实现 `App.Core/Mediation/Mediator`（自研简化 MediatR）：按请求运行时类型经 DI 解析已注册的 `IRequestHandler<TRequest,TResponse>` 后调用其 `HandleAsync`。
-- **格式校验全局统一（强制）**：格式校验由 `Mediator` 在分发到 Handler 之前统一执行——`Send` 内按请求运行时类型经 DI 解析已注册的 `IValidator<TRequest>` 并 `await ValidateAsync`，失败抛 `BusinessException(ErrorCode.Validation, 首条错误信息)`，未注册校验器的请求（如空请求用例）自动跳过。`RequestHandler` 不再注入 / 执行校验器，`HandleAsync` 只写业务逻辑与查库约束；Controller 不做参数校验。
-- **路由约定（强制）**：Controller 路由统一 `/api/<资源复数>`（`AGENTS.md` §4.4）；动作用 HTTP 动词 + 资源 / 子资源路径（如 `GET /api/categories/paged`、`PUT /api/users/{id}/status`），用例名不进路径，不在路径中暴露实现细节。
-- **分页入参（强制）**：`page` ≥ 1、`pageSize` 默认 20、上限 100（`AGENTS.md` §4.3）；Validator 用 `InclusiveBetween` 等表达该边界，越界由全局校验统一返回 `40000`。
+- **中介分发（强制）**：Controller 只注入 `Abstractions/IMediator`，用 `await _mediator.Send(request)` 触发用例，禁止直接依赖或 `new` 具体 Handler。分发实现 `Mediation/Mediator`（自研简化 MediatR）：按请求运行时类型经 DI 解析已注册的 `IRequestHandler<TRequest,TResponse>` 并调用 `HandleAsync`。
+- **格式校验全局统一（强制）**：由 `Mediator` 在分发前统一执行——`Send` 内按请求运行时类型解析已注册的 `IValidator<TRequest>` 并 `ValidateAsync`，失败抛 `BusinessException(ErrorCode.Validation, 首条错误信息)`，未注册校验器的请求（如空请求用例）自动跳过。Handler 不注入 / 不执行校验器，Controller 不做参数校验。
+- **路由约定（强制）**：统一 `/api/<资源复数>`（`AGENTS.md` §4.4）；动作用 HTTP 动词 + 资源 / 子资源路径（如 `PUT /api/users/{id}/status`），用例名不进路径，不在路径中暴露实现细节。
+- **分页入参（强制）**：`page` ≥ 1、`pageSize` 默认 20、上限 100（`AGENTS.md` §4.3）；Validator 用 `InclusiveBetween` 等表达边界，越界由全局校验统一返回 `40000`。
 
 ### 4.3 DTO 与读模型
 
 - **DTO 映射统一约定（强制）**：
-  - **正向（实体 / 读模型 → 出参 DTO）**：凡同一功能存在出参映射，集中在 `Features/<Feature>/` 下的 `internal static class <Feature>DtoMapper` 中实现，**禁止在 Handler 内联 `new XxxDto` / 私有 `ToDto` 重复拼装**；方法名统一为 `To` + 目标 DTO 类型名（全部以 `Dto` 结尾），如 `UserDtoMapper.ToUserDetailDto` / `ProductDtoMapper.ToProductDto` / `PurchaseDtoMapper.ToPurchaseOrderListItemDto`；同一 DTO 的映射字段须一致，派生 / 计算字段（如低库存标记）在 Mapper 内计算（可提私有方法）；多个源类型映射同一 DTO 时用重载区分（如读模型重载、实体 + 上下文重载）。
-  - **反向（入参 Request → 实体）**：与正向区分方向，若抽取工厂方法，方法名统一为 `From` + 源类型名（如 `Partner.FromCreatePartnerRequest`，对应正向 `ToPartnerDto`），禁止与正向 `To` 前缀混用。当前反向映射均为各用例 Handler 内联的对象初始化拼装（实体构造各异），暂不强制集中；后续确需抽取时（实体工厂方法或 Mapper 的 `From` 方法）须遵守 `From` 前缀约定。
-- **读模型约定（强制）**：读模型（Read Model）是**仓储出参契约**，与 `Entity`（持久化模型）和 `DTO`（API 契约）分属三层：
-  - **定位与形态**：表达"查询结果长什么样"，只供仓储接口 ↔ Mapper 之间传递，禁止暴露到 API。形态固定为 `sealed record` + `required` + `init`（不可变），放在 `App.Core/Abstractions/` 下，与仓储接口同层。
-  - **创建判据**：仅当查询结果含**实体上没有的联查字段**（如 join 带出的 `CategoryName` / `StockQuantity`）时才建读模型；单表查询、字段与实体 1:1 无额外信息的，仓储直接返回实体（`AsNoTracking`）；主表 + 明细的复合结构用元组 `(Entity? Order, IReadOnlyList<ItemEntity> Items)` 返回，不得为此新增读模型。
-  - **命名**：`<实体><用途>`，用途取自查询场景，如 `ProductDetail` / `ProductListItem` / `ProductPickItem` / `InventoryItem`。
-  - **规格联动**：读模型必须先在功能 `design.md` §3.1 的仓储接口表中定义（含联查说明），再落地为代码；`Abstractions/` 类型清单变更时同步更新 `.codebuddy/CONTEXT.md`。
+  - **正向（实体 / 读模型 → 出参 DTO）**：集中在 `Features/<Feature>/` 下的 `internal static class <Feature>DtoMapper`，**禁止在 Handler 内联 `new XxxDto` / 私有 `ToDto` 重复拼装**；方法名统一为 `To` + 目标 DTO 类型名（如 `UserDtoMapper.ToUserDetailDto`）；同一 DTO 的映射字段须一致，派生 / 计算字段（如低库存标记）在 Mapper 内计算；多个源类型映射同一 DTO 用重载区分。
+  - **反向（Request → 实体）**：与正向区分方向，若抽取工厂方法统一 `From` + 源类型名（如 `Partner.FromCreatePartnerRequest`），禁止与正向 `To` 前缀混用；当前反向映射均为各用例 Handler 内联拼装，暂不强制集中。
+- **读模型约定（强制）**：读模型是**仓储出参契约**，与 `Entity`（持久化模型）、`DTO`（API 契约）分属三层：
+  - **定位与形态**：只供仓储接口 ↔ Mapper 传递，禁止暴露到 API；形态固定为 `sealed record` + `required` + `init`（不可变），放 `App.Core/Abstractions/`，与仓储接口同层。
+  - **创建判据**：仅当查询结果含**实体上没有的联查字段**（如 join 带出的 `CategoryName`）时才建；单表查询、字段与实体 1:1 的仓储直接返回实体（`AsNoTracking`）；主表 + 明细的复合结构用元组 `(Entity? Order, IReadOnlyList<ItemEntity> Items)` 返回，不为此新增读模型。
+  - **命名**：`<实体><用途>`，用途取自查询场景（如 `ProductDetail` / `ProductListItem`）。
+  - **规格联动**：必须先在功能 `design.md` §3.1 的仓储接口表中定义（含联查说明）再落地；`Abstractions/` 类型清单变更时同步更新 `.codebuddy/CONTEXT.md`。
 
 ### 4.4 仓储与事务
 
@@ -118,7 +84,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ### 4.5 依赖注入注册
 
-- `App.Core/DependencyInjection.AddCore` 显式注册无状态技术组件、`IMediator → Mediator`（一次）、各用例的接口映射（`AddScoped<IRequestHandler<LoginRequest, LoginResponse>, LoginRequestHandler>()`）与 `IValidator<Request>`；`App.Infrastructure/DependencyInjection.AddInfrastructure` 注册 `IUnitOfWork` 与仓储实现（Scoped）。新增用例必须同步注册，禁止反射隐式扫描（`Send` 时按请求类型解析单个已注册实现不属于扫描），禁止在 Controller 手动 `new` 依赖。
+- `App.Core/DependencyInjection.AddCore` 显式注册无状态技术组件、`IMediator → Mediator`（一次）、各用例的接口映射（`AddScoped<IRequestHandler<TRequest, TResponse>, <Action>RequestHandler>()`）与 `IValidator<Request>`；`App.Infrastructure/DependencyInjection.AddInfrastructure` 注册 `IUnitOfWork` 与仓储实现（Scoped）。新增用例必须同步注册，禁止反射隐式扫描（`Send` 时按请求类型解析单个已注册实现不算扫描），禁止在 Controller 手动 `new` 依赖。
 
 ## 5. 数据库规范（PostgreSQL + EF Core）
 
@@ -130,26 +96,21 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ### 5.2 时间字段一律 `DateTimeOffset`（强制）
 
-- **实体 / DTO（Request / Response）/ 仓储方法签名**中的所有时间字段统一用 `DateTimeOffset`（可空用 `DateTimeOffset?`），**禁止 `DateTime`**。理由：`DateTime.Kind` 在 JSON 序列化与跨层传递中会丢失，导致 UTC 与本地时间混用；`DateTimeOffset` 自带偏移量，语义明确。
-- 取当前时间统一 `DateTimeOffset.UtcNow`；禁止 `DateTime.Now`，禁止直接调用 `DateTime.UtcNow`（确需 `DateTime` 值的场景见下条边界例外，用 `.UtcDateTime` 转换得到，不让裸 `DateTime` 进入业务层）。
-- Npgsql 将 `DateTimeOffset` 映射为 `timestamptz`，库内按 UTC 存储，接口出入参保留偏移量。类型改造若不影响 DDL，允许生成 Up/Down 为空的迁移，不要为了"迁移有内容"去改列类型。
+- **实体 / DTO（Request / Response）/ 仓储方法签名**中的所有时间字段统一用 `DateTimeOffset`（可空用 `DateTimeOffset?`），**禁止 `DateTime`**：`DateTime.Kind` 在 JSON 序列化与跨层传递中会丢失，导致 UTC 与本地时间混用；`DateTimeOffset` 自带偏移量，语义明确。
+- 取当前时间统一 `DateTimeOffset.UtcNow`；禁止 `DateTime.Now`，禁止直接调用 `DateTime.UtcNow`（确需 `DateTime` 值时用 `.UtcDateTime` 转换，不让裸 `DateTime` 进入业务层）。
+- Npgsql 将其映射为 `timestamptz`，库内按 UTC 存储，接口出入参保留偏移量；类型改造若不影响 DDL，允许生成 Up/Down 为空的迁移，不要为"迁移有内容"去改列类型。
 - 时间范围筛选入参为 `DateTimeOffset`（前端传 UTC ISO 串），偏移量显式，后端**不做时区推断 / 不做 UTC 归一化**；闭区间比较直接依赖 `timestamptz` 语义。
-- **唯一例外**：第三方 API 只接受 `DateTime` 时（如 `JwtSecurityToken` 的 `notBefore` / `expires`），在调用边界显式 `.UtcDateTime` 转换并加注释说明（参照 `TokenService.Issue`）。
-- 新增时间字段时同步更新各功能 `design.md` 的数据模型表与表结构表（§5.3 规格侧事实源）。
+- **唯一例外**：第三方 API 只接受 `DateTime` 时（如 `JwtSecurityToken` 的 `notBefore` / `expires`），在调用边界显式 `.UtcDateTime` 转换并加注释（参照 `TokenService.Issue`）。
+- 新增时间字段时同步更新功能 `design.md` 的数据模型表与表结构表。
 
 ### 5.3 字段约束单一来源，Validator 与数据规则一致（强制）
 
-> 参照实现：`App.Core/Entities/UserFieldConstraints.cs` + `Persistence/Configurations/UserConfiguration.cs` + `Features/Users/**/*RequestValidator.cs`，一致性由 `tests/App.Tests/FieldValidationConsistencyTests.cs` 守护。
+> 参照实现：`Entities/UserFieldConstraints.cs` + `Configurations/UserConfiguration.cs` + `Features/Users/**/*RequestValidator.cs`，一致性由 `tests/App.Tests/FieldValidationConsistencyTests.cs` 守护。
 
-- 「数据规则」（字段长度 / 区间 / 正则 / 必填 / 可空）在代码侧**只在一处定义**：`App.Core/Entities/<实体>FieldConstraints.cs` 常量类（如 `UserFieldConstraints`）。引用方必须使用该常量，**禁止硬编码字面量、禁止复制正则**：
-  - EF 实体配置（`HasMaxLength` / `IsRequired` / `HasColumnType` / 索引等）→ `App.Infrastructure/Persistence/Configurations/<实体>Configuration.cs`；
-  - 各用例 `RequestValidator` 的长度 / 区间 / 正则规则。
-- **同一字段在不同用例中的规则必须同源**，禁止分叉：例如登录、创建、重置的密码区间必须都取 `PasswordMinLength` / `PasswordMaxLength`，不得某个用例写成 ≤128。无对应表列但仍属业务规则的（如明文密码区间、查询关键词长度上限）同样收敛到该常量类。
-- **规格侧对应条款**是 `specs/<feature>/design.md` 的「数据模型 / 表结构」约束表与校验规则表，**规格是事实源**：改动顺序为 `design.md` → 常量类 → EF 配置 → 各 Validator → 一致性单测，代码与规格必须始终一致。
-- 必须由单测守护一致性，至少覆盖：
-  1. EF 模型实际 `HasMaxLength` == 常量（防配置与常量分叉）；
-  2. 同一字段在多个用例的 Validator 中「边界值通过 / 越界拒绝」行为一致；
-  3. 查询类关键词的长度上限 == 该查询**实际匹配列**的最大列长（关键词按列做 `Contains`，超过列长不可能命中）；**跨域不照抄数值**：搜 `Name` 的域取 `NameMaxLength`（如分类取 20），搜多列的取其中较大者（如商品搜 `Code`/`Name` 取 50），单据搜 `OrderNo` 取 20。
+- 「数据规则」（长度 / 区间 / 正则 / 必填 / 可空）在代码侧**只在一处定义**：`App.Core/Entities/<实体>FieldConstraints.cs` 常量类。引用方必须使用该常量，**禁止硬编码字面量、禁止复制正则**：EF 配置（`HasMaxLength` / `IsRequired` / 索引等，在 `Persistence/Configurations/<实体>Configuration.cs`）与各用例 `RequestValidator` 均取常量。
+- **同一字段在不同用例中的规则必须同源**，禁止分叉（如登录 / 创建 / 重置的密码区间都取 `PasswordMinLength` / `PasswordMaxLength`）；无对应表列但仍属业务规则的（明文密码区间、查询关键词长度上限）同样收敛到该常量类。
+- **规格是事实源**：以 `specs/<feature>/design.md` 的「数据模型 / 表结构」约束表与校验规则表为准；改动顺序 `design.md` → 常量类 → EF 配置 → 各 Validator → 一致性单测，代码与规格必须始终一致。
+- 单测至少覆盖：① EF 实际 `HasMaxLength` == 常量；② 同一字段在多个用例 Validator 中「边界值通过 / 越界拒绝」一致；③ 查询关键词长度上限 == 该查询**实际匹配列**的最大列长（按列 `Contains`，超列长不可能命中）——**跨域不照抄数值**（搜 `Name` 取 `NameMaxLength`：分类 20；搜多列取较大者：商品 `Code`/`Name` 取 50；单据搜 `OrderNo` 取 20）。
 - 新增字段 / 修改约束时，上述五处缺一即视为未完成，不得勾选规格 `tasks.md` 中对应任务。
 
 ## 6. 认证（JWT）
@@ -160,8 +121,8 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ## 7. 日志与可观测性
 
-- 日志集成 NLog 并对接默认 `ILogger<T>`（Microsoft.Extensions.Logging）；业务代码只注入使用 `ILogger<T>`，禁止直接调用 NLog。
-- NLog 配置放在 `App.Api`，输出控制台 + 滚动文件；日志级别：**dev / prod 均 Info 起**（prod 同样保留业务日志），框架日志（`Microsoft.*` / `System.*`）单独以 Warn 起压噪（见 `nlog.config`）——不靠整体降到 Warning 来减少噪音，否则会连带丢弃 Info 级业务日志。日志上下文含 traceId 的要求见 `AGENTS.md` §5。
+- 日志集成 NLog 并对接默认 `ILogger<T>`（Microsoft.Extensions.Logging）；业务代码只注入使用 `ILogger<T>`，禁止直接调用 NLog。配置放 `App.Api`，输出控制台 + 滚动文件，布局含 traceId（要求见 `AGENTS.md` §5）。
+- 日志级别：**dev / prod 均 Info 起**（prod 同样保留业务日志），框架日志（`Microsoft.*` / `System.*`）单独以 Warn 起压噪（见 `nlog.config`）——不靠整体降到 Warning 减少噪音，否则会连带丢弃 Info 级业务日志。
 - 可观测性集成 OpenTelemetry（Tracing + Metrics）：在 `App.Api` 引入 SDK，自动埋点 ASP.NET Core 与 EF Core；导出目标按环境配置（dev 可不导出，prod 导出至 collector）。
 
 ## 8. 环境配置
@@ -171,9 +132,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ## 9. 测试
 
-- 单元测试项目：`tests/App.Tests`（xUnit）；覆盖重点（RequestHandler 业务逻辑）与测试门槛见 `AGENTS.md` §6。
-- 仓储与用例测试**优先用行为型假实现**（参照 `PurchaseOrderTestDoubles` / `SalesOrderTestDoubles` 及其生命周期测试）；EF Core InMemory 提供程序仅用于不依赖关系型特性的简单读场景。
-- **InMemory 限制（强制）**：InMemory **不支持 `ExecuteUpdateAsync` / 行锁等关系型特性**，依赖这类写操作的仓储与生命周期测试必须用行为型假实现规避。
-- 测试命名：`{类名}_{方法名}_{场景}`；RequestHandler 的公共方法必须有对应单测。
-- 测试工程对 `CA2000`（对象所有权）采用**汇编级抑制**（`tests/App.Tests/GlobalSuppressions.cs`）：`DbContext` / `UnitOfWork` 在测试中由用例或 fixture 创建并跨调用复用，逐个 `using` 会破坏测试语义；`src/` 仍保持 `error`，**不要删除该抑制文件**。
-- **测试用例要求（强制）**：凡涉及后端改动的功能，交付前必须为改动新增 / 变更的业务逻辑补充正常分支 + 异常分支的测试用例；无对应测试用例视为未完成，不得勾选规格 `tasks.md` 中对应任务。
+- 单元测试项目 `tests/App.Tests`（xUnit）；覆盖重点（RequestHandler 业务逻辑）与测试门槛见 `AGENTS.md` §6。命名 `{类名}_{方法名}_{场景}`，RequestHandler 的公共方法必须有对应单测。
+- 仓储与用例测试**优先用行为型假实现**（参照 `PurchaseOrderTestDoubles` / `SalesOrderTestDoubles`）；EF Core InMemory 仅用于不依赖关系型特性的简单读场景——**InMemory 不支持 `ExecuteUpdateAsync` / 行锁**，依赖这类写操作的仓储与生命周期测试必须用行为型假实现规避。
+- 测试工程对 `CA2000` 采用**汇编级抑制**（`tests/App.Tests/GlobalSuppressions.cs`）：`DbContext` / `UnitOfWork` 在测试中跨调用复用，逐个 `using` 会破坏测试语义；`src/` 仍保持 `error`，**不要删除该抑制文件**。
+- **测试用例要求（强制）**：凡涉及后端改动，交付前必须为新增 / 变更的业务逻辑补充正常分支 + 异常分支用例；无对应用例视为未完成，不得勾选规格 `tasks.md` 中对应任务。

@@ -38,15 +38,11 @@ frontend/
 
 ### 2.1 实现前最小读取集（强制）
 
-> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；本节只列**前端侧**的端内固定集合同样**禁止为"了解项目"做目录级遍历或全仓搜索**。
+> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；本节只列**前端侧**的端内固定集合，同样**禁止为"了解项目"做目录级遍历或全仓搜索**。
 
-1. **本次要改动的页面所在域**：只读本域目录（`views/<Domain>/`），不读其他域。同域既有同类文件即参照：列表页看 `<Entities>View.vue`，表单看同域 `<Entity>FormDrawer.vue` / `<Entity>FormPage.vue`，详情看 `<Entity>DetailView.vue`。
-2. **跨域通用参照（按需读，不预读）**：
-   - 列表页 / 工具条 / 操作列 → `views/Showcase/ListShowcaseView.vue`（标准参照实现）；
-   - 表单与详情形态 → `views/Showcase/FormShowcaseView.vue`、`OrderFormDrawer.vue`、`FormPageFormView.vue`、`FormDetailView.vue`；
-   - 接口层写法 → `api/request.ts`（统一解包与 40100 处置）+ 本次要用的 `api/<entity>.ts`；
-   - 路由 / 菜单 → `router/index.ts`、`components/AppLayout.vue`（仅新增页面或菜单项时读）。
-3. **对应规格（按改动类型选读，不全部读）**：列表页 → `specs/list-showcase/` + `specs/action-column/`；按钮 loading → `specs/button-loading/`；表单 / 详情 → `specs/form-detail-showcase/`；组合式分区 → `specs/composable-style/`；图标 → `specs/icon-showcase/`。
+1. **只读本次要改动的功能域目录**（`views/<Domain>/`），不读其他域；同域既有同类文件即参照：列表页 → `<Entities>View.vue`，表单 → 同域 `*FormDrawer.vue` / `*FormPage.vue`，详情 → `*DetailView.vue`。
+2. **跨域通用参照（按需读，不预读）**：参照实现与关键文件位置见 `.codebuddy/CONTEXT.md` §3「基准参照」；接口层写法读 `api/request.ts`（统一解包与 40100 处置）+ 本次要用的 `api/<entity>.ts`；仅新增页面 / 菜单项时才读 `router/index.ts`、`components/AppLayout.vue`。
+3. **对应规格（按改动类型选读，不全部读）**：本规则的 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 均为判据 + 指针，正文在下列规格——列表页 → `specs/list-showcase/design.md` §0；操作列 → `specs/action-column/design.md` §0；按钮 loading → `specs/button-loading/design.md` §0；组合式分区 → `specs/composable-style/design.md` §0；图标 → `specs/icon-showcase/design.md` §0；表单 / 详情 → `specs/form-detail-showcase/design.md` §0。
 4. **e2e**：只读同域 `e2e/<域>.spec.ts`，必要时读 `e2e/helpers/`；不通读全部用例。
 5. **禁止**：遍历 `views/` / `components/` 全目录；读与本功能无关的功能域文件；为"参考风格"通读 `src/` 全量文件。
 
@@ -75,171 +71,65 @@ frontend/
 
 ### 4.5 组合式 API 分区书写规范（强制）
 
-> 规格：`specs/composable-style/`。目的：禁止随意位置写 `ref` / `computed` / `watch` / 函数，保证结构可预期。
+> 目的：禁止随意位置写 `ref` / `computed` / `watch` / 函数，保证结构可预期。
+> **正文（11 分区顺序表、分区内顺序、分区注释、模板 ref 命名、composable 分区）见 `specs/composable-style/design.md` §0**；本节只留判据。
 
-**`<script setup>` 固定分区顺序**（自上而下，分区间空行分隔；只允许缺省，不允许乱序或穿插）：
-
-| # | 分区 | 内容 |
-|---:|---|---|
-| 1 | imports | 全部 `import`（vue 生态 → 第三方 → 本地 `@/`，`type` 导入用 `type` 关键字） |
-| 2 | types | 组件局部 `interface` / `type` |
-| 3 | props/emits | `defineProps` / `defineEmits` / `defineOptions`（仅组件） |
-| 4 | constants | 选项数组、映射表、配置对象、种子数据等纯 `const` |
-| 5 | helpers | 私有纯函数（不依赖响应式），如 `cloneData` / `formatDate` / `emptyForm` |
-| 6 | stores/composables | `useRouter` / `useRoute` / `useXxxStore()` / `useXxx()` 调用 |
-| 7 | reactive state | `ref` / `reactive` / `shallowRef`（含模板 ref） |
-| 8 | computed | `computed` 派生状态 |
-| 9 | watch | `watch` / `watchEffect` |
-| 10 | lifecycle | `onMounted` / `onUnmounted` 等 |
-| 11 | methods | 业务函数（事件处理、提交、删除等） |
-
-- 同一分区内「被引用者在前」：`computed` 依赖的 `ref` 在前、派生 `computed` 在后。
-- 分区注释：`// —— reactive state ——` 形式；分区内声明 > 1 个或为 methods 区时必须写，单声明小分区可省略。
-- **模板 ref 命名强制 `xxxRef`**（如 `formRef`）。
-- **composable（`composables/*.ts`）**：`imports → types → constants（含模块级单例 ref，需注释）→ helpers → export function useXxx()`；函数体内同样遵守 reactive state → computed → watch → methods 相对顺序。
-- lint 自动强制项：import 分组排序（`perfectionist/sort-imports`）与禁用 `any`（`@typescript-eslint/no-explicit-any`），见 `eslint.config.js`。
-- 分区顺序、`types` 先于变量、ref 命名当前无 lint 规则覆盖，由 code review 把关。
+- `<script setup>` 顶层声明必须按 §0 的固定分区顺序书写（只允许缺省，不允许乱序或穿插）；composable（`composables/*.ts`）同样遵守 `imports → types → constants → helpers → export function useXxx()`，函数体内保持 reactive state → computed → watch → methods 相对顺序。
+- 模板 ref 命名一律 `xxxRef`（如 `formRef`）。
+- lint 已强制 import 分组排序与禁用 `any`；分区顺序、`types` 先于变量、ref 命名**无 lint 兜底**，由 code review 把关。
 
 ### 4.6 按钮交互反馈（强制）
 
 > 目的：任何会发起请求的按钮，点击后必须**立即**给出 loading 反馈，且操作进行中不可重复触发。
+> **正文（状态命名与绑定表、实现要求、不置 loading 的情形）见 `specs/button-loading/design.md` §0**；本节只留判据。
 
-**绑定粒度：loading 属于「操作」而非「按钮」**。同一个异步操作无论有几个触发入口（按钮 / 输入框回车 / 分页器 / 行内按钮），共用同一个 loading 状态；不同操作各用独立状态，**禁止多个按钮共用一个 `loading`**。
-
-| 操作类型 | 状态命名 | 绑定方式 |
-|---|---|---|
-| 列表查询（搜索 / 重置 / 刷新 / 翻页 / 每页条数） | `loading` | 按钮 + 回车 `:loading="loading"`，同时 `<a-table :loading="loading">` |
-| 表单提交（新增 / 编辑） | `submitting` | 提交按钮 `:loading="submitting"` |
-| 弹窗确认（重置密码 / 改状态等） | `xxSubmitting` | `a-modal :ok-loading="xxSubmitting"` |
-| 行内操作（启用 / 禁用 / 单行删除） | `xxingId`（如 `togglingId`） | `:loading="togglingId === row.id"` |
-| 批量操作（批量删除 / 批量改状态） | `batchXxing`（如 `batchDeleting`） | 触发按钮 `:loading="batchDeleting"`，与 `:disabled="!selectedIds.length"` 叠加 |
-
-**实现要求**
-
-- **触发即置位**：handler 内先 `xxLoading.value = true` 再 `await`；用 `try/finally` 复位，成功与失败路径都要复位。
-- **防重入**：动作类（提交 / 删除 / 启停）handler 开头 `if (xxLoading.value) return`——Arco 的 `loading` 只表现为不可点击，**不阻止事件重入**（回车 + 点击、弹窗确认连点）。
-- **查询类不丢弃点击**：搜索 / 翻页等查询动作不加判空，最新意图必须生效；用请求序号仲裁乱序响应（见 §5 交互模式）。
-- **不置 loading 的情形**：同步瞬时动作（打开抽屉 / 弹窗、路由跳转、本地导出 CSV、复制文本）不置；只有「发起请求并等待结果」才置。
-- **与业务 `:disabled` 叠加**：如 `:disabled="!selectedIds.length"` + `:loading="loading"`；`a-button` 的 `loading` 已隐含不可点击，无需为它另写 `:disabled`。
-
-**e2e**：按钮 loading 属用户可感知行为，相关功能交付前须有 e2e 断言（`AGENTS.md` §6）。
+- loading 属于「操作」而非「按钮」：同一异步操作的所有触发入口（按钮 / 回车 / 分页器 / 行内按钮）共用同一个状态；不同操作各用独立状态，**禁止多个按钮共用一个 `loading`**。
+- 命名固定：查询类 `loading`、表单提交 `submitting`、弹窗确认 `xxSubmitting`、行内操作 `xxingId`、批量操作 `batchXxing`。
+- 触发即置位 + `try/finally` 复位（成功与失败路径都复位）；动作类（提交 / 删除 / 启停）必须防重入，查询类**禁止判空丢弃点击**（用请求序号仲裁）。
+- 同步瞬时动作（开抽屉 / 弹窗、路由跳转、本地导出、复制）不置 loading；只有「发起请求并等待结果」才置。
+- 按钮 loading 属用户可感知行为，相关功能交付前须有 e2e 断言（`AGENTS.md` §6）。
 
 ### 4.7 图标选用（强制）
 
-> 项目并存三套图标库：Tabler（`@tabler/icons-vue`，业务默认）、Lucide（`@lucide/vue`）、Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`）。三套的用法与示例见组件示例页「图标」tab（`/components`，规格 `specs/icon-showcase/`）。
+> 项目并存三套图标库：Tabler（`@tabler/icons-vue`，业务默认）、Lucide（`@lucide/vue`）、Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`）。
+> **正文（三套库用法、选型优先级表、来源注释、尺寸与线宽）见 `specs/icon-showcase/design.md` §0**（示例页 `/components` 图标 tab）；本节只留判据。
 
-**选型优先级（从高到低，逐级回退，命中即用，禁止反向选择）**
-
-| 优先级 | 类库 | 使用场景 |
-|---:|---|---|
-| 1 | Tabler | 首选，图标量大、业务语义覆盖全（单据、往来单位、仓储、结算等） |
-| 2 | Lucide | Tabler 无对应语义图标时 |
-| 3 | Arco 自带 `Icon*` | 前两者均无对应语义图标时兜底（Arco 组件自身内置的图标形态除外） |
-
-- 按**业务语义**查找（如「重置」→ `IconRestore`），不是按组件名猜。
-- **禁止反向选择**：不得因偏好某套风格跳过 Tabler 直接用 Lucide / Arco；不得为凑图标使用语义不符的图标（宁缺毋滥，纯装饰性图标可放宽）。
-- **Arco 组件 `#icon` 插槽**（`a-button` / `a-menu-item` / `a-select` 等，含 §5.2 操作列固定图标）**同样优先 Tabler**，三套均可放进插槽；仅当语义只有 Arco 覆盖时才用 Arco。
-- **来源注释**：使用 Lucide / Arco 图标时，在 import 处加一行注释说明，如 `// 图标来源：Lucide（Tabler 无对应语义）`，便于 review。
-- **尺寸与线宽**：全局样式（`src/App.vue` + `AppLayout` scoped）已统一收敛——Arco 按钮 / 下拉项内 `1em`、侧边菜单 `18px`（`stroke-width 2.5`）；其余场景空间不足时再用 `:size`，不逐处写。同一区域内不混用不同来源（线宽：Tabler / Lucide 默认 `2`，Arco 默认 `4`）。
-- **现状**：侧边菜单、列表工具条、操作列的业务图标已统一为 Tabler；仅「图标」示例页（`/components` 图标 tab，规格 `specs/icon-showcase/`）为演示保留三套。新增 / 修改一律按本表，且同一业务图标全项目同来源。
+- 选型按业务语义逐级回退：Tabler（首选）→ Lucide（Tabler 无对应语义时）→ Arco 自带 `Icon*`（兜底），**禁止反向选择**（不得因偏好跳过 Tabler），不得为凑图标使用语义不符的图标。
+- Arco 组件的 `#icon` 插槽（含 §5.2 操作列固定图标）**同样优先 Tabler**；用 Lucide / Arco 时在 import 处加来源注释。
+- 同一业务图标全项目同来源；尺寸 / 线宽沿用全局统一样式，不逐处写。
 
 ## 5. 列表页约定
 
-- 所有表格类列表页以 `src/views/ListShowcaseView.vue` 为标准参照实现（规格 `specs/list-showcase/`）；新增列表页优先复制其结构与交互模式再替换业务字段。
+> **正文（页面布局、表格配置、列宽策略、交互模式）见 `specs/list-showcase/design.md` §0**；本节只留判据。参照实现：`src/views/Showcase/ListShowcaseView.vue`。
 
-**页面布局**
-- 页面头仅放标题；操作按钮不放页面头，统一并入表格卡片上方的工具条（避免操作离列表太远）。
-- 工具条分两行，整体与表格同在一个无描边 `a-card` 内，紧贴表格：
-  - 筛选行：`a-row`（`wrap`）+ `a-col` 栅格排多列，窄屏自动换行为多行；末列放「搜索」（primary，`<IconSearch />`）+「重置」（`<IconRestore />`）按钮，图标走 `#icon` 插槽（重置用 `IconRestore`（恢复初始态语义），不复用已归属「刷新」的 `IconRefresh`）；行底用边框线与操作行分隔。
-  - 操作行：紧贴表格，左右分组（`justify-content: space-between`）；**主操作（新增/开单）统一靠左**，其余操作（数据操作 导出、批量删除 / 视图操作 列设置、刷新）靠右且与主操作同一行，组间用竖 `a-divider` 分隔；按钮统一 `size="small"`；无主操作的只读页（库存、登录日志）整行右对齐即可。页面头不放任何创建按钮（采购/销售开单入口同样在操作行左组）。
-- 表格配置：`row-key` 必设；分页 `showTotal` + `showPageSize`（`pageSizeOptions: [10, 20, 50]`）；枚举字段（角色/状态等）用 `a-tag` 着色展示；操作列放表格末列，`a-button type="text"`，呈现细则见 §5.2 操作列约定。
-- 列宽策略：每列都设 `width`，不设无宽度弹性列（唯一无宽度列会吸收全部剩余空间，宽屏下被撑到 400px+）；长文本列固定 `width` + `ellipsis: true, tooltip: true`；表格设 `:scroll="{ x: tableScrollX }"`（`tableScrollX` = 各列 `width` 之和）——总和小于容器时剩余空间按列宽比例分摊，窄屏横向滚动。操作列宽度按 §5.2 列宽参考取值。
+- 所有表格类列表页以参照实现为准：新增列表页先复制其结构与交互模式，再替换业务字段。
+- 页面头**仅放标题**，不放任何创建按钮；操作按钮统一并入表格卡片上方的工具条（筛选行 + 操作行；主操作靠左，数据 / 视图操作靠右，组间竖 `a-divider`）。
+- 表格必设 `row-key`；分页 `showTotal` + `showPageSize`（`pageSizeOptions: [10, 20, 50]`）；枚举字段用 `a-tag` 着色展示。
+- **每列必设 `width`**（不留无宽度弹性列）；长文本列 `ellipsis + tooltip`；表格设 `:scroll="{ x: tableScrollX }"`。操作列宽度见 §5.2。
+- 筛选条件「输入态 / 已应用态」分离（点「搜索」或回车才应用并回第 1 页）；列表请求必须用**请求序号仲裁**乱序响应，禁止用 `if (loading) return` 丢弃点击。
+- 删除（单行 / 批量）一律 `a-popconfirm`；导出 CSV 加 `\uFEFF` BOM 头（Excel 中文兼容）。
 
 ### 5.2 操作列约定（强制）
 
-> 规格：`specs/action-column/`。适用范围：所有表格类列表页的操作列；工具条（页面级操作行）不适用，其分组见本节「页面布局」。
+> 适用范围：所有表格类列表页的操作列；工具条（页面级操作行）不适用。
+> **正文（数量阈值、颜色表、图标映射表、密度样式、二次确认、固定显示、按钮顺序）见 `specs/action-column/design.md` §0**；本节只留判据。
 
-**数量：超过 3 个操作收纳进「更多」下拉**
-
-| 操作数 | 呈现 |
-|---|---|
-| ≤ 3 | 全部平铺（`a-space :size="4"`） |
-| > 3 | 保留前 3 个平铺，其余收纳进行内「更多」下拉（`a-dropdown trigger="click"` + `a-doption`，触发按钮 `type="text" size="small"` + `IconDotsVertical`） |
-
-- 平铺选取：常用 / 主操作 + 危险操作优先平铺，低频操作进「更多」；「更多」触发按钮恒在末尾。
-- 列宽参考：平铺 ≤ 3 个短操作 `150~220`；含「更多」时 `200~260`。
-- 平铺按钮顺序：主操作 → 中性 → 完成 → 警示 → 危险（如单据列表 详情 → 标记已结算 / 改回未结算 → 作废）。
-
-**颜色：按操作类型固定（行内按钮一律 `type="text" size="small"`）**
-
-| 语义 | 按钮属性 | 适用操作 |
-|---|---|---|
-| 主操作 | 默认 | 编辑 |
-| 警示 | `status="warning"` | 禁用 / 停用 |
-| 危险 | `status="danger"` | 删除 / 移除 / 单据作废（不可逆） |
-| 完成 | `status="success"` | 标记已结算（结算达成，与绿标签同色） |
-| 中性 | 默认 | 详情、查看、重置密码、启用 / 重新启用 |
-| 次要 | `.action-btn-secondary`（`var(--color-text-2)`） | 改回未结算（反向撤销，视觉降级） |
-
-- 启用是恢复操作，不用 success 色；「改回未结算」降为**次要色**（次级文字灰），既不与「详情」同色，也不突出。结算切换两方向靠颜色（success / 次要）+ 图标（`IconCircleCheck` / `IconArrowBackUp`）+ 文案区分。
-- 次要色用 scoped 样式覆盖 `.arco-btn-text` 颜色实现，**不用** `type="secondary"`（灰底实色按钮，在操作列里带背景块、视觉重量过大）。
-- 危险 / 警示操作必须 `a-popconfirm` 二次确认。
-- 「更多」菜单项不染色（Arco 菜单项无 `status` 语义位），危险语义由图标 + 二次确认承担；收纳进「更多」的危险 / 警示操作 `@click` 打开确认，禁止无确认直接执行。
-
-**图标：一操作一图标（Tabler 图标，`#icon` 插槽，按需具名导入）**
-
-| 操作 | 图标 | 操作 | 图标 |
-|---|---|---|---|
-| 编辑 | `IconEdit` | 重置密码 | `IconLock` |
-| 详情 / 查看 | `IconEye` | 导出 | `IconDownload` |
-| 删除 | `IconTrash` | 更多（收纳触发） | `IconDotsVertical` |
-| 启用（恢复） | `IconPlayerPlay` | 禁用 / 停用 | `IconPower` |
-| 作废（单据作废回冲） | `IconBan` | 结算切换：标记已结算 | `IconCircleCheck` |
-| | | 结算切换：改回未结算 | `IconArrowBackUp` |
-
-- 表外操作选 Tabler 语义最近图标，且同一图标全项目只对应一个操作。
-
-**密度**：Arco 文本按钮默认 `padding: 0 15px`，操作列内过宽。操作列按钮（含纯图标「更多」触发按钮）统一 `padding: 0 8px`，列表页 scoped 样式实现（`a-space` 加 `class="row-actions"`）：
-
-```css
-.row-actions :deep(.arco-btn-text),
-.row-actions :deep(.arco-btn-only-icon) {
-  padding: 0 8px;
-}
-```
-
-**其他**：操作列固定显示，不参与「列设置」勾选；行内写操作 loading 按 §4.6（`xxingId`），收纳进「更多」的写操作在确认入口同样按 `xxingId` 互斥（`a-doption :disabled`）。
-
-**交互模式**
-- 筛选条件「输入态 / 已应用态」分离：只有点「搜索」（或回车）才写入已应用态，条件变化后清空勾选。
-- 条件变化后回到第 1 页：已应用条件拼成字符串作 `:key` 重挂载表格。
-- 查询动作（搜索 / 重置 / 刷新 / 翻页 / 每页条数）并发不可避免（HTTP 不串行、事件回调不阻塞、`void fetchList()` 不等待），列表请求必须用请求序号仲裁：`const seq = ++fetchSeq` 记序号，响应回来时 `seq !== fetchSeq` 则丢弃，`loading` 也只在最后发起的请求上复位；禁止用 `if (loading) return` 丢弃新点击。
-- 查询类按钮的 loading 绑定见 §4.6（与表格共用同一个 `loading`）。
-- 删除（单行、批量）一律 `a-popconfirm` 确认；批量删除按钮在无勾选时 `:disabled`。
-- 导出当前筛选结果为 CSV 时加 `\uFEFF` BOM 头（Excel 中文兼容）。
+- 操作数 > 3 时保留前 3 个平铺，其余收纳进行内「更多」下拉；「更多」触发按钮恒在末尾。
+- 行内按钮一律 `type="text" size="small"`；颜色按操作语义固定——主操作 / 中性默认，警示 `status="warning"`，危险 `status="danger"`，完成 `status="success"`，撤销类用次要色（`.action-btn-secondary`，不用 `type="secondary"`）。
+- 一操作一图标（Tabler，`#icon` 插槽，按需具名导入）；平铺顺序固定为 主操作 → 中性 → 完成 → 警示 → 危险。
+- 危险 / 警示操作必须 `a-popconfirm` 二次确认；收纳进「更多」的同样要确认，禁止无确认直接执行。
+- 列宽按参照取值（平铺 ≤ 3 个短操作 `150~220`；含「更多」时 `200~260`）。
+- 操作列固定显示、不参与「列设置」勾选；行内写操作 loading 按 §4.6（`xxingId`），收纳进「更多」的写操作同样按 `xxingId` 互斥（`a-doption :disabled`）。
 
 ## 5.5 表单页与详情页约定（列表的配套交互）
 
-> 参照实现见 `specs/form-detail-showcase/`（统一列表 `/form` + 抽屉形态 / 独立页面形态）。
+> 参照实现与**正文（形态选择表、页面职责）**见 `specs/form-detail-showcase/design.md` §0；本节只留判据。
 
-**形态选择**
-
-| 场景 | 表单形态 |
-|---|---|
-| 字段少（≤ 8 个）、单屏可容纳 | **抽屉**（`a-drawer` 宽 500~720，`unmount-on-close`，`:footer="false"` + 底部自定义操作栏，手动 `validate()` 后提交） |
-| 字段多（> 8 个）/ 多分组 / 含子表格 | **独立页面**（路由 `new` / `edit/:id`，底部操作栏 提交/取消） |
-| 弹窗（Modal） | 仅用于确认类轻交互（改状态、单字段修改），不承载业务表单 |
-| 详情页 | 一律**独立页面**（`/xxx/detail/:id`），`a-page-header`（`@back` 回列表）+ `a-descriptions` |
-| 同一列表需同时提供两种形态 | 新增：工具条两个按钮（primary「新增·抽屉」+ 次级「新增·页面」）；编辑：操作列单按钮 + `a-dropdown` 形态菜单（用抽屉 / 用页面） |
-
-**页面职责（强制）**
-
-- **详情页与表单页不共享同一组件**：详情页只读、强调信息密度（可展示创建人/更新时间等表单没有的只读字段）；表单页强调录入与校验。两者仅共享同一份数据模型 TS 类型。字段极少（< 5 个）的简单实体例外：详情页可复用表单组件的 disabled 态。
-- 新增/编辑**共用**同一个表单（抽屉或页面），以 `mode: 'create' | 'edit'` 区分，编辑时深拷贝回填（不污染数据源）。
-- 表单必填校验用 `a-form :rules` + `formRef.validate()`；校验失败保持页面/抽屉不关闭。
-- 独立表单页提交成功跳对应详情页并 `Message.success`；抽屉提交成功后关闭并通知列表刷新。
-- 详情 id 不存在：显示 `a-result status="404"` + 返回列表按钮，禁止白屏。
-- 详情/表单跨路由共享会话内数据时，用 `composables/` 模块级单例（不为此引入 Pinia）；接真实接口后以接口为事实源。
+- 形态：字段少（≤ 8）单屏可容纳用抽屉；字段多（> 8）/ 多分组 / 含子表格用独立页面；弹窗仅用于确认类轻交互（不承载业务表单）；详情页一律独立页面。
+- **详情页与表单页不共享组件**（仅共享数据模型 TS 类型），字段极少（< 5）的简单实体例外：详情复用表单的 disabled 态。
+- 新增 / 编辑**共用**同一表单，以 `mode: 'create' | 'edit'` 区分，编辑时深拷贝回填（不污染数据源）。
+- 校验用 `a-form :rules` + `formRef.validate()`，失败保持页面 / 抽屉不关闭；独立表单页提交成功跳详情页并 `Message.success`，抽屉提交成功关闭并通知列表刷新。
+- 详情 id 不存在显示 `a-result status="404"` + 返回列表按钮，禁止白屏。
 
 ## 6. 状态与路由
 
