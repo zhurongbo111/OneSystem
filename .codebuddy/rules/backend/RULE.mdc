@@ -67,6 +67,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - **RequestHandler（强制）**：本用例唯一业务编排点，直接依赖仓储接口与无状态技术组件（如 JWT 的 `TokenService`）；**不设 Service 层**——禁止新增业务编排类 `*Service` / `*Handler`（聚合型），通用无状态技术组件按职责命名（不参与业务编排）。实现 `IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖；单测可直接测该实现，也可经 `IMediator` 验证分发。
 - 无请求参数的用例（如"获取当前用户"）也定义一个空 `Request` 模型（如 `GetCurrentUserRequest`）占位以统一签名，但不定义 `Validator`；纯内存用例在实现内同步计算后 `return Task.FromResult(result)`，无需 `async` 关键字。
 - **用例不接触 HTTP（强制）**：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；需要"当前用户"的用例注入 `App.Core/Abstractions/ICurrentUser`（实现由 `App.Api` 基于 ClaimsPrincipal 提供）。
+- **当前用户与审计字段（强制）**：id 解析统一用 `Abstractions/ICurrentUserExtensions.UserId()` 扩展方法（claims 缺失 / 非法返回 `null`），禁止内联 `Guid.TryParse` 或私有解析方法；审计字段（CreatedBy / UpdatedBy）一律由 Handler 经 `ICurrentUser` 获取后随实体 / `operatorId` 参数传入，仓储不注入 `ICurrentUser`、不感知当前用户。
 - **业务失败（强制）**：统一抛 `BusinessException`，错误码使用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2）；功能专属业务码（如登录失败 `40001`）必须先在各功能 `design.md` 定义再使用。
 - **映射**：`Request → 实体` 与 `实体 → Response` 在 `RequestHandler` 内完成，禁止把实体直接返回 Controller / 暴露到 API。出参复用：跨用例 / 多次复用的出参模型（如 `UserDto`）放 `Features/<Feature>/` 下，不放进单个用例目录。
 
@@ -124,7 +125,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - 必须由单测守护一致性，至少覆盖：
   1. EF 模型实际 `HasMaxLength` == 常量（防配置与常量分叉）；
   2. 同一字段在多个用例的 Validator 中「边界值通过 / 越界拒绝」行为一致；
-  3. 查询类入参（关键词等）长度不超过对应列长度。
+  3. 查询类关键词的长度上限 == 该查询**实际匹配列**的最大列长（关键词按列做 `Contains`，超过列长不可能命中）；**跨域不照抄数值**：搜 `Name` 的域取 `NameMaxLength`（如分类取 20），搜多列的取其中较大者（如商品搜 `Code`/`Name` 取 50），单据搜 `OrderNo` 取 20。
 - 新增字段 / 修改约束时，上述五处缺一即视为未完成，不得勾选规格 `tasks.md` 中对应任务。
 
 ## 6. 认证（JWT）
@@ -141,7 +142,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ## 8. 环境配置
 
-- 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod，敏感配置只从环境变量读取）；实现上通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分，`appsettings` 只放非敏感默认值。
+- 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod）；实现上通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分，`appsettings` 只放非敏感默认值与非生产凭据（dev 允许连接串明文，例外范围见 `AGENTS.md` §7）；代码内一律禁止硬编码凭据。
 - 后端敏感项清单：数据库连接串、JWT 密钥、OTel 导出端点。
 
 ## 9. 测试
