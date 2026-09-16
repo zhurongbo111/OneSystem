@@ -6,7 +6,7 @@ namespace App.Core.Features.Purchases.CreatePurchaseOrder;
 
 /// <summary>
 /// 新增采购单请求格式校验：只做数据格式检查。
-/// 存在性 / 类型匹配 / 状态流转等查库约束在 Handler 中判断（后端规则 §3）。
+/// 存在性 / 类型匹配 / 状态流转等查库约束在 Handler 中判断（后端规则 §4.1）。
 /// </summary>
 public sealed class CreatePurchaseOrderRequestValidator : AbstractValidator<CreatePurchaseOrderRequest>
 {
