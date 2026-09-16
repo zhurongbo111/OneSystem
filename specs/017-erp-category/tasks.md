@@ -38,6 +38,7 @@ updated: 2026-09-16
 - [x] 5.1 `cd backend && dotnet build` / `dotnet test` 通过
 - [x] 5.2 `cd frontend && npm run type-check` / `lint` / `build` 全绿
 - [x] 5.3 `cd frontend && npm run test:e2e` 全绿（含分类管理新用例 + 商品管理回归）
+  - 复跑记录（2026-09-16）：先启动 dev 前后端（5080 / 5173），再执行 `npm run test:e2e`，全量 **87 passed (3.5m)**、0 失败；含 `category-management.spec.ts` 全部用例与 `product-management.spec.ts` 回归。
 
 ## 变更：规格与实现对齐（2026-09-16）
 
