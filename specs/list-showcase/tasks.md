@@ -18,6 +18,10 @@
 - [x] T14 重置按钮图标 `IconUndo` 调整为 `IconRotateLeft`（「撤销」语义不贴切「清空筛选条件」，`IconRotateLeft` 为回转 / 恢复初始态语义），全列表页对齐，e2e 图标断言改为精确 class，重新验证 build/lint/e2e
 - [x] T15 列设置补齐到销售开单 / 采购入库页（此前两页无列设置）：`columns` 由静态常量改为 computed 按 `visibleColumns` 拼列（§2.4），序号与操作列固定显示、不参与设置（specs/action-column §5），补 e2e 断言，重新验证 build/lint/e2e
 
+## 变更：图标与命名同步（2026-09-16）
+
+- [x] T16 重置按钮图标由 T14 的 `IconRotateLeft` 统一为 Tabler `IconRestore`（恢复初始态语义，且与已归属「刷新」的 `IconRefresh` 区分）——前端规则 §5 已按此更新，T13 / T14 中的旧图标名作废，**以规则为准**
+
 ## 完成定义
 
 - 上述任务全部勾选，且 AGENTS.md §6 强制测试门槛通过。
