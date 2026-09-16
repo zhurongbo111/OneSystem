@@ -3,48 +3,36 @@
 > 本文件是项目结构的事实快照，用于替代"实现前全仓代码探索"（读取规则见 `AGENTS.md` §2.4）。
 > 维护要求：项目结构（新增项目 / 模块 / 实体 / 功能 / 关键文件位置 / 命令 / 端口）发生变化时，须同步更新本文件并随当次变更一起提交。
 > 定位：本文件是导航地图，不是事实源——与本文件不一致时以实际代码与 `specs/` 为准，并顺手修正本文件。
+> 书写原则：只记**规律与位置**（哪类文件放在哪、怎么命名、去哪里看），**不逐一罗列可从目录枚举的清单**；需要具体清单时用目录列表获取（见 §2 / §3 / §6）。
 
-## 1. 技术栈速览
+## 1. 技术栈
 
-| 端 | 技术 |
-|---|---|
-| 前端 | Vue 3 + TypeScript（`<script setup>` 组合式 API）+ Arco Design Vue + Vite + Pinia + vue-router + Axios |
-| 后端 | .NET 8 + ASP.NET Core + EF Core（Npgsql）+ PostgreSQL + FluentValidation + NLog + OpenTelemetry |
-| 测试 | 后端 xUnit（`backend/tests/App.Tests`）；前端 Playwright e2e（`frontend/e2e/`，直连 dev 后端、不打 mock） |
+栈、版本与各端库选型见 `AGENTS.md` §1 与两端规则的「技术栈」小节；本文件只记录**结构与位置**。
 
 ## 2. 后端结构（backend/）
 
 ```
 backend/
-├── App.sln
-├── .editorconfig     # C# 格式与代码风格（唯一事实源，后端规则 §2 引用）
+├── App.sln / .editorconfig
 ├── src/
-│   ├── App.Api/          # 入口与 Web 层
-│   │   ├── Program.cs
-│   │   ├── Authentication/   # CurrentUserAccessor、JwtBearerExtensions
-│   │   ├── Controllers/      # Auth / Health / LoginLogs / Users / Products / Categories / Partners / Inventory / PurchaseOrders / SalesOrders
-│   │   ├── Http/             # ClientInfoAccessor
-│   │   ├── Middleware/       # GlobalExceptionMiddleware
-│   │   ├── Swagger/          # SwaggerSecurityOperationFilter
-│   │   └── appsettings*.json / nlog.config
-│   ├── App.Core/         # 业务核心（禁止反向依赖）
-│   │   ├── DependencyInjection.cs     # AddCore：注册 Mediator、Handler、Validator
-│   │   ├── Abstractions/              # IMediator、IRequest、IRequestHandler、IUnitOfWork、ICurrentUser、ICurrentUserExtensions、IClientInfo、IUserRepository、IUserLoginLogRepository、ICategoryRepository、IProductRepository、IInventoryRepository、IPartnerRepository、IPurchaseOrderRepository、ISalesOrderRepository、ProductListItem、ProductDetail、ProductPickItem、InventoryItem
-│   │   ├── Auth/                      # JwtOptions、PasswordHasher、TokenService
-│   │   ├── Entities/                  # User、UserLoginLog、UserStatus、UserFieldConstraints、Product、Category、Inventory、ProductStatus、ProductFieldConstraints、CategoryFieldConstraints、Partner、PartnerType、PartnerStatus、PartnerFieldConstraints、PurchaseOrder、PurchaseOrderItem、SalesOrder、SalesOrderItem、OrderStatus、OrderSettlementStatus、OrderFieldConstraints
-│   │   ├── Errors/                    # BusinessException、ErrorCode、OrderNoConflictException
-│   │   ├── Mediation/                 # Mediator（自研简化 MediatR，Send 前统一跑 Validator）
-│   │   └── Features/                  # 每用例四件套：Request / RequestValidator / RequestHandler / Response
-│   └── App.Infrastructure/
-│       ├── DependencyInjection.cs     # AddInfrastructure：IUnitOfWork、仓储实现
-│       ├── AppDbContext.cs            # 含 Categories / Products / Inventory / Partners / PurchaseOrders / PurchaseOrderItems / SalesOrders / SalesOrderItems 八个 DbSet
-│       ├── Migrations/
-│       ├── Persistence/               # UnitOfWork、DatabaseInitializer、Configurations/
-│       └── Repositories/              # UserRepository、UserLoginLogRepository、CategoryRepository、ProductRepository、InventoryRepository、PartnerRepository、PurchaseOrderRepository、SalesOrderRepository
-└── tests/App.Tests/      # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport 等
+│   ├── App.Api/             # Program.cs；Authentication/、Controllers/、Http/、Middleware/、Swagger/、appsettings*.json、nlog.config
+│   ├── App.Core/            # DependencyInjection.cs（AddCore）；Abstractions/、Auth/、Entities/、Errors/、Mediation/、Features/
+│   └── App.Infrastructure/  # DependencyInjection.cs（AddInfrastructure）、AppDbContext.cs、Migrations/、Persistence/、Repositories/
+└── tests/App.Tests/         # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport
 ```
 
-**已实现的 Features**（`App.Core/Features/`）：
+**命名规律**（据此定位，不逐一列举）：
+
+- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem`）。
+- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `OrderSettlementStatus`。
+- 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）。
+- `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
+- `AppDbContext` 含 8 个 DbSet（与实体一一对应，另有 PurchaseOrderItems / SalesOrderItems 两张明细表）。
+- **共享出参与映射**：各功能在 `Features/<Feature>/` 下放跨用例共享 DTO 与 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
+- **当前用户与审计**：id 解析入口 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
+- **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）。
+
+**已实现的 Features**（`App.Core/Features/`，每用例四件套）：
 
 | Feature | 用例 |
 |---|---|
@@ -58,15 +46,8 @@ backend/
 | Purchases | CreatePurchaseOrder、GetPurchaseOrders、GetPurchaseOrderById、VoidPurchaseOrder、UpdatePurchaseOrderSettlement |
 | Sales | CreateSalesOrder、GetSalesOrders、GetSalesOrderById、VoidSalesOrder、UpdateSalesOrderSettlement |
 
-共享出参：`Features/Users/UserDto`、`UserListItemDto`、`UserDetailDto`、`UserDtoMapper`、`UserInputNormalizer`；`Features/LoginLogs/LoginLogListItemDto`、`LoginLogDtoMapper`；`Features/Products/ProductDto`、`ProductPickDto`、`ProductDtoMapper`；`Features/Categories/CategoryDto`、`CategoryDtoMapper`；`Features/Partners/PartnerDto`、`PartnerDtoMapper`；`Features/Inventory/InventoryItemDto`、`InventoryDtoMapper`；`Features/Purchases/PurchaseOrderDto`、`PurchaseDtoMapper`；`Features/Sales/SalesOrderDto`、`SalesDtoMapper`。
-
-**当前用户与审计字段**：id 解析入口为 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
-
-**DTO 映射**：各功能在 `Features/<Feature>/` 下提供 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
-
-**共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）。
-
 **基准参照**：
+
 - 后端用例脚手架：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（无参用例形态）；分发与全局校验见 `Core/Mediation/Mediator.cs`。
 - 字段约束单一来源：`Entities/UserFieldConstraints.cs` + `Configurations/UserConfiguration.cs` + 各 Validator，一致性由 `tests/App.Tests/FieldValidationConsistencyTests.cs` 守护。
 
@@ -87,34 +68,36 @@ backend/
 ```
 frontend/
 ├── index.html / vite.config.ts / playwright.config.ts / eslint.config.js
-├── src/
-│   ├── main.ts / App.vue / env.d.ts
-│   ├── api/          # request.ts（Axios 统一解包/40100 处置）、auth.ts、user.ts、loginLog.ts、product.ts、partner.ts、inventory.ts、purchase.ts、sale.ts
-│   ├── components/   # AppLayout.vue（侧边栏含「示例页面」「进销存」子菜单：商品管理、分类管理、往来单位、库存查询、采购管理、销售开单；子菜单默认折叠，仅当前路由所属分组自动展开）
-│   ├── composables/  # useOrderStore.ts（演示用）
-│   ├── router/       # index.ts（按功能路由懒加载）
-│   ├── stores/       # auth.ts（Pinia）
-│   ├── utils/        # datetime.ts
-│   └── views/        # 按功能域目录组织（PascalCase，域内文件平铺）
-│       ├── LoginView.vue / HomeView.vue   # 无功能域归属的独立页
-│       ├── Showcase/            # 演示页：ComponentShowcaseView / ListShowcaseView / FormShowcaseView / FormPageFormView / FormDetailView + 共享 OrderFormDrawer.vue
-│       ├── UserManagement/      # UsersView + UserDetailView + UserFormDrawer
-│       ├── LoginLogManagement/  # LoginLogsView
-│       ├── ProductManagement/   # ProductsView + ProductFormDrawer（进销存/商品管理）
-│       ├── CategoryManagement/  # CategoriesView + CategoryFormDrawer（进销存/分类管理，搜索分页 + 编辑抽屉）
-│       ├── PartnerManagement/   # PartnersView + PartnerFormDrawer（进销存/往来单位）
-│       ├── InventoryManagement/ # InventoryView（进销存/库存查询，只读）
-│       ├── PurchaseManagement/  # PurchasesView + PurchaseFormPage + PurchaseDetailView（进销存/采购管理）
-│       └── SalesManagement/     # SalesView + SaleFormPage + SaleDetailView（进销存/销售开单）
-└── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / category-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts；helpers/menu.ts（clickMenuItem：点击侧边菜单项，子菜单折叠时先展开所属分组）
+├── e2e/        # 每功能域一个 <域名>.spec.ts（kebab-case）+ helpers/（如 clickMenuItem：点子菜单项时先展开所属分组）
+└── src/
+    ├── main.ts / App.vue / env.d.ts
+    ├── api/         # request.ts（统一解包 / 40100 处置）+ 按业务域拆分 <entity>.ts
+    ├── components/  # AppLayout.vue（侧边菜单：「示例页面」「进销存」两组，子菜单默认折叠、仅当前分组自动展开）
+    ├── composables/ # useOrderStore.ts（演示用）
+    ├── router/ stores/ utils/   # index.ts（路由懒加载）/ auth.ts（Pinia）/ datetime.ts
+    └── views/       # 按功能域分目录（域内文件平铺，不套子目录）
 ```
 
-**图标选型**：业务代码（侧边菜单、列表工具条、操作列）图标已统一为 Tabler（`@tabler/icons-vue`），仅「图标」示例页（`/components` 图标 tab）为演示保留三套并存；选型优先级与尺寸 / 线宽约定见前端规则 §4.7。
+**功能域目录**（`views/`，与后端 `Features/<Feature>`、路由前缀、e2e spec 四者对齐，约定见前端规则 §4.1）：
+
+- `Showcase/` — 示例页：ComponentShowcaseView / ListShowcaseView / FormShowcaseView / FormPageFormView / FormDetailView + 共享 `OrderFormDrawer.vue`
+- `UserManagement/` — UsersView + UserDetailView + UserFormDrawer
+- `LoginLogManagement/` — LoginLogsView
+- `ProductManagement/` — ProductsView + ProductFormDrawer
+- `CategoryManagement/` — CategoriesView + CategoryFormDrawer
+- `PartnerManagement/` — PartnersView + PartnerFormDrawer
+- `InventoryManagement/` — InventoryView（只读）
+- `PurchaseManagement/` — PurchasesView + PurchaseFormPage + PurchaseDetailView
+- `SalesManagement/` — SalesView + SaleFormPage + SaleDetailView
+- 无功能域归属的独立页平铺在 `views/` 根：`LoginView.vue` / `HomeView.vue`（菜单归属见 `components/AppLayout.vue`）。
+
+**图标选型**：业务图标（侧边菜单、列表工具条、操作列）统一 Tabler（`@tabler/icons-vue`）；仅「图标」示例页为演示保留三套并存；优先级见前端规则 §4.7。
 
 **基准参照**：
-- 列表页标准实现：`src/views/Showcase/ListShowcaseView.vue`（正文见 `specs/list-showcase/design.md` §0），新增列表页复制其结构再替换业务字段。
-- 跨域通用参照：`api/request.ts`（接口层写法与 40100 处置）+ 本次要用的 `api/<entity>.ts`；表单 / 详情参照 `views/Showcase/FormShowcaseView.vue`、`OrderFormDrawer.vue`、`FormPageFormView.vue`、`FormDetailView.vue`；仅新增页面 / 菜单项时读 `router/index.ts`、`components/AppLayout.vue`。
-- 页面命名 / 目录归属约定见前端规则 §4.1；各交互约定（列表页 / 操作列 / 按钮 loading / 组合式分区 / 图标 / 表单详情）的规格侧正文位置见前端规则 §2.1 第 3 项。
+
+- 列表页标准实现 `views/Showcase/ListShowcaseView.vue`（正文见 `specs/list-showcase/design.md` §0），新增列表页复制其结构再替换业务字段。
+- 表单 / 详情参照 `views/Showcase/` 的 `FormShowcaseView.vue`、`OrderFormDrawer.vue`、`FormPageFormView.vue`、`FormDetailView.vue`；接口层写法读 `api/request.ts` + 本次要用的 `api/<entity>.ts`；仅新增页面 / 菜单项时读 `router/index.ts`、`components/AppLayout.vue`。
+- 页面命名 / 目录归属见前端规则 §4.1；各交互约定（列表页 / 操作列 / 按钮 loading / 组合式分区 / 图标 / 表单详情）的规格 §0 正文位置见前端规则 §2.1 第 3 项。
 
 ## 4. 常用命令（Windows PowerShell）
 
@@ -128,6 +111,8 @@ frontend/
 | 前端 lint | `cd frontend; npm run lint` |
 | 前端构建 | `cd frontend; npm run build` |
 
+> 端口与「先起前后端再跑 e2e」的约定以本表为准，其他文件只写指针（`AGENTS.md` §2.4）。
+
 ## 5. 环境
 
 | 项 | 值 |
@@ -138,7 +123,9 @@ frontend/
 
 ## 6. 现有功能规格（specs/）
 
-- 工程/脚手架：`project-scaffold`、`api-swagger`
-- 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`（`/components` 组件示例页，含 Arco 组件 + Arco/Tabler/Lucide 三套图标「图标」tab）、`frontend-e2e`、`icon-showcase`（Arco + Tabler + Lucide 图标示例，复用组件示例页「图标」tab，三套以分组标题分隔）
+`specs/` 下 kebab-case 目录名即功能名，**完整清单用目录列表获取**；分类如下：
+
+- 工程 / 脚手架：`project-scaffold`、`api-swagger`
+- 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`、`frontend-e2e`、`icon-showcase`
 - 业务：`user-management`
-- ERP：`erp-product`（已完成）、`erp-partner`（已完成）、`erp-inventory-query`（已完成）、`erp-purchase`（已完成）、`erp-sale`（已完成）、`erp-category`（已完成，分类管理独立页：搜索分页 + 编辑抽屉 + 后端分页查询接口）
+- ERP（均已实现）：`erp-product`、`erp-partner`、`erp-inventory-query`、`erp-purchase`、`erp-sale`、`erp-category`
