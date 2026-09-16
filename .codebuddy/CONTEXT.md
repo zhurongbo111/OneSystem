@@ -67,8 +67,20 @@ backend/
 **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）。
 
 **基准参照**：
-- 后端用例脚手架：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（无参用例形态）。
+- 后端用例脚手架：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（无参用例形态）；分发与全局校验见 `Core/Mediation/Mediator.cs`。
 - 字段约束单一来源：`Entities/UserFieldConstraints.cs` + `Configurations/UserConfiguration.cs` + 各 Validator，一致性由 `tests/App.Tests/FieldValidationConsistencyTests.cs` 守护。
+
+**改动面 → 必读 / 必改文件**（按改动面选读，**不预先全读**；读取规则见后端规则 §3.1）：
+
+| 改动面 | 文件 |
+|---|---|
+| 改字段 | `Entities/<实体>.cs` + `Entities/<实体>FieldConstraints.cs` |
+| 改列 / 索引 | `Persistence/Configurations/<实体>Configuration.cs` |
+| 新增查询 | `Abstractions/I<实体>Repository.cs` + `Repositories/<实体>Repository.cs`（有联查字段时加 `Abstractions/` 下对应读模型） |
+| 组织新用例 | 同 `Feature` 目录下已有的 `<Action>/`（一比一照结构组织） |
+| 新增用例 / 仓储 | `Core/DependencyInjection.cs`（新增仓储再加 `Infrastructure/DependencyInjection.cs`） |
+| 改字段约束 | 追加 `tests/App.Tests/FieldValidationConsistencyTests.cs`（或同域 `<实体>FieldConsistencyTests.cs`） |
+| 测试支撑 | `tests/App.Tests/TestSupport.cs` + 同域既有测试 + 需假实现时的 `*TestDoubles.cs` |
 
 ## 3. 前端结构（frontend/）
 
@@ -100,9 +112,9 @@ frontend/
 **图标选型**：业务代码（侧边菜单、列表工具条、操作列）图标已统一为 Tabler（`@tabler/icons-vue`），仅「图标」示例页（`/components` 图标 tab）为演示保留三套并存；选型优先级与尺寸 / 线宽约定见前端规则 §4.7。
 
 **基准参照**：
-- 列表页标准实现：`src/views/Showcase/ListShowcaseView.vue`（规格 `specs/list-showcase/`），新增列表页复制其结构再替换业务字段。
-- 页面命名 / 目录归属约定见前端规则 §4.1。
-- 表单/详情页形态：`specs/form-detail-showcase/`；操作列：`specs/action-column/`；按钮 loading：`specs/button-loading/`；组合式分区：`specs/composable-style/`。
+- 列表页标准实现：`src/views/Showcase/ListShowcaseView.vue`（正文见 `specs/list-showcase/design.md` §0），新增列表页复制其结构再替换业务字段。
+- 跨域通用参照：`api/request.ts`（接口层写法与 40100 处置）+ 本次要用的 `api/<entity>.ts`；表单 / 详情参照 `views/Showcase/FormShowcaseView.vue`、`OrderFormDrawer.vue`、`FormPageFormView.vue`、`FormDetailView.vue`；仅新增页面 / 菜单项时读 `router/index.ts`、`components/AppLayout.vue`。
+- 页面命名 / 目录归属约定见前端规则 §4.1；各交互约定（列表页 / 操作列 / 按钮 loading / 组合式分区 / 图标 / 表单详情）的规格侧正文位置见前端规则 §2.1 第 3 项。
 
 ## 4. 常用命令（Windows PowerShell）
 
