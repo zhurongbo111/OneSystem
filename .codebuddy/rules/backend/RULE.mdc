@@ -45,6 +45,24 @@ backend/
   - `App.Infrastructure` → `App.Core`
 - 目录内文件的完整清单以 `.codebuddy/CONTEXT.md` §2 为准（本文件只保留骨架，避免两处维护漂移）。
 
+### 3.1 实现前最小读取集（强制）
+
+> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；本节只列**后端侧**的端内固定集合，同样**禁止为"了解项目"做全仓探索或目录级遍历**。
+
+1. **脚手架基准范例（首次进入后端开发读一次，之后按需回看）**：
+   - 四件套结构 → `App.Core/Features/Auth/Login/`；
+   - 空请求（无参）用例形态 → `App.Core/Features/Users/GetCurrentUser/`；
+   - 分发与全局校验 → `App.Core/Mediation/Mediator.cs`；
+   - 本次要改的 Controller → `App.Api/Controllers/<X>Controller.cs`。
+2. **本功能要碰的既有代码（按改动面选读，不预先全读）**：
+   - 改字段 → `Entities/<实体>.cs` + `Entities/<实体>FieldConstraints.cs`；
+   - 改列 / 索引 → `Persistence/Configurations/<实体>Configuration.cs`；
+   - 新增查询 → `Abstractions/I<实体>Repository.cs` + `Repositories/<实体>Repository.cs`，有联查字段时读 `Abstractions/` 下对应读模型；
+   - 组织新用例 → **同 `Feature` 目录下已有的 `<Action>/`**（照结构一比一组织）；
+   - 新增用例 / 仓储必读必改 → `App.Core/DependencyInjection.cs`（`App.Infrastructure/DependencyInjection.cs` 仅新增仓储时）。
+3. **测试侧**：`tests/App.Tests/TestSupport.cs` + 同域既有测试文件（`<实体>RequestHandlerTests.cs` 等）+ 需要假实现时的 `*TestDoubles.cs`；字段约束改动须读 `FieldValidationConsistencyTests.cs`（或同域 `<实体>FieldConsistencyTests.cs`）。
+4. **禁止**：遍历 `Features/` 全部用例目录；读与本功能无关的 Feature；为"了解架构"通读 `Migrations/`（改表结构时只看最近 1~2 个迁移的命名与写法）。
+
 ## 4. 分层架构（每 API 一个用例）
 
 ```
