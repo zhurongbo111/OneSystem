@@ -21,8 +21,12 @@ updated: 2026-09-16
 | `SalesVoid = 4` | 销售作废 | 增加 | `orange` | `+N`（绿字） |
 | `InitialStock = 5` | 期初建账 | 增加 | `purple` | `+N`（绿字） |
 | `StockTakeAdjust = 6` | 盘点调整 | 双向 | `gold` | `+N`（绿字）/ `-N`（红字） |
+| `PurchaseReturnOut = 7` | 采购退货 | 减少 | `orangered` | `-N`（红字） |
+| `PurchaseReturnVoid = 8` | 采购退货作废 | 增加 | `magenta` | `+N`（绿字） |
+| `SalesReturnIn = 9` | 销售退货 | 增加 | `cyan` | `+N`（绿字） |
+| `SalesReturnVoid = 10` | 销售退货作废 | 减少 | `pinkpurple` | `-N`（红字） |
 
-> 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加（其落地时同步启用；前端类型下拉以本表为准）。
+> 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加；7 / 8 由 `specs/021-erp-purchase-return/` 追加；9 / 10 由 `specs/022-erp-sale-return/` 追加（各自落地时同步启用；前端类型下拉以本表为准）。
 
 - 变动量列展示**带符号整数**（`+N` / `-N`），入库 / 回增绿字、出库 / 回冲红字；e2e 断言该文本。
 - 空值渲染：来源单号为空显示 `-`（后续盘点 / 期初场景），操作人为空显示 `-`（系统操作）。
