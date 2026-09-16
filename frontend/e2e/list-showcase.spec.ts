@@ -54,8 +54,8 @@ test.describe('列表页样式参照（集成）', () => {
 
   test('搜索/重置按钮带图标（specs/list-showcase §2.2 筛选行）', async ({ page }) => {
     await goList(page)
-    await expect(page.getByRole('button', { name: '搜索' }).locator('svg')).toHaveClass(/arco-icon-search/)
-    await expect(page.getByRole('button', { name: '重置' }).locator('svg')).toHaveClass(/arco-icon-rotate-left/)
+    await expect(page.getByRole('button', { name: '搜索' }).locator('svg')).toHaveClass(/tabler-icon-search/)
+    await expect(page.getByRole('button', { name: '重置' }).locator('svg')).toHaveClass(/tabler-icon-restore/)
   })
 
   test('状态筛选「禁用」减少行数', async ({ page }) => {

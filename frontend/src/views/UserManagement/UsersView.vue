@@ -8,18 +8,18 @@ import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance, TableColumnData } from '@arco-design/web-vue'
 import {
+  IconDotsVertical,
   IconEdit,
   IconEye,
   IconLock,
-  IconMore,
-  IconPlayCircle,
+  IconPlayerPlay,
   IconPlus,
-  IconPoweroff,
+  IconPower,
   IconRefresh,
-  IconRotateLeft,
+  IconRestore,
   IconSearch,
   IconSettings,
-} from '@arco-design/web-vue/es/icon'
+} from '@tabler/icons-vue'
 
 import UserFormDrawer from './UserFormDrawer.vue'
 
@@ -322,7 +322,7 @@ async function onSubmitResetPassword(): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>
@@ -445,8 +445,8 @@ async function onSubmitResetPassword(): Promise<void> {
                 :loading="togglingId === (record as UserListItem).id"
               >
                 <template #icon>
-                  <IconPoweroff v-if="(record as UserListItem).status === 1" />
-                  <IconPlayCircle v-else />
+                  <IconPower v-if="(record as UserListItem).status === 1" />
+                  <IconPlayerPlay v-else />
                 </template>
                 {{ (record as UserListItem).status === 1 ? '禁用' : '启用' }}
               </a-button>
@@ -458,7 +458,7 @@ async function onSubmitResetPassword(): Promise<void> {
                 aria-label="更多操作"
               >
                 <template #icon>
-                  <IconMore />
+                  <IconDotsVertical />
                 </template>
               </a-button>
               <template #content>

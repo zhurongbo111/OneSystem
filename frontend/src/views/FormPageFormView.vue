@@ -9,7 +9,7 @@ import {
 } from '@/composables/useOrderStore'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance, TableColumnData } from '@arco-design/web-vue'
-import { IconPlus } from '@arco-design/web-vue/es/icon'
+import { IconPlus } from '@tabler/icons-vue'
 
 // —— types ——
 interface FormState extends OrderFormLike {

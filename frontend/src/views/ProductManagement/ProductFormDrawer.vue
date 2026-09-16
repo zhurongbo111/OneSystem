@@ -6,7 +6,7 @@ import type { Category } from '@/api/product'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance } from '@arco-design/web-vue'
-import { IconCheck, IconPlus } from '@arco-design/web-vue/es/icon'
+import { IconCheck, IconPlus } from '@tabler/icons-vue'
 
 // —— types ——
 interface ProductFormState {
