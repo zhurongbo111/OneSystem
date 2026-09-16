@@ -30,7 +30,7 @@
   - `string? Keyword { get; init; }`（分类名称模糊匹配，可空）
 - `GetCategoriesPagedRequestValidator.cs`：
   - `Page >= 1`；`PageSize` 1~100。
-  - `Keyword` `MaximumLength` 取 `CategoryFieldConstraints.KeywordMaxLength`（新增常量 50，对齐既有域 `KeywordMaxLength = 50` 约定），非空时生效。
+  - `Keyword` `MaximumLength` 取 `CategoryFieldConstraints.KeywordMaxLength`（**对齐被查询的 `Name` 列长，即 20**；查询只按 `Name` 模糊匹配，跨域不照抄他域数值），非空时生效。
 - `GetCategoriesPagedRequestHandler.cs`：调 `_categoryRepository.GetPagedAsync(keyword, page, pageSize, ct)` 返回 `(items, total)`，映射 `CategoryDtoMapper.ToCategoryDto`，组装 `PagedResult<CategoryDto>`。
 
 ### 2.2 仓储 `ICategoryRepository` / `CategoryRepository`
@@ -46,7 +46,7 @@ Task<(IReadOnlyList<Category> Items, int Total)> GetPagedAsync(
 
 ### 2.3 常量 `CategoryFieldConstraints`
 
-新增 `public const int KeywordMaxLength = 50;`（查询关键词最大长度，注释「对齐 Name 列长，取 50」，与各域 `KeywordMaxLength` 约定一致）。
+新增 `public const int KeywordMaxLength = 20;`（=`NameMaxLength`）；查询只按 `Name` 模糊匹配，关键词上限必须**对齐被查询列长**——超过列长不可能命中（后端规则 §5.3）。
 
 ### 2.4 Controller `CategoriesController`
 
@@ -80,14 +80,16 @@ ApiResponse<PagedResult<CategoryDto>> GetPaged(
 ## 3. 目录结构（前端）
 
 ```
-src/views/ProductManagement/
-├── ProductsView.vue        # 商品列表页（入口按钮跳转，不变）
-├── ProductFormDrawer.vue   # 商品新增/编辑/查看抽屉（就地新建分类行内化，不变）
-├── CategoriesView.vue      # 分类管理页（改：搜索 + 分页 + 操作列编辑/删除）
-└── CategoryFormDrawer.vue  # 分类新增/编辑抽屉（新增）
+src/views/CategoryManagement/       # 分类独立功能域（对齐 Features/Categories、/categories、category-management.spec.ts）
+├── CategoriesView.vue              # 分类管理页（搜索 + 分页 + 操作列编辑/删除）
+└── CategoryFormDrawer.vue          # 分类新增/编辑抽屉（新增）
+
+src/views/ProductManagement/        # 商品域（不变）
+├── ProductsView.vue                # 商品列表页（入口按钮跳转）
+└── ProductFormDrawer.vue           # 商品新增/编辑/查看抽屉（就地新建分类行内化）
 ```
 
-`CategoryManagerModal.vue` 已删除。
+> 分类已从商品域拆为独立域目录（前端规则 §4.1 四者对齐；本期实现时曾位于 `ProductManagement/`），`CategoryManagerModal.vue` 已删除。
 
 ## 4. 前端 API（`src/api/product.ts`）
 
@@ -126,7 +128,7 @@ export function getCategoriesPaged(query: CategoryListQuery): Promise<PagedResul
 | 序号 | `seq` | 64 | 跨页连续：`(page-1)*pageSize + rowIndex + 1` |
 | 分类名称 | `name` | 240 | 展示名称（`ellipsis + tooltip`） |
 | 创建时间 | `createdAt` | 172 | `formatDateTime` |
-| 操作 | `action` | 150 | 平铺 ≤3：编辑（主，`IconEdit`）、删除（危险 `status=danger`，`IconDelete` + `a-popconfirm`「确认删除该分类？已被商品引用的分类无法删除」） |
+| 操作 | `action` | 150 | 平铺 ≤3：编辑（主，`IconEdit`）、删除（危险 `status=danger`，`IconTrash` + `a-popconfirm`「确认删除该分类？已被商品引用的分类无法删除」） |
 
 - 交互：
   - 搜索 / 重置 / 刷新 / 翻页 / 每页条数：`fetchSeq` 请求序号仲裁；`onSearch` 应用 `appliedKeyword` 回第 1 页；`onReset` 清空；`onPageSizeChange` 回第 1 页。
@@ -157,7 +159,7 @@ export function getCategoriesPaged(query: CategoryListQuery): Promise<PagedResul
 3. 抽屉编辑：点行「编辑」→ 抽屉回填名称 → 改名提交 → 提示「分类已更新」→ 列表展示新名称；重名编辑提示 40105。
 4. 删除：点行「删除」→ popconfirm 确认 → 提示「分类已删除」→ 行消失；被商品引用的分类删除被拦截（先建商品挂该分类，删该分类断言 40106 message 可见且行仍在）。
 5. 搜索：输入命中关键词「搜索」→ 仅命中行可见；「重置」→ 恢复。
-6. 分页：`pageSize=2` 时翻页数据正确、序号跨页连续（可结合 route 拖慢接口稳定断言）。
+6. 分页：建 11 条同前缀数据后切 `pageSize=10` → 第 1 页 10 行（序号 1-10）、第 2 页 1 行（序号 11），验证切片正确与序号跨页连续。
 
 `product-management.spec.ts`：入口跳转用例与 `createCategoryInDrawer` 行内新增保持不变（不回归）。
 
