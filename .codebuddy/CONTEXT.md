@@ -129,3 +129,14 @@ frontend/
 - 前端交互模式：`app-layout`、`list-showcase`、`action-column`、`button-loading`、`composable-style`、`form-detail-showcase`、`frontend-component-showcase`、`frontend-e2e`、`icon-showcase`
 - 业务：`user-management`
 - ERP（均已实现）：`erp-product`、`erp-partner`、`erp-inventory-query`、`erp-purchase`、`erp-sale`、`erp-category`
+
+**交互约定「改动类型 → 规格 §0 正文」对照表**（前端规则 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 只留判据，正文在下列 §0；**新增交互约定只更新本表，不改规则**）：
+
+| 改动类型 | 正文位置 |
+|---|---|
+| 列表页 | `specs/list-showcase/design.md` §0 |
+| 操作列 | `specs/action-column/design.md` §0 |
+| 按钮 loading | `specs/button-loading/design.md` §0 |
+| 组合式分区 | `specs/composable-style/design.md` §0 |
+| 图标 | `specs/icon-showcase/design.md` §0 |
+| 表单 / 详情 | `specs/form-detail-showcase/design.md` §0 |
