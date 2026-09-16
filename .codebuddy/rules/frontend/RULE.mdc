@@ -21,16 +21,19 @@ enabled: true
 frontend/
 ├── index.html
 ├── vite.config.ts
+├── playwright.config.ts   # e2e 配置（不自动拉起服务，见 §10 与 AGENTS.md §6）
+├── eslint.config.js       # lint 规则（perfectionist / vue / typescript-eslint）
 ├── package.json
+├── e2e/                   # Playwright e2e 用例（*.spec.ts + helpers/）
 └── src/
     ├── api/         # 接口请求层（统一响应解包、类型定义）
     ├── assets/
-    ├── components/  # 通用组件
+    ├── components/  # 跨功能域复用的通用组件
     ├── composables/ # 组合式函数
     ├── router/      # 路由
     ├── stores/      # Pinia 状态
-    ├── utils/
-    └── views/       # 页面级组件
+    ├── utils/       # 无副作用纯函数工具（按主题一个文件，如 datetime.ts）
+    └── views/       # 页面级组件（按功能域分目录，见 §4.1）
 ```
 
 ## 3. 接口层
@@ -51,6 +54,7 @@ frontend/
 ### 4.1 页面命名与目录归属（强制）
 
 - `src/views/` 按**功能域**分目录，一个域一个 `<Domain>/`；域的划分须与后端 `Features/<Feature>`、路由前缀、侧边菜单项、e2e spec **四者对齐**（如 `CategoryManagement/` ↔ `Features/Categories` ↔ `/categories` ↔ `category-management.spec.ts`）。后端 / 规格已独立的域，前端不得挂在别的域目录下。
+- 「对齐」指**语义上是同一功能域**，不要求字面同名：目录用单数域名词（`CategoryManagement/`）、后端用复数资源名（`Features/Categories`）、路由用复数资源路径（`/categories`）、e2e 用 kebab-case 域名（`category-management.spec.ts`）属正常对应。
 - 域目录内文件一律**平铺**，不再套 `components/` 子目录；被多个页面共用的私有组件同样平铺在该域目录内，只有跨功能域复用的通用组件才进 `src/components/`。
 - 命名单复数：列表页用**复数域名**（`ProductsView` / `PurchasesView` / `SalesView`），表单页与详情页用**单数实体名**（`ProductFormDrawer` / `PurchaseFormPage` / `SaleDetailView` / `UserDetailView`），与 `src/api/<entity>.ts` 一致；集合概念名词（`Inventory`）保留单数。
 - 无功能域归属的独立页（`LoginView` / `HomeView`）平铺在 `views/` 根；演示 / 示例页统一收进 `views/Showcase/`，不与业务页混层。
@@ -94,15 +98,15 @@ frontend/
 | 表单提交（新增 / 编辑） | `submitting` | 提交按钮 `:loading="submitting"` |
 | 弹窗确认（重置密码 / 改状态等） | `xxSubmitting` | `a-modal :ok-loading="xxSubmitting"` |
 | 行内操作（启用 / 禁用 / 单行删除） | `xxingId`（如 `togglingId`） | `:loading="togglingId === row.id"` |
+| 批量操作（批量删除 / 批量改状态） | `batchXxing`（如 `batchDeleting`） | 触发按钮 `:loading="batchDeleting"`，与 `:disabled="!selectedIds.length"` 叠加 |
 
 **实现要求**
 
-- **触发即置位**：handler 内**先** `xxLoading.value = true`，**再** `await`；用 `try/finally` 在 `finally` 中复位，成功与失败路径都要复位，禁止只在成功分支复位。
-- **防重入**：动作类（提交 / 删除 / 启停）handler 开头必须 `if (xxLoading.value) return`。Arco 的 `loading` 只表现为不可点击，**不阻止事件重入**（如回车 + 点击、弹窗确认连点），需显式判空。
-- **查询类不丢弃点击**：搜索 / 翻页等查询动作，最新意图必须生效，**不要**加 `if (loading.value) return`；改为用请求序号仲裁乱序响应（见 §5 交互模式）。
-- **保留业务 `:disabled`**：与 loading 可叠加，如 `:disabled="!selectedIds.length"` + `:loading="loading"`；`a-button` 的 `loading` 已隐含不可点击，无需为它另写 `:disabled`。
-- **不置 loading 的情形**：同步瞬时动作（打开抽屉 / 弹窗、路由跳转、本地导出 CSV、复制文本）不置 loading；只有「发起请求并等待结果」才置。
-- **行内操作只转被点行**：用「当前操作行 id」判断，避免整列按钮同时转圈。
+- **触发即置位**：handler 内先 `xxLoading.value = true` 再 `await`；用 `try/finally` 复位，成功与失败路径都要复位。
+- **防重入**：动作类（提交 / 删除 / 启停）handler 开头 `if (xxLoading.value) return`——Arco 的 `loading` 只表现为不可点击，**不阻止事件重入**（回车 + 点击、弹窗确认连点）。
+- **查询类不丢弃点击**：搜索 / 翻页等查询动作不加判空，最新意图必须生效；用请求序号仲裁乱序响应（见 §5 交互模式）。
+- **不置 loading 的情形**：同步瞬时动作（打开抽屉 / 弹窗、路由跳转、本地导出 CSV、复制文本）不置；只有「发起请求并等待结果」才置。
+- **与业务 `:disabled` 叠加**：如 `:disabled="!selectedIds.length"` + `:loading="loading"`；`a-button` 的 `loading` 已隐含不可点击，无需为它另写 `:disabled`。
 
 **e2e**：按钮 loading 属用户可感知行为，相关功能交付前须有 e2e 断言（`AGENTS.md` §6）。
 
@@ -122,9 +126,8 @@ frontend/
 - **禁止反向选择**：不得因偏好某套风格跳过 Tabler 直接用 Lucide / Arco；不得为凑图标使用语义不符的图标（宁缺毋滥，纯装饰性图标可放宽）。
 - **Arco 组件 `#icon` 插槽**（`a-button` / `a-menu-item` / `a-select` 等，含 §5.2 操作列固定图标）**同样优先 Tabler**，三套均可放进插槽；仅当语义只有 Arco 覆盖时才用 Arco。
 - **来源注释**：使用 Lucide / Arco 图标时，在 import 处加一行注释说明，如 `// 图标来源：Lucide（Tabler 无对应语义）`，便于 review。
-- **尺寸**：Tabler / Lucide 默认 `24px`，全局样式（`src/App.vue`）已统一收敛：Arco 按钮 / 下拉项内为 `1em`（与 Arco 自带图标同视觉重量），侧边菜单为辅以 `AppLayout` scoped 规则的 `18px` + `stroke-width 2.5`；其余场景在空间不足时再按需用 `:size`，避免逐处写。
-- **线宽**：Tabler / Lucide 默认 `stroke 2`，Arco 默认 `stroke-width 4`；同一区域（如侧边菜单）内不混用不同来源，避免线宽视觉参差；小尺寸（≤ 18px）场景可将 Tabler 提到 `2.5` 补清晰度。
-- **迁移状态**：侧边菜单、列表工具条与操作列的业务图标已完成 Tabler 迁移，仅「图标」示例页（`/components` 图标 tab，规格 `specs/icon-showcase/`）为演示保留三套并存。新增 / 修改图标一律按本表选 Tabler，且同一业务图标全项目统一用同一来源。
+- **尺寸与线宽**：全局样式（`src/App.vue` + `AppLayout` scoped）已统一收敛——Arco 按钮 / 下拉项内 `1em`、侧边菜单 `18px`（`stroke-width 2.5`）；其余场景空间不足时再用 `:size`，不逐处写。同一区域内不混用不同来源（线宽：Tabler / Lucide 默认 `2`，Arco 默认 `4`）。
+- **现状**：侧边菜单、列表工具条、操作列的业务图标已统一为 Tabler；仅「图标」示例页（`/components` 图标 tab，规格 `specs/icon-showcase/`）为演示保留三套。新增 / 修改一律按本表，且同一业务图标全项目同来源。
 
 ## 5. 列表页约定
 
@@ -232,10 +235,11 @@ frontend/
 
 ## 7. 编码约定
 
-- 2 空格缩进；ESLint + Prettier 保持统一格式。
+- 2 空格缩进；格式由 ESLint（`npm run lint`）统一约束，当前**不并行启用 Prettier**（依赖虽在清单中，但无配置与脚本；如要启用须同时补 `.prettierrc`、`format` 脚本与 `eslint-config-prettier`）。
 - 变量 / 函数 camelCase，类型 / 接口 / 组件 PascalCase，常量 UPPER_SNAKE_CASE。
 - 禁止 `any`；无法确定类型时使用 `unknown` 收窄。
 - 异步逻辑用 `async/await`，必须处理失败分支（配合接口层统一错误提示）。
+- `utils/` 只放无副作用的纯函数（按主题一个文件，如 `datetime.ts`），不放组件状态、请求与业务编排。
 
 ## 8. 认证（JWT）
 
@@ -253,4 +257,5 @@ frontend/
 
 - e2e 测试策略与强制门槛见 `AGENTS.md` §6；此处只列本仓库的运行细则。
 - 用例与配置：`frontend/e2e/*.spec.ts` + `playwright.config.ts`。
+- 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名 kebab-case 且与 `specs/<feature>/`、路由同域（§4.1），如 `product-management.spec.ts` / `category-management.spec.ts`；**新增一律按此命名**，既有 `purchase.spec.ts` / `sale.spec.ts` 等历史文件保留原名不改。
 - 运行：先启动后端 dev（`cd backend && dotnet run --project src/App.Api`，端口 5080）与前端 dev（`cd frontend && npm run dev`，端口 5173），再执行 `cd frontend && npm run test:e2e`。
