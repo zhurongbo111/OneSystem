@@ -129,7 +129,7 @@ frontend/
 - 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
 - 业务：`009-user-management`
 - ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`
-- ERP 扩展路线（规划中，**未实现**）：`019-erp-stock-movement`、`020-erp-stock-take`（规格已起草）；后续批次见 `specs/ROADMAP.md`
+- ERP 扩展路线（规划中，**未实现**）：批次一 `019-erp-stock-movement`、`020-erp-stock-take`；批次二 `021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`（均已起草规格；`024` 含待用户确认的命名决策）；批次三及以后待起草，见 `specs/ROADMAP.md`
 
 `specs/ROADMAP.md` 是 ERP 功能组的**路线索引**（单文件，非 spec 目录、无三件套）：记录批次、序号、依赖与状态，并写明跨功能前置决策（多仓 / 结算 / 权限等）。接续 ERP 功能前先读它，再进具体规格。
 
