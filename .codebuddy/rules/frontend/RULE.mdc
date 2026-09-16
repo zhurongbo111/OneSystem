@@ -47,6 +47,13 @@ frontend/
 - 组件 props / emits 必须声明 TS 类型。
 - 组件名 PascalCase，文件命名与组件名一致。
 
+### 4.1 页面命名与目录归属（强制）
+
+- `src/views/` 按**功能域**分目录，一个域一个 `<Domain>/`；域的划分须与后端 `Features/<Feature>`、路由前缀、侧边菜单项、e2e spec **四者对齐**（如 `CategoryManagement/` ↔ `Features/Categories` ↔ `/categories` ↔ `category-management.spec.ts`）。后端 / 规格已独立的域，前端不得挂在别的域目录下。
+- 域目录内文件一律**平铺**，不再套 `components/` 子目录；被多个页面共用的私有组件同样平铺在该域目录内，只有跨功能域复用的通用组件才进 `src/components/`。
+- 命名单复数：列表页用**复数域名**（`ProductsView` / `PurchasesView` / `SalesView`），表单页与详情页用**单数实体名**（`ProductFormDrawer` / `PurchaseFormPage` / `SaleDetailView` / `UserDetailView`），与 `src/api/<entity>.ts` 一致；集合概念名词（`Inventory`）保留单数。
+- 无功能域归属的独立页（`LoginView` / `HomeView`）平铺在 `views/` 根；演示 / 示例页统一收进 `views/Showcase/`，不与业务页混层。
+
 ### 4.5 组合式 API 分区书写规范（强制）
 
 > 规格：`specs/composable-style/`。目的：禁止随意位置写 `ref` / `computed` / `watch` / 函数，保证结构可预期。

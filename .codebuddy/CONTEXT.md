@@ -82,24 +82,25 @@ frontend/
 │   ├── router/       # index.ts（按功能路由懒加载）
 │   ├── stores/       # auth.ts（Pinia）
 │   ├── utils/        # datetime.ts
-│   └── views/        # 按功能目录组织（PascalCase）
-│       ├── LoginView.vue / HomeView.vue
-│       ├── UserManagement/       # UsersView + UserDetailView + UserFormDrawer
-│       ├── LoginLogManagement/   # LoginLogsView
-│       ├── ProductManagement/    # ProductsView + ProductFormDrawer（进销存/商品管理）+ CategoriesView + CategoryFormDrawer（进销存/分类管理，搜索分页 + 编辑抽屉）
-│       ├── PartnerManagement/    # PartnersView + PartnerFormDrawer（进销存/往来单位）
-│       ├── InventoryManagement/  # InventoryView（进销存/库存查询，只读）
-│       ├── PurchaseManagement/   # PurchasesView + PurchaseFormPage + PurchaseDetailView（进销存/采购管理）
-│       ├── SalesManagement/      # SalesView + SaleFormPage + SaleDetailView（进销存/销售开单）
-│       └── 演示页：ComponentShowcaseView、FormShowcaseView、ListShowcaseView、FormPageFormView、FormDetailView
-│            └── FormShowcase/components/OrderFormDrawer.vue
+│   └── views/        # 按功能域目录组织（PascalCase，域内文件平铺）
+│       ├── LoginView.vue / HomeView.vue   # 无功能域归属的独立页
+│       ├── Showcase/            # 演示页：ComponentShowcaseView / ListShowcaseView / FormShowcaseView / FormPageFormView / FormDetailView + 共享 OrderFormDrawer.vue
+│       ├── UserManagement/      # UsersView + UserDetailView + UserFormDrawer
+│       ├── LoginLogManagement/  # LoginLogsView
+│       ├── ProductManagement/   # ProductsView + ProductFormDrawer（进销存/商品管理）
+│       ├── CategoryManagement/  # CategoriesView + CategoryFormDrawer（进销存/分类管理，搜索分页 + 编辑抽屉）
+│       ├── PartnerManagement/   # PartnersView + PartnerFormDrawer（进销存/往来单位）
+│       ├── InventoryManagement/ # InventoryView（进销存/库存查询，只读）
+│       ├── PurchaseManagement/  # PurchasesView + PurchaseFormPage + PurchaseDetailView（进销存/采购管理）
+│       └── SalesManagement/     # SalesView + SaleFormPage + SaleDetailView（进销存/销售开单）
 └── e2e/              # app-layout / component-showcase / form-showcase / list-showcase / login-log / login / user-management / product-management / category-management / partner-management / inventory-management / purchase / sale 各一个 spec.ts；helpers/menu.ts（clickMenuItem：点击侧边菜单项，子菜单折叠时先展开所属分组）
 ```
 
 **图标选型**：业务图标默认 Tabler（`@tabler/icons-vue`）→ 回退 Lucide（`@lucide/vue`）→ 兜底 Arco 自带 `Icon*`；细则见前端规则 §4.7。业务代码（侧边菜单、列表工具条、操作列）已全部迁移为 Tabler，仅「图标」示例页（`/components` 图标 tab）为演示保留三套并存；Tabler 默认 24px 由 `App.vue` 全局样式在 Arco 按钮 / 下拉项内收敛到 1em、侧边菜单收敛到 18px（stroke 2.5）。
 
 **基准参照**：
-- 列表页标准实现：`src/views/ListShowcaseView.vue`（规格 `specs/list-showcase/`），新增列表页复制其结构再替换业务字段。
+- 列表页标准实现：`src/views/Showcase/ListShowcaseView.vue`（规格 `specs/list-showcase/`），新增列表页复制其结构再替换业务字段。
+- 页面命名 / 目录归属约定见前端规则 §4.1。
 - 表单/详情页形态：`specs/form-detail-showcase/`；操作列：`specs/action-column/`；按钮 loading：`specs/button-loading/`；组合式分区：`specs/composable-style/`。
 
 ## 4. 常用命令（Windows PowerShell）
