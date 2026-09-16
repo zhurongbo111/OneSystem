@@ -14,16 +14,21 @@ public static class DependencyInjection
 {
     /// <summary>
     /// 注册 EF Core（PostgreSQL / Npgsql）、IUnitOfWork 与仓储实现。
-    /// 连接串来自 ConnectionStrings:Default（环境变量 ConnectionStrings__Default 注入），未配置时允许启动。
+    /// 连接串为敏感配置，只从环境变量 ConnectionStrings__Default 读取（AGENTS.md §7），
+    /// 未配置时退化为不含凭据的本地占位串以允许启动，首次查库会因缺少凭据报错。
     /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<AppDbContext>(options =>
         {
-            // 连接串来自环境变量 ConnectionStrings__Default；未配置时用本地默认占位，
-            // 脚手架阶段无实体查询不会发起连接，首个业务功能接入时要求必须配置真实连接串。
-            var connectionString = configuration.GetConnectionString("Default")
-                ?? "Host=localhost;Port=5432;Database=app;Username=admin;Password=admin123";
+            // 连接串（含账号口令）禁止入库 / 硬编码，只从环境变量 ConnectionStrings__Default 注入；
+            // 缺失或为空时退化为不含凭据的本地占位串，保证无数据库访问的场景仍可启动。
+            var connectionString = configuration.GetConnectionString("Default");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                connectionString = "Host=localhost;Port=5432;Database=app";
+            }
+
             options.UseNpgsql(connectionString);
         });
 
