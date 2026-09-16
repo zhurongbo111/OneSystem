@@ -18,6 +18,10 @@
 - [x] T11 e2e `purchase.spec.ts` / `sale.spec.ts` 同步文案断言，并补操作列顺序与 danger 配色断言
 - [x] T12 验证：`npm run build` + `npm run lint` + `npm run test:e2e` 全通过
 
+## 变更：图标来源由 Arco 统一为 Tabler（2026-09-16）
+
+- [x] T13 规格同步：requirement / design 中操作列与工具条图标改为 Tabler 映射（`IconTrash` / `IconPower` / `IconPlayerPlay` / `IconDotsVertical`），来源 `@tabler/icons-vue`；选型优先级见前端规则 §4.7，映射见 §5.2
+
 ## 完成定义
 
 - 上述任务全部勾选，且 `AGENTS.md` §6 强制测试门槛通过。
