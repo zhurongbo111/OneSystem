@@ -1,7 +1,7 @@
 # 设计规格：采购入库（erp-purchase）
 
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
-> 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §4.3）同样适用。
+> 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格为进销存功能组**单据域首个规格**，其数据模型 / 仓储 / 单号 / 校验约定为采购 / 销售共用，erp-sale 照抄本规格模板实现（见 §0 替换规则）。
 
 ## 0. 单据域共用约定（erp-sale 继承）
@@ -41,7 +41,7 @@
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §4.2）。
+> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §5.2）。
 > 状态枚举统一小整数，PG `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/PurchaseOrder.cs` 与表 `PurchaseOrders`
@@ -93,7 +93,7 @@
 | `KeywordMaxLength` | 20（单号查询关键词，对齐 `OrderNo` 列长） |
 | `ItemsMaxCount` | 100（单张单据明细行数上限） |
 
-- 明细行的 `Quantity` / `UnitPrice` 边界引用 `ProductFieldConstraints.QuantityMinValue / QuantityMaxValue / PriceMinValue / PriceMaxValue`（erp-product 已定义，禁止复制常量，后端规则 §4.3 同一规则同源）。
+- 明细行的 `Quantity` / `UnitPrice` 边界引用 `ProductFieldConstraints.QuantityMinValue / QuantityMaxValue / PriceMinValue / PriceMaxValue`（erp-product 已定义，禁止复制常量，后端规则 §5.3 同一规则同源）。
 - EF 实体配置与全部 `RequestValidator` 均引用上述常量，禁止硬编码。
 - 一致性由单测守护（扩展 `FieldValidationConsistencyTests`）：EF 模型实际 `HasMaxLength` == 常量；Validator「边界值通过 / 越界拒绝」一致；`keyword`（单号）长度不超 `OrderNo` 列长。
 
@@ -112,7 +112,7 @@
 | `Task UpdateStatusAsync(Guid id, OrderStatus s, ...)` | 更新状态（作废） |
 | `Task<string> GenerateOrderNoAsync(string prefix, DateTimeOffset orderDate, ...)` | 生成单号（见 §3.6） |
 
-- 单一仓储写（主表 + 明细一次 SaveChanges）由仓储自身保证；**跨仓储写**（单据主表 + 明细 + 库存 N 行）必须用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`，异常 `RollbackAsync` 后重抛（后端规则 §3）。
+- 单一仓储写（主表 + 明细一次 SaveChanges）由仓储自身保证；**跨仓储写**（单据主表 + 明细 + 库存 N 行）必须用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 各仓储写 → `CommitAsync`，异常 `RollbackAsync` 后重抛（后端规则 §4.4）。
 - 审计字段统一由 Handler 经 `ICurrentUser` 获取后随实体 / 方法参数（`operatorId`）传入，仓储不感知当前用户。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
@@ -163,7 +163,7 @@
 | `GetPurchaseOrdersRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 20（`OrderFieldConstraints.KeywordMaxLength`）；`partnerId` / `settlement` 可空或合法值；`start` / `end` 可空，闭区间 `start <= end` |
 | `UpdatePurchaseOrderSettlementRequest` | `settlementStatus` ∈ {0, 1} |
 
-- 存在性 / 唯一性 / 类型匹配 / 状态流转等业务约束一律在 Handler 判断（后端规则 §3）。
+- 存在性 / 唯一性 / 类型匹配 / 状态流转等业务约束一律在 Handler 判断（后端规则 §4.1）。
 
 ### 3.6 单号生成 `GenerateOrderNoAsync`（采购 / 销售共用实现）
 

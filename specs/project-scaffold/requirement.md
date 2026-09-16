@@ -13,7 +13,7 @@
 
 ## 3. 功能点
 
-- F1 后端项目骨架：`App.sln` 与 `App.Api`、`App.Core`、`App.Infrastructure`、`App.Tests` 四项目，依赖方向符合后端规则第 2 节。
+- F1 后端项目骨架：`App.sln` 与 `App.Api`、`App.Core`、`App.Infrastructure`、`App.Tests` 四项目，依赖方向符合后端规则 §3。
 - F2 统一响应：所有接口返回 `{ code, message, data }`；`code=0` 成功。
 - F3 全局异常处理：未处理异常统一转为 `code: 50000`，响应 HTTP 状态码保持 200（业务码表达错误），日志含 traceId。
 - F4 JWT 认证：`POST /api/auth/login` 签发 token；`/api/auth` 白名单放行；其余接口校验失败返回 `code: 40100`。
@@ -25,7 +25,7 @@
 - F10 前端项目骨架：Vite + Vue 3 + TS + Arco Design + Pinia + vue-router + Axios，目录结构符合前端规则第 2 节。
 - F11 前端接口层：`src/api/` 统一封装，拦截器解包 `{ code, message, data }`，`code !== 0` 时 `Message.error` 提示；请求自动附加 `Authorization: Bearer <token>`；收到 40100 清凭证并跳转登录页（防重复跳转）。
 - F12 前端页面：登录页（调用登录接口）、首页（展示当前登录用户，需登录态，未登录跳转登录页）。
-- F13 后端用例统一入口：用例由请求标记 `IRequest<TResponse>` 与处理器 `IRequestHandler<TRequest,TResponse>` 构成；Controller 只依赖自研中介 `IMediator`（`App.Core/Mediation` 实现，简化版 MediatR）经 `Send(Request)` 触发用例，不直接依赖具体 Handler（规范见后端规则第 3 节）。
+- F13 后端用例统一入口：用例由请求标记 `IRequest<TResponse>` 与处理器 `IRequestHandler<TRequest,TResponse>` 构成；Controller 只依赖自研中介 `IMediator`（`App.Core/Mediation` 实现，简化版 MediatR）经 `Send(Request)` 触发用例，不直接依赖具体 Handler（规范见后端规则 §4.2）。
 
 ## 4. 验收标准
 

@@ -1,7 +1,7 @@
 # 设计规格：往来单位（erp-partner）
 
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
-> 按后端规则第 3 节「每 API 一个用例」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §4.3）同样适用。
+> 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格为进销存功能组往来单位域，开单下拉数据源的消费方为 erp-purchase / erp-sale。
 
 ## 1. 总体设计
@@ -22,7 +22,7 @@
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §4.2）。
+> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §5.2）。
 > 状态枚举统一 `Enabled = 1 / Disabled = 0` 小整数，PG `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/Partner.cs` 与表 `Partners`（供应商 / 客户合并）
@@ -119,7 +119,7 @@
 | `GetPartnersRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 50（`KeywordMaxLength`）；`type` / `status` 可空或合法值 |
 | `UpdatePartnerStatusRequest` | `status` ∈ {0, 1} |
 
-- 存在性 / 唯一性等业务约束一律在 Handler 判断（后端规则 §3）。
+- 存在性 / 唯一性等业务约束一律在 Handler 判断（后端规则 §4.1）。
 
 ### 3.6 Swagger
 

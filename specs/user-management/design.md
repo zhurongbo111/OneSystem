@@ -1,7 +1,7 @@
 # 设计规格：用户管理（user-management）
 
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
-> 本功能是脚手架后**首个接入真实 PostgreSQL** 的功能，按后端规则第 3 节"每 API 一个用例"组织。
+> 本功能是脚手架后**首个接入真实 PostgreSQL** 的功能，按后端规则 §4"每 API 一个用例"组织。
 
 ## 1. 总体设计
 
@@ -160,7 +160,7 @@ public enum UserStatus { Disabled = 0, Enabled = 1 }
 | `Task AddAsync(UserLoginLog log, ...)` | 追加一条登录日志并持久化 |
 | `Task<(IReadOnlyList<UserLoginLog> Items, int Total)> GetPagedAsync(string? username, DateTimeOffset? startTime, DateTimeOffset? endTime, int page, int pageSize, ...)` | 分页查询，`LoginAt DESC` 排序 |
 
-- 单一仓储的一次写操作由该仓储方法自身保证持久化（内部 `SaveChangesAsync`）。登录成功时"更新 `LastLoginAt`（`IUserRepository`）+ 追加登录日志（`IUserLoginLogRepository`）"是**跨仓储的两次写**，按后端规则 §3 使用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 两次写 → `CommitAsync`，异常时 `RollbackAsync` 并抛出（理由见 §5）。非关系型提供程序（集成测试 InMemory）跳过显式事务。
+- 单一仓储的一次写操作由该仓储方法自身保证持久化（内部 `SaveChangesAsync`）。登录成功时"更新 `LastLoginAt`（`IUserRepository`）+ 追加登录日志（`IUserLoginLogRepository`）"是**跨仓储的两次写**，按后端规则 §4.4 使用 `IUnitOfWork` 包成同一事务：`BeginTransactionAsync` → 两次写 → `CommitAsync`，异常时 `RollbackAsync` 并抛出（理由见 §5）。非关系型提供程序（集成测试 InMemory）跳过显式事务。
 - 实现：`App.Infrastructure/Repositories/UserRepository.cs`、`UserLoginLogRepository.cs`（EF Core，`AsNoTracking` 用于只读查询）；**删除** `InMemoryUserRepository` 及 `AddInfrastructure` 中对应注册。
 - 用户分页排序：`CreatedAt DESC`；关键词对 `Username` / `DisplayName` 做 `Contains`（`ILIKE` 语义，忽略大小写）。
 - 登录日志筛选：`Username` 做 `Contains`（忽略大小写）；时间范围为闭区间（`LoginAt >= startTime` 且 `LoginAt <= endTime`，仅对非空参数生效）。入参为 `DateTimeOffset`（前端给出 UTC ISO 串），偏移量显式，**无需再做 UTC 归一化**。
@@ -243,7 +243,7 @@ public enum UserStatus { Disabled = 0, Enabled = 1 }
 | `GetUsersRequest` | `page ≥ 1`；`pageSize` 1–100；`status` 为空或 0/1；`keyword` ≤50（对齐 `Username` / `DisplayName` 长度） |
 | `GetLoginLogsRequest` | `page ≥ 1`；`pageSize` 1–100；`username` ≤50（对齐 `UserLoginLogs.Username`）；`startTime` / `endTime` 可空，两者同时提供时 `startTime <= endTime` |
 
-- 存在性 / 唯一性等需查库的约束一律在 `RequestHandler` 内判断（后端规则第 3 节）。
+- 存在性 / 唯一性等需查库的约束一律在 `RequestHandler` 内判断（后端规则 §4.1）。
 - `password` 是明文入参（不入库、无对应表列），其 6–32 区间属业务规则，同样收敛到 `UserFieldConstraints`，使登录 / 创建 / 重置三处一致。
 - 一致性由单测守护（`FieldValidationConsistencyTests`）：EF 模型实际 `HasMaxLength` 必须等于常量，且各 Validator 的"边界值通过 / 越界拒绝"行为一致。
 
@@ -353,7 +353,7 @@ src/
 | 只记录成功登录，失败尝试不入库 | 本期目标是"登录留痕"；失败原因归类与风控留待后续规格，避免过早引入结果枚举 |
 | 登录日志冗余 `Username` / `DisplayName` 快照 | 日志自包含、查询免 join；审计语义要求记录"当时的登录名 / 显示名" |
 | 日志表 append-only，无软删除 / 无更新接口 | 审计数据不可篡改；用户不可删除，故 FK 无需级联删除 |
-| 登录的两次写（更新时间 + 写日志）用 `IUnitOfWork` 包成同一事务 | 后端规则 §3 要求跨仓储的写操作使用工作单元保证原子性；"更新时间"与"写日志"应同时成功或同时失败。写入失败即抛出（不吞异常），数据库故障会中断登录；`UnitOfWork` 在非关系型提供程序下跳过显式事务以兼容集成测试 |
+| 登录的两次写（更新时间 + 写日志）用 `IUnitOfWork` 包成同一事务 | 后端规则 §4.4 要求跨仓储的写操作使用工作单元保证原子性；"更新时间"与"写日志"应同时成功或同时失败。写入失败即抛出（不吞异常），数据库故障会中断登录；`UnitOfWork` 在非关系型提供程序下跳过显式事务以兼容集成测试 |
 | 客户端 IP / UA 经 `IClientInfo` 抽象获取 | 沿用 `ICurrentUser` 模式，Handler 不接触 `HttpContext`，单测可注入桩 |
 | 不在本期解析 `X-Forwarded-For` | 未配置受信代理时该头部可伪造；等部署形态确定后统一由 Forwarded Headers 中间件处理 |
 | 时间筛选由前端转换为 UTC ISO 串，后端不做时区推断 | 前端按本地当天 00:00:00 / 23:59:59 转 UTC 串；后端入参为 `DateTimeOffset`、偏移量显式，`timestamptz` 比较语义明确，"选今天"能覆盖刚产生的记录 |
