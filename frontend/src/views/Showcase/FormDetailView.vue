@@ -8,8 +8,9 @@ import {
   formatAmount,
   useOrderData,
 } from '@/composables/useOrderStore'
-import OrderFormDrawer from '@/views/FormShowcase/components/OrderFormDrawer.vue'
 import { Message } from '@arco-design/web-vue'
+
+import OrderFormDrawer from './OrderFormDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
