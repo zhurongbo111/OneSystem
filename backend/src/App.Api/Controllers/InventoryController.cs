@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Features.Inventory;
 using App.Core.Features.Inventory.GetInventory;
 using App.Core.Responses;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

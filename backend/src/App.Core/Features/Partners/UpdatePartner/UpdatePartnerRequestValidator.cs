@@ -1,4 +1,5 @@
 using App.Core.Entities;
+
 using FluentValidation;
 
 namespace App.Core.Features.Partners.UpdatePartner;

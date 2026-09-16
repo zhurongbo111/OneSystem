@@ -1,5 +1,4 @@
 using App.Core.Abstractions;
-using App.Core.Features.Sales;
 
 namespace App.Core.Features.Sales.GetSalesOrderById;
 

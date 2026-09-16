@@ -1,9 +1,10 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+
 using App.Core.Abstractions;
 using App.Core.Errors;
+
 using FluentValidation;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace App.Core.Mediation;
 

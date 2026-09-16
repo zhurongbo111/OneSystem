@@ -6,6 +6,7 @@ using App.Core.Features.Partners.GetPartners;
 using App.Core.Features.Partners.UpdatePartner;
 using App.Core.Features.Partners.UpdatePartnerStatus;
 using App.Core.Responses;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using App.Api.Authentication;
 using App.Api.Http;
 using App.Api.Middleware;
@@ -9,7 +8,7 @@ using App.Core.Abstractions;
 using App.Core.Auth;
 using App.Infrastructure;
 using App.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
+
 using NLog;
 using NLog.Web;
 

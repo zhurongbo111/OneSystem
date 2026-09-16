@@ -2,7 +2,6 @@ using App.Core.Entities;
 using App.Core.Features.Inventory.GetInventory;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;
 

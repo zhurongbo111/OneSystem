@@ -6,6 +6,7 @@ using App.Core.Features.Sales.GetSalesOrders;
 using App.Core.Features.Sales.UpdateSalesOrderSettlement;
 using App.Core.Features.Sales.VoidSalesOrder;
 using App.Core.Responses;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

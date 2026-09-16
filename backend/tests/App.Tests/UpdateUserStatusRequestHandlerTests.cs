@@ -2,6 +2,7 @@ using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.Users.UpdateUserStatus;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;

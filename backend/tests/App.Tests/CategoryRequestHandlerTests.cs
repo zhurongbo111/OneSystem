@@ -7,6 +7,7 @@ using App.Core.Features.Categories.GetCategoriesPaged;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;
@@ -195,7 +196,7 @@ public class CategoryRequestHandlerTests
         var result = await handler.HandleAsync(new GetCategoriesPagedRequest { Page = 1, PageSize = 20, Keyword = "原材料" });
 
         Assert.Equal(2, result.Total);
-        Assert.All(result.Items, item => Assert.Equal(true, item.Name.Contains("原材料")));
+        Assert.All(result.Items, item => Assert.Contains("原材料", item.Name));
     }
 
     [Fact]

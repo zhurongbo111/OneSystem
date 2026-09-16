@@ -1,5 +1,6 @@
 using App.Core.Auth;
 using App.Core.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

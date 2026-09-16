@@ -1,7 +1,6 @@
 using App.Core.Abstractions;
 using App.Core.Entities;
 using App.Core.Errors;
-using App.Core.Features.Sales;
 
 namespace App.Core.Features.Sales.UpdateSalesOrderSettlement;
 

@@ -1,6 +1,5 @@
 using App.Core.Abstractions;
 using App.Core.Errors;
-using App.Core.Features.Users;
 using App.Core.Features.Users.GetCurrentUser;
 
 namespace App.Tests;
