@@ -6,6 +6,7 @@ using App.Core.Features.Categories.GetCategories;
 using App.Core.Features.Categories.GetCategoriesPaged;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Core.Responses;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

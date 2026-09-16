@@ -1,4 +1,5 @@
 using App.Core.Features.Auth.Login;
+
 using Microsoft.OpenApi.Models;
 
 namespace App.Api.Swagger;

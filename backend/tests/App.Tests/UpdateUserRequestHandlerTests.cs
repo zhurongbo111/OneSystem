@@ -1,6 +1,7 @@
 using App.Core.Errors;
 using App.Core.Features.Users.UpdateUser;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;

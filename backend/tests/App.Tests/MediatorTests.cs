@@ -1,7 +1,9 @@
 using App.Core.Abstractions;
 using App.Core.Errors;
 using App.Core.Mediation;
+
 using FluentValidation;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace App.Tests;

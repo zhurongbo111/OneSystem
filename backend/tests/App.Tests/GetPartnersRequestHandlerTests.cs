@@ -3,9 +3,7 @@ using App.Core.Errors;
 using App.Core.Features.Partners.GetPartnerById;
 using App.Core.Features.Partners.GetPartners;
 using App.Infrastructure;
-using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;
 

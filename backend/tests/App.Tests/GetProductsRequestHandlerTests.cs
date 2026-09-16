@@ -2,6 +2,7 @@ using App.Core.Entities;
 using App.Core.Features.Products.GetProducts;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;

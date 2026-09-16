@@ -1,6 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
+
 using App.Core.Auth;
 using App.Core.Features.Users;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 

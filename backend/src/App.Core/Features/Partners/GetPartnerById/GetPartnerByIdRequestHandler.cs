@@ -1,5 +1,4 @@
 using App.Core.Abstractions;
-using App.Core.Entities;
 using App.Core.Errors;
 
 namespace App.Core.Features.Partners.GetPartnerById;

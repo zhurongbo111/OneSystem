@@ -1,6 +1,7 @@
 using App.Core.Abstractions;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

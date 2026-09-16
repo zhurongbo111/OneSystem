@@ -1,4 +1,5 @@
 using App.Core.Entities;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Infrastructure;

@@ -1,4 +1,3 @@
-using App.Core.Abstractions;
 using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.Products.CreateProduct;
@@ -6,6 +5,7 @@ using App.Core.Features.Products.GetProductById;
 using App.Infrastructure;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;

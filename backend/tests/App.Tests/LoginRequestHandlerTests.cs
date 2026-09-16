@@ -4,6 +4,7 @@ using App.Core.Features.Auth.Login;
 using App.Infrastructure;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;

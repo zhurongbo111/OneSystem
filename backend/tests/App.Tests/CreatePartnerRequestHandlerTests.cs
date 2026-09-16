@@ -2,8 +2,8 @@ using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.Partners.CreatePartner;
 using App.Infrastructure;
-using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Tests;

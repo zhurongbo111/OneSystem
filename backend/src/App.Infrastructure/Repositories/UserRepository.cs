@@ -1,5 +1,6 @@
 using App.Core.Abstractions;
 using App.Core.Entities;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Infrastructure.Repositories;
