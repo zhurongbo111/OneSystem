@@ -16,7 +16,7 @@
 | 单价带出 | 商品采购价 `PurchasePrice` | 商品销售价 `SalePrice` |
 | 库存操作（保存） | 每行 `IncrementAsync(+quantity)` | 每行 `TryDecrementAsync(quantity)`，失败 `40103` 回滚（erp-sale 定义） |
 | 库存操作（作废） | 每行 `IncrementAsync(-quantity)`（回冲，允许冲负） | 每行 `IncrementAsync(+quantity)`（回冲） |
-| 结算语义 | 0=未付 1=已付 | 0=未收 1=已收（同一枚举 `OrderSettlementStatus`） |
+| 结算语义 | 0=未结算 1=已结算 | 同左（同一枚举 `OrderSettlementStatus`，前端文案也共用同一套） |
 | 共用错误码 | 40104 / 40108 / 40109 / 40110（本规格定义，见 §3.2） | 同左 + 40103（erp-sale 定义） |
 | 用例目录 | `Features/Purchases/<Action>` | `Features/Sales/<Action>` |
 | 接口路由 | `/api/purchase-orders` | `/api/sales-orders` |
@@ -54,7 +54,7 @@
 | `PartnerName` | `string` | `varchar(50)` | NOT NULL | 供应商名称**快照**（列表 / 审计免 join，同登录日志快照原则） |
 | `OrderDate` | `DateTimeOffset` | `timestamptz` | NOT NULL | 业务日期（UTC 午夜） |
 | `TotalAmount` | `decimal` | `numeric(18,2)` | NOT NULL | 总金额 = Σ 小计（后端计算） |
-| `SettlementStatus` | `OrderSettlementStatus` | `smallint` | NOT NULL，默认 `0` | 0=未付 1=已付 |
+| `SettlementStatus` | `OrderSettlementStatus` | `smallint` | NOT NULL，默认 `0` | 0=未结算 1=已结算 |
 | `Status` | `OrderStatus` | `smallint` | NOT NULL，默认 `1` | 1=正常 0=已作废 |
 | `Remark` | `string?` | `varchar(200)` | NULL | 备注 |
 | `CreatedAt` / `UpdatedAt` | `DateTimeOffset` | `timestamptz` | NOT NULL | |
@@ -73,7 +73,7 @@
 | `UnitPrice` | `decimal` | `numeric(18,2)` | NOT NULL，≥ 0 | 单价**快照** |
 | `Subtotal` | `decimal` | `numeric(18,2)` | NOT NULL | 小计 = 数量 × 单价（后端计算） |
 
-- 枚举（采购 / 销售共用，放 `App.Core/Entities/`）：`OrderStatus { Voided = 0, Normal = 1 }`、`OrderSettlementStatus { Unsettled = 0, Settled = 1 }`（语义：采购=未付 / 已付，销售=未收 / 已收，由 erp-sale 继承）。
+- 枚举（采购 / 销售共用，放 `App.Core/Entities/`）：`OrderStatus { Voided = 0, Normal = 1 }`、`OrderSettlementStatus { Unsettled = 0, Settled = 1 }`（采购 / 销售共用同一枚举，对外展示文案统一为「未结算 / 已结算」，由 erp-sale 继承）。
 - 明细不软删除：作废时保留明细（审计需要），仅主表 `Status` 置 0。
 - 实体配置：`Persistence/Configurations/PurchaseOrderConfiguration.cs`、`PurchaseOrderItemConfiguration.cs`。
 
@@ -224,11 +224,11 @@ src/
 
 **采购列表 `PurchasesView.vue`**：
 - 筛选行：单号关键词 + 供应商下拉 + 日期范围 + 结算状态下拉 + 搜索 / 重置。
-- 表格列：序号、单号、供应商、日期、总金额、结算状态（`a-tag`：未付橙 / 已付绿）、单据状态（正常 / 已作废 灰，**作废行整体置灰**）、创建时间、操作列（详情 / 作废（popconfirm，仅正常单显示）/ 结算切换（popconfirm 文案「标记为已付?」））。
+- 表格列：序号、单号、供应商、日期、总金额、结算状态（`a-tag`：未结算灰 / 已结算绿）、单据状态（正常绿 / 已作废红，**作废行整体置灰**）、创建时间、操作列（详情 → 结算切换（未结算 `status="success"` 绿「标记已结算」/ 已结算 `.action-btn-secondary` 次要灰「改回未结算」，popconfirm 文案「确认标记为已结算?」）→ 作废（`status="danger"`，popconfirm，仅正常单显示）；顺序遵循 `specs/action-column` §5.1）。
 - 服务端分页。
 
 **详情页 `PurchaseDetailView.vue`**：
-- `a-page-header`（返回）+ `a-descriptions`（单号 / 供应商 / 日期 / 总额 / 结算 / 状态 / 创建人 / 创建时间）+ 明细只读表格 + 底部操作（正常单：作废按钮（`a-popconfirm` + `voidingId` loading）、结算切换）。
+- `a-page-header`（返回）+ `a-descriptions`（单号 / 供应商 / 日期 / 总额 / 结算（未结算灰 / 已结算绿）/ 状态（正常绿 / 已作废红）/ 创建人 / 创建时间）+ 明细只读表格 + 底部操作（正常单：作废按钮（`status="danger"` + `a-popconfirm` + `voidingId` loading）、结算切换（未结算「标记已结算」/ 已结算「改回未结算」，`settlingId` loading））。
 - id 不存在 → `a-result status="404"` + 返回列表。
 
 ### 4.5 按钮 loading（遵循前端规则 §4.6）
@@ -251,7 +251,7 @@ src/
 | 单号后端生成 `前缀+日期+序号` | `GenerateOrderNoAsync`，唯一索引兜底 + 重试 | 单号可读、可审计；并发冲突概率低，3 次重试足够，不引入独立序列表 |
 | 金额后端重算 | 小计 / 总额一律 Handler 按 `数量 × 单价` 计算 | 前端传值仅作展示参考，杜绝篡改与精度误差 |
 | 开单页独立页面而非抽屉 | 多行明细子表格 > 8 字段 | 符合前端规则 §5.5 形态选择 |
-| 结算简化为单据状态位 | `SettlementStatus` 0/1 手动切换 | 用户确认不做收付款单 / 部分结算；后续升级时该状态位可平滑迁移为「已付金额」 |
+| 结算简化为单据状态位 | `SettlementStatus` 0/1 手动切换 | 用户确认不做收付款单 / 部分结算；后续升级时该状态位可平滑迁移为「已结算金额」 |
 | 重复提交幂等 | 前端防重入 + 单号唯一索引兜底 | MVP 并发量低，不引入独立幂等 token（范围外） |
 | 无 RBAC | 登录即可见采购入库菜单 | 用户确认本期不做权限；后续权限模块统一接入 |
 | 时间处理 | 单据日期 = 前端所选日期的 UTC 午夜 `DateTimeOffset`；列表范围筛选本地当天边界转 UTC ISO | 同登录日志既有约定，避免时区漂移 |

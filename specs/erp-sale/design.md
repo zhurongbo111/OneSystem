@@ -16,7 +16,7 @@
 | 单价带出 | 商品采购价 `PurchasePrice` | 商品销售价 `SalePrice` |
 | 库存操作（保存） | 每行 `IncrementAsync(+quantity)` | 每行 `TryDecrementAsync(quantity)`，失败 `40103` 回滚（见 §3.4） |
 | 库存操作（作废） | 每行 `IncrementAsync(-quantity)`（回冲，允许冲负） | 每行 `IncrementAsync(+quantity)`（回冲） |
-| 结算语义 | 0=未付 1=已付 | 0=未收 1=已收（同一枚举 `OrderSettlementStatus`，仅前端文案不同） |
+| 结算语义 | 0=未结算 1=已结算 | 同左（同一枚举 `OrderSettlementStatus`，前端文案也共用同一套） |
 | 新增错误码 | 40104 / 40108 / 40109 / 40110（已定义） | **40103**（本规格新增，见 §3.2） |
 | 用例目录 | `Features/Purchases/<Action>` | `Features/Sales/<Action>` |
 | 接口路由 | `/api/purchase-orders` | `/api/sales-orders` |
@@ -146,7 +146,7 @@ src/
 - 表头：**客户**下拉（仅启用 + `Type in (2,3)`）。
 - 明细区：单价选商品后默认带出**销售价**；商品下拉显示「编码 名称（库存 x）」；**数量 > 库存时该行数量输入框标红**（`status="error"` 或红色文字提示「库存不足，当前库存 x」，前端预警，最终以后端 `40103` 为准）。
 
-**列表 `SalesView.vue` / 详情 `SaleDetailView.vue`**：同采购对应页，差异：往来列 / 筛选为**客户**；结算文案「未收 / 已收」「标记为已收?」。
+**列表 `SalesView.vue` / 详情 `SaleDetailView.vue`**：同采购对应页，差异：往来列 / 筛选为**客户**（结算标签与操作文案同采购，统一「未结算 / 已结算」，见 `specs/action-column` §3 / §5.1）。
 
 ### 4.5 按钮 loading（遵循前端规则 §4.6）
 

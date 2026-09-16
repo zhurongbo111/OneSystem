@@ -37,13 +37,13 @@ Arco `a-table` 默认 `table-layout: fixed`。**某一列未设 `width` 时会�
 |---|---|---|
 | 主操作 | 默认（主题色，无 `type`/`status`） | 编辑 |
 | 警示 | `status="warning"` | 禁用 / 停用（将可用对象置为不可用） |
-| 危险 | `status="danger"` | 删除 / 移除（不可逆或破坏性操作） |
-| 完成 | `status="success"` | 标记已收 / 已付（结算达成，与列表结算状态绿标签同色） |
+| 危险 | `status="danger"` | 删除 / 移除 / 单据作废（不可逆或破坏性操作） |
+| 完成 | `status="success"` | 标记已结算（结算达成，与列表结算状态绿标签同色） |
 | 中性 | 默认（无 `type`/`status`） | 详情、查看、重置密码、启用 / 重新启用等 |
-| 次要 | `type="text"` + `.action-btn-secondary`（`color: var(--color-text-2)`） | 改回未收 / 未付（反向撤销，视觉降级） |
+| 次要 | `type="text"` + `.action-btn-secondary`（`color: var(--color-text-2)`） | 改回未结算（反向撤销，视觉降级） |
 
 - 「启用 / 重新启用」是恢复操作，**不用** success 色：行内文本按钮无 success 语义位，且与「禁用（warning）」保持视觉对称，降低误读为"主操作"的风险。
-- 「改回未收 / 未付」降为**次要色**（`.action-btn-secondary`，`var(--color-text-2)` 次级文字灰）：反向撤销动作不突出，且与「详情」的主题色区分开。同一行「作废」已占 warning，故不用橙，避免两个橙互相干扰。
+- 「改回未结算」降为**次要色**（`.action-btn-secondary`，`var(--color-text-2)` 次级文字灰）：反向撤销动作不突出，且与「详情」的主题色区分开。同行的「作废」已归**危险档**（红），故结算切换不用橙，避免两个警示色互相干扰。
 - 次要色为中性档内的**降级**，用于成对操作中不希望被误当主操作的那一个方向（如结算切换的撤销方向）。实现方式是在列表页 scoped 样式中覆盖文本按钮颜色：
 
 ```css
@@ -73,9 +73,9 @@ Arco `a-table` 默认 `table-layout: fixed`。**某一列未设 `width` 时会�
 | 禁用 / 停用 | `IconPoweroff` |
 | 重置密码 | `IconLock` |
 | 导出 | `IconDownload` |
-| 作废（单据作废回冲） | `IconStop` |
-| 结算切换：标记已收 / 已付 | `IconCheckCircle` |
-| 结算切换：改回未收 / 未付 | `IconUndo` |
+| 作废（单据作废回冲） | `IconBan` |
+| 结算切换：标记已结算 | `IconCircleCheck` |
+| 结算切换：改回未结算 | `IconArrowBackUp` |
 | 更多（收纳触发按钮） | `IconMore` |
 | 新增（仅工具条，参照） | `IconPlus` |
 | 刷新（仅工具条，参照） | `IconRefresh` |
@@ -86,7 +86,7 @@ Arco `a-table` 默认 `table-layout: fixed`。**某一列未设 `width` 时会�
 
 ## 5. 呈现与交互要求
 
-1. 按钮顺序：按**主操作 → 中性 → 警示 → 危险**排列（如 编辑 → 详情 → 重置密码 → 禁用 → 删除），「更多」触发按钮恒在末尾。
+1. 按钮顺序：按**主操作 → 中性 → 完成 → 警示 → 危险**排列（如 编辑 → 详情 → 重置密码 → 禁用 → 删除；单据列表为 详情 → 标记已结算 / 改回未结算 → 作废），「更多」触发按钮恒在末尾。
 2. `a-popconfirm` 直接包裹平铺按钮；收纳进「更多」的危险 / 警示操作，`a-doption` 的 `@click` 里打开确认（`a-modal` 或行内二次 `a-popconfirm`），**禁止无确认直接执行**。
 3. 行内写操作 loading 遵循 `specs/button-loading/`（前端规则 §4.6）：状态命名为 `xxingId`，平铺按钮 `:loading="xxingId === row.id"`；收纳进「更多」的写操作在确认入口同样判 `xxingId` 互斥，`a-doption :disabled="xxingId === row.id"`。
 4. 操作列固定显示，不参与「列设置」勾选隐藏。
