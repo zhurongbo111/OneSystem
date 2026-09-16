@@ -35,14 +35,14 @@ frontend/
 
 1. **只读本次要改动的功能域目录**（`views/<Domain>/`），不读其他域；同域既有同类文件即参照：列表页 → `<Entities>View.vue`，表单 → 同域 `*FormDrawer.vue` / `*FormPage.vue`，详情 → `*DetailView.vue`。
 2. **跨域通用参照（按需读，不预读）**：参照实现与关键文件位置见 `.codebuddy/CONTEXT.md` §3「基准参照」；接口层写法读 `api/request.ts`（统一解包与 40100 处置）+ 本次要用的 `api/<entity>.ts`；仅新增页面 / 菜单项时才读 `router/index.ts`、`components/AppLayout.vue`。
-3. **对应规格（按改动类型选读，不全部读）**：本规则的 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 均为判据 + 指针，正文在下列规格——列表页 → `specs/list-showcase/design.md` §0；操作列 → `specs/action-column/design.md` §0；按钮 loading → `specs/button-loading/design.md` §0；组合式分区 → `specs/composable-style/design.md` §0；图标 → `specs/icon-showcase/design.md` §0；表单 / 详情 → `specs/form-detail-showcase/design.md` §0。
+3. **对应规格（按改动类型选读，不全部读）**：本规则的 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 均为判据 + 指针，正文在各规格 §0；**「改动类型 → 规格 §0」对照表见 `.codebuddy/CONTEXT.md` §6**（新增交互约定只更新该表，本规则不动）。
 4. **e2e**：只读同域 `e2e/<域>.spec.ts`，必要时读 `e2e/helpers/`；不通读全部用例。
 5. **禁止**：遍历 `views/` / `components/` 全目录；读与本功能无关的功能域文件；为"参考风格"通读 `src/` 全量文件。
 
 ## 3. 接口层
 
 - 所有接口请求集中在 `src/api/`，按业务域拆分文件（如 `user.ts`）。
-- **归属判定**：默认一个功能域一个文件；**从属 / 紧密关联的资源可并入其主域文件**——典型：分类接口并入 `src/api/product.ts`（分类作为商品主数据与商品域强耦合，理由见 `specs/erp-category/design.md` §1 / §4）。此类并入**必须在功能 `design.md` 中写明归属**，不得随手乱放。
+- **归属判定**：默认一个功能域一个文件；**从属 / 紧密关联的资源可并入其主域文件**，此类并入**必须在功能 `design.md` 中写明归属与理由**，不得随手乱放。
 - 统一封装：基于 Axios 拦截器解包 `{ code, message, data }`；`code !== 0` 时用 Arco `Message.error` 提示 `message` 并 reject。
 - 请求参数与响应定义 TS 类型，与后端 DTO（camelCase）一一对应。
 - 组件内禁止直接调用 `axios/fetch`，必须经 `src/api/` 模块。
@@ -155,5 +155,5 @@ frontend/
 
 - e2e 测试策略与强制门槛见 `AGENTS.md` §6；此处只列本仓库的运行细则。
 - 用例与配置：`frontend/e2e/*.spec.ts` + `playwright.config.ts`。
-- 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名 kebab-case 且与 `specs/<feature>/`、路由同域（§4.1）；**新增一律按此命名**，既有 `purchase.spec.ts` / `sale.spec.ts` 等历史文件保留原名不改（现有用例清单见 `.codebuddy/CONTEXT.md` §3）。
+- 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名 kebab-case 且与 `specs/<feature>/`、路由同域（§4.1）；**新增一律按此命名**。例外仅限本约定落地前已存在的文件，清单见 `.codebuddy/CONTEXT.md` §3，**不得新增例外**。
 - 运行：需先起后端 dev（5080）与前端 dev（5173），再跑 `npm run test:e2e`；命令与端口见 `.codebuddy/CONTEXT.md` §4（不在本文件重复）。
