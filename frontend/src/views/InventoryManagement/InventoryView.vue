@@ -7,7 +7,7 @@ import { getCategories } from '@/api/product'
 import type { Category } from '@/api/product'
 import { formatDateTime } from '@/utils/datetime'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconRefresh, IconRotateLeft, IconSearch, IconSettings } from '@arco-design/web-vue/es/icon'
+import { IconRefresh, IconRestore, IconSearch, IconSettings } from '@tabler/icons-vue'
 
 // —— constants ——
 /** 列显示设置（不持久化；纯只读页无操作列） */
@@ -224,7 +224,7 @@ function onPageSizeChange(size: number): void {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>

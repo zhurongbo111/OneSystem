@@ -10,7 +10,7 @@ import { createPurchaseOrder, toUtcMidnight } from '@/api/purchase'
 import type { PurchaseFormLine } from '@/api/purchase'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
-import { IconPlus } from '@arco-design/web-vue/es/icon'
+import { IconPlus } from '@tabler/icons-vue'
 
 // —— constants ——
 /** 明细行上限（OrderFieldConstraints.ItemsMaxCount） */

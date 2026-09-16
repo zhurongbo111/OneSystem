@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getLoginLogs, toUtcRange } from '@/api/loginLog'
 import type { LoginLogListItem } from '@/api/loginLog'
 import { formatDateTime } from '@/utils/datetime'
-import { IconRefresh, IconRotateLeft, IconSearch } from '@arco-design/web-vue/es/icon'
+import { IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
 
 // —— constants ——
 const columns = [
@@ -165,7 +165,7 @@ function onPageSizeChange(size: number): void {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>

@@ -4,18 +4,18 @@ import { computed, ref } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
-  IconDelete,
+  IconDotsVertical,
   IconDownload,
   IconEdit,
   IconEye,
   IconLock,
-  IconMore,
   IconPlus,
   IconRefresh,
-  IconRotateLeft,
+  IconRestore,
   IconSearch,
   IconSettings,
-} from '@arco-design/web-vue/es/icon'
+  IconTrash,
+} from '@tabler/icons-vue'
 
 // —— types ——
 /** 列表行数据模型（静态 Mock，参照用，非真实业务） */
@@ -371,7 +371,7 @@ function onExport(): void {
               </a-button>
               <a-button @click="onReset">
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>
@@ -414,7 +414,7 @@ function onExport(): void {
                 :disabled="selectedKeys.length === 0"
               >
                 <template #icon>
-                  <IconDelete />
+                  <IconTrash />
                 </template>
                 批量删除
               </a-button>
@@ -520,7 +520,7 @@ function onExport(): void {
                 size="small"
               >
                 <template #icon>
-                  <IconDelete />
+                  <IconTrash />
                 </template>
                 删除
               </a-button>
@@ -532,7 +532,7 @@ function onExport(): void {
                 aria-label="更多操作"
               >
                 <template #icon>
-                  <IconMore />
+                  <IconDotsVertical />
                 </template>
               </a-button>
               <template #content>

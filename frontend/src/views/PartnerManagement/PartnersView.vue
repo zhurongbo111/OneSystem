@@ -9,14 +9,14 @@ import type { TableColumnData } from '@arco-design/web-vue'
 import {
   IconEdit,
   IconEye,
-  IconPlayCircle,
+  IconPlayerPlay,
   IconPlus,
-  IconPoweroff,
+  IconPower,
   IconRefresh,
-  IconRotateLeft,
+  IconRestore,
   IconSearch,
   IconSettings,
-} from '@arco-design/web-vue/es/icon'
+} from '@tabler/icons-vue'
 
 import PartnerFormDrawer from './PartnerFormDrawer.vue'
 
@@ -308,7 +308,7 @@ async function onToggleStatus(row: Partner): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>
@@ -423,8 +423,8 @@ async function onToggleStatus(row: Partner): Promise<void> {
                 :loading="togglingId === (record as Partner).id"
               >
                 <template #icon>
-                  <IconPoweroff v-if="(record as Partner).status === 1" />
-                  <IconPlayCircle v-else />
+                  <IconPower v-if="(record as Partner).status === 1" />
+                  <IconPlayerPlay v-else />
                 </template>
                 {{ (record as Partner).status === 1 ? '停用' : '启用' }}
               </a-button>

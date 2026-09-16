@@ -7,13 +7,13 @@ import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
-  IconDelete,
   IconEdit,
   IconPlus,
   IconRefresh,
-  IconRotateLeft,
+  IconRestore,
   IconSearch,
-} from '@arco-design/web-vue/es/icon'
+  IconTrash,
+} from '@tabler/icons-vue'
 
 import CategoryFormDrawer from './CategoryFormDrawer.vue'
 
@@ -214,7 +214,7 @@ async function onDelete(row: Category): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>
@@ -296,7 +296,7 @@ async function onDelete(row: Category): Promise<void> {
                 :loading="deletingCategoryId === (record as Category).id"
               >
                 <template #icon>
-                  <IconDelete />
+                  <IconTrash />
                 </template>
                 删除
               </a-button>

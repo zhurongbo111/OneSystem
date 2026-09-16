@@ -323,12 +323,14 @@ function onLogout(): void {
   color: var(--color-text-3);
 }
 
-/* Tabler 图标默认 24px，统一收敛到 18px，与 Arco 菜单 / 文本按钮的视觉字号一致 */
+/* Tabler 图标默认 24px，统一收敛到 18px，与 Arco 菜单 / 文本按钮的视觉字号一致；
+   线宽 2 在 18px 下偏淡，提到 2.5（仍在 Tabler 的 2~3 视觉区间，不与 Arco 的 4 混淆） */
 .app-sider :deep(svg),
 .collapse-trigger :deep(svg),
 .user-icon {
   width: 18px;
   height: 18px;
+  stroke-width: 2.5;
 }
 
 .user-name {

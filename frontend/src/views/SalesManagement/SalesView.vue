@@ -16,16 +16,16 @@ import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
-  IconCheckCircle,
+  IconArrowBackUp,
+  IconBan,
+  IconCircleCheck,
   IconEye,
   IconPlus,
   IconRefresh,
-  IconRotateLeft,
+  IconRestore,
   IconSearch,
   IconSettings,
-  IconStop,
-  IconUndo,
-} from '@arco-design/web-vue/es/icon'
+} from '@tabler/icons-vue'
 
 // —— constants ——
 const settlementOptions: { label: string; value: SettlementStatus }[] = [
@@ -340,7 +340,7 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>
@@ -468,7 +468,7 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
                 :loading="voidingId === (record as SalesOrderListItem).id"
               >
                 <template #icon>
-                  <IconStop />
+                  <IconBan />
                 </template>
                 作废
               </a-button>
@@ -487,8 +487,8 @@ async function onToggleSettlement(row: SalesOrderListItem): Promise<void> {
                 :loading="settlingId === (record as SalesOrderListItem).id"
               >
                 <template #icon>
-                  <IconUndo v-if="(record as SalesOrderListItem).settlementStatus === 1" />
-                  <IconCheckCircle v-else />
+                  <IconArrowBackUp v-if="(record as SalesOrderListItem).settlementStatus === 1" />
+                  <IconCircleCheck v-else />
                 </template>
                 {{ (record as SalesOrderListItem).settlementStatus === 1 ? '改回未收' : '标记已收' }}
               </a-button>

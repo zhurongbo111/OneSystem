@@ -9,14 +9,14 @@ import type { TableColumnData } from '@arco-design/web-vue'
 import {
   IconEdit,
   IconEye,
-  IconPlayCircle,
+  IconPlayerPlay,
   IconPlus,
-  IconPoweroff,
+  IconPower,
   IconRefresh,
-  IconRotateLeft,
+  IconRestore,
   IconSearch,
   IconSettings,
-} from '@arco-design/web-vue/es/icon'
+} from '@tabler/icons-vue'
 
 import ProductFormDrawer from './ProductFormDrawer.vue'
 
@@ -331,7 +331,7 @@ function formatAmount(v: number): string {
                 @click="onReset"
               >
                 <template #icon>
-                  <IconRotateLeft />
+                  <IconRestore />
                 </template>
                 重置
               </a-button>
@@ -462,8 +462,8 @@ function formatAmount(v: number): string {
                 :loading="togglingId === (record as Product).id"
               >
                 <template #icon>
-                  <IconPoweroff v-if="(record as Product).status === 1" />
-                  <IconPlayCircle v-else />
+                  <IconPower v-if="(record as Product).status === 1" />
+                  <IconPlayerPlay v-else />
                 </template>
                 {{ (record as Product).status === 1 ? '停用' : '启用' }}
               </a-button>
