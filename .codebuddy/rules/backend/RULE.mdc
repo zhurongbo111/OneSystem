@@ -7,7 +7,7 @@ enabled: true
 # 后端实现规则
 
 > 总则见根目录 `AGENTS.md`（SDD 工作流、API 契约、错误码、通用约定与测试门槛）；本文件只写后端专属实现约定，总则已规定的条款不重复列出（确需引用时标注章节，如 `AGENTS.md` §4.5）。
-> 开发功能前：先读 `specs/<feature>/` 规格（`AGENTS.md` §2.2），再按本文件实现。
+> 开发功能前：先读 `specs/<序号>-<feature>/` 规格（`AGENTS.md` §2.2），再按本文件实现。
 
 ## 1. 技术栈
 
@@ -109,7 +109,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 - 「数据规则」（长度 / 区间 / 正则 / 必填 / 可空）在代码侧**只在一处定义**：`App.Core/Entities/<实体>FieldConstraints.cs` 常量类。引用方必须使用该常量，**禁止硬编码字面量、禁止复制正则**：EF 配置（`HasMaxLength` / `IsRequired` / 索引等，在 `Persistence/Configurations/<实体>Configuration.cs`）与各用例 `RequestValidator` 均取常量。
 - **同一字段在不同用例中的规则必须同源**，禁止分叉（如登录 / 创建 / 重置的密码区间都取 `PasswordMinLength` / `PasswordMaxLength`）；无对应表列但仍属业务规则的（明文密码区间、查询关键词长度上限）同样收敛到该常量类。
-- **规格是事实源**：以 `specs/<feature>/design.md` 的「数据模型 / 表结构」约束表与校验规则表为准；改动顺序 `design.md` → 常量类 → EF 配置 → 各 Validator → 一致性单测，代码与规格必须始终一致。
+- **规格是事实源**：以 `specs/<序号>-<feature>/design.md` 的「数据模型 / 表结构」约束表与校验规则表为准；改动顺序 `design.md` → 常量类 → EF 配置 → 各 Validator → 一致性单测，代码与规格必须始终一致。
 - 单测至少覆盖：① EF 实际 `HasMaxLength` == 常量；② 同一字段在多个用例 Validator 中「边界值通过 / 越界拒绝」一致；③ 查询关键词长度上限 == 该查询**实际匹配列**的最大列长（按列 `Contains`，超列长不可能命中）——**跨域不照抄数值**，各域取值见对应 `design.md`。
 - 新增字段 / 修改约束时，上述五处缺一即视为未完成，不得勾选规格 `tasks.md` 中对应任务。
 

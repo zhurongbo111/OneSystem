@@ -52,7 +52,7 @@ test.describe('列表页样式参照（集成）', () => {
     await expect(totalText(page)).toHaveText(`共 ${TOTAL} 条`)
   })
 
-  test('搜索/重置按钮带图标（specs/list-showcase §2.2 筛选行）', async ({ page }) => {
+  test('搜索/重置按钮带图标（specs/006-list-showcase §2.2 筛选行）', async ({ page }) => {
     await goList(page)
     await expect(page.getByRole('button', { name: '搜索' }).locator('svg')).toHaveClass(/tabler-icon-search/)
     await expect(page.getByRole('button', { name: '重置' }).locator('svg')).toHaveClass(/tabler-icon-restore/)
@@ -134,7 +134,7 @@ test.describe('列表页样式参照（集成）', () => {
     await expect(firstRow.getByRole('button', { name: '删除' })).toHaveClass(/arco-btn-status-danger/)
   })
 
-  test('操作行：主操作（新增）靠左，与列设置/刷新同一行（specs/list-showcase §4 验收 13）', async ({ page }) => {
+  test('操作行：主操作（新增）靠左，与列设置/刷新同一行（specs/006-list-showcase §4 验收 13）', async ({ page }) => {
     await goList(page)
     const actions = page.locator('.toolbar-actions')
     const addBtn = actions.getByRole('button', { name: '新增' })

@@ -7,7 +7,7 @@ enabled: true
 # 前端实现规则
 
 > 总则见根目录 `AGENTS.md`（SDD 工作流、API 契约、错误码、通用约定与测试门槛）。本文件只写前端专属实现约定，总则已规定的条款不再重复列出；确需引用时标注章节（如 `AGENTS.md` §4.5 / §6）。
-> 开发功能前：先读 `specs/<feature>/` 规格（`AGENTS.md` §2.2），再按本文件实现。
+> 开发功能前：先读 `specs/<序号>-<feature>/` 规格（`AGENTS.md` §2.2），再按本文件实现。
 > 章节号 §4.5 / §4.6 / §4.7 / §5.2 / §5.5 是历史下沉后**保留的编号**（多份规格按此引用），非笔误，**勿重排**。
 
 ## 1. 技术栈
@@ -66,7 +66,7 @@ frontend/
 ### 4.5 组合式 API 分区书写规范（强制）
 
 > 目的：禁止随意位置写 `ref` / `computed` / `watch` / 函数，保证结构可预期。
-> **正文（11 分区顺序表、分区内顺序、分区注释、模板 ref 命名、composable 分区）见 `specs/composable-style/design.md` §0**；本节只留判据。
+> **正文（11 分区顺序表、分区内顺序、分区注释、模板 ref 命名、composable 分区）见 `specs/008-composable-style/design.md` §0**；本节只留判据。
 
 - 顶层声明必须按 §0 的固定分区顺序书写，**只允许缺省，不允许乱序或穿插**（组件 `<script setup>` 与 composable `composables/*.ts` 均适用，两者的分区序列见 §0）。
 - 模板 ref 命名一律 `xxxRef`（如 `formRef`）。
@@ -75,7 +75,7 @@ frontend/
 ### 4.6 按钮交互反馈（强制）
 
 > 目的：任何会发起请求的按钮，点击后必须**立即**给出 loading 反馈，且操作进行中不可重复触发。
-> **正文（状态命名与绑定表、实现要求、不置 loading 的情形）见 `specs/button-loading/design.md` §0**；本节只留判据。
+> **正文（状态命名与绑定表、实现要求、不置 loading 的情形）见 `specs/010-button-loading/design.md` §0**；本节只留判据。
 
 - loading 属于「操作」而非「按钮」：同一异步操作的所有触发入口（按钮 / 回车 / 分页器 / 行内按钮）共用同一个状态；不同操作各用独立状态，**禁止多个按钮共用一个 `loading`**。
 - 命名固定：查询类 `loading`、表单提交 `submitting`、弹窗确认 `xxSubmitting`、行内操作 `xxingId`、批量操作 `batchXxing`。
@@ -86,7 +86,7 @@ frontend/
 ### 4.7 图标选用（强制）
 
 > 项目并存三套图标库：Tabler（`@tabler/icons-vue`，业务默认）、Lucide（`@lucide/vue`）、Arco Design 自带图标（`@arco-design/web-vue` 的 `Icon*`）。
-> **正文（三套库用法、选型优先级表、来源注释、尺寸与线宽）见 `specs/icon-showcase/design.md` §0**（示例页 `/components` 图标 tab）；本节只留判据。
+> **正文（三套库用法、选型优先级表、来源注释、尺寸与线宽）见 `specs/018-icon-showcase/design.md` §0**（示例页 `/components` 图标 tab）；本节只留判据。
 
 - 选型按业务语义逐级回退：Tabler（首选）→ Lucide（Tabler 无对应语义时）→ Arco 自带 `Icon*`（兜底），**禁止反向选择**（不得因偏好跳过 Tabler），不得为凑图标使用语义不符的图标。
 - Arco 组件的 `#icon` 插槽（含 §5.2 操作列固定图标）**同样优先 Tabler**；用 Lucide / Arco 时在 import 处加来源注释。
@@ -94,7 +94,7 @@ frontend/
 
 ## 5. 列表页约定
 
-> **正文（页面布局、表格配置、列宽策略、交互模式）见 `specs/list-showcase/design.md` §0**；本节只留判据。参照实现：`src/views/Showcase/ListShowcaseView.vue`。
+> **正文（页面布局、表格配置、列宽策略、交互模式）见 `specs/006-list-showcase/design.md` §0**；本节只留判据。参照实现：`src/views/Showcase/ListShowcaseView.vue`。
 
 - 所有表格类列表页以参照实现为准：新增列表页先复制其结构与交互模式，再替换业务字段。
 - 页面头**仅放标题**，不放任何创建按钮；操作按钮统一并入表格卡片上方的工具条（筛选行 + 操作行；主操作靠左，数据 / 视图操作靠右，组间竖 `a-divider`）。
@@ -106,7 +106,7 @@ frontend/
 ### 5.2 操作列约定（强制）
 
 > 适用范围：所有表格类列表页的操作列；工具条（页面级操作行）不适用。
-> **正文（数量阈值与列宽参考、颜色映射表、图标映射表、密度样式、二次确认、固定显示、按钮顺序）见 `specs/action-column/design.md` §0**；本节只留判据。
+> **正文（数量阈值与列宽参考、颜色映射表、图标映射表、密度样式、二次确认、固定显示、按钮顺序）见 `specs/011-action-column/design.md` §0**；本节只留判据。
 
 - 操作数 > 3 时保留前 3 个平铺，其余收纳进行内「更多」下拉；「更多」触发按钮恒在末尾。
 - 行内按钮一律 `type="text" size="small"`；颜色按操作语义固定（映射表见 §0）——警示 / 危险 / 完成各用对应 `status`，撤销类用次要色（`.action-btn-secondary`，**不用** `type="secondary"`），其余默认。
@@ -117,7 +117,7 @@ frontend/
 
 ## 5.5 表单页与详情页约定（列表的配套交互）
 
-> 参照实现与**正文（形态选择表及字段数阈值、页面职责）**见 `specs/form-detail-showcase/design.md` §0；本节只留判据。
+> 参照实现与**正文（形态选择表及字段数阈值、页面职责）**见 `specs/007-form-detail-showcase/design.md` §0；本节只留判据。
 
 - 形态按 §0 的字段数阈值选择：字段少且单屏可容纳用抽屉，字段多 / 多分组 / 含子表格用独立页面；弹窗仅用于确认类轻交互（不承载业务表单）；详情页一律独立页面。
 - **详情页与表单页不共享组件**（仅共享数据模型 TS 类型）；字段极少的简单实体例外：详情复用表单的 disabled 态。
@@ -155,5 +155,5 @@ frontend/
 
 - e2e 测试策略与强制门槛见 `AGENTS.md` §6；此处只列本仓库的运行细则。
 - 用例与配置：`frontend/e2e/*.spec.ts` + `playwright.config.ts`。
-- 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名 kebab-case 且与 `specs/<feature>/`、路由同域（§4.1）；**新增一律按此命名**。例外仅限本约定落地前已存在的文件，清单见 `.codebuddy/CONTEXT.md` §3，**不得新增例外**。
+- 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名 kebab-case 且与 `specs/<序号>-<feature>/`、路由同域（§4.1）；**新增一律按此命名**。例外仅限本约定落地前已存在的文件，清单见 `.codebuddy/CONTEXT.md` §3，**不得新增例外**。
 - 运行：需先起后端 dev（5080）与前端 dev（5173），再跑 `npm run test:e2e`；命令与端口见 `.codebuddy/CONTEXT.md` §4（不在本文件重复）。

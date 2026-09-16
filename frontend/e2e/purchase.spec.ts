@@ -128,7 +128,7 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   await page.getByPlaceholder('2-32 位字母、数字、下划线或连字符').fill(code)
   await page.getByPlaceholder('2-50 字符').fill(name)
   await page.getByPlaceholder('如：个 / 箱 / 斤').fill('个')
-  // 就地行内新建分类（specs/erp-category：抽屉内联输入条 + 保存）
+  // 就地行内新建分类（specs/017-erp-category：抽屉内联输入条 + 保存）
   await page.getByRole('button', { name: '新建分类' }).click()
   const catInput = page.getByPlaceholder(CATEGORY_PLACEHOLDER)
   await expect(catInput).toBeVisible()
@@ -200,7 +200,7 @@ async function createPurchaseOrder(
 }
 
 test.describe('采购入库（列表）', () => {
-  test('列设置可隐藏 / 恢复列，序号与操作列固定显示（specs/action-column §5）', async ({ page }) => {
+  test('列设置可隐藏 / 恢复列，序号与操作列固定显示（specs/011-action-column §5）', async ({ page }) => {
     await goPurchases(page)
     await expect(page.getByRole('columnheader', { name: '创建时间' })).toBeVisible()
 
@@ -272,7 +272,7 @@ test.describe('采购入库（集成）', () => {
     await expect(row.getByRole('button', { name: '详情' }).locator('svg')).toHaveCount(1)
     await expect(row.getByRole('button', { name: '作废' }).locator('svg')).toHaveCount(1)
     await expect(row.getByRole('button', { name: '标记已结算' }).locator('svg')).toHaveCount(1)
-    // 按钮顺序：详情 → 标记已结算 → 作废（specs/action-column §5.1 主操作 → 中性 → 完成 → 警示 → 危险）
+    // 按钮顺序：详情 → 标记已结算 → 作废（specs/011-action-column §5.1 主操作 → 中性 → 完成 → 警示 → 危险）
     const rowActions = row.locator('td.action-cell button')
     await expect(rowActions).toHaveCount(3)
     await expect(rowActions.nth(0)).toHaveText(/详情/)
