@@ -24,37 +24,37 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'components',
         name: 'components',
-        component: () => import('@/views/ComponentShowcaseView.vue'),
+        component: () => import('@/views/Showcase/ComponentShowcaseView.vue'),
         meta: { public: true },
       },
       {
         path: 'list',
         name: 'list',
-        component: () => import('@/views/ListShowcaseView.vue'),
+        component: () => import('@/views/Showcase/ListShowcaseView.vue'),
         meta: { requiresAuth: true },
       },
       {
         path: 'form',
         name: 'form',
-        component: () => import('@/views/FormShowcaseView.vue'),
+        component: () => import('@/views/Showcase/FormShowcaseView.vue'),
         meta: { requiresAuth: true },
       },
       {
         path: 'form/new',
         name: 'formNew',
-        component: () => import('@/views/FormPageFormView.vue'),
+        component: () => import('@/views/Showcase/FormPageFormView.vue'),
         meta: { requiresAuth: true },
       },
       {
         path: 'form/edit/:id',
         name: 'formEdit',
-        component: () => import('@/views/FormPageFormView.vue'),
+        component: () => import('@/views/Showcase/FormPageFormView.vue'),
         meta: { requiresAuth: true },
       },
       {
         path: 'form/detail/:id',
         name: 'formDetail',
-        component: () => import('@/views/FormDetailView.vue'),
+        component: () => import('@/views/Showcase/FormDetailView.vue'),
         meta: { requiresAuth: true },
       },
       {
@@ -84,7 +84,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'categories',
         name: 'categories',
-        component: () => import('@/views/ProductManagement/CategoriesView.vue'),
+        component: () => import('@/views/CategoryManagement/CategoriesView.vue'),
         meta: { requiresAuth: true },
       },
       {
@@ -126,13 +126,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'sales/new',
         name: 'salesNew',
-        component: () => import('@/views/SalesManagement/SalesFormPage.vue'),
+        component: () => import('@/views/SalesManagement/SaleFormPage.vue'),
         meta: { requiresAuth: true },
       },
       {
         path: 'sales/detail/:id',
         name: 'salesDetail',
-        component: () => import('@/views/SalesManagement/SalesDetailView.vue'),
+        component: () => import('@/views/SalesManagement/SaleDetailView.vue'),
         meta: { requiresAuth: true },
       },
     ],

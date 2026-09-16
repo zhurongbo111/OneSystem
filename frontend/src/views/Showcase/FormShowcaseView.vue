@@ -10,10 +10,11 @@ import {
   useOrderData,
   type OrderRow,
 } from '@/composables/useOrderStore'
-import OrderFormDrawer from '@/views/FormShowcase/components/OrderFormDrawer.vue'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { IconPlus, IconRestore, IconSearch } from '@tabler/icons-vue'
+
+import OrderFormDrawer from './OrderFormDrawer.vue'
 
 // —— constants ——
 const columns: TableColumnData[] = [
