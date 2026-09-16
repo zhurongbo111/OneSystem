@@ -17,6 +17,7 @@
 ```
 backend/
 ├── App.sln
+├── .editorconfig     # C# 格式与代码风格（唯一事实源，后端规则 §2 引用）
 ├── src/
 │   ├── App.Api/          # 入口与 Web 层
 │   │   ├── Program.cs

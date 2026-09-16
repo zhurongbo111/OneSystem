@@ -17,11 +17,15 @@ enabled: true
 
 ## 2. 编码约定
 
-- 遵循 C# 语言规范：4 空格缩进、Allman 大括号、文件内 `using` 排序（System 在前）。
-- 命名：类 / 方法 / 属性 PascalCase，私有字段 `_camelCase`，接口以 `I` 开头。
+> **C# 的格式与代码风格以 `backend/.editorconfig` 为唯一事实源**（缩进 4 空格 / CRLF / 大括号与换行、`using` 排序与分组（System 在前、组间空行）、命名规则：接口 `I` 前缀、类型 / 方法 / 属性 PascalCase、私有只读字段 `_camelCase`、参数 camelCase，以及 IDE / CA 分析器 severity）。本文件不重复其条目；调整风格只改 `.editorconfig`，不在本文件另写一套。
+> - 生效范围：`CA*`（代码质量）规则随 `dotnet build` 生效；`IDE*`（代码风格）规则需 IDE 支持，或在项目开启 `EnforceCodeStyleInBuild` 后才随构建生效——**当前未开启**，故 IDE 风格规则以 IDE 提示 + code review 为准（若改为构建强制，须同步本节说明）。
+> - `backend/.editorconfig` 为 `root = true`，仅作用于 `backend/` 下的 C# 文件；`Migrations/*.cs` 标记为 `generated_code`，不参与风格 / 质量分析。
+
+本规则只写 `.editorconfig` 无法表达的工程约定：
+
 - 对外模型与实体分离：接口入参用 `Request`、出参用 `Response` / 共享出参模型，禁止直接返回 EF 实体。
 - 异步优先：IO 相关方法使用 `async/await`，禁止同步阻塞（`.Result` / `.Wait()`）。
-- 可空引用类型启用；公共类型与公共方法写 XML 文档注释（中文）。
+- 可空引用类型启用（各 `*.csproj` 已设 `<Nullable>enable</Nullable>`）；公共类型与公共方法写 XML 文档注释（中文）。
 
 ## 3. 项目结构
 
@@ -144,7 +148,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ## 8. 环境配置
 
-- 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod）；实现上通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分，`appsettings` 只放非敏感默认值与非生产凭据（dev 允许连接串明文，例外范围见 `AGENTS.md` §7）；代码内一律禁止硬编码凭据。
+- 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod）；实现上通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分，`appsettings` 只放非敏感默认值与非生产凭据（dev 允许连接串明文）；代码内一律禁止硬编码凭据。
 - 后端敏感项清单：数据库连接串、JWT 密钥、OTel 导出端点。
 
 ## 9. 测试
@@ -153,4 +157,5 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - 仓储与用例测试**优先用行为型假实现**（参照 `PurchaseOrderTestDoubles` / `SalesOrderTestDoubles` 及其生命周期测试）；EF Core InMemory 提供程序仅用于不依赖关系型特性的简单读场景。
 - **InMemory 限制（强制）**：InMemory **不支持 `ExecuteUpdateAsync` / 行锁等关系型特性**，依赖这类写操作的仓储与生命周期测试必须用行为型假实现规避。
 - 测试命名：`{类名}_{方法名}_{场景}`；RequestHandler 的公共方法必须有对应单测。
+- 测试工程对 `CA2000`（对象所有权）采用**汇编级抑制**（`tests/App.Tests/GlobalSuppressions.cs`）：`DbContext` / `UnitOfWork` 在测试中由用例或 fixture 创建并跨调用复用，逐个 `using` 会破坏测试语义；`src/` 仍保持 `error`，**不要删除该抑制文件**。
 - **测试用例要求（强制）**：凡涉及后端改动的功能，交付前必须为改动新增 / 变更的业务逻辑补充正常分支 + 异常分支的测试用例；无对应测试用例视为未完成，不得勾选规格 `tasks.md` 中对应任务。
