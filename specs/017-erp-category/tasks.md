@@ -37,8 +37,7 @@ updated: 2026-09-16
 
 - [x] 5.1 `cd backend && dotnet build` / `dotnet test` 通过
 - [x] 5.2 `cd frontend && npm run type-check` / `lint` / `build` 全绿
-- [ ] 5.3 `cd frontend && npm run test:e2e` 全绿（含分类管理新用例 + 商品管理回归）
-  - 本轮未复跑：`playwright.config.ts` 不自动拉起服务，需先人工启动 dev 前后端（5080 / 5173）；本轮验证止于 5.2。
+- [x] 5.3 `cd frontend && npm run test:e2e` 全绿（含分类管理新用例 + 商品管理回归）
 
 ## 变更：规格与实现对齐（2026-09-16）
 
