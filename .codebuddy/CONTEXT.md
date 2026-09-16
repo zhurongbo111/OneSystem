@@ -129,6 +129,9 @@ frontend/
 - 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
 - 业务：`009-user-management`
 - ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`
+- ERP 扩展路线（规划中，**未实现**）：`019-erp-stock-movement`、`020-erp-stock-take`（规格已起草）；后续批次见 `specs/ROADMAP.md`
+
+`specs/ROADMAP.md` 是 ERP 功能组的**路线索引**（单文件，非 spec 目录、无三件套）：记录批次、序号、依赖与状态，并写明跨功能前置决策（多仓 / 结算 / 权限等）。接续 ERP 功能前先读它，再进具体规格。
 
 **交互约定「改动类型 → 规格 §0 正文」对照表**（前端规则 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 只留判据，正文在下列 §0；**新增交互约定只更新本表，不改规则**）：
 
