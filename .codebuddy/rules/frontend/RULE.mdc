@@ -36,6 +36,20 @@ frontend/
     └── views/       # 页面级组件（按功能域分目录，见 §4.1）
 ```
 
+### 2.1 实现前最小读取集（强制）
+
+> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；本节只列**前端侧**的端内固定集合同样**禁止为"了解项目"做目录级遍历或全仓搜索**。
+
+1. **本次要改动的页面所在域**：只读本域目录（`views/<Domain>/`），不读其他域。同域既有同类文件即参照：列表页看 `<Entities>View.vue`，表单看同域 `<Entity>FormDrawer.vue` / `<Entity>FormPage.vue`，详情看 `<Entity>DetailView.vue`。
+2. **跨域通用参照（按需读，不预读）**：
+   - 列表页 / 工具条 / 操作列 → `views/Showcase/ListShowcaseView.vue`（标准参照实现）；
+   - 表单与详情形态 → `views/Showcase/FormShowcaseView.vue`、`OrderFormDrawer.vue`、`FormPageFormView.vue`、`FormDetailView.vue`；
+   - 接口层写法 → `api/request.ts`（统一解包与 40100 处置）+ 本次要用的 `api/<entity>.ts`；
+   - 路由 / 菜单 → `router/index.ts`、`components/AppLayout.vue`（仅新增页面或菜单项时读）。
+3. **对应规格（按改动类型选读，不全部读）**：列表页 → `specs/list-showcase/` + `specs/action-column/`；按钮 loading → `specs/button-loading/`；表单 / 详情 → `specs/form-detail-showcase/`；组合式分区 → `specs/composable-style/`；图标 → `specs/icon-showcase/`。
+4. **e2e**：只读同域 `e2e/<域>.spec.ts`，必要时读 `e2e/helpers/`；不通读全部用例。
+5. **禁止**：遍历 `views/` / `components/` 全目录；读与本功能无关的功能域文件；为"参考风格"通读 `src/` 全量文件。
+
 ## 3. 接口层
 
 - 所有接口请求集中在 `src/api/`，按业务域拆分文件（如 `user.ts`）。
