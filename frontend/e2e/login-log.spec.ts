@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { clickMenuItem } from './helpers/menu'
+
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
@@ -16,7 +18,7 @@ async function login(page: Page): Promise<void> {
 /** 登录并经侧边菜单进入登录日志页 */
 async function goLoginLogs(page: Page): Promise<void> {
   await login(page)
-  await page.locator('.arco-menu-item', { hasText: '登录日志' }).click()
+  await clickMenuItem(page, '登录日志')
   await expect(page).toHaveURL(/\/login-logs$/)
 }
 
