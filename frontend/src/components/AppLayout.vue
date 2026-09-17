@@ -21,6 +21,7 @@ import {
   IconStack2,
   IconTags,
   IconTruckDelivery,
+  IconTruckReturn,
   IconUser,
   IconUsers,
 } from '@tabler/icons-vue'
@@ -38,6 +39,7 @@ const MENU_ROUTE_MAP: Record<string, string> = {
   purchaseDetail: 'purchases',
   purchaseReturnDetail: 'purchaseReturns',
   salesDetail: 'sales',
+  saleReturnDetail: 'salesReturns',
 }
 
 /** 菜单选中项：与当前路由名联动（单一数据源） */
@@ -56,7 +58,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'sales', 'salesNew']
+const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail']
 
 // —— reactive state ——
 
@@ -235,6 +237,12 @@ function onLogout(): void {
               <IconReceipt />
             </template>
             <span>销售开单</span>
+          </a-menu-item>
+          <a-menu-item key="salesReturns">
+            <template #icon>
+              <IconTruckReturn />
+            </template>
+            <span>销售退货</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>

@@ -26,6 +26,8 @@ const MOVEMENT_TYPE_META: Record<StockMovementType, { label: string; color: stri
   6: { label: '盘点调整', color: 'gold' },
   7: { label: '采购退货', color: 'orangered' },
   8: { label: '采购退货作废', color: 'magenta' },
+  9: { label: '销售退货', color: 'cyan' },
+  10: { label: '销售退货作废', color: 'pinkpurple' },
 }
 
 /** 类型下拉选项（取 §0 文案） */

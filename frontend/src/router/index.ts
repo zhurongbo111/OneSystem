@@ -177,6 +177,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/SalesManagement/SaleDetailView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'sales-returns',
+        name: 'salesReturns',
+        component: () => import('@/views/SalesReturnManagement/SalesReturnsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'sales-returns/new',
+        name: 'saleReturnNew',
+        component: () => import('@/views/SalesReturnManagement/SalesReturnFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'sales-returns/detail/:id',
+        name: 'saleReturnDetail',
+        component: () => import('@/views/SalesReturnManagement/SalesReturnDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {
