@@ -403,7 +403,7 @@ async function onToggleSettlement(row: PurchaseOrderListItem): Promise<void> {
       <a-table
         :key="tableKey"
         row-key="id"
-        :row-class-name="rowClassName"
+        :row-class="rowClassName"
         :loading="loading"
         :columns="columns"
         :data="items"
