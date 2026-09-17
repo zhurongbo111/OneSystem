@@ -169,11 +169,12 @@ async function onCreateCategory(): Promise<void> {
   categorySubmitting.value = true
   try {
     const created = await createCategory(name)
+    // 先落选中值再刷新下拉：刷新耗时（分类量大时渲染 1000+ 选项）或刷新失败都不应丢掉已选中的新分类
+    form.categoryId = created.id
     Message.success('分类已创建')
     newCategoryVisible.value = false
     newCategoryName.value = ''
     await loadCategories()
-    form.categoryId = created.id
   } catch {
     // 错误提示已由请求层统一处理（重名 40105）
   } finally {
