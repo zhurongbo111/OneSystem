@@ -8,6 +8,7 @@ updated: 2026-09-17
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase`（单据域模板）为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > **本规格改造既有单据的结算语义**：`015` / `016` / `021` / `022` 的 `SettlementStatus` 与手工切换接口在本规格落地时一并替换（等价于 `specs/ROADMAP.md` §4.3 预留的迁移路径），各规格需留演进注记。
+> **演进（erp-order-flow）**：本规格核销的两类单据已随 `specs/024-erp-order-flow/` 重命名——`PurchaseOrders` → `PurchaseReceipts`、`SalesOrders` → `SalesShipments`（主表单号列 `OrderNo` → `ReceiptNo` / `ShipmentNo`），接口路径 `/api/purchase-orders` → `/api/purchase-receipts`、`/api/sales-orders` → `/api/sales-shipments`；跨仓储累加的目标仓储随之改名（`IPurchaseReceiptRepository` / `ISalesShipmentRepository`）。`SettlementOrderType`（`PurchaseInbound` / `SalesOutbound`）取值与结算 / 核销语义不变。
 
 ## 0. 结算口径约定（唯一事实源）
 
