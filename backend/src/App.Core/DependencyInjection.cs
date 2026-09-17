@@ -30,6 +30,12 @@ using App.Core.Features.Purchases.GetPurchaseOrderById;
 using App.Core.Features.Purchases.GetPurchaseOrders;
 using App.Core.Features.Purchases.UpdatePurchaseOrderSettlement;
 using App.Core.Features.Purchases.VoidPurchaseOrder;
+using App.Core.Features.PurchaseReturns;
+using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
+using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
+using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
+using App.Core.Features.PurchaseReturns.UpdatePurchaseReturnSettlement;
+using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
 using App.Core.Features.Sales;
 using App.Core.Features.Sales.CreateSalesOrder;
 using App.Core.Features.Sales.GetSalesOrderById;
@@ -125,6 +131,13 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidPurchaseOrderRequest, PurchaseOrderDetailDto>, VoidPurchaseOrderRequestHandler>();
         services.AddScoped<IRequestHandler<UpdatePurchaseOrderSettlementRequest, PurchaseOrderDetailDto>, UpdatePurchaseOrderSettlementRequestHandler>();
 
+        // 采购退货用例（erp-purchase-return）
+        services.AddScoped<IRequestHandler<GetPurchaseReturnsRequest, PagedResult<PurchaseReturnListItemDto>>, GetPurchaseReturnsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetPurchaseReturnByIdRequest, PurchaseReturnDetailDto>, GetPurchaseReturnByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreatePurchaseReturnRequest, PurchaseReturnDetailDto>, CreatePurchaseReturnRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidPurchaseReturnRequest, PurchaseReturnDetailDto>, VoidPurchaseReturnRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdatePurchaseReturnSettlementRequest, PurchaseReturnDetailDto>, UpdatePurchaseReturnSettlementRequestHandler>();
+
         // 销售管理用例（erp-sale）
         services.AddScoped<IRequestHandler<GetSalesOrdersRequest, PagedResult<SalesOrderListItemDto>>, GetSalesOrdersRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesOrderByIdRequest, SalesOrderDetailDto>, GetSalesOrderByIdRequestHandler>();
@@ -163,6 +176,9 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetPurchaseOrdersRequest>, GetPurchaseOrdersRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseOrderRequest>, CreatePurchaseOrderRequestValidator>();
         services.AddScoped<IValidator<UpdatePurchaseOrderSettlementRequest>, UpdatePurchaseOrderSettlementRequestValidator>();
+        services.AddScoped<IValidator<GetPurchaseReturnsRequest>, GetPurchaseReturnsRequestValidator>();
+        services.AddScoped<IValidator<CreatePurchaseReturnRequest>, CreatePurchaseReturnRequestValidator>();
+        services.AddScoped<IValidator<UpdatePurchaseReturnSettlementRequest>, UpdatePurchaseReturnSettlementRequestValidator>();
         services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
         services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
         services.AddScoped<IValidator<UpdateSalesOrderSettlementRequest>, UpdateSalesOrderSettlementRequestValidator>();

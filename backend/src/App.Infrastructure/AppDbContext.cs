@@ -47,6 +47,12 @@ public class AppDbContext : DbContext
     /// <summary>销售单明细表</summary>
     public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
 
+    /// <summary>采购退货单表</summary>
+    public DbSet<PurchaseReturn> PurchaseReturns => Set<PurchaseReturn>();
+
+    /// <summary>采购退货单明细表</summary>
+    public DbSet<PurchaseReturnItem> PurchaseReturnItems => Set<PurchaseReturnItem>();
+
     /// <summary>库存变动流水表（纯追加）</summary>
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
