@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # 设计规格：收付款与应收应付（erp-settlement）
