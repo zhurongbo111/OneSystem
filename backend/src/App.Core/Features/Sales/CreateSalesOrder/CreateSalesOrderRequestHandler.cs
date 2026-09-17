@@ -24,6 +24,7 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
 
@@ -35,6 +36,7 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
+        IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser)
     {
@@ -42,6 +44,7 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
+        _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
     }
@@ -162,6 +165,23 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
                 }
 
                 await _salesOrderRepository.AddAsync(order, items, cancellationToken);
+
+                // 库存流水：销售出库，与库存扣减同事务（逐行 TryDecrementAsync 已全部成功后才走到这里）
+                foreach (var item in items)
+                {
+                    await _stockMovementRepository.AppendAsync(new StockMovement
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = item.ProductId,
+                        MovementType = StockMovementType.SalesOutbound,
+                        Quantity = -item.Quantity,
+                        SourceId = order.Id,
+                        SourceNo = orderNo,
+                        CreatedAt = now,
+                        CreatedBy = operatorId,
+                    }, cancellationToken);
+                }
+
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 var (createdOrder, createdItems) = await _salesOrderRepository.GetDetailAsync(order.Id, cancellationToken);

@@ -47,6 +47,9 @@ public class AppDbContext : DbContext
     /// <summary>销售单明细表</summary>
     public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
 
+    /// <summary>库存变动流水表（纯追加）</summary>
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

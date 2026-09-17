@@ -22,6 +22,7 @@ public sealed class CreatePurchaseOrderRequestHandler : IRequestHandler<CreatePu
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
 
@@ -33,6 +34,7 @@ public sealed class CreatePurchaseOrderRequestHandler : IRequestHandler<CreatePu
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
+        IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser)
     {
@@ -40,6 +42,7 @@ public sealed class CreatePurchaseOrderRequestHandler : IRequestHandler<CreatePu
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
+        _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
     }
@@ -150,6 +153,19 @@ public sealed class CreatePurchaseOrderRequestHandler : IRequestHandler<CreatePu
                 {
                     // 采购入库：库存 += 数量（同事务，回冲在作废用例执行）
                     await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
+
+                    // 库存流水：与库存增减同事务，1:1 追加（erp-stock-movement design §3.7）
+                    await _stockMovementRepository.AppendAsync(new StockMovement
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = item.ProductId,
+                        MovementType = StockMovementType.PurchaseInbound,
+                        Quantity = item.Quantity,
+                        SourceId = order.Id,
+                        SourceNo = orderNo,
+                        CreatedAt = now,
+                        CreatedBy = operatorId,
+                    }, cancellationToken);
                 }
 
                 await _unitOfWork.CommitAsync(cancellationToken);

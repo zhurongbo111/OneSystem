@@ -13,6 +13,7 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
 {
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
 
@@ -22,11 +23,13 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
     public VoidPurchaseOrderRequestHandler(
         IPurchaseOrderRepository purchaseOrderRepository,
         IInventoryRepository inventoryRepository,
+        IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
         _inventoryRepository = inventoryRepository;
+        _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
     }
@@ -50,6 +53,9 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
         }
 
+        var now = DateTimeOffset.UtcNow;
+        var operatorId = _currentUser.UserId();
+
         // 状态流转判定在 Handler（design.md §3.4）：回冲与状态变更同一事务
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
@@ -58,9 +64,22 @@ public sealed class VoidPurchaseOrderRequestHandler : IRequestHandler<VoidPurcha
             foreach (var item in items)
             {
                 await _inventoryRepository.IncrementAsync(item.ProductId, -item.Quantity, cancellationToken);
+
+                // 库存流水：采购作废回冲，与库存增减同事务（erp-stock-movement design §3.7）
+                await _stockMovementRepository.AppendAsync(new StockMovement
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = item.ProductId,
+                    MovementType = StockMovementType.PurchaseVoid,
+                    Quantity = -item.Quantity,
+                    SourceId = order.Id,
+                    SourceNo = order.OrderNo,
+                    CreatedAt = now,
+                    CreatedBy = operatorId,
+                }, cancellationToken);
             }
 
-            await _purchaseOrderRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, _currentUser.UserId(), cancellationToken);
+            await _purchaseOrderRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, operatorId, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

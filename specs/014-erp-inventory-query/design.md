@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # 设计规格：库存查询（erp-inventory-query）
@@ -109,6 +109,8 @@ src/
 - 表格列：序号、编码、名称、分类、单位、**当前库存**（低于阈值标红 + `a-tag warning`「低于安全库存」）、安全阈值、最近变动时间；按编码升序（后端排序）；服务端分页；**操作列无**（纯只读）。
 - 库存为 0 且阈值 > 0 的行同样标红提醒（缺货可见）。
 
+> **演进（erp-stock-movement）**：操作列从无 → 新增 1 个只读「流水」按钮（Tabler `IconListDetails`）→ 库存流水页（路由 `stock-movements`）并带 `productId` 预置筛选。库存写入仍只由单据 / 盘点驱动，新增入口仅为只读下钻，不开放手工改库存；现行为准见 `specs/019-erp-stock-movement/` §4.4。
+
 ### 4.5 按钮 loading（遵循前端规则 §4.6）
 
 | 操作 | 状态 | 绑定 |
@@ -124,6 +126,8 @@ src/
 | 低库存判定在 Handler | `safetyStock > 0 && stockQuantity < safetyStock` | 与 erp-product 商品列表逻辑一致（同源同规则，防分叉）；阈值为 0 不提醒 |
 | 编码升序固定排序 | 后端 `ORDER BY Code` | 库存盘点习惯按编码定位，不允许前端自定义排序（MVP 最简） |
 | 纯只读无操作列 | 不提供行内操作 | 库存写入统一由单据驱动，杜绝手工改库存绕过单据审计 |
+
+> 演进注记：`erp-stock-movement`（`specs/019-erp-stock-movement/`）已为库存页新增只读「流水」下钻入口，本行决策修订为「无写操作、允许只读下钻」，其余不变。
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
 

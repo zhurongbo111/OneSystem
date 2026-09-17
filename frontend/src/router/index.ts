@@ -100,6 +100,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'stock-movements',
+        name: 'stockMovements',
+        component: () => import('@/views/StockMovementManagement/StockMovementsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'purchases',
         name: 'purchases',
         component: () => import('@/views/PurchaseManagement/PurchasesView.vue'),

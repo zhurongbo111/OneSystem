@@ -1,0 +1,43 @@
+using App.Core.Entities;
+
+namespace App.Core.Abstractions;
+
+/// <summary>
+/// 库存流水列表项读模型（联查 Products / Users 带出，不暴露实体）。
+/// 商品编码 / 名称 / 单位与操作人姓名为联查快照，无匹配用户或操作人为空时 CreatedByName 为 null。
+/// </summary>
+public sealed record StockMovementItem
+{
+    /// <summary>流水 ID</summary>
+    public required Guid Id { get; init; }
+
+    /// <summary>商品 ID</summary>
+    public required Guid ProductId { get; init; }
+
+    /// <summary>商品编码（联查 Products 带出）</summary>
+    public required string ProductCode { get; init; }
+
+    /// <summary>商品名称（联查 Products 带出）</summary>
+    public required string ProductName { get; init; }
+
+    /// <summary>计量单位（联查 Products 带出）</summary>
+    public required string Unit { get; init; }
+
+    /// <summary>变动类型</summary>
+    public required StockMovementType MovementType { get; init; }
+
+    /// <summary>变动量（带符号：入库 / 回增为正，出库 / 回冲为负）</summary>
+    public required int Quantity { get; init; }
+
+    /// <summary>来源单据号（无来源单据时为 null）</summary>
+    public string? SourceNo { get; init; }
+
+    /// <summary>备注（预留展示位，本期无写入来源）</summary>
+    public string? Remark { get; init; }
+
+    /// <summary>变动时间</summary>
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    /// <summary>操作人姓名（Users.DisplayName 联查带出；CreatedBy 为空或无匹配用户时为 null）</summary>
+    public string? CreatedByName { get; init; }
+}

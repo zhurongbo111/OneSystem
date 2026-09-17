@@ -36,6 +36,8 @@ using App.Core.Features.Sales.GetSalesOrderById;
 using App.Core.Features.Sales.GetSalesOrders;
 using App.Core.Features.Sales.UpdateSalesOrderSettlement;
 using App.Core.Features.Sales.VoidSalesOrder;
+using App.Core.Features.StockMovements;
+using App.Core.Features.StockMovements.GetStockMovements;
 using App.Core.Features.Users;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.GetCurrentUser;
@@ -125,6 +127,9 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidSalesOrderRequest, SalesOrderDetailDto>, VoidSalesOrderRequestHandler>();
         services.AddScoped<IRequestHandler<UpdateSalesOrderSettlementRequest, SalesOrderDetailDto>, UpdateSalesOrderSettlementRequestHandler>();
 
+        // 库存流水用例（erp-stock-movement）
+        services.AddScoped<IRequestHandler<GetStockMovementsRequest, PagedResult<StockMovementListItemDto>>, GetStockMovementsRequestHandler>();
+
         // 格式校验器（FluentValidation）：校验规则集中在对应用例目录；无校验器的用例（如按 id 详情）不注册
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<GetUsersRequest>, GetUsersRequestValidator>();
@@ -150,6 +155,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
         services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
         services.AddScoped<IValidator<UpdateSalesOrderSettlementRequest>, UpdateSalesOrderSettlementRequestValidator>();
+        services.AddScoped<IValidator<GetStockMovementsRequest>, GetStockMovementsRequestValidator>();
 
         return services;
     }
