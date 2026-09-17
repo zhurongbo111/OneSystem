@@ -24,4 +24,10 @@ public enum StockMovementType
 
     /// <summary>盘点调整（增减，erp-stock-take）</summary>
     StockTakeAdjust = 6,
+
+    /// <summary>采购退货（减少，erp-purchase-return）</summary>
+    PurchaseReturnOut = 7,
+
+    /// <summary>采购退货作废（增加，erp-purchase-return）</summary>
+    PurchaseReturnVoid = 8,
 }

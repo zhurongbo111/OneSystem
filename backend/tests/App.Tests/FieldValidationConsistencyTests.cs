@@ -1,6 +1,8 @@
 using App.Core.Entities;
 using App.Core.Features.Auth.Login;
 using App.Core.Features.LoginLogs.GetLoginLogs;
+using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
+using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.Purchases.CreatePurchaseOrder;
 using App.Core.Features.Purchases.GetPurchaseOrders;
 using App.Core.Features.Sales.CreateSalesOrder;
@@ -370,6 +372,85 @@ public class FieldValidationConsistencyTests
             .Validate(new GetStockTakesRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
         Assert.False(new GetStockTakesRequestValidator()
             .Validate(new GetStockTakesRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
+    // ============================== 采购退货单字段约束（与采购 / 销售同组常量，保证同规格）==============================
+
+    [Fact]
+    public void EF模型_PurchaseReturns表ReturnNo列长度_应等于字段约束常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<PurchaseReturn>(dbContext, nameof(PurchaseReturn.ReturnNo)));
+        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<PurchaseReturn>(dbContext, nameof(PurchaseReturn.Remark)));
+    }
+
+    [Fact]
+    public void EF模型_PurchaseReturnItems表快照列长度_应等于商品域常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        // 名称 / 单位为开单时快照，列长取自商品档案（同一规则同源）
+        Assert.Equal(ProductFieldConstraints.NameMaxLength, GetMaxLength<PurchaseReturnItem>(dbContext, nameof(PurchaseReturnItem.ProductName)));
+        Assert.Equal(ProductFieldConstraints.UnitMaxLength, GetMaxLength<PurchaseReturnItem>(dbContext, nameof(PurchaseReturnItem.Unit)));
+    }
+
+    [Fact]
+    public void 采购退货单明细数量_边界值应通过且超界拒绝()
+    {
+        var validator = new CreatePurchaseReturnRequestValidator();
+
+        Assert.True(ValidatePurchaseReturn(validator, quantity: ProductFieldConstraints.QuantityMinValue));
+        Assert.True(ValidatePurchaseReturn(validator, quantity: ProductFieldConstraints.QuantityMaxValue));
+        Assert.False(ValidatePurchaseReturn(validator, quantity: ProductFieldConstraints.QuantityMinValue - 1));
+        Assert.False(ValidatePurchaseReturn(validator, quantity: ProductFieldConstraints.QuantityMaxValue + 1));
+    }
+
+    [Fact]
+    public void 采购退货单明细单价_边界值应通过且超界拒绝()
+    {
+        var validator = new CreatePurchaseReturnRequestValidator();
+
+        // 允许 0 元单价
+        Assert.True(ValidatePurchaseReturn(validator, unitPrice: ProductFieldConstraints.PriceMinValue));
+        Assert.True(ValidatePurchaseReturn(validator, unitPrice: ProductFieldConstraints.PriceMaxValue));
+        Assert.False(ValidatePurchaseReturn(validator, unitPrice: ProductFieldConstraints.PriceMinValue - 0.01m));
+        Assert.False(ValidatePurchaseReturn(validator, unitPrice: ProductFieldConstraints.PriceMaxValue + 0.01m));
+    }
+
+    [Fact]
+    public void 采购退货单明细行数_上限内通过且超上限拒绝()
+    {
+        var validator = new CreatePurchaseReturnRequestValidator();
+
+        Assert.True(ValidatePurchaseReturn(validator, itemCount: OrderFieldConstraints.ItemsMaxCount));
+        Assert.False(ValidatePurchaseReturn(validator, itemCount: OrderFieldConstraints.ItemsMaxCount + 1));
+    }
+
+    [Fact]
+    public void 采购退货单查询关键词长度_应不超过ReturnNo列长()
+    {
+        var ok = new string('a', OrderFieldConstraints.KeywordMaxLength);
+        var tooLong = new string('a', OrderFieldConstraints.KeywordMaxLength + 1);
+
+        Assert.True(new GetPurchaseReturnsRequestValidator()
+            .Validate(new GetPurchaseReturnsRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetPurchaseReturnsRequestValidator()
+            .Validate(new GetPurchaseReturnsRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
+    private static bool ValidatePurchaseReturn(CreatePurchaseReturnRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
+    {
+        var items = Enumerable
+            .Range(0, itemCount)
+            .Select(_ => new CreatePurchaseReturnItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
+            .ToList();
+        return validator.Validate(new CreatePurchaseReturnRequest
+        {
+            PartnerId = Guid.NewGuid(),
+            ReturnDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Items = items,
+        }).IsValid;
     }
 
     private static bool ValidateStockTake(CreateStockTakeRequestValidator validator, int actual = 1, int itemCount = 1)
