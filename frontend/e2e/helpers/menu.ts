@@ -12,6 +12,7 @@ const MENU_GROUP_MAP: Record<string, string> = {
   库存流水: '进销存',
   采购入库: '进销存',
   销售开单: '进销存',
+  库存盘点: '进销存',
 }
 
 /** 侧边菜单叶子项 */

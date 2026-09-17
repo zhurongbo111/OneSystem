@@ -22,6 +22,8 @@ const MOVEMENT_TYPE_META: Record<StockMovementType, { label: string; color: stri
   2: { label: '采购作废', color: 'red' },
   3: { label: '销售出库', color: 'blue' },
   4: { label: '销售作废', color: 'orange' },
+  5: { label: '期初建账', color: 'purple' },
+  6: { label: '盘点调整', color: 'gold' },
 }
 
 /** 类型下拉选项（取 §0 文案） */
@@ -89,6 +91,10 @@ onMounted(() => {
   const presetProductId = typeof route.query.productId === 'string' ? route.query.productId : undefined
   appliedProductId.value = presetProductId
   productIdInput.value = presetProductId
+  // 盘点详情页「查看库存流水」：以路由 query 的 keyword（盘点单号）预置关键词筛选
+  const presetKeyword = typeof route.query.keyword === 'string' ? route.query.keyword : ''
+  appliedKeyword.value = presetKeyword
+  keywordInput.value = presetKeyword
 
   void fetchProducts()
   void fetchList()
