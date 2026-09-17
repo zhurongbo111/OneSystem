@@ -20,8 +20,8 @@ public sealed class GetSalesOrdersRequestValidator : AbstractValidator<GetSalesO
         // 长度统一取自 OrderFieldConstraints（禁止硬编码；与 OrderNo 列长一致）
         RuleFor(x => x.Keyword).MaximumLength(OrderFieldConstraints.KeywordMaxLength).When(x => x.Keyword is not null);
 
-        RuleFor(x => x.Settlement)
-            .Must(s => s is null or OrderSettlementStatus.Unsettled or OrderSettlementStatus.Settled)
+        RuleFor(x => x.SettlementState)
+            .Must(s => s is null or SettlementState.Unsettled or SettlementState.PartiallySettled or SettlementState.Settled)
             .WithMessage("结算状态取值非法");
 
         // 日期范围闭区间：两者都传时 start <= end（跨字段校验用匿名类型组合）

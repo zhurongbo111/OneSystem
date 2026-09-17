@@ -123,7 +123,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                     PartnerName = partner.Name,
                     ReturnDate = request.ReturnDate,
                     TotalAmount = totalAmount,
-                    SettlementStatus = OrderSettlementStatus.Unsettled,
+                    SettledAmount = 0m,
                     Status = OrderStatus.Normal,
                     Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
                     CreatedAt = now,

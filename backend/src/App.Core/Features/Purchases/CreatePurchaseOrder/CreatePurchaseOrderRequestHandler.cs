@@ -120,7 +120,7 @@ public sealed class CreatePurchaseOrderRequestHandler : IRequestHandler<CreatePu
                     PartnerName = partner.Name,
                     OrderDate = request.OrderDate,
                     TotalAmount = totalAmount,
-                    SettlementStatus = OrderSettlementStatus.Unsettled,
+                    SettledAmount = 0m,
                     Status = OrderStatus.Normal,
                     Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
                     CreatedAt = now,

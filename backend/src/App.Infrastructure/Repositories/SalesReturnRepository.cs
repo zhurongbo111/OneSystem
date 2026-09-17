@@ -30,7 +30,7 @@ public sealed class SalesReturnRepository : ISalesReturnRepository
         Guid? partnerId,
         DateTimeOffset? start,
         DateTimeOffset? end,
-        OrderSettlementStatus? settlement,
+        SettlementState? settlementState,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -62,10 +62,16 @@ public sealed class SalesReturnRepository : ISalesReturnRepository
             query = query.Where(r => r.ReturnDate <= e);
         }
 
-        if (settlement is not null)
+        if (settlementState is not null)
         {
-            var value = settlement.Value;
-            query = query.Where(r => r.SettlementStatus == value);
+            // 结算状态为推导值：按已结金额与总额比较过滤（design.md §0 / §2.3）
+            var state = settlementState.Value;
+            query = state switch
+            {
+                SettlementState.Unsettled => query.Where(r => r.SettledAmount <= 0),
+                SettlementState.PartiallySettled => query.Where(r => r.SettledAmount > 0 && r.SettledAmount < r.TotalAmount),
+                _ => query.Where(r => r.SettledAmount >= r.TotalAmount),
+            };
         }
 
         var total = await query.CountAsync(cancellationToken);
@@ -116,13 +122,13 @@ public sealed class SalesReturnRepository : ISalesReturnRepository
     }
 
     /// <inheritdoc />
-    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default)
+    public Task AddSettledAmountAsync(Guid id, decimal delta, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
         return _dbContext.SalesReturns
             .Where(r => r.Id == id)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.SettlementStatus, settlement)
+                .SetProperty(r => r.SettledAmount, r => r.SettledAmount + delta)
                 .SetProperty(r => r.UpdatedAt, now)
                 .SetProperty(r => r.UpdatedBy, operatorId),
             cancellationToken);

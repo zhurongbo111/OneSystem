@@ -27,6 +27,6 @@ public sealed class GetPurchaseReturnsRequest : IRequest<PagedResult<PurchaseRet
     /// <summary>结束业务日期（含），可空（前端传本地当天 23:59:59 的 UTC ISO 串）</summary>
     public DateTimeOffset? End { get; init; }
 
-    /// <summary>结算状态（0 未结算 / 1 已结算），可空</summary>
-    public OrderSettlementStatus? Settlement { get; init; }
+    /// <summary>结算状态（0 未结算 / 1 部分结算 / 2 已结算，按已结金额推导），可空</summary>
+    public SettlementState? SettlementState { get; init; }
 }

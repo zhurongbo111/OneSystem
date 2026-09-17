@@ -26,8 +26,8 @@ public sealed class PurchaseReturn
     /// <summary>总金额 = Σ 明细小计（后端重算，不信任前端传值）</summary>
     public decimal TotalAmount { get; set; }
 
-    /// <summary>结算状态（0=未结算 1=已结算；复用单据域枚举，升级路径见 specs/ROADMAP.md §4.3）</summary>
-    public OrderSettlementStatus SettlementStatus { get; set; }
+    /// <summary>已结算金额（由收付款单核销累加 / 作废回退，不允许手工直接改；specs/023-erp-settlement/design.md §2.3）</summary>
+    public decimal SettledAmount { get; set; }
 
     /// <summary>单据状态（1=正常 0=已作废；作废后禁止再操作）</summary>
     public OrderStatus Status { get; set; } = OrderStatus.Normal;

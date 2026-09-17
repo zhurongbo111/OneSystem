@@ -27,7 +27,7 @@ internal sealed class SalesReturnConfiguration : IEntityTypeConfiguration<SalesR
             .HasColumnType("varchar(50)");
         builder.Property(r => r.ReturnDate).IsRequired();
         builder.Property(r => r.TotalAmount).IsRequired().HasColumnType("numeric(18,2)");
-        builder.Property(r => r.SettlementStatus).HasConversion<short>().IsRequired();
+        builder.Property(r => r.SettledAmount).IsRequired().HasColumnType("numeric(18,2)").HasDefaultValue(0m);
         builder.Property(r => r.Status).HasConversion<short>().IsRequired();
         builder.Property(r => r.Remark)
             .HasMaxLength(OrderFieldConstraints.RemarkMaxLength)

@@ -27,7 +27,7 @@ internal sealed class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOr
             .HasColumnType("varchar(50)");
         builder.Property(p => p.OrderDate).IsRequired();
         builder.Property(p => p.TotalAmount).IsRequired().HasColumnType("numeric(18,2)");
-        builder.Property(p => p.SettlementStatus).HasConversion<short>().IsRequired();
+        builder.Property(p => p.SettledAmount).IsRequired().HasColumnType("numeric(18,2)").HasDefaultValue(0m);
         builder.Property(p => p.Status).HasConversion<short>().IsRequired();
         builder.Property(p => p.Remark)
             .HasMaxLength(OrderFieldConstraints.RemarkMaxLength)

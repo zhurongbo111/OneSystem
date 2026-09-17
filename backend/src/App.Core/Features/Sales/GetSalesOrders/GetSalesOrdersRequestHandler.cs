@@ -26,7 +26,7 @@ public sealed class GetSalesOrdersRequestHandler : IRequestHandler<GetSalesOrder
     public async Task<PagedResult<SalesOrderListItemDto>> HandleAsync(GetSalesOrdersRequest request, CancellationToken cancellationToken = default)
     {
         var (items, total) = await _salesOrderRepository.GetPagedAsync(
-            request.Keyword, request.PartnerId, request.Start, request.End, request.Settlement,
+            request.Keyword, request.PartnerId, request.Start, request.End, request.SettlementState,
             request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<SalesOrderListItemDto>

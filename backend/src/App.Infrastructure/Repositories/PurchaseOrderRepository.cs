@@ -30,7 +30,7 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
         Guid? partnerId,
         DateTimeOffset? start,
         DateTimeOffset? end,
-        OrderSettlementStatus? settlement,
+        SettlementState? settlementState,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -62,10 +62,16 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
             query = query.Where(o => o.OrderDate <= e);
         }
 
-        if (settlement is not null)
+        if (settlementState is not null)
         {
-            var value = settlement.Value;
-            query = query.Where(o => o.SettlementStatus == value);
+            // 结算状态为推导值：按已结金额与总额比较过滤（design.md §0 / §2.3）
+            var state = settlementState.Value;
+            query = state switch
+            {
+                SettlementState.Unsettled => query.Where(o => o.SettledAmount <= 0),
+                SettlementState.PartiallySettled => query.Where(o => o.SettledAmount > 0 && o.SettledAmount < o.TotalAmount),
+                _ => query.Where(o => o.SettledAmount >= o.TotalAmount),
+            };
         }
 
         var total = await query.CountAsync(cancellationToken);
@@ -116,13 +122,13 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
     }
 
     /// <inheritdoc />
-    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default)
+    public Task AddSettledAmountAsync(Guid id, decimal delta, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
         return _dbContext.PurchaseOrders
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(o => o.SettlementStatus, settlement)
+                .SetProperty(o => o.SettledAmount, o => o.SettledAmount + delta)
                 .SetProperty(o => o.UpdatedAt, now)
                 .SetProperty(o => o.UpdatedBy, operatorId),
             cancellationToken);

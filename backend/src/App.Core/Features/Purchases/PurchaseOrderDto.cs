@@ -23,8 +23,14 @@ public sealed class PurchaseOrderDetailDto
     /// <summary>总金额（后端重算值）</summary>
     public required decimal TotalAmount { get; init; }
 
-    /// <summary>结算状态（0 未付 / 1 已付）</summary>
-    public required int SettlementStatus { get; init; }
+    /// <summary>已结算金额（由收付款单核销累加 / 作废回退）</summary>
+    public required decimal SettledAmount { get; init; }
+
+    /// <summary>未结金额（= 总额 − 已结算金额，推导值）</summary>
+    public required decimal UnsettledAmount { get; init; }
+
+    /// <summary>结算状态（0 未结算 / 1 部分结算 / 2 已结算，推导值）</summary>
+    public required int SettlementState { get; init; }
 
     /// <summary>单据状态（0 已作废 / 1 正常）</summary>
     public required int Status { get; init; }
@@ -88,8 +94,14 @@ public sealed class PurchaseOrderListItemDto
     /// <summary>总金额</summary>
     public required decimal TotalAmount { get; init; }
 
-    /// <summary>结算状态（0 未付 / 1 已付）</summary>
-    public required int SettlementStatus { get; init; }
+    /// <summary>已结算金额（由收付款单核销累加 / 作废回退）</summary>
+    public required decimal SettledAmount { get; init; }
+
+    /// <summary>未结金额（= 总额 − 已结算金额，推导值）</summary>
+    public required decimal UnsettledAmount { get; init; }
+
+    /// <summary>结算状态（0 未结算 / 1 部分结算 / 2 已结算，推导值）</summary>
+    public required int SettlementState { get; init; }
 
     /// <summary>单据状态（0 已作废 / 1 正常）</summary>
     public required int Status { get; init; }
