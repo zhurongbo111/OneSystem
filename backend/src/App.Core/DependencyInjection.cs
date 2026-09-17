@@ -28,26 +28,29 @@ using App.Core.Features.Purchases;
 using App.Core.Features.Purchases.CreatePurchaseOrder;
 using App.Core.Features.Purchases.GetPurchaseOrderById;
 using App.Core.Features.Purchases.GetPurchaseOrders;
-using App.Core.Features.Purchases.UpdatePurchaseOrderSettlement;
 using App.Core.Features.Purchases.VoidPurchaseOrder;
 using App.Core.Features.PurchaseReturns;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
-using App.Core.Features.PurchaseReturns.UpdatePurchaseReturnSettlement;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
 using App.Core.Features.Sales;
 using App.Core.Features.Sales.CreateSalesOrder;
 using App.Core.Features.Sales.GetSalesOrderById;
 using App.Core.Features.Sales.GetSalesOrders;
-using App.Core.Features.Sales.UpdateSalesOrderSettlement;
 using App.Core.Features.Sales.VoidSalesOrder;
 using App.Core.Features.SalesReturns;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.GetSalesReturnById;
 using App.Core.Features.SalesReturns.GetSalesReturns;
-using App.Core.Features.SalesReturns.UpdateSalesReturnSettlement;
 using App.Core.Features.SalesReturns.VoidSalesReturn;
+using App.Core.Features.Settlements;
+using App.Core.Features.Settlements.CreateSettlement;
+using App.Core.Features.Settlements.GetReconciliation;
+using App.Core.Features.Settlements.GetSettlementById;
+using App.Core.Features.Settlements.GetSettlements;
+using App.Core.Features.Settlements.GetUnsettledOrders;
+using App.Core.Features.Settlements.VoidSettlement;
 using App.Core.Features.StockMovements;
 using App.Core.Features.StockMovements.GetStockMovements;
 using App.Core.Features.StockTakes;
@@ -135,28 +138,32 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<GetPurchaseOrderByIdRequest, PurchaseOrderDetailDto>, GetPurchaseOrderByIdRequestHandler>();
         services.AddScoped<IRequestHandler<CreatePurchaseOrderRequest, PurchaseOrderDetailDto>, CreatePurchaseOrderRequestHandler>();
         services.AddScoped<IRequestHandler<VoidPurchaseOrderRequest, PurchaseOrderDetailDto>, VoidPurchaseOrderRequestHandler>();
-        services.AddScoped<IRequestHandler<UpdatePurchaseOrderSettlementRequest, PurchaseOrderDetailDto>, UpdatePurchaseOrderSettlementRequestHandler>();
 
         // 采购退货用例（erp-purchase-return）
         services.AddScoped<IRequestHandler<GetPurchaseReturnsRequest, PagedResult<PurchaseReturnListItemDto>>, GetPurchaseReturnsRequestHandler>();
         services.AddScoped<IRequestHandler<GetPurchaseReturnByIdRequest, PurchaseReturnDetailDto>, GetPurchaseReturnByIdRequestHandler>();
         services.AddScoped<IRequestHandler<CreatePurchaseReturnRequest, PurchaseReturnDetailDto>, CreatePurchaseReturnRequestHandler>();
         services.AddScoped<IRequestHandler<VoidPurchaseReturnRequest, PurchaseReturnDetailDto>, VoidPurchaseReturnRequestHandler>();
-        services.AddScoped<IRequestHandler<UpdatePurchaseReturnSettlementRequest, PurchaseReturnDetailDto>, UpdatePurchaseReturnSettlementRequestHandler>();
 
         // 销售管理用例（erp-sale）
         services.AddScoped<IRequestHandler<GetSalesOrdersRequest, PagedResult<SalesOrderListItemDto>>, GetSalesOrdersRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesOrderByIdRequest, SalesOrderDetailDto>, GetSalesOrderByIdRequestHandler>();
         services.AddScoped<IRequestHandler<CreateSalesOrderRequest, SalesOrderDetailDto>, CreateSalesOrderRequestHandler>();
         services.AddScoped<IRequestHandler<VoidSalesOrderRequest, SalesOrderDetailDto>, VoidSalesOrderRequestHandler>();
-        services.AddScoped<IRequestHandler<UpdateSalesOrderSettlementRequest, SalesOrderDetailDto>, UpdateSalesOrderSettlementRequestHandler>();
 
         // 销售退货用例（erp-sale-return）
         services.AddScoped<IRequestHandler<GetSalesReturnsRequest, PagedResult<SalesReturnListItemDto>>, GetSalesReturnsRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesReturnByIdRequest, SalesReturnDetailDto>, GetSalesReturnByIdRequestHandler>();
         services.AddScoped<IRequestHandler<CreateSalesReturnRequest, SalesReturnDetailDto>, CreateSalesReturnRequestHandler>();
         services.AddScoped<IRequestHandler<VoidSalesReturnRequest, SalesReturnDetailDto>, VoidSalesReturnRequestHandler>();
-        services.AddScoped<IRequestHandler<UpdateSalesReturnSettlementRequest, SalesReturnDetailDto>, UpdateSalesReturnSettlementRequestHandler>();
+
+        // 收付款与往来对账用例（erp-settlement）
+        services.AddScoped<IRequestHandler<GetSettlementsRequest, PagedResult<SettlementListItemDto>>, GetSettlementsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetSettlementByIdRequest, SettlementDetailDto>, GetSettlementByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateSettlementRequest, SettlementDetailDto>, CreateSettlementRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidSettlementRequest, SettlementDetailDto>, VoidSettlementRequestHandler>();
+        services.AddScoped<IRequestHandler<GetUnsettledOrdersRequest, PagedResult<SettlementCandidateDto>>, GetUnsettledOrdersRequestHandler>();
+        services.AddScoped<IRequestHandler<GetReconciliationRequest, PagedResult<ReconciliationListItemDto>>, GetReconciliationRequestHandler>();
 
         // 库存流水用例（erp-stock-movement）
         services.AddScoped<IRequestHandler<GetStockMovementsRequest, PagedResult<StockMovementListItemDto>>, GetStockMovementsRequestHandler>();
@@ -188,16 +195,16 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetInventoryRequest>, GetInventoryRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseOrdersRequest>, GetPurchaseOrdersRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseOrderRequest>, CreatePurchaseOrderRequestValidator>();
-        services.AddScoped<IValidator<UpdatePurchaseOrderSettlementRequest>, UpdatePurchaseOrderSettlementRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseReturnsRequest>, GetPurchaseReturnsRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReturnRequest>, CreatePurchaseReturnRequestValidator>();
-        services.AddScoped<IValidator<UpdatePurchaseReturnSettlementRequest>, UpdatePurchaseReturnSettlementRequestValidator>();
         services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
         services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
-        services.AddScoped<IValidator<UpdateSalesOrderSettlementRequest>, UpdateSalesOrderSettlementRequestValidator>();
         services.AddScoped<IValidator<GetSalesReturnsRequest>, GetSalesReturnsRequestValidator>();
         services.AddScoped<IValidator<CreateSalesReturnRequest>, CreateSalesReturnRequestValidator>();
-        services.AddScoped<IValidator<UpdateSalesReturnSettlementRequest>, UpdateSalesReturnSettlementRequestValidator>();
+        services.AddScoped<IValidator<CreateSettlementRequest>, CreateSettlementRequestValidator>();
+        services.AddScoped<IValidator<GetSettlementsRequest>, GetSettlementsRequestValidator>();
+        services.AddScoped<IValidator<GetUnsettledOrdersRequest>, GetUnsettledOrdersRequestValidator>();
+        services.AddScoped<IValidator<GetReconciliationRequest>, GetReconciliationRequestValidator>();
         services.AddScoped<IValidator<GetStockMovementsRequest>, GetStockMovementsRequestValidator>();
         services.AddScoped<IValidator<GetStockTakesRequest>, GetStockTakesRequestValidator>();
         services.AddScoped<IValidator<CreateStockTakeRequest>, CreateStockTakeRequestValidator>();

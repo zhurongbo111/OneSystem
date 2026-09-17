@@ -48,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<ISalesReturnRepository, SalesReturnRepository>();
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
         services.AddScoped<IStockTakeRepository, StockTakeRepository>();
+        services.AddScoped<ISettlementRepository, SettlementRepository>();
+        services.AddScoped<ISettlementQueryRepository, SettlementQueryRepository>();
 
         return services;
     }
