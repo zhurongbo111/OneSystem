@@ -42,6 +42,12 @@ using App.Core.Features.Sales.GetSalesOrderById;
 using App.Core.Features.Sales.GetSalesOrders;
 using App.Core.Features.Sales.UpdateSalesOrderSettlement;
 using App.Core.Features.Sales.VoidSalesOrder;
+using App.Core.Features.SalesReturns;
+using App.Core.Features.SalesReturns.CreateSalesReturn;
+using App.Core.Features.SalesReturns.GetSalesReturnById;
+using App.Core.Features.SalesReturns.GetSalesReturns;
+using App.Core.Features.SalesReturns.UpdateSalesReturnSettlement;
+using App.Core.Features.SalesReturns.VoidSalesReturn;
 using App.Core.Features.StockMovements;
 using App.Core.Features.StockMovements.GetStockMovements;
 using App.Core.Features.StockTakes;
@@ -145,6 +151,13 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidSalesOrderRequest, SalesOrderDetailDto>, VoidSalesOrderRequestHandler>();
         services.AddScoped<IRequestHandler<UpdateSalesOrderSettlementRequest, SalesOrderDetailDto>, UpdateSalesOrderSettlementRequestHandler>();
 
+        // 销售退货用例（erp-sale-return）
+        services.AddScoped<IRequestHandler<GetSalesReturnsRequest, PagedResult<SalesReturnListItemDto>>, GetSalesReturnsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetSalesReturnByIdRequest, SalesReturnDetailDto>, GetSalesReturnByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateSalesReturnRequest, SalesReturnDetailDto>, CreateSalesReturnRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidSalesReturnRequest, SalesReturnDetailDto>, VoidSalesReturnRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateSalesReturnSettlementRequest, SalesReturnDetailDto>, UpdateSalesReturnSettlementRequestHandler>();
+
         // 库存流水用例（erp-stock-movement）
         services.AddScoped<IRequestHandler<GetStockMovementsRequest, PagedResult<StockMovementListItemDto>>, GetStockMovementsRequestHandler>();
 
@@ -182,6 +195,9 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
         services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
         services.AddScoped<IValidator<UpdateSalesOrderSettlementRequest>, UpdateSalesOrderSettlementRequestValidator>();
+        services.AddScoped<IValidator<GetSalesReturnsRequest>, GetSalesReturnsRequestValidator>();
+        services.AddScoped<IValidator<CreateSalesReturnRequest>, CreateSalesReturnRequestValidator>();
+        services.AddScoped<IValidator<UpdateSalesReturnSettlementRequest>, UpdateSalesReturnSettlementRequestValidator>();
         services.AddScoped<IValidator<GetStockMovementsRequest>, GetStockMovementsRequestValidator>();
         services.AddScoped<IValidator<GetStockTakesRequest>, GetStockTakesRequestValidator>();
         services.AddScoped<IValidator<CreateStockTakeRequest>, CreateStockTakeRequestValidator>();

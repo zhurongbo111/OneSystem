@@ -30,4 +30,10 @@ public enum StockMovementType
 
     /// <summary>采购退货作废（增加，erp-purchase-return）</summary>
     PurchaseReturnVoid = 8,
+
+    /// <summary>销售退货（增加，erp-sale-return）</summary>
+    SalesReturnIn = 9,
+
+    /// <summary>销售退货作废（减少，erp-sale-return）</summary>
+    SalesReturnVoid = 10,
 }
