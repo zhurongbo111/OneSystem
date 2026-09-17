@@ -43,6 +43,11 @@ using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
+using App.Core.Features.Reports;
+using App.Core.Features.Reports.GetInventoryFlow;
+using App.Core.Features.Reports.GetPurchaseSummary;
+using App.Core.Features.Reports.GetSalesSummary;
+using App.Core.Features.Reports.GetStockBalance;
 using App.Core.Features.SalesOrders;
 using App.Core.Features.SalesOrders.CloseSalesOrder;
 using App.Core.Features.SalesOrders.CreateSalesOrder;
@@ -216,6 +221,12 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<CreateStockTakeRequest, StockTakeDetailDto>, CreateStockTakeRequestHandler>();
         services.AddScoped<IRequestHandler<GetStockTakePickProductsRequest, IReadOnlyList<StockTakeProductPickDto>>, GetStockTakePickProductsRequestHandler>();
 
+        // 报表用例（erp-report；纯只读跨表聚合，不新增写路径）
+        services.AddScoped<IRequestHandler<GetInventoryFlowRequest, ReportPageDto<InventoryFlowItemDto, InventoryFlowSummaryDto>>, GetInventoryFlowRequestHandler>();
+        services.AddScoped<IRequestHandler<GetStockBalanceRequest, ReportPageDto<StockBalanceItemDto, StockBalanceSummaryDto>>, GetStockBalanceRequestHandler>();
+        services.AddScoped<IRequestHandler<GetPurchaseSummaryRequest, ReportPageDto<PurchaseSummaryItemDto, PurchaseSummaryTotalDto>>, GetPurchaseSummaryRequestHandler>();
+        services.AddScoped<IRequestHandler<GetSalesSummaryRequest, ReportPageDto<SalesSummaryItemDto, SalesSummaryTotalDto>>, GetSalesSummaryRequestHandler>();
+
         // 格式校验器（FluentValidation）：校验规则集中在对应用例目录；无校验器的用例（如按 id 详情）不注册
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<GetUsersRequest>, GetUsersRequestValidator>();
@@ -260,6 +271,10 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetStockMovementsRequest>, GetStockMovementsRequestValidator>();
         services.AddScoped<IValidator<GetStockTakesRequest>, GetStockTakesRequestValidator>();
         services.AddScoped<IValidator<CreateStockTakeRequest>, CreateStockTakeRequestValidator>();
+        services.AddScoped<IValidator<GetInventoryFlowRequest>, GetInventoryFlowRequestValidator>();
+        services.AddScoped<IValidator<GetStockBalanceRequest>, GetStockBalanceRequestValidator>();
+        services.AddScoped<IValidator<GetPurchaseSummaryRequest>, GetPurchaseSummaryRequestValidator>();
+        services.AddScoped<IValidator<GetSalesSummaryRequest>, GetSalesSummaryRequestValidator>();
 
         return services;
     }
