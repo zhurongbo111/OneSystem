@@ -26,7 +26,7 @@ public sealed class GetSalesReturnsRequestHandler : IRequestHandler<GetSalesRetu
     public async Task<PagedResult<SalesReturnListItemDto>> HandleAsync(GetSalesReturnsRequest request, CancellationToken cancellationToken = default)
     {
         var (items, total) = await _salesReturnRepository.GetPagedAsync(
-            request.Keyword, request.PartnerId, request.Start, request.End, request.Settlement,
+            request.Keyword, request.PartnerId, request.Start, request.End, request.SettlementState,
             request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<SalesReturnListItemDto>

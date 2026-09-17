@@ -3,7 +3,6 @@ using App.Core.Features.SalesReturns;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.GetSalesReturnById;
 using App.Core.Features.SalesReturns.GetSalesReturns;
-using App.Core.Features.SalesReturns.UpdateSalesReturnSettlement;
 using App.Core.Features.SalesReturns.VoidSalesReturn;
 using App.Core.Responses;
 
@@ -13,7 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace App.Api.Controllers;
 
 /// <summary>
-/// 销售退货单控制器（/api/sales-returns）：列表分页 / 详情 / 新增（保存即生效）/ 作废回冲 / 结算切换。
+/// 销售退货单控制器（/api/sales-returns）：列表分页 / 详情 / 新增（保存即生效）/ 作废回冲。
+/// 结算金额由收付款单核销驱动（POST /api/settlements），本控制器不再提供手工结算切换（specs/023-erp-settlement）。
 /// 统一 ApiResponse 包装；鉴权同既有单据域（全局 [Authorize]，登录即可见，权限由 028-erp-rbac 接入）。
 /// </summary>
 [Authorize]
@@ -71,20 +71,4 @@ public sealed class SalesReturnsController : ControllerBase
     public async Task<ApiResponse<SalesReturnDetailDto>> Void(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new VoidSalesReturnRequest { Id = id }, cancellationToken));
 
-    /// <summary>
-    /// 更新结算状态（仅 未结算 ↔ 已结算；库存不变）
-    /// </summary>
-    /// <param name="id">销售退货单 id</param>
-    /// <param name="request">结算更新请求</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SalesReturnDetailDto>))]
-    [HttpPut("{id:guid}/settlement")]
-    public async Task<ApiResponse<SalesReturnDetailDto>> UpdateSettlement(
-        [FromRoute] Guid id,
-        [FromBody] UpdateSalesReturnSettlementRequest request,
-        CancellationToken cancellationToken)
-    {
-        var command = new UpdateSalesReturnSettlementRequest { Id = id, SettlementStatus = request.SettlementStatus };
-        return ApiResponseFactory.Ok(await _mediator.Send(command, cancellationToken));
-    }
 }

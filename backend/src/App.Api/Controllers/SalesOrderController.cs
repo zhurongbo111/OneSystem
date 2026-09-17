@@ -3,7 +3,6 @@ using App.Core.Features.Sales;
 using App.Core.Features.Sales.CreateSalesOrder;
 using App.Core.Features.Sales.GetSalesOrderById;
 using App.Core.Features.Sales.GetSalesOrders;
-using App.Core.Features.Sales.UpdateSalesOrderSettlement;
 using App.Core.Features.Sales.VoidSalesOrder;
 using App.Core.Responses;
 
@@ -13,7 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace App.Api.Controllers;
 
 /// <summary>
-/// 销售单控制器（/api/sales-orders）：列表分页 / 详情 / 新增（保存即生效，库存减少）/ 作废回冲 / 结算切换。
+/// 销售单控制器（/api/sales-orders）：列表分页 / 详情 / 新增（保存即生效，库存减少）/ 作废回冲。
+/// 结算金额由收付款单核销驱动（POST /api/settlements），本控制器不再提供手工结算切换（specs/023-erp-settlement）。
 /// 写接口强制鉴权（design.md §3.3）；统一 ApiResponse 包装。
 /// </summary>
 [Authorize]
@@ -71,20 +71,4 @@ public sealed class SalesOrderController : ControllerBase
     public async Task<ApiResponse<SalesOrderDetailDto>> Void(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new VoidSalesOrderRequest { Id = id }, cancellationToken));
 
-    /// <summary>
-    /// 更新结算状态（仅 未收 ↔ 已收；库存不变）
-    /// </summary>
-    /// <param name="id">销售单 id</param>
-    /// <param name="request">结算更新请求</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SalesOrderDetailDto>))]
-    [HttpPut("{id:guid}/settlement")]
-    public async Task<ApiResponse<SalesOrderDetailDto>> UpdateSettlement(
-        [FromRoute] Guid id,
-        [FromBody] UpdateSalesOrderSettlementRequest request,
-        CancellationToken cancellationToken)
-    {
-        var command = new UpdateSalesOrderSettlementRequest { Id = id, SettlementStatus = request.SettlementStatus };
-        return ApiResponseFactory.Ok(await _mediator.Send(command, cancellationToken));
-    }
 }

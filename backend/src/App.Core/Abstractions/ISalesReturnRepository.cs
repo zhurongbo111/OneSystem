@@ -16,7 +16,7 @@ public interface ISalesReturnRepository
     /// <param name="partnerId">客户 id，可空</param>
     /// <param name="start">起始业务日期（含），可空</param>
     /// <param name="end">结束业务日期（含），可空</param>
-    /// <param name="settlement">结算状态，可空</param>
+    /// <param name="settlementState">结算状态（0 未结 / 1 部分 / 2 结清，按 SettledAmount 与 TotalAmount 推导），可空</param>
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -25,7 +25,7 @@ public interface ISalesReturnRepository
         Guid? partnerId,
         DateTimeOffset? start,
         DateTimeOffset? end,
-        OrderSettlementStatus? settlement,
+        SettlementState? settlementState,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
@@ -46,13 +46,13 @@ public interface ISalesReturnRepository
     Task AddAsync(SalesReturn salesReturn, IReadOnlyList<SalesReturnItem> items, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 更新结算状态并持久化（同时写入 UpdatedBy / UpdatedAt 审计字段）
+    /// 原子累加已结算金额（核销 +delta / 作废回退 −delta）并持久化（同时写入 UpdatedBy / UpdatedAt 审计字段）；只允许收付款单核销 / 作废调用
     /// </summary>
     /// <param name="id">销售退货单 id</param>
-    /// <param name="settlement">目标结算状态</param>
+    /// <param name="delta">本次累加金额（核销为正、作废回退为负）</param>
     /// <param name="operatorId">操作人 id（由 Handler 取 ICurrentUser 传入，可空）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default);
+    Task AddSettledAmountAsync(Guid id, decimal delta, Guid? operatorId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 更新单据状态（作废）并持久化（同时写入 UpdatedBy / UpdatedAt 审计字段）
