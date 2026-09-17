@@ -18,4 +18,10 @@ public enum StockMovementType
 
     /// <summary>销售作废（增加）</summary>
     SalesVoid = 4,
+
+    /// <summary>期初建账（增加，erp-stock-take）</summary>
+    InitialStock = 5,
+
+    /// <summary>盘点调整（增减，erp-stock-take）</summary>
+    StockTakeAdjust = 6,
 }

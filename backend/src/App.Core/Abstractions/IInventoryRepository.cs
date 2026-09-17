@@ -42,6 +42,25 @@ public interface IInventoryRepository
     Task<bool> TryDecrementAsync(Guid productId, int amount, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 原子设定库存为指定值（Quantity = quantity，盘点 / 期初建账按实盘数量校正账面，erp-stock-take）。
+    /// 用 EF Core ExecuteUpdate 表达（无裸 SQL），行锁内原子完成；商品无库存行时不产生更新（返回 0 行）。
+    /// </summary>
+    /// <param name="productId">商品 id</param>
+    /// <param name="quantity">目标库存（≥ 0）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>受影响的行数（0 表示无库存行，1 表示已设定）</returns>
+    Task<int> SetQuantityAsync(Guid productId, int quantity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量读取多个商品的当前库存（无库存行的商品按 0 计，erp-stock-take 读账面用）。
+    /// </summary>
+    /// <param name="productIds">商品 id 集合</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>商品 id → 当前库存（缺失商品为 0）</returns>
+    Task<IReadOnlyDictionary<Guid, int>> GetQuantitiesAsync(
+        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 库存分页查询（erp-inventory-query）：联查 Inventory / Products / Categories，
     /// 仅启用商品（Products.Status = Enabled）；keyword 模糊匹配编码 / 名称；categoryId 精确匹配；
     /// 按 Products.Code 升序。低库存判定不在本方法，由 Handler 计算。

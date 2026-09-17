@@ -113,4 +113,21 @@ public sealed class StockMovementRepository : IStockMovementRepository
             .Where(m => m.ProductId == productId)
             .SumAsync(m => (int?)m.Quantity, cancellationToken) ?? 0;
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
+        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        if (productIds.Count == 0)
+        {
+            return Array.Empty<Guid>();
+        }
+
+        return await _dbContext.StockMovements
+            .AsNoTracking()
+            .Where(m => productIds.Contains(m.ProductId))
+            .Select(m => m.ProductId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
 }

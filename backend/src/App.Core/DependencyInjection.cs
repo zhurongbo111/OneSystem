@@ -38,6 +38,11 @@ using App.Core.Features.Sales.UpdateSalesOrderSettlement;
 using App.Core.Features.Sales.VoidSalesOrder;
 using App.Core.Features.StockMovements;
 using App.Core.Features.StockMovements.GetStockMovements;
+using App.Core.Features.StockTakes;
+using App.Core.Features.StockTakes.CreateStockTake;
+using App.Core.Features.StockTakes.GetStockTakeById;
+using App.Core.Features.StockTakes.GetStockTakePickProducts;
+using App.Core.Features.StockTakes.GetStockTakes;
 using App.Core.Features.Users;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.GetCurrentUser;
@@ -130,6 +135,12 @@ public static class DependencyInjection
         // 库存流水用例（erp-stock-movement）
         services.AddScoped<IRequestHandler<GetStockMovementsRequest, PagedResult<StockMovementListItemDto>>, GetStockMovementsRequestHandler>();
 
+        // 盘点 / 期初建账用例（erp-stock-take）
+        services.AddScoped<IRequestHandler<GetStockTakesRequest, PagedResult<StockTakeListItemDto>>, GetStockTakesRequestHandler>();
+        services.AddScoped<IRequestHandler<GetStockTakeByIdRequest, StockTakeDetailDto>, GetStockTakeByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateStockTakeRequest, StockTakeDetailDto>, CreateStockTakeRequestHandler>();
+        services.AddScoped<IRequestHandler<GetStockTakePickProductsRequest, IReadOnlyList<StockTakeProductPickDto>>, GetStockTakePickProductsRequestHandler>();
+
         // 格式校验器（FluentValidation）：校验规则集中在对应用例目录；无校验器的用例（如按 id 详情）不注册
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<GetUsersRequest>, GetUsersRequestValidator>();
@@ -156,6 +167,8 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
         services.AddScoped<IValidator<UpdateSalesOrderSettlementRequest>, UpdateSalesOrderSettlementRequestValidator>();
         services.AddScoped<IValidator<GetStockMovementsRequest>, GetStockMovementsRequestValidator>();
+        services.AddScoped<IValidator<GetStockTakesRequest>, GetStockTakesRequestValidator>();
+        services.AddScoped<IValidator<CreateStockTakeRequest>, CreateStockTakeRequestValidator>();
 
         return services;
     }
