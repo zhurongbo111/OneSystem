@@ -1,0 +1,192 @@
+import { get } from './request'
+
+/**
+ * 报表分页结果（对应后端 ReportPageDto<TItem, TSummary>）：
+ * 在统一分页字段之上追加 summary 合计（全量筛选结果口径，不是当前页）。
+ */
+export interface ReportPage<TItem, TSummary> {
+  items: TItem[]
+  total: number
+  page: number
+  pageSize: number
+  summary: TSummary
+}
+
+// ============================== 进销存报表 ==============================
+
+/** 进销存报表行（对应后端 InventoryFlowItemDto） */
+export interface InventoryFlowItem {
+  productId: string
+  code: string
+  name: string
+  categoryName: string
+  unit: string
+  openingQuantity: number
+  inboundQuantity: number
+  outboundQuantity: number
+  closingQuantity: number
+}
+
+/** 进销存报表合计（对应后端 InventoryFlowSummaryDto） */
+export interface InventoryFlowSummary {
+  openingQuantity: number
+  inboundQuantity: number
+  outboundQuantity: number
+  closingQuantity: number
+}
+
+/** 进销存报表查询参数（对应后端 GetInventoryFlowRequest；start / end 为 UTC ISO 串的半开区间） */
+export interface InventoryFlowQuery {
+  start: string
+  end: string
+  productId?: string
+  categoryId?: string
+  onlyChanged?: boolean
+  page: number
+  pageSize: number
+}
+
+// ============================== 库存余额表 ==============================
+
+/** 库存余额表行（对应后端 StockBalanceItemDto，按分类聚合） */
+export interface StockBalanceItem {
+  categoryId: string
+  categoryName: string
+  productCount: number
+  totalQuantity: number
+  zeroStockCount: number
+  belowSafetyCount: number
+  /** 库存占比（0–1，分母为全量筛选结果库存总量） */
+  quantityRatio: number
+}
+
+/** 库存余额表合计（对应后端 StockBalanceSummaryDto） */
+export interface StockBalanceSummary {
+  productCount: number
+  totalQuantity: number
+  zeroStockCount: number
+  belowSafetyCount: number
+}
+
+/** 库存余额表查询参数（对应后端 GetStockBalanceRequest） */
+export interface StockBalanceQuery {
+  keyword?: string
+  categoryId?: string
+  page: number
+  pageSize: number
+}
+
+// ============================== 采购 / 销售汇总 ==============================
+
+/** 汇总分组维度（对应后端 SummaryGroupBy） */
+export type SummaryGroupBy = 'partner' | 'product'
+
+/** 采购汇总行（对应后端 PurchaseSummaryItemDto；净额由后端计算） */
+export interface PurchaseSummaryItem {
+  key: string
+  name: string
+  unit: string | null
+  orderCount: number
+  inboundQuantity: number
+  inboundAmount: number
+  returnQuantity: number
+  returnAmount: number
+  netQuantity: number
+  netAmount: number
+}
+
+/** 采购汇总合计（对应后端 PurchaseSummaryTotalDto） */
+export interface PurchaseSummaryTotal {
+  orderCount: number
+  inboundQuantity: number
+  inboundAmount: number
+  returnQuantity: number
+  returnAmount: number
+  netQuantity: number
+  netAmount: number
+}
+
+/** 采购汇总查询参数（对应后端 GetPurchaseSummaryRequest） */
+export interface PurchaseSummaryQuery {
+  start: string
+  end: string
+  partnerId?: string
+  groupBy: SummaryGroupBy
+  page: number
+  pageSize: number
+}
+
+/** 销售汇总行（对应后端 SalesSummaryItemDto；净额由后端计算） */
+export interface SalesSummaryItem {
+  key: string
+  name: string
+  unit: string | null
+  orderCount: number
+  outboundQuantity: number
+  outboundAmount: number
+  returnQuantity: number
+  returnAmount: number
+  netQuantity: number
+  netAmount: number
+}
+
+/** 销售汇总合计（对应后端 SalesSummaryTotalDto） */
+export interface SalesSummaryTotal {
+  orderCount: number
+  outboundQuantity: number
+  outboundAmount: number
+  returnQuantity: number
+  returnAmount: number
+  netQuantity: number
+  netAmount: number
+}
+
+/** 销售汇总查询参数（对应后端 GetSalesSummaryRequest） */
+export interface SalesSummaryQuery {
+  start: string
+  end: string
+  partnerId?: string
+  groupBy: SummaryGroupBy
+  page: number
+  pageSize: number
+}
+
+/**
+ * 把页面选择的本地日期区间转换为后端所需的 UTC ISO **半开区间**：
+ * 起始取当天本地 00:00:00、结束取「结束日次日」本地 00:00:00，再转 UTC。
+ * 半开区间（start <= t < end）保证相邻区间拼接无重叠、无遗漏（specs/025-erp-report design.md §0.1）。
+ */
+export function toReportRangeUtc(startDate: string, endDate: string): { start: string; end: string } {
+  const start = new Date(`${startDate}T00:00:00`)
+  const endExclusive = new Date(`${endDate}T00:00:00`)
+  endExclusive.setDate(endExclusive.getDate() + 1)
+  return { start: start.toISOString(), end: endExclusive.toISOString() }
+}
+
+/** 进销存报表：期间 + 商品 / 分类 / 只看有变动（只读） */
+export function getInventoryFlow(
+  query: InventoryFlowQuery,
+): Promise<ReportPage<InventoryFlowItem, InventoryFlowSummary>> {
+  return get<ReportPage<InventoryFlowItem, InventoryFlowSummary>>('/reports/inventory-flow', { params: query })
+}
+
+/** 库存余额表：按分类聚合（只读） */
+export function getStockBalance(
+  query: StockBalanceQuery,
+): Promise<ReportPage<StockBalanceItem, StockBalanceSummary>> {
+  return get<ReportPage<StockBalanceItem, StockBalanceSummary>>('/reports/stock-balance', { params: query })
+}
+
+/** 采购汇总：按供应商 / 商品维度聚合（只读） */
+export function getPurchaseSummary(
+  query: PurchaseSummaryQuery,
+): Promise<ReportPage<PurchaseSummaryItem, PurchaseSummaryTotal>> {
+  return get<ReportPage<PurchaseSummaryItem, PurchaseSummaryTotal>>('/reports/purchase-summary', { params: query })
+}
+
+/** 销售汇总：按客户 / 商品维度聚合（只读） */
+export function getSalesSummary(
+  query: SalesSummaryQuery,
+): Promise<ReportPage<SalesSummaryItem, SalesSummaryTotal>> {
+  return get<ReportPage<SalesSummaryItem, SalesSummaryTotal>>('/reports/sales-summary', { params: query })
+}

@@ -267,6 +267,30 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/SettlementManagement/ReconciliationView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'reports/inventory-flow',
+        name: 'inventoryFlowReport',
+        component: () => import('@/views/ReportManagement/InventoryFlowReportView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'reports/stock-balance',
+        name: 'stockBalanceReport',
+        component: () => import('@/views/ReportManagement/StockBalanceReportView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'reports/purchase-summary',
+        name: 'purchaseSummaryReport',
+        component: () => import('@/views/ReportManagement/PurchaseSummaryReportView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'reports/sales-summary',
+        name: 'salesSummaryReport',
+        component: () => import('@/views/ReportManagement/SalesSummaryReportView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {
