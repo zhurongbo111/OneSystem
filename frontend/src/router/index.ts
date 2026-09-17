@@ -106,6 +106,24 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'stock-takes',
+        name: 'stockTakes',
+        component: () => import('@/views/StockTakeManagement/StockTakesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'stock-takes/new',
+        name: 'stockTakeNew',
+        component: () => import('@/views/StockTakeManagement/StockTakeFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'stock-takes/detail/:id',
+        name: 'stockTakeDetail',
+        component: () => import('@/views/StockTakeManagement/StockTakeDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'purchases',
         name: 'purchases',
         component: () => import('@/views/PurchaseManagement/PurchasesView.vue'),

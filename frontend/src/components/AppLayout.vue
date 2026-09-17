@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import {
   IconApps,
   IconBuildingWarehouse,
+  IconClipboardCheck,
   IconComponents,
   IconFileText,
   IconHistory,
@@ -49,7 +50,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockMovements', 'purchases', 'purchaseNew', 'sales', 'salesNew']
+const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'sales', 'salesNew']
 
 // —— reactive state ——
 
@@ -198,6 +199,12 @@ function onLogout(): void {
               <IconPackages />
             </template>
             <span>库存查询</span>
+          </a-menu-item>
+          <a-menu-item key="stockTakes">
+            <template #icon>
+              <IconClipboardCheck />
+            </template>
+            <span>库存盘点</span>
           </a-menu-item>
           <a-menu-item key="stockMovements">
             <template #icon>
