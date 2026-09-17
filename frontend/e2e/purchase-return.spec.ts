@@ -273,11 +273,11 @@ test.describe('采购退货（集成）', () => {
     const row = dataRows(page).first()
     await expect(row).toContainText(returnNo)
     await expect(row.getByText('未结算', { exact: true })).toBeVisible()
-    // 操作列按钮带图标：详情 / 结算切换 / 作废（specs/011-action-column §5.1 顺序）
+    // 操作列按钮带图标：详情 / 收付款 / 作废（specs/011-action-column §0 顺序；手工结算切换已移除）
     const rowActions = row.locator('td.action-cell button')
     await expect(rowActions).toHaveCount(3)
     await expect(rowActions.nth(0)).toHaveText(/详情/)
-    await expect(rowActions.nth(1)).toHaveText(/标记已结算/)
+    await expect(rowActions.nth(1)).toHaveText(/收付款/)
     await expect(rowActions.nth(2)).toHaveText(/作废/)
 
     // 供应商筛选（列表筛选下拉不可搜索，直接点选选项）
@@ -305,17 +305,12 @@ test.describe('采购退货（集成）', () => {
     await searchReturnByNo(page, returnNo)
     await expect(dataRows(page).first()).toContainText(returnNo)
 
-    // 结算切换：未结算 → 已结算 → 改回未结算
-    await dataRows(page).first().getByRole('button', { name: '标记已结算' }).click()
-    await confirmPopconfirm(page, '确认标记为已结算？')
-    await expect(page.getByText('已标记为已结算')).toBeVisible()
-    const settledRow = dataRows(page).first()
-    await expect(settledRow.getByText('已结算', { exact: true })).toBeVisible()
-    await expect(settledRow.getByRole('button', { name: '改回未结算' })).toHaveClass(/action-btn-secondary/)
-    await settledRow.getByRole('button', { name: '改回未结算' }).click()
-    await confirmPopconfirm(page, '确认改回未结算？')
-    await expect(page.getByText('已改回未结算')).toBeVisible()
-    await expect(dataRows(page).first().getByText('未结算', { exact: true })).toBeVisible()
+    // 去收付款：采购退货单为收款方向（供应商退我们钱），跳新建收付款页并预置方向
+    await dataRows(page).first().getByRole('button', { name: '收付款' }).click()
+    await expect(page).toHaveURL(/\/settlements\/new/)
+    await expect(page.getByRole('radio', { name: '收款' })).toBeChecked()
+    await goPurchaseReturns(page)
+    await searchReturnByNo(page, returnNo)
 
     // 作废：库存回冲 3 → 5
     await dataRows(page).first().getByRole('button', { name: '作废' }).click()
@@ -323,12 +318,12 @@ test.describe('采购退货（集成）', () => {
     await confirmPopconfirm(page, '确认作废该采购退货单？')
     await expect(page.getByText('已作废，库存已回冲')).toBeVisible()
 
-    // 已作废行整体置灰，操作（作废 / 结算）消失
+    // 已作废行整体置灰，操作（作废 / 收付款）消失
     const voidedRow = dataRows(page).first()
     await expect(voidedRow).toHaveClass(/row-voided/)
     await expect(voidedRow.getByText('已作废', { exact: true })).toBeVisible()
     await expect(voidedRow.getByRole('button', { name: '作废' })).toHaveCount(0)
-    await expect(voidedRow.getByRole('button', { name: '标记已结算' })).toHaveCount(0)
+    await expect(voidedRow.getByRole('button', { name: '收付款' })).toHaveCount(0)
 
     // 库存回冲
     await goInventory(page)
