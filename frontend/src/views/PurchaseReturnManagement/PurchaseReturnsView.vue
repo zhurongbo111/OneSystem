@@ -7,18 +7,21 @@ import type { Partner } from '@/api/partner'
 import {
   getPurchaseReturns,
   toDateRange,
-  updatePurchaseReturnSettlement,
   voidPurchaseReturn,
   type PurchaseReturnListItem,
-  type SettlementStatus,
 } from '@/api/purchaseReturn'
 import { formatDateTime } from '@/utils/datetime'
+import {
+  SETTLEMENT_STATE_OPTIONS,
+  settlementStateColor,
+  settlementStateLabel,
+  type SettlementState,
+} from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
-  IconArrowBackUp,
   IconBan,
-  IconCircleCheck,
+  IconCash,
   IconEye,
   IconPlus,
   IconRefresh,
@@ -28,11 +31,6 @@ import {
 } from '@tabler/icons-vue'
 
 // —— constants ——
-const settlementOptions: { label: string; value: SettlementStatus }[] = [
-  { label: '未结算', value: 0 },
-  { label: '已结算', value: 1 },
-]
-
 /** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
 let fetchSeq = 0
 
@@ -40,9 +38,8 @@ let fetchSeq = 0
 const router = useRouter()
 
 const loading = ref(false)
-/** 正在作废 / 结算的单据 id（design §4.5：voidingId / settlingId） */
+/** 正在作废的单据 id（design §4.5：voidingId） */
 const voidingId = ref<string | undefined>(undefined)
-const settlingId = ref<string | undefined>(undefined)
 const items = ref<PurchaseReturnListItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -52,11 +49,11 @@ const pageSize = ref(20)
 const keywordInput = ref('')
 const partnerInput = ref<string | undefined>(undefined)
 const dateRangeInput = ref<string[] | undefined>(undefined)
-const settlementInput = ref<SettlementStatus | undefined>(undefined)
+const settlementInput = ref<SettlementState | undefined>(undefined)
 const appliedKeyword = ref('')
 const appliedPartner = ref<string | undefined>(undefined)
 const appliedRange = ref<[string, string] | null>(null)
-const appliedSettlement = ref<SettlementStatus | undefined>(undefined)
+const appliedSettlement = ref<SettlementState | undefined>(undefined)
 
 /** 供应商下拉数据源（全量拉取后前端筛「供应商 / 两者」，后端查询仅支持单值 type） */
 const partners = ref<Partner[]>([])
@@ -170,7 +167,7 @@ async function fetchList(): Promise<void> {
       partnerId: appliedPartner.value,
       start,
       end,
-      settlement: appliedSettlement.value,
+      settlementState: appliedSettlement.value,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -252,20 +249,9 @@ async function onVoid(row: PurchaseReturnListItem): Promise<void> {
   }
 }
 
-/** 结算切换：未结算 ↔ 已结算（库存不变） */
-async function onToggleSettlement(row: PurchaseReturnListItem): Promise<void> {
-  if (settlingId.value) return
-  settlingId.value = row.id
-  try {
-    const next: SettlementStatus = row.settlementStatus === 1 ? 0 : 1
-    await updatePurchaseReturnSettlement(row.id, next)
-    Message.success(next === 1 ? '已标记为已结算' : '已改回未结算')
-    void fetchList()
-  } catch {
-    // 错误提示已由请求层统一处理
-  } finally {
-    settlingId.value = undefined
-  }
+/** 去收付款：采购退货单为收款方向（type=0，供应商退我们钱），预置往来单位 */
+function onGoSettlement(row: PurchaseReturnListItem): void {
+  void router.push({ name: 'settlementNew', query: { type: '0', partnerId: row.partnerId } })
 }
 </script>
 
@@ -318,7 +304,7 @@ async function onToggleSettlement(row: PurchaseReturnListItem): Promise<void> {
           <a-col :span="3">
             <a-select
               v-model="settlementInput"
-              :options="settlementOptions"
+              :options="SETTLEMENT_STATE_OPTIONS"
               placeholder="结算状态"
               allow-clear
             />
@@ -427,8 +413,8 @@ async function onToggleSettlement(row: PurchaseReturnListItem): Promise<void> {
           </span>
         </template>
         <template #settlement="{ record }">
-          <a-tag :color="(record as PurchaseReturnListItem).settlementStatus === 1 ? 'green' : 'gray'">
-            {{ (record as PurchaseReturnListItem).settlementStatus === 1 ? '已结算' : '未结算' }}
+          <a-tag :color="settlementStateColor((record as PurchaseReturnListItem).settlementState)">
+            {{ settlementStateLabel((record as PurchaseReturnListItem).settlementState, (record as PurchaseReturnListItem).unsettledAmount) }}
           </a-tag>
         </template>
         <template #status="{ record }">
@@ -456,26 +442,17 @@ async function onToggleSettlement(row: PurchaseReturnListItem): Promise<void> {
               详情
             </a-button>
 
-            <a-popconfirm
+            <a-button
               v-if="(record as PurchaseReturnListItem).status === 1"
-              type="info"
-              :content="(record as PurchaseReturnListItem).settlementStatus === 1 ? '确认改回未结算？' : '确认标记为已结算？'"
-              @ok="onToggleSettlement(record as PurchaseReturnListItem)"
+              type="text"
+              size="small"
+              @click="onGoSettlement(record as PurchaseReturnListItem)"
             >
-              <a-button
-                type="text"
-                :status="(record as PurchaseReturnListItem).settlementStatus === 1 ? 'normal' : 'success'"
-                :class="{ 'action-btn-secondary': (record as PurchaseReturnListItem).settlementStatus === 1 }"
-                size="small"
-                :loading="settlingId === (record as PurchaseReturnListItem).id"
-              >
-                <template #icon>
-                  <IconArrowBackUp v-if="(record as PurchaseReturnListItem).settlementStatus === 1" />
-                  <IconCircleCheck v-else />
-                </template>
-                {{ (record as PurchaseReturnListItem).settlementStatus === 1 ? '改回未结算' : '标记已结算' }}
-              </a-button>
-            </a-popconfirm>
+              <template #icon>
+                <IconCash />
+              </template>
+              收付款
+            </a-button>
             <a-popconfirm
               v-if="(record as PurchaseReturnListItem).status === 1"
               type="warning"
