@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # 设计规格：库存流水（erp-stock-movement）
@@ -25,8 +25,12 @@ updated: 2026-09-16
 | `PurchaseReturnVoid = 8` | 采购退货作废 | 增加 | `magenta` | `+N`（绿字） |
 | `SalesReturnIn = 9` | 销售退货 | 增加 | `cyan` | `+N`（绿字） |
 | `SalesReturnVoid = 10` | 销售退货作废 | 减少 | `pinkpurple` | `-N`（红字） |
+| `TransferOut = 11` | 调拨转出 | 减少 | `geekblue` | `-N`（红字） |
+| `TransferIn = 12` | 调拨转入 | 增加 | `lime` | `+N`（绿字） |
+| `TransferOutVoid = 13` | 调拨转出作废 | 增加 | `volcano` | `+N`（绿字） |
+| `TransferInVoid = 14` | 调拨转入作废 | 减少 | `magenta` | `-N`（红字） |
 
-> 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加；7 / 8 由 `specs/021-erp-purchase-return/` 追加；9 / 10 由 `specs/022-erp-sale-return/` 追加（各自落地时同步启用；前端类型下拉以本表为准）。
+> 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加；7 / 8 由 `specs/021-erp-purchase-return/` 追加；9 / 10 由 `specs/022-erp-sale-return/` 追加；11–14 由 `specs/031-erp-transfer/` 追加（各自落地时同步启用；前端类型下拉以本表为准）。
 
 - 变动量列展示**带符号整数**（`+N` / `-N`），入库 / 回增绿字、出库 / 回冲红字；e2e 断言该文本。
 - 空值渲染：来源单号为空显示 `-`（后续盘点 / 期初场景），操作人为空显示 `-`（系统操作）。
