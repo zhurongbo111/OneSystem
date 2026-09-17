@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import {
   IconApps,
   IconBuildingWarehouse,
+  IconCash,
   IconClipboardCheck,
   IconComponents,
   IconFileText,
@@ -18,6 +19,7 @@ import {
   IconPackages,
   IconReceipt,
   IconReceiptRefund,
+  IconScale,
   IconStack2,
   IconTags,
   IconTruckDelivery,
@@ -40,6 +42,7 @@ const MENU_ROUTE_MAP: Record<string, string> = {
   purchaseReturnDetail: 'purchaseReturns',
   salesDetail: 'sales',
   saleReturnDetail: 'salesReturns',
+  settlementDetail: 'settlements',
 }
 
 /** 菜单选中项：与当前路由名联动（单一数据源） */
@@ -58,7 +61,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail']
+const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail', 'settlements', 'settlementNew', 'settlementDetail', 'reconciliation']
 
 // —— reactive state ——
 
@@ -243,6 +246,18 @@ function onLogout(): void {
               <IconTruckReturn />
             </template>
             <span>销售退货</span>
+          </a-menu-item>
+          <a-menu-item key="settlements">
+            <template #icon>
+              <IconCash />
+            </template>
+            <span>收付款</span>
+          </a-menu-item>
+          <a-menu-item key="reconciliation">
+            <template #icon>
+              <IconScale />
+            </template>
+            <span>往来对账</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>
