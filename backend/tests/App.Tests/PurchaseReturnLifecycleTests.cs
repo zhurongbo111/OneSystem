@@ -5,7 +5,7 @@ using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
-using App.Core.Features.Purchases.CreatePurchaseOrder;
+using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
 using App.Core.Responses;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
@@ -252,22 +252,22 @@ public class PurchaseReturnLifecycleTests
         var uow = new RecordingUnitOfWork(calls);
         inventory.Seed(product.Id, 0); // 期初为 0，库存变化全部由流水表达
 
-        var purchaseOrders = new FakePurchaseOrderRepository(calls);
+        var purchaseReceipts = new FakePurchaseReceiptRepository(calls);
         var returns = new FakePurchaseReturnRepository(calls);
 
-        var createPurchase = new CreatePurchaseOrderRequestHandler(
-            purchaseOrders, new PartnerRepository(context), new ProductRepository(context),
+        var createPurchase = new CreatePurchaseReceiptRequestHandler(
+            purchaseReceipts, new FakePurchaseOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
             inventory, movements, uow, user);
         var createReturn = new CreatePurchaseReturnRequestHandler(
             returns, new PartnerRepository(context), new ProductRepository(context),
             inventory, movements, uow, user);
         var voidReturn = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user);
 
-        var inbound = await createPurchase.HandleAsync(new CreatePurchaseOrderRequest
+        var inbound = await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
         {
             PartnerId = partner.Id,
             OrderDate = ReturnDate,
-            Items = new[] { new CreatePurchaseOrderItem { ProductId = product.Id, Quantity = 5, UnitPrice = 2m } },
+            Items = new[] { new CreatePurchaseReceiptItem { ProductId = product.Id, Quantity = 5, UnitPrice = 2m } },
         });
         var returned = await createReturn.HandleAsync(new CreatePurchaseReturnRequest
         {
@@ -291,8 +291,8 @@ public class PurchaseReturnLifecycleTests
         Assert.Equal(5, inventory.GetQuantity(product.Id));
         Assert.Equal(inventory.GetQuantity(product.Id), await movements.SumQuantityAsync(product.Id));
 
-        // 单号前缀各归其域：采购入库 PO、采购退货 PR
-        Assert.Matches("^PO20260101\\d{4}$", inbound.OrderNo);
+        // 单号前缀各归其域：采购入库 GR、采购退货 PR
+        Assert.Matches("^GR20260101\\d{4}$", inbound.ReceiptNo);
         Assert.Matches("^PR20260101\\d{4}$", returned.ReturnNo);
     }
 }

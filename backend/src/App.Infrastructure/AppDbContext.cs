@@ -35,16 +35,28 @@ public class AppDbContext : DbContext
     /// <summary>往来单位表（供应商 / 客户合并）</summary>
     public DbSet<Partner> Partners => Set<Partner>();
 
-    /// <summary>采购单表</summary>
+    /// <summary>采购入库单表</summary>
+    public DbSet<PurchaseReceipt> PurchaseReceipts => Set<PurchaseReceipt>();
+
+    /// <summary>采购入库单明细表</summary>
+    public DbSet<PurchaseReceiptItem> PurchaseReceiptItems => Set<PurchaseReceiptItem>();
+
+    /// <summary>采购订单表</summary>
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
 
-    /// <summary>采购单明细表</summary>
+    /// <summary>采购订单明细表</summary>
     public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
 
-    /// <summary>销售单表</summary>
+    /// <summary>销售出库单表</summary>
+    public DbSet<SalesShipment> SalesShipments => Set<SalesShipment>();
+
+    /// <summary>销售出库单明细表</summary>
+    public DbSet<SalesShipmentItem> SalesShipmentItems => Set<SalesShipmentItem>();
+
+    /// <summary>销售订单表</summary>
     public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
 
-    /// <summary>销售单明细表</summary>
+    /// <summary>销售订单明细表</summary>
     public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
 
     /// <summary>采购退货单表</summary>

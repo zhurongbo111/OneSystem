@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace App.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// 销售单表映射配置（表名 SalesOrders，单号唯一索引；外键不级联删除，业务对象只停用 / 作废不删除）
+/// 销售订单表映射配置（表名 SalesOrders，订单号唯一索引；外键不级联删除，业务对象只作废不删除）
 /// </summary>
 internal sealed class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOrder>
 {
@@ -26,16 +26,16 @@ internal sealed class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOr
             .IsRequired()
             .HasColumnType("varchar(50)");
         builder.Property(p => p.OrderDate).IsRequired();
+        builder.Property(p => p.ExpectedDate);
         builder.Property(p => p.TotalAmount).IsRequired().HasColumnType("numeric(18,2)");
-        builder.Property(p => p.SettledAmount).IsRequired().HasColumnType("numeric(18,2)").HasDefaultValue(0m);
-        builder.Property(p => p.Status).HasConversion<short>().IsRequired();
+        builder.Property(p => p.FlowStatus).HasConversion<short>().IsRequired();
         builder.Property(p => p.Remark)
             .HasMaxLength(OrderFieldConstraints.RemarkMaxLength)
             .HasColumnType("varchar(200)");
         builder.Property(p => p.CreatedAt).IsRequired();
         builder.Property(p => p.UpdatedAt).IsRequired();
 
-        // 单号唯一（并发兜底，见 design.md §3.6）
+        // 订单号唯一（并发兜底，见 design.md §3.6）
         builder.HasIndex(p => p.OrderNo).IsUnique();
     }
 }

@@ -16,11 +16,11 @@ public class SettlementQueryRepositoryTests
 
     private static DateTimeOffset Now => DateTimeOffset.UtcNow;
 
-    private static SalesOrder NewSalesOrder(Guid partnerId, string orderNo, decimal total, decimal settled, OrderStatus status = OrderStatus.Normal)
+    private static SalesShipment NewSalesShipment(Guid partnerId, string shipmentNo, decimal total, decimal settled, OrderStatus status = OrderStatus.Normal)
         => new()
         {
             Id = Guid.NewGuid(),
-            OrderNo = orderNo,
+            ShipmentNo = shipmentNo,
             PartnerId = partnerId,
             PartnerName = "往来",
             OrderDate = OrderDate,
@@ -31,11 +31,11 @@ public class SettlementQueryRepositoryTests
             UpdatedAt = Now,
         };
 
-    private static PurchaseOrder NewPurchaseOrder(Guid partnerId, string orderNo, decimal total, decimal settled, OrderStatus status = OrderStatus.Normal)
+    private static PurchaseReceipt NewPurchaseReceipt(Guid partnerId, string receiptNo, decimal total, decimal settled, OrderStatus status = OrderStatus.Normal)
         => new()
         {
             Id = Guid.NewGuid(),
-            OrderNo = orderNo,
+            ReceiptNo = receiptNo,
             PartnerId = partnerId,
             PartnerName = "往来",
             OrderDate = OrderDate,
@@ -99,13 +99,13 @@ public class SettlementQueryRepositoryTests
         var customer = TestSupport.NewPartner("客户一", PartnerType.Both);
         context.Partners.Add(customer);
 
-        var salesOrder = NewSalesOrder(customer.Id, "SO202512200001", 1000m, 400m);
+        var salesShipment = NewSalesShipment(customer.Id, "GI202512200001", 1000m, 400m);
         var purchaseReturn = NewPurchaseReturn(customer.Id, "PR202512200001", 200m, 0m);
-        var purchaseOrder = NewPurchaseOrder(customer.Id, "PO202512200001", 500m, 0m);
+        var purchaseReceipt = NewPurchaseReceipt(customer.Id, "GR202512200001", 500m, 0m);
         var salesReturn = NewSalesReturn(customer.Id, "SR202512200001", 300m, 0m);
-        context.SalesOrders.Add(salesOrder);
+        context.SalesShipments.Add(salesShipment);
         context.PurchaseReturns.Add(purchaseReturn);
-        context.PurchaseOrders.Add(purchaseOrder);
+        context.PurchaseReceipts.Add(purchaseReceipt);
         context.SalesReturns.Add(salesReturn);
         await context.SaveChangesAsync();
 
@@ -130,9 +130,9 @@ public class SettlementQueryRepositoryTests
         var supplier = TestSupport.NewPartner("供应商一", PartnerType.Both);
         context.Partners.Add(supplier);
 
-        context.SalesOrders.Add(NewSalesOrder(supplier.Id, "SO202512200001", 1000m, 0m));
+        context.SalesShipments.Add(NewSalesShipment(supplier.Id, "GI202512200001", 1000m, 0m));
         context.PurchaseReturns.Add(NewPurchaseReturn(supplier.Id, "PR202512200001", 200m, 0m));
-        context.PurchaseOrders.Add(NewPurchaseOrder(supplier.Id, "PO202512200001", 500m, 0m));
+        context.PurchaseReceipts.Add(NewPurchaseReceipt(supplier.Id, "GR202512200001", 500m, 0m));
         context.SalesReturns.Add(NewSalesReturn(supplier.Id, "SR202512200001", 300m, 0m));
         await context.SaveChangesAsync();
 
@@ -153,9 +153,9 @@ public class SettlementQueryRepositoryTests
         var customer = TestSupport.NewPartner("客户一", PartnerType.Customer);
         context.Partners.Add(customer);
 
-        context.SalesOrders.Add(NewSalesOrder(customer.Id, "SO202512200001", 1000m, 0m));
-        context.SalesOrders.Add(NewSalesOrder(customer.Id, "SO202512200002", 1000m, 1000m)); // 已结清
-        context.SalesOrders.Add(NewSalesOrder(customer.Id, "SO202512200003", 1000m, 0m, OrderStatus.Voided)); // 已作废
+        context.SalesShipments.Add(NewSalesShipment(customer.Id, "GI202512200001", 1000m, 0m));
+        context.SalesShipments.Add(NewSalesShipment(customer.Id, "GI202512200002", 1000m, 1000m)); // 已结清
+        context.SalesShipments.Add(NewSalesShipment(customer.Id, "GI202512200003", 1000m, 0m, OrderStatus.Voided)); // 已作废
         await context.SaveChangesAsync();
 
         var repository = new SettlementQueryRepository(context);
@@ -164,7 +164,7 @@ public class SettlementQueryRepositoryTests
 
         Assert.Equal(1, total);
         Assert.Single(firstPage);
-        Assert.Equal("SO202512200001", firstPage[0].OrderNo);
+        Assert.Equal("GI202512200001", firstPage[0].OrderNo);
     }
 
     [Fact]
@@ -175,13 +175,13 @@ public class SettlementQueryRepositoryTests
         context.Partners.Add(customer);
 
         // 应收 = 销售 1000 − 销售退货 300 − 已收 400 = 300（退货单已结清，不影响未结单据数）
-        context.SalesOrders.Add(NewSalesOrder(customer.Id, "SO202512200001", 1000m, 400m));
+        context.SalesShipments.Add(NewSalesShipment(customer.Id, "GI202512200001", 1000m, 400m));
         context.SalesReturns.Add(NewSalesReturn(customer.Id, "SR202512200001", 300m, 300m));
         context.Settlements.Add(NewSettlement(customer.Id, SettlementType.Receipt, 400m));
         // 已作废收款单不计入已收
         context.Settlements.Add(NewSettlement(customer.Id, SettlementType.Receipt, 999m, OrderStatus.Voided));
         // 应付 = 采购 500 − 采购退货 100 − 已付 200 = 200
-        context.PurchaseOrders.Add(NewPurchaseOrder(customer.Id, "PO202512200001", 500m, 200m));
+        context.PurchaseReceipts.Add(NewPurchaseReceipt(customer.Id, "GR202512200001", 500m, 200m));
         context.PurchaseReturns.Add(NewPurchaseReturn(customer.Id, "PR202512200001", 100m, 100m));
         context.Settlements.Add(NewSettlement(customer.Id, SettlementType.Payment, 200m));
         await context.SaveChangesAsync();

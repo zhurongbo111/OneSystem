@@ -24,21 +24,39 @@ using App.Core.Features.Products.GetProductPickList;
 using App.Core.Features.Products.GetProducts;
 using App.Core.Features.Products.UpdateProduct;
 using App.Core.Features.Products.UpdateProductStatus;
-using App.Core.Features.Purchases;
-using App.Core.Features.Purchases.CreatePurchaseOrder;
-using App.Core.Features.Purchases.GetPurchaseOrderById;
-using App.Core.Features.Purchases.GetPurchaseOrders;
-using App.Core.Features.Purchases.VoidPurchaseOrder;
+using App.Core.Features.PurchaseOrders;
+using App.Core.Features.PurchaseOrders.ClosePurchaseOrder;
+using App.Core.Features.PurchaseOrders.CreatePurchaseOrder;
+using App.Core.Features.PurchaseOrders.GetPurchaseOrderById;
+using App.Core.Features.PurchaseOrders.GetPurchaseOrders;
+using App.Core.Features.PurchaseOrders.UpdatePurchaseOrder;
+using App.Core.Features.PurchaseOrders.VoidPurchaseOrder;
+using App.Core.Features.PurchaseReceipts;
+using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
+using App.Core.Features.PurchaseReceipts.GetPurchaseOrderLines;
+using App.Core.Features.PurchaseReceipts.GetPurchaseOrderPicks;
+using App.Core.Features.PurchaseReceipts.GetPurchaseReceiptById;
+using App.Core.Features.PurchaseReceipts.GetPurchaseReceipts;
+using App.Core.Features.PurchaseReceipts.VoidPurchaseReceipt;
 using App.Core.Features.PurchaseReturns;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
-using App.Core.Features.Sales;
-using App.Core.Features.Sales.CreateSalesOrder;
-using App.Core.Features.Sales.GetSalesOrderById;
-using App.Core.Features.Sales.GetSalesOrders;
-using App.Core.Features.Sales.VoidSalesOrder;
+using App.Core.Features.SalesOrders;
+using App.Core.Features.SalesOrders.CloseSalesOrder;
+using App.Core.Features.SalesOrders.CreateSalesOrder;
+using App.Core.Features.SalesOrders.GetSalesOrderById;
+using App.Core.Features.SalesOrders.GetSalesOrders;
+using App.Core.Features.SalesOrders.UpdateSalesOrder;
+using App.Core.Features.SalesOrders.VoidSalesOrder;
+using App.Core.Features.SalesShipments;
+using App.Core.Features.SalesShipments.CreateSalesShipment;
+using App.Core.Features.SalesShipments.GetSalesOrderLines;
+using App.Core.Features.SalesShipments.GetSalesOrderPicks;
+using App.Core.Features.SalesShipments.GetSalesShipmentById;
+using App.Core.Features.SalesShipments.GetSalesShipments;
+using App.Core.Features.SalesShipments.VoidSalesShipment;
 using App.Core.Features.SalesReturns;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.GetSalesReturnById;
@@ -134,10 +152,22 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<GetInventoryRequest, PagedResult<InventoryItemDto>>, GetInventoryRequestHandler>();
 
         // 采购管理用例（erp-purchase）
+        services.AddScoped<IRequestHandler<GetPurchaseReceiptsRequest, PagedResult<PurchaseReceiptListItemDto>>, GetPurchaseReceiptsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetPurchaseReceiptByIdRequest, PurchaseReceiptDetailDto>, GetPurchaseReceiptByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreatePurchaseReceiptRequest, PurchaseReceiptDetailDto>, CreatePurchaseReceiptRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidPurchaseReceiptRequest, PurchaseReceiptDetailDto>, VoidPurchaseReceiptRequestHandler>();
+
+        // 入库开单页「关联采购订单」（erp-order-flow）：候选订单 + 订单明细（含未收数量）
+        services.AddScoped<IRequestHandler<GetPurchaseOrderPicksRequest, IReadOnlyList<PurchaseOrderPickDto>>, GetPurchaseOrderPicksRequestHandler>();
+        services.AddScoped<IRequestHandler<GetPurchaseOrderLinesRequest, PurchaseOrderLinesDto>, GetPurchaseOrderLinesRequestHandler>();
+
+        // 采购订单用例（erp-order-flow；计划单据，不触碰库存与流水）
         services.AddScoped<IRequestHandler<GetPurchaseOrdersRequest, PagedResult<PurchaseOrderListItemDto>>, GetPurchaseOrdersRequestHandler>();
         services.AddScoped<IRequestHandler<GetPurchaseOrderByIdRequest, PurchaseOrderDetailDto>, GetPurchaseOrderByIdRequestHandler>();
         services.AddScoped<IRequestHandler<CreatePurchaseOrderRequest, PurchaseOrderDetailDto>, CreatePurchaseOrderRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdatePurchaseOrderRequest, PurchaseOrderDetailDto>, UpdatePurchaseOrderRequestHandler>();
         services.AddScoped<IRequestHandler<VoidPurchaseOrderRequest, PurchaseOrderDetailDto>, VoidPurchaseOrderRequestHandler>();
+        services.AddScoped<IRequestHandler<ClosePurchaseOrderRequest, PurchaseOrderDetailDto>, ClosePurchaseOrderRequestHandler>();
 
         // 采购退货用例（erp-purchase-return）
         services.AddScoped<IRequestHandler<GetPurchaseReturnsRequest, PagedResult<PurchaseReturnListItemDto>>, GetPurchaseReturnsRequestHandler>();
@@ -146,10 +176,22 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidPurchaseReturnRequest, PurchaseReturnDetailDto>, VoidPurchaseReturnRequestHandler>();
 
         // 销售管理用例（erp-sale）
+        services.AddScoped<IRequestHandler<GetSalesShipmentsRequest, PagedResult<SalesShipmentListItemDto>>, GetSalesShipmentsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetSalesShipmentByIdRequest, SalesShipmentDetailDto>, GetSalesShipmentByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateSalesShipmentRequest, SalesShipmentDetailDto>, CreateSalesShipmentRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidSalesShipmentRequest, SalesShipmentDetailDto>, VoidSalesShipmentRequestHandler>();
+
+        // 出库开单页「关联销售订单」（erp-order-flow）：候选订单 + 订单明细（含未发数量）
+        services.AddScoped<IRequestHandler<GetSalesOrderPicksRequest, IReadOnlyList<SalesOrderPickDto>>, GetSalesOrderPicksRequestHandler>();
+        services.AddScoped<IRequestHandler<GetSalesOrderLinesRequest, SalesOrderLinesDto>, GetSalesOrderLinesRequestHandler>();
+
+        // 销售订单用例（erp-order-flow；计划单据，不触碰库存与流水）
         services.AddScoped<IRequestHandler<GetSalesOrdersRequest, PagedResult<SalesOrderListItemDto>>, GetSalesOrdersRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesOrderByIdRequest, SalesOrderDetailDto>, GetSalesOrderByIdRequestHandler>();
         services.AddScoped<IRequestHandler<CreateSalesOrderRequest, SalesOrderDetailDto>, CreateSalesOrderRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateSalesOrderRequest, SalesOrderDetailDto>, UpdateSalesOrderRequestHandler>();
         services.AddScoped<IRequestHandler<VoidSalesOrderRequest, SalesOrderDetailDto>, VoidSalesOrderRequestHandler>();
+        services.AddScoped<IRequestHandler<CloseSalesOrderRequest, SalesOrderDetailDto>, CloseSalesOrderRequestHandler>();
 
         // 销售退货用例（erp-sale-return）
         services.AddScoped<IRequestHandler<GetSalesReturnsRequest, PagedResult<SalesReturnListItemDto>>, GetSalesReturnsRequestHandler>();
@@ -193,12 +235,22 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdatePartnerRequest>, UpdatePartnerRequestValidator>();
         services.AddScoped<IValidator<UpdatePartnerStatusRequest>, UpdatePartnerStatusRequestValidator>();
         services.AddScoped<IValidator<GetInventoryRequest>, GetInventoryRequestValidator>();
-        services.AddScoped<IValidator<GetPurchaseOrdersRequest>, GetPurchaseOrdersRequestValidator>();
+        services.AddScoped<IValidator<GetPurchaseReceiptsRequest>, GetPurchaseReceiptsRequestValidator>();
+        services.AddScoped<IValidator<CreatePurchaseReceiptRequest>, CreatePurchaseReceiptRequestValidator>();
+        services.AddScoped<IValidator<GetPurchaseOrderPicksRequest>, GetPurchaseOrderPicksRequestValidator>();
+        services.AddScoped<IValidator<GetPurchaseOrderLinesRequest>, GetPurchaseOrderLinesRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseOrderRequest>, CreatePurchaseOrderRequestValidator>();
+        services.AddScoped<IValidator<UpdatePurchaseOrderRequest>, UpdatePurchaseOrderRequestValidator>();
+        services.AddScoped<IValidator<GetPurchaseOrdersRequest>, GetPurchaseOrdersRequestValidator>();
+        services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
+        services.AddScoped<IValidator<UpdateSalesOrderRequest>, UpdateSalesOrderRequestValidator>();
+        services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseReturnsRequest>, GetPurchaseReturnsRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReturnRequest>, CreatePurchaseReturnRequestValidator>();
-        services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
-        services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
+        services.AddScoped<IValidator<GetSalesShipmentsRequest>, GetSalesShipmentsRequestValidator>();
+        services.AddScoped<IValidator<CreateSalesShipmentRequest>, CreateSalesShipmentRequestValidator>();
+        services.AddScoped<IValidator<GetSalesOrderPicksRequest>, GetSalesOrderPicksRequestValidator>();
+        services.AddScoped<IValidator<GetSalesOrderLinesRequest>, GetSalesOrderLinesRequestValidator>();
         services.AddScoped<IValidator<GetSalesReturnsRequest>, GetSalesReturnsRequestValidator>();
         services.AddScoped<IValidator<CreateSalesReturnRequest>, CreateSalesReturnRequestValidator>();
         services.AddScoped<IValidator<CreateSettlementRequest>, CreateSettlementRequestValidator>();

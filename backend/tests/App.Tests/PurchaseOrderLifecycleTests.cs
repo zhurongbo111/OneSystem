@@ -1,182 +1,310 @@
 using App.Core;
 using App.Core.Entities;
 using App.Core.Errors;
-using App.Core.Features.Purchases.GetPurchaseOrderById;
-using App.Core.Features.Purchases.VoidPurchaseOrder;
+using App.Core.Features.PurchaseOrders.ClosePurchaseOrder;
+using App.Core.Features.PurchaseOrders.GetPurchaseOrderById;
+using App.Core.Features.PurchaseOrders.GetPurchaseOrders;
+using App.Core.Features.PurchaseOrders.UpdatePurchaseOrder;
+using App.Core.Features.PurchaseOrders.VoidPurchaseOrder;
+using App.Infrastructure;
+using App.Infrastructure.Repositories;
 
 namespace App.Tests;
 
 /// <summary>
-/// 采购单生命周期用例测试（design.md §6）：
-/// VoidPurchaseOrder（成功逐行回冲 IncrementAsync(-qty) + UpdateStatusAsync(Voided)；不存在 40400；已作废 40104 且不重复回冲）；
-/// GetPurchaseOrderById（存在含明细映射；不存在 40400）；
-/// 结算状态推导（specs/023-erp-settlement §0：SettledAmount ≤ 0 / 部分 / ≥ 总额 三态）。
-/// 采购单 / 库存 / 工作单元用行为型假实现（规避 InMemory 不支持 ExecuteUpdateAsync）。
+/// 采购订单生命周期测试（design.md §6）：编辑（仅待收货）/ 作废（仅待收货）/ 关闭（待收货 / 部分收货）、
+/// 状态非法与已作废的错误码、详情累计量映射、分页筛选透传与候选订单过滤。
 /// </summary>
 public class PurchaseOrderLifecycleTests
 {
     private static readonly DateTimeOffset OrderDate = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-    /// <summary>
-    /// 构造一张正常采购单（2 行明细：3×1.5 + 2×10 = 24.5）+ 商品 + 库存（10 / 8），预置进假仓储。
-    /// </summary>
-    private static (FakePurchaseOrderRepository Orders, FakeInventoryRepository Inventory,
-        RecordingUnitOfWork Uow, StubCurrentUser User, PurchaseOrder Order, Product P1, Product P2, List<string> Calls) SeedNormal()
-    {
-        var calls = new List<string>();
-        var orders = new FakePurchaseOrderRepository(calls);
-        var inventory = new FakeInventoryRepository(calls);
-        var uow = new RecordingUnitOfWork(calls);
-        var user = new StubCurrentUser(Guid.NewGuid());
-
-        var partner = TestSupport.NewPartner("供应商");
-        var p1 = TestSupport.NewProduct("sku-v1", "商品一");
-        var p2 = TestSupport.NewProduct("sku-v2", "商品二");
-        inventory.Seed(p1.Id, 10);
-        inventory.Seed(p2.Id, 8);
-
-        var now = DateTimeOffset.UtcNow;
-        var order = new PurchaseOrder
+    private static PurchaseOrder NewOrder(OrderFlowStatus status = OrderFlowStatus.Pending, Guid partnerId = default)
+        => new()
         {
             Id = Guid.NewGuid(),
             OrderNo = "PO202601010001",
-            PartnerId = partner.Id,
-            PartnerName = partner.Name,
+            PartnerId = partnerId,
+            PartnerName = "供应商",
             OrderDate = OrderDate,
-            TotalAmount = 24.5m,
-            SettledAmount = 0m,
-            Status = OrderStatus.Normal,
-            CreatedAt = now,
-            UpdatedAt = now,
+            TotalAmount = 10m,
+            FlowStatus = status,
+            CreatedAt = OrderDate,
+            UpdatedAt = OrderDate,
         };
-        // 明细 Id 用顺序 Guid（与生产一致），保证按 Id 排序还原插入顺序
-        var items = new List<PurchaseOrderItem>
-        {
-            new() { Id = SequentialGuidGenerator.NewSequential(), OrderId = order.Id, ProductId = p1.Id, ProductName = p1.Name, Unit = p1.Unit, Quantity = 3, UnitPrice = 1.5m, Subtotal = 4.5m },
-            new() { Id = SequentialGuidGenerator.NewSequential(), OrderId = order.Id, ProductId = p2.Id, ProductName = p2.Name, Unit = p2.Unit, Quantity = 2, UnitPrice = 10m, Subtotal = 20m },
-        };
-        orders.Seed(order, items);
 
-        return (orders, inventory, uow, user, order, p1, p2, calls);
+    private static PurchaseOrderItem NewItem(Guid orderId, int qty = 10, int fulfilled = 0, decimal price = 1m)
+        => new()
+        {
+            Id = SequentialGuidGenerator.NewSequential(),
+            OrderId = orderId,
+            ProductId = Guid.NewGuid(),
+            ProductName = "商品",
+            Unit = "件",
+            Quantity = qty,
+            UnitPrice = price,
+            Subtotal = qty * price,
+            FulfilledQuantity = fulfilled,
+        };
+
+    private static (AppDbContext Context, FakePurchaseOrderRepository Orders, StubCurrentUser User) CreateRepo()
+    {
+        var context = TestSupport.CreateDbContext();
+        var user = new StubCurrentUser(Guid.NewGuid());
+        return (context, new FakePurchaseOrderRepository(), user);
     }
 
-    // ============================== VoidPurchaseOrder ==============================
+    // ============================== 编辑 ==============================
 
     [Fact]
-    public async Task 作废采购单_成功_应逐行回冲库存并置作废()
+    public async Task 编辑采购订单_待收货_应整体替换明细并重算金额()
     {
-        var (orders, inventory, uow, user, order, p1, p2, calls) = SeedNormal();
-        var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, movements, uow, user);
+        var (context, orders, user) = CreateRepo();
+        var partner = TestSupport.NewPartner("供应商");
+        var p1 = TestSupport.NewProduct("sku-u1", "商品一");
+        context.Partners.Add(partner);
+        context.Products.Add(p1);
+        await context.SaveChangesAsync();
 
-        var result = await handler.HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id });
+        var order = NewOrder(OrderFlowStatus.Pending, partner.Id);
+        orders.Seed(order, new[] { NewItem(order.Id, 10) });
 
-        // 回冲：逐行库存 -= 数量，调用顺序与明细一致
-        Assert.Equal(
-            new[] { (p1.Id, -3), (p2.Id, -2) },
-            inventory.Increments.Select(i => (i.ProductId, i.Delta)).ToArray());
-        Assert.Equal(7, inventory.GetQuantity(p1.Id)); // 10 - 3
-        Assert.Equal(6, inventory.GetQuantity(p2.Id)); // 8 - 2
+        var handler = new UpdatePurchaseOrderRequestHandler(
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
 
-        // 逐行追加采购作废回冲流水：类型 / 负方向 / 来源 / 操作人
-        Assert.Equal(2, movements.Appended.Count);
-        Assert.Equal(new[] { (p1.Id, -3), (p2.Id, -2) }, movements.Appended.Select(m => (m.ProductId, m.Quantity)).ToArray());
-        Assert.All(movements.Appended, m =>
+        var result = await handler.HandleAsync(new UpdatePurchaseOrderRequest
         {
-            Assert.Equal(StockMovementType.PurchaseVoid, m.MovementType);
-            Assert.Equal(user.UserId, m.CreatedBy);
-            Assert.Equal(order.Id, m.SourceId);
-            Assert.Equal(order.OrderNo, m.SourceNo);
+            Id = order.Id,
+            PartnerId = partner.Id,
+            OrderDate = OrderDate,
+            Items = new[] { new UpdatePurchaseOrderItem { ProductId = p1.Id, Quantity = 7, UnitPrice = 2m } },
         });
-        // 状态置作废（事务序列：Begin → Increment ×2 → Append ×2 → UpdateStatus → Commit）
-        var (afterVoid, _) = await orders.GetDetailAsync(order.Id);
-        Assert.Equal(OrderStatus.Voided, afterVoid!.Status);
-        Assert.Equal(user.UserId, order.UpdatedBy);
-        Assert.Equal((int)OrderStatus.Voided, result.Status);
-        Assert.Equal(new[] { "Begin", "Increment", "Append", "Increment", "Append", "UpdateStatus", "Commit" }, calls.ToArray());
+
+        Assert.Equal(14m, result.TotalAmount);
+        Assert.Single(result.Items);
+        Assert.Equal(7, result.Items[0].Quantity);
+        Assert.Equal(0, result.Items[0].FulfilledQuantity);
+        Assert.Single(orders.ItemsOf(order.Id)); // 明细全量替换
     }
-
-    [Fact]
-    public async Task 作废采购单_不存在_应报NotFound()
-    {
-        var (orders, inventory, uow, user, _, _, _, _) = SeedNormal();
-        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, new FakeStockMovementRepository(), uow, user);
-
-        var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => handler.HandleAsync(new VoidPurchaseOrderRequest { Id = Guid.NewGuid() }));
-        Assert.Equal(ErrorCode.NotFound, ex.Code);
-    }
-
-    [Fact]
-    public async Task 作废采购单_已作废_应报OrderVoided且不重复回冲()
-    {
-        var (orders, inventory, uow, user, order, p1, _, calls) = SeedNormal();
-        // 预置为已作废
-        await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided, null);
-
-        var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseOrderRequestHandler(orders, inventory, movements, uow, user);
-
-        var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => handler.HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id }));
-        Assert.Equal(ErrorCode.OrderVoided, ex.Code);
-
-        // 未开启事务、未回冲、不写流水
-        Assert.Empty(inventory.Increments);
-        Assert.Empty(movements.Appended);
-        Assert.DoesNotContain("Begin", calls);
-        Assert.Equal(10, inventory.GetQuantity(p1.Id));
-    }
-
-    // ============================== 结算状态推导（erp-settlement） ==============================
 
     [Theory]
-    [InlineData(0, SettlementState.Unsettled)]
-    [InlineData(10, SettlementState.PartiallySettled)]
-    [InlineData(24.5, SettlementState.Settled)]
-    [InlineData(30, SettlementState.Settled)]
-    public async Task 结算状态推导_按已结金额与总额四态(decimal settledAmount, SettlementState expected)
+    [InlineData(OrderFlowStatus.Partial)]
+    [InlineData(OrderFlowStatus.Completed)]
+    [InlineData(OrderFlowStatus.Closed)]
+    public async Task 编辑采购订单_非待收货_应报OrderStateInvalid(OrderFlowStatus status)
     {
-        var (orders, _, _, _, order, _, _, _) = SeedNormal();
-        order.SettledAmount = settledAmount;
-        var handler = new GetPurchaseOrderByIdRequestHandler(orders);
+        var (context, orders, user) = CreateRepo();
+        var order = NewOrder(status);
+        orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var result = await handler.HandleAsync(new GetPurchaseOrderByIdRequest { Id = order.Id });
+        var handler = new UpdatePurchaseOrderRequestHandler(
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
 
-        // 0 未结算 / 1 部分结算 / 2 已结算（SettledAmount ≥ TotalAmount 视为结清）；未结金额 = 总额 − 已结
-        Assert.Equal((int)expected, result.SettlementState);
-        Assert.Equal(order.TotalAmount - settledAmount, result.UnsettledAmount);
-        Assert.Equal(settledAmount, result.SettledAmount);
-    }
-
-    // ============================== GetPurchaseOrderById ==============================
-
-    [Fact]
-    public async Task 查询采购单详情_存在_应返回主表与明细()
-    {
-        var (orders, _, uow, _, order, _, _, _) = SeedNormal();
-        var handler = new GetPurchaseOrderByIdRequestHandler(orders);
-
-        var result = await handler.HandleAsync(new GetPurchaseOrderByIdRequest { Id = order.Id });
-
-        Assert.Equal(order.OrderNo, result.OrderNo);
-        Assert.Equal(24.5m, result.TotalAmount);
-        Assert.Equal(2, result.Items.Count);
-        // 明细按插入顺序、快照字段原样返回
-        Assert.Equal("商品一", result.Items[0].ProductName);
-        Assert.Equal(4.5m, result.Items[0].Subtotal);
-        Assert.Equal("商品二", result.Items[1].ProductName);
-        Assert.Equal(20m, result.Items[1].Subtotal);
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new UpdatePurchaseOrderRequest
+        {
+            Id = order.Id,
+            PartnerId = Guid.NewGuid(),
+            OrderDate = OrderDate,
+            Items = new[] { new UpdatePurchaseOrderItem { ProductId = Guid.NewGuid(), Quantity = 1, UnitPrice = 1m } },
+        }));
+        Assert.Equal(ErrorCode.OrderStateInvalid, ex.Code);
     }
 
     [Fact]
-    public async Task 查询采购单详情_不存在_应报NotFound()
+    public async Task 编辑采购订单_已作废_应报OrderVoided()
     {
-        var (orders, _, uow, _, _, _, _, _) = SeedNormal();
-        var handler = new GetPurchaseOrderByIdRequestHandler(orders);
+        var (context, orders, user) = CreateRepo();
+        var order = NewOrder(OrderFlowStatus.Voided);
+        orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => handler.HandleAsync(new GetPurchaseOrderByIdRequest { Id = Guid.NewGuid() }));
+        var handler = new UpdatePurchaseOrderRequestHandler(
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new UpdatePurchaseOrderRequest
+        {
+            Id = order.Id,
+            PartnerId = Guid.NewGuid(),
+            OrderDate = OrderDate,
+            Items = new[] { new UpdatePurchaseOrderItem { ProductId = Guid.NewGuid(), Quantity = 1, UnitPrice = 1m } },
+        }));
+        Assert.Equal(ErrorCode.OrderVoided, ex.Code);
+    }
+
+    [Fact]
+    public async Task 编辑采购订单_不存在_应报NotFound()
+    {
+        var (context, orders, user) = CreateRepo();
+        var handler = new UpdatePurchaseOrderRequestHandler(
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new UpdatePurchaseOrderRequest
+        {
+            Id = Guid.NewGuid(),
+            PartnerId = Guid.NewGuid(),
+            OrderDate = OrderDate,
+            Items = new[] { new UpdatePurchaseOrderItem { ProductId = Guid.NewGuid(), Quantity = 1, UnitPrice = 1m } },
+        }));
         Assert.Equal(ErrorCode.NotFound, ex.Code);
+    }
+
+    // ============================== 作废 ==============================
+
+    [Fact]
+    public async Task 作废采购订单_待收货_应置已作废且不动累计量()
+    {
+        var (_, orders, user) = CreateRepo();
+        var order = NewOrder(OrderFlowStatus.Pending);
+        orders.Seed(order, new[] { NewItem(order.Id) });
+
+        var result = await new VoidPurchaseOrderRequestHandler(orders, user)
+            .HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id });
+
+        Assert.Equal((int)OrderFlowStatus.Voided, result.FlowStatus);
+        Assert.Equal(new[] { OrderFlowStatus.Voided }, orders.FlowStatusUpdates.ToArray());
+        Assert.Empty(orders.FulfilledAdds); // 计划单据作废不涉及累计量回退
+    }
+
+    [Fact]
+    public async Task 作废采购订单_部分收货_应报OrderStateInvalid()
+    {
+        var (_, orders, user) = CreateRepo();
+        var order = NewOrder(OrderFlowStatus.Partial);
+        orders.Seed(order, new[] { NewItem(order.Id) });
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new VoidPurchaseOrderRequestHandler(orders, user)
+            .HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id }));
+        Assert.Equal(ErrorCode.OrderStateInvalid, ex.Code);
+    }
+
+    [Fact]
+    public async Task 作废采购订单_已作废_应报OrderVoided()
+    {
+        var (_, orders, user) = CreateRepo();
+        var order = NewOrder(OrderFlowStatus.Voided);
+        orders.Seed(order, new[] { NewItem(order.Id) });
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new VoidPurchaseOrderRequestHandler(orders, user)
+            .HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id }));
+        Assert.Equal(ErrorCode.OrderVoided, ex.Code);
+    }
+
+    // ============================== 关闭 ==============================
+
+    [Theory]
+    [InlineData(OrderFlowStatus.Pending)]
+    [InlineData(OrderFlowStatus.Partial)]
+    public async Task 关闭采购订单_待收货或部分收货_应置已关闭(OrderFlowStatus status)
+    {
+        var (_, orders, user) = CreateRepo();
+        var order = NewOrder(status);
+        orders.Seed(order, new[] { NewItem(order.Id) });
+
+        var result = await new ClosePurchaseOrderRequestHandler(orders, user)
+            .HandleAsync(new ClosePurchaseOrderRequest { Id = order.Id });
+
+        Assert.Equal((int)OrderFlowStatus.Closed, result.FlowStatus);
+        Assert.Equal(new[] { OrderFlowStatus.Closed }, orders.FlowStatusUpdates.ToArray());
+    }
+
+    [Theory]
+    [InlineData(OrderFlowStatus.Completed)]
+    [InlineData(OrderFlowStatus.Closed)]
+    public async Task 关闭采购订单_已完成或已关闭_应报OrderStateInvalid(OrderFlowStatus status)
+    {
+        var (_, orders, user) = CreateRepo();
+        var order = NewOrder(status);
+        orders.Seed(order, new[] { NewItem(order.Id) });
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new ClosePurchaseOrderRequestHandler(orders, user)
+            .HandleAsync(new ClosePurchaseOrderRequest { Id = order.Id }));
+        Assert.Equal(ErrorCode.OrderStateInvalid, ex.Code);
+    }
+
+    [Fact]
+    public async Task 关闭采购订单_已作废_应报OrderVoided()
+    {
+        var (_, orders, user) = CreateRepo();
+        var order = NewOrder(OrderFlowStatus.Voided);
+        orders.Seed(order, new[] { NewItem(order.Id) });
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new ClosePurchaseOrderRequestHandler(orders, user)
+            .HandleAsync(new ClosePurchaseOrderRequest { Id = order.Id }));
+        Assert.Equal(ErrorCode.OrderVoided, ex.Code);
+    }
+
+    // ============================== 查询 ==============================
+
+    [Fact]
+    public async Task 采购订单详情_应含累计已收与未收数量()
+    {
+        var (_, orders, _) = CreateRepo();
+        var order = NewOrder(OrderFlowStatus.Partial);
+        orders.Seed(order, new[] { NewItem(order.Id, 10, 4) });
+
+        var result = await new GetPurchaseOrderByIdRequestHandler(orders)
+            .HandleAsync(new GetPurchaseOrderByIdRequest { Id = order.Id });
+
+        Assert.Equal(4, result.Items[0].FulfilledQuantity);
+        Assert.Equal(6, result.Items[0].RemainingQuantity);
+    }
+
+    [Fact]
+    public async Task 采购订单详情_不存在_应报NotFound()
+    {
+        var (_, orders, _) = CreateRepo();
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new GetPurchaseOrderByIdRequestHandler(orders)
+            .HandleAsync(new GetPurchaseOrderByIdRequest { Id = Guid.NewGuid() }));
+        Assert.Equal(ErrorCode.NotFound, ex.Code);
+    }
+
+    [Fact]
+    public async Task 采购订单分页_应透传筛选并映射未收数量合计()
+    {
+        var (_, orders, _) = CreateRepo();
+        var order = NewOrder(OrderFlowStatus.Partial);
+        orders.PagedResult = (new[] { (order, 6) }, 1);
+
+        var start = OrderDate;
+        var end = OrderDate.AddDays(1);
+        var result = await new GetPurchaseOrdersRequestHandler(orders).HandleAsync(new GetPurchaseOrdersRequest
+        {
+            Keyword = "PO2026",
+            PartnerId = order.PartnerId,
+            FlowStatus = OrderFlowStatus.Partial,
+            Start = start,
+            End = end,
+            Page = 2,
+            PageSize = 50,
+        });
+
+        var args = orders.LastPagedArgs;
+        Assert.NotNull(args);
+        Assert.Equal("PO2026", args.Value.Keyword);
+        Assert.Equal(order.PartnerId, args.Value.PartnerId);
+        Assert.Equal(OrderFlowStatus.Partial, args.Value.FlowStatus);
+        Assert.Equal(start, args.Value.Start);
+        Assert.Equal(end, args.Value.End);
+        Assert.Equal(2, args.Value.Page);
+        Assert.Equal(50, args.Value.PageSize);
+
+        Assert.Equal(1, result.Total);
+        Assert.Equal(6, result.Items[0].UnfulfilledQuantity);
+        Assert.Equal((int)OrderFlowStatus.Partial, result.Items[0].FlowStatus);
+    }
+
+    [Fact]
+    public async Task 采购订单候选_应仅返回待收货与部分收货()
+    {
+        var (_, orders, _) = CreateRepo();
+        var partnerId = Guid.NewGuid();
+        orders.Seed(NewOrder(OrderFlowStatus.Pending, partnerId), Array.Empty<PurchaseOrderItem>());
+        orders.Seed(NewOrder(OrderFlowStatus.Partial, partnerId), Array.Empty<PurchaseOrderItem>());
+        orders.Seed(NewOrder(OrderFlowStatus.Completed, partnerId), Array.Empty<PurchaseOrderItem>());
+        orders.Seed(NewOrder(OrderFlowStatus.Pending, Guid.NewGuid()), Array.Empty<PurchaseOrderItem>()); // 其他供应商
+
+        var picks = await orders.GetPicksAsync(partnerId);
+
+        Assert.Equal(2, picks.Count);
+        Assert.All(picks, o => Assert.True(o.FlowStatus is OrderFlowStatus.Pending or OrderFlowStatus.Partial));
     }
 }

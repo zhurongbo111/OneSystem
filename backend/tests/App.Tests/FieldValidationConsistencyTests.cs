@@ -3,10 +3,10 @@ using App.Core.Features.Auth.Login;
 using App.Core.Features.LoginLogs.GetLoginLogs;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
-using App.Core.Features.Purchases.CreatePurchaseOrder;
-using App.Core.Features.Purchases.GetPurchaseOrders;
-using App.Core.Features.Sales.CreateSalesOrder;
-using App.Core.Features.Sales.GetSalesOrders;
+using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
+using App.Core.Features.PurchaseReceipts.GetPurchaseReceipts;
+using App.Core.Features.SalesShipments.CreateSalesShipment;
+using App.Core.Features.SalesShipments.GetSalesShipments;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.GetSalesReturns;
 using App.Core.Features.StockMovements.GetStockMovements;
@@ -189,18 +189,18 @@ public class FieldValidationConsistencyTests
     // ============================== 采购单字段约束（OrderNo / 明细 / 关键词）==============================
 
     [Fact]
-    public void EF模型_PurchaseOrders表OrderNo列长度_应等于字段约束常量()
+    public void EF模型_PurchaseReceipts表ReceiptNo列长度_应等于字段约束常量()
     {
         using var dbContext = TestSupport.CreateDbContext();
 
-        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<PurchaseOrder>(dbContext, nameof(PurchaseOrder.OrderNo)));
-        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<PurchaseOrder>(dbContext, nameof(PurchaseOrder.Remark)));
+        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<PurchaseReceipt>(dbContext, nameof(PurchaseReceipt.ReceiptNo)));
+        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<PurchaseReceipt>(dbContext, nameof(PurchaseReceipt.Remark)));
     }
 
     [Fact]
     public void 采购单明细数量_边界值应通过且超界拒绝()
     {
-        var validator = new CreatePurchaseOrderRequestValidator();
+        var validator = new CreatePurchaseReceiptRequestValidator();
 
         Assert.True(ValidatePurchase(validator, quantity: ProductFieldConstraints.QuantityMinValue));
         Assert.True(ValidatePurchase(validator, quantity: ProductFieldConstraints.QuantityMaxValue));
@@ -211,7 +211,7 @@ public class FieldValidationConsistencyTests
     [Fact]
     public void 采购单明细单价_边界值应通过且超界拒绝()
     {
-        var validator = new CreatePurchaseOrderRequestValidator();
+        var validator = new CreatePurchaseReceiptRequestValidator();
 
         // 允许 0 元单价
         Assert.True(ValidatePurchase(validator, unitPrice: ProductFieldConstraints.PriceMinValue));
@@ -223,7 +223,7 @@ public class FieldValidationConsistencyTests
     [Fact]
     public void 采购单明细行数_上限内通过且超上限拒绝()
     {
-        var validator = new CreatePurchaseOrderRequestValidator();
+        var validator = new CreatePurchaseReceiptRequestValidator();
 
         Assert.True(ValidatePurchase(validator, itemCount: OrderFieldConstraints.ItemsMaxCount));
         Assert.False(ValidatePurchase(validator, itemCount: OrderFieldConstraints.ItemsMaxCount + 1));
@@ -235,27 +235,27 @@ public class FieldValidationConsistencyTests
         var ok = new string('a', OrderFieldConstraints.KeywordMaxLength);
         var tooLong = new string('a', OrderFieldConstraints.KeywordMaxLength + 1);
 
-        Assert.True(new GetPurchaseOrdersRequestValidator()
-            .Validate(new GetPurchaseOrdersRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
-        Assert.False(new GetPurchaseOrdersRequestValidator()
-            .Validate(new GetPurchaseOrdersRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+        Assert.True(new GetPurchaseReceiptsRequestValidator()
+            .Validate(new GetPurchaseReceiptsRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetPurchaseReceiptsRequestValidator()
+            .Validate(new GetPurchaseReceiptsRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
     }
 
     // ============================== 销售单字段约束（与采购单同组常量，保证两单同规格）==============================
 
     [Fact]
-    public void EF模型_SalesOrders表OrderNo列长度_应等于字段约束常量()
+    public void EF模型_SalesShipments表ShipmentNo列长度_应等于字段约束常量()
     {
         using var dbContext = TestSupport.CreateDbContext();
 
-        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<SalesOrder>(dbContext, nameof(SalesOrder.OrderNo)));
-        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<SalesOrder>(dbContext, nameof(SalesOrder.Remark)));
+        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<SalesShipment>(dbContext, nameof(SalesShipment.ShipmentNo)));
+        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<SalesShipment>(dbContext, nameof(SalesShipment.Remark)));
     }
 
     [Fact]
     public void 销售单明细数量_边界值应通过且超界拒绝()
     {
-        var validator = new CreateSalesOrderRequestValidator();
+        var validator = new CreateSalesShipmentRequestValidator();
 
         Assert.True(ValidateSales(validator, quantity: ProductFieldConstraints.QuantityMinValue));
         Assert.True(ValidateSales(validator, quantity: ProductFieldConstraints.QuantityMaxValue));
@@ -266,7 +266,7 @@ public class FieldValidationConsistencyTests
     [Fact]
     public void 销售单明细单价_边界值应通过且超界拒绝()
     {
-        var validator = new CreateSalesOrderRequestValidator();
+        var validator = new CreateSalesShipmentRequestValidator();
 
         // 允许 0 元单价
         Assert.True(ValidateSales(validator, unitPrice: ProductFieldConstraints.PriceMinValue));
@@ -278,7 +278,7 @@ public class FieldValidationConsistencyTests
     [Fact]
     public void 销售单明细行数_上限内通过且超上限拒绝()
     {
-        var validator = new CreateSalesOrderRequestValidator();
+        var validator = new CreateSalesShipmentRequestValidator();
 
         Assert.True(ValidateSales(validator, itemCount: OrderFieldConstraints.ItemsMaxCount));
         Assert.False(ValidateSales(validator, itemCount: OrderFieldConstraints.ItemsMaxCount + 1));
@@ -290,10 +290,10 @@ public class FieldValidationConsistencyTests
         var ok = new string('a', OrderFieldConstraints.KeywordMaxLength);
         var tooLong = new string('a', OrderFieldConstraints.KeywordMaxLength + 1);
 
-        Assert.True(new GetSalesOrdersRequestValidator()
-            .Validate(new GetSalesOrdersRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
-        Assert.False(new GetSalesOrdersRequestValidator()
-            .Validate(new GetSalesOrdersRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+        Assert.True(new GetSalesShipmentsRequestValidator()
+            .Validate(new GetSalesShipmentsRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetSalesShipmentsRequestValidator()
+            .Validate(new GetSalesShipmentsRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
     }
 
     // ============================== 库存流水字段约束（SourceNo 与单据 OrderNo 同组常量）==============================
@@ -578,13 +578,13 @@ public class FieldValidationConsistencyTests
         }).IsValid;
     }
 
-    private static bool ValidatePurchase(CreatePurchaseOrderRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
+    private static bool ValidatePurchase(CreatePurchaseReceiptRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
     {
         var items = Enumerable
             .Range(0, itemCount)
-            .Select(_ => new CreatePurchaseOrderItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
+            .Select(_ => new CreatePurchaseReceiptItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
             .ToList();
-        return validator.Validate(new CreatePurchaseOrderRequest
+        return validator.Validate(new CreatePurchaseReceiptRequest
         {
             PartnerId = Guid.NewGuid(),
             OrderDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -592,13 +592,13 @@ public class FieldValidationConsistencyTests
         }).IsValid;
     }
 
-    private static bool ValidateSales(CreateSalesOrderRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
+    private static bool ValidateSales(CreateSalesShipmentRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
     {
         var items = Enumerable
             .Range(0, itemCount)
-            .Select(_ => new CreateSalesOrderItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
+            .Select(_ => new CreateSalesShipmentItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
             .ToList();
-        return validator.Validate(new CreateSalesOrderRequest
+        return validator.Validate(new CreateSalesShipmentRequest
         {
             PartnerId = Guid.NewGuid(),
             OrderDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),

@@ -82,4 +82,13 @@ public static class ErrorCode
 
     /// <summary>收付款方向与单据类型不匹配（erp-settlement 功能业务码，如收款单核销采购入库单）</summary>
     public const int SettlementDirectionMismatch = 40114;
+
+    /// <summary>本次数量超过订单未执行数量（erp-order-flow 功能业务码；message 含订单号、商品名与未执行数量）</summary>
+    public const int OrderFulfillExceeded = 40115;
+
+    /// <summary>订单当前状态不允许该操作（erp-order-flow 功能业务码；编辑 / 作废 / 关闭 / 关联收发货，message 说明当前状态）</summary>
+    public const int OrderStateInvalid = 40116;
+
+    /// <summary>出入库单的往来单位与所关联订单不一致（erp-order-flow 功能业务码）</summary>
+    public const int OrderPartnerMismatch = 40117;
 }

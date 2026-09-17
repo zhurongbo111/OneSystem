@@ -67,8 +67,8 @@ public class SettlementFieldConsistencyTests
         Assert.Equal("numeric(18,2)", GetColumnType<Settlement>(dbContext, nameof(Settlement.TotalAmount)));
         Assert.Equal("numeric(18,2)", GetColumnType<SettlementItem>(dbContext, nameof(SettlementItem.Amount)));
         Assert.Equal("numeric(18,2)", GetColumnType<SettlementItem>(dbContext, nameof(SettlementItem.OrderTotalAmount)));
-        Assert.Equal("numeric(18,2)", GetColumnType<PurchaseOrder>(dbContext, nameof(PurchaseOrder.SettledAmount)));
-        Assert.Equal("numeric(18,2)", GetColumnType<SalesOrder>(dbContext, nameof(SalesOrder.SettledAmount)));
+        Assert.Equal("numeric(18,2)", GetColumnType<PurchaseReceipt>(dbContext, nameof(PurchaseReceipt.SettledAmount)));
+        Assert.Equal("numeric(18,2)", GetColumnType<SalesShipment>(dbContext, nameof(SalesShipment.SettledAmount)));
         Assert.Equal("numeric(18,2)", GetColumnType<PurchaseReturn>(dbContext, nameof(PurchaseReturn.SettledAmount)));
         Assert.Equal("numeric(18,2)", GetColumnType<SalesReturn>(dbContext, nameof(SalesReturn.SettledAmount)));
     }

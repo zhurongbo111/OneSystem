@@ -7,10 +7,10 @@ namespace App.Core.Entities;
 /// </summary>
 public static class OrderFieldConstraints
 {
-    /// <summary>单据编号最大长度（对齐 PurchaseOrders.OrderNo / SalesOrders.OrderNo varchar(20)）</summary>
+    /// <summary>单据编号最大长度（对齐 PurchaseReceipts.OrderNo / SalesShipments.OrderNo varchar(20)）</summary>
     public const int OrderNoMaxLength = 20;
 
-    /// <summary>备注最大长度（对齐 PurchaseOrders.Remark / SalesOrders.Remark varchar(200)）</summary>
+    /// <summary>备注最大长度（对齐 PurchaseReceipts.Remark / SalesShipments.Remark varchar(200)）</summary>
     public const int RemarkMaxLength = 200;
 
     /// <summary>单号查询关键词最大长度（对齐 OrderNo 列长）</summary>

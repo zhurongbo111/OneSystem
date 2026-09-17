@@ -16,8 +16,8 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     private const int MaxSettlementNoAttempts = 3;
 
     private readonly ISettlementRepository _settlementRepository;
-    private readonly IPurchaseOrderRepository _purchaseOrderRepository;
-    private readonly ISalesOrderRepository _salesOrderRepository;
+    private readonly IPurchaseReceiptRepository _purchaseReceiptRepository;
+    private readonly ISalesShipmentRepository _salesShipmentRepository;
     private readonly IPurchaseReturnRepository _purchaseReturnRepository;
     private readonly ISalesReturnRepository _salesReturnRepository;
     private readonly IPartnerRepository _partnerRepository;
@@ -29,8 +29,8 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     /// </summary>
     public CreateSettlementRequestHandler(
         ISettlementRepository settlementRepository,
-        IPurchaseOrderRepository purchaseOrderRepository,
-        ISalesOrderRepository salesOrderRepository,
+        IPurchaseReceiptRepository purchaseReceiptRepository,
+        ISalesShipmentRepository salesShipmentRepository,
         IPurchaseReturnRepository purchaseReturnRepository,
         ISalesReturnRepository salesReturnRepository,
         IPartnerRepository partnerRepository,
@@ -38,8 +38,8 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         ICurrentUser currentUser)
     {
         _settlementRepository = settlementRepository;
-        _purchaseOrderRepository = purchaseOrderRepository;
-        _salesOrderRepository = salesOrderRepository;
+        _purchaseReceiptRepository = purchaseReceiptRepository;
+        _salesShipmentRepository = salesShipmentRepository;
         _purchaseReturnRepository = purchaseReturnRepository;
         _salesReturnRepository = salesReturnRepository;
         _partnerRepository = partnerRepository;
@@ -203,12 +203,12 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     {
         if (orderType == SettlementOrderType.PurchaseInbound)
         {
-            return _purchaseOrderRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
+            return _purchaseReceiptRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
         }
 
         if (orderType == SettlementOrderType.SalesOutbound)
         {
-            return _salesOrderRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
+            return _salesShipmentRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
         }
 
         if (orderType == SettlementOrderType.PurchaseReturn)
@@ -226,18 +226,18 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     {
         if (orderType == SettlementOrderType.PurchaseInbound)
         {
-            var (order, _) = await _purchaseOrderRepository.GetDetailAsync(orderId, cancellationToken);
-            return order is null
+            var (receipt, _) = await _purchaseReceiptRepository.GetDetailAsync(orderId, cancellationToken);
+            return receipt is null
                 ? OrderInfo.Missing
-                : new OrderInfo(true, order.OrderNo, order.OrderDate, order.TotalAmount, order.SettledAmount, order.PartnerId, order.Status == OrderStatus.Voided);
+                : new OrderInfo(true, receipt.ReceiptNo, receipt.OrderDate, receipt.TotalAmount, receipt.SettledAmount, receipt.PartnerId, receipt.Status == OrderStatus.Voided);
         }
 
         if (orderType == SettlementOrderType.SalesOutbound)
         {
-            var (order, _) = await _salesOrderRepository.GetDetailAsync(orderId, cancellationToken);
-            return order is null
+            var (shipment, _) = await _salesShipmentRepository.GetDetailAsync(orderId, cancellationToken);
+            return shipment is null
                 ? OrderInfo.Missing
-                : new OrderInfo(true, order.OrderNo, order.OrderDate, order.TotalAmount, order.SettledAmount, order.PartnerId, order.Status == OrderStatus.Voided);
+                : new OrderInfo(true, shipment.ShipmentNo, shipment.OrderDate, shipment.TotalAmount, shipment.SettledAmount, shipment.PartnerId, shipment.Status == OrderStatus.Voided);
         }
 
         if (orderType == SettlementOrderType.PurchaseReturn)

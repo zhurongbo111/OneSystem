@@ -1,7 +1,7 @@
 using App.Core;
 using App.Core.Entities;
 using App.Core.Errors;
-using App.Core.Features.Sales.CreateSalesOrder;
+using App.Core.Features.SalesShipments.CreateSalesShipment;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.GetSalesReturnById;
 using App.Core.Features.SalesReturns.GetSalesReturns;
@@ -267,12 +267,12 @@ public class SalesReturnLifecycleTests
         var uow = new RecordingUnitOfWork(calls);
         inventory.Seed(product.Id, 0); // 期初为 0，库存变化全部由流水表达
 
-        var salesOrders = new FakeSalesOrderRepository(calls);
+        var salesShipments = new FakeSalesShipmentRepository(calls);
         var returns = new FakeSalesReturnRepository(calls);
 
         // 先入库 5（期初），再销售出库 2、退货 2、退货作废 2
-        var salesCreate = new CreateSalesOrderRequestHandler(
-            salesOrders, new PartnerRepository(context), new ProductRepository(context),
+        var salesCreate = new CreateSalesShipmentRequestHandler(
+            salesShipments, new FakeSalesOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
             inventory, movements, uow, user);
         var returnCreate = new CreateSalesReturnRequestHandler(
             returns, new PartnerRepository(context), new ProductRepository(context),
@@ -281,11 +281,11 @@ public class SalesReturnLifecycleTests
 
         inventory.Seed(product.Id, 5); // 期初库存（无流水，模拟开账前已存在）
 
-        var sold = await salesCreate.HandleAsync(new CreateSalesOrderRequest
+        var sold = await salesCreate.HandleAsync(new CreateSalesShipmentRequest
         {
             PartnerId = partner.Id,
             OrderDate = ReturnDate,
-            Items = new[] { new CreateSalesOrderItem { ProductId = product.Id, Quantity = 2, UnitPrice = 10m } },
+            Items = new[] { new CreateSalesShipmentItem { ProductId = product.Id, Quantity = 2, UnitPrice = 10m } },
         });
         var returned = await returnCreate.HandleAsync(new CreateSalesReturnRequest
         {
@@ -309,8 +309,8 @@ public class SalesReturnLifecycleTests
         Assert.Equal(3, inventory.GetQuantity(product.Id)); // 5 - 2 + 2 - 2
         Assert.Equal(5 + await movements.SumQuantityAsync(product.Id), inventory.GetQuantity(product.Id));
 
-        // 单号前缀各归其域：销售出库 SO、销售退货 SR
-        Assert.Matches("^SO20260101\\d{4}$", sold.OrderNo);
+        // 单号前缀各归其域：销售出库 GI、销售退货 SR
+        Assert.Matches("^GI20260101\\d{4}$", sold.ShipmentNo);
         Assert.Matches("^SR20260101\\d{4}$", returned.ReturnNo);
     }
 }

@@ -9,17 +9,15 @@ using Npgsql;
 namespace App.Infrastructure.Repositories;
 
 /// <summary>
-/// 销售单仓储的 EF Core 实现（PostgreSQL）。只做数据访问，不做业务判定。
-/// 审计字段统一由 Handler 经 ICurrentUser 获取后随方法参数 / 实体传入，仓储不感知当前用户。
-/// 跨表一致性：主表 + 明细在仓储内一次 SaveChanges；跨仓储写（库存扣减 + 单据）由 Handler
-/// 用 IUnitOfWork 包成同一 PostgreSQL 事务（见 erp-sale design.md §3.4）。
+/// 销售订单仓储的 EF Core 实现（PostgreSQL）。只做数据访问，不做业务判定。
+/// 订单不触碰库存与库存流水；审计字段统一由 Handler 经 ICurrentUser 获取后随方法参数 / 实体传入。
 /// </summary>
 public sealed class SalesOrderRepository : ISalesOrderRepository
 {
     private readonly AppDbContext _dbContext;
 
     /// <summary>
-    /// 初始化销售单仓储
+    /// 初始化销售订单仓储
     /// </summary>
     public SalesOrderRepository(AppDbContext dbContext)
     {
@@ -27,12 +25,12 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<SalesOrder> Items, int Total)> GetPagedAsync(
+    public async Task<(IReadOnlyList<(SalesOrder Order, int UnfulfilledQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
+        OrderFlowStatus? flowStatus,
         DateTimeOffset? start,
         DateTimeOffset? end,
-        SettlementState? settlementState,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -51,6 +49,12 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
             query = query.Where(o => o.PartnerId == value);
         }
 
+        if (flowStatus is not null)
+        {
+            var value = flowStatus.Value;
+            query = query.Where(o => o.FlowStatus == value);
+        }
+
         // 日期范围对 OrderDate 闭区间比较（timestamptz 语义，不做时区归一化）
         if (start is not null)
         {
@@ -64,24 +68,25 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
             query = query.Where(o => o.OrderDate <= e);
         }
 
-        if (settlementState is not null)
-        {
-            // 结算状态为推导值：按已结金额与总额比较过滤（design.md §0 / §2.3）
-            var state = settlementState.Value;
-            query = state switch
-            {
-                SettlementState.Unsettled => query.Where(o => o.SettledAmount <= 0),
-                SettlementState.PartiallySettled => query.Where(o => o.SettledAmount > 0 && o.SettledAmount < o.TotalAmount),
-                _ => query.Where(o => o.SettledAmount >= o.TotalAmount),
-            };
-        }
-
         var total = await query.CountAsync(cancellationToken);
-        var items = await query
+        var orders = await query
             .OrderByDescending(o => o.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
+
+        // 未发数量：本页订单的明细未执行量按订单聚合（单次查询，避免逐单往返）
+        var orderIds = orders.Select(o => o.Id).ToList();
+        var unfulfilled = await _dbContext.SalesOrderItems.AsNoTracking()
+            .Where(i => orderIds.Contains(i.OrderId))
+            .GroupBy(i => i.OrderId)
+            .Select(g => new { OrderId = g.Key, Quantity = g.Sum(i => i.Quantity - i.FulfilledQuantity) })
+            .ToListAsync(cancellationToken);
+        var unfulfilledMap = unfulfilled.ToDictionary(x => x.OrderId, x => x.Quantity);
+
+        var items = orders
+            .Select(o => (Order: o, UnfulfilledQuantity: unfulfilledMap.TryGetValue(o.Id, out var value) ? value : 0))
+            .ToList();
 
         return (items, total);
     }
@@ -107,6 +112,18 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
     }
 
     /// <inheritdoc />
+    public Task<(SalesOrder? Order, IReadOnlyList<SalesOrderItem> Items)> GetLinesAsync(Guid orderId, CancellationToken cancellationToken = default)
+        => GetDetailAsync(orderId, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<SalesOrder>> GetPicksAsync(Guid partnerId, CancellationToken cancellationToken = default)
+        => await _dbContext.SalesOrders.AsNoTracking()
+            .Where(o => o.PartnerId == partnerId
+                && (o.FlowStatus == OrderFlowStatus.Pending || o.FlowStatus == OrderFlowStatus.Partial))
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    /// <inheritdoc />
     public async Task AddAsync(SalesOrder order, IReadOnlyList<SalesOrderItem> items, CancellationToken cancellationToken = default)
     {
         _dbContext.SalesOrders.Add(order);
@@ -124,39 +141,50 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
     }
 
     /// <inheritdoc />
-    public Task AddSettledAmountAsync(Guid id, decimal delta, Guid? operatorId, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(SalesOrder order, IReadOnlyList<SalesOrderItem> items, CancellationToken cancellationToken = default)
     {
-        var now = DateTimeOffset.UtcNow;
-        return _dbContext.SalesOrders
-            .Where(o => o.Id == id)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(o => o.SettledAmount, o => o.SettledAmount + delta)
-                .SetProperty(o => o.UpdatedAt, now)
-                .SetProperty(o => o.UpdatedBy, operatorId),
-            cancellationToken);
+        // 主表按实体全量更新（Handler 传入的是查出的原实体 + 可改字段变更；编号 / 创建审计字段值不变）
+        _dbContext.SalesOrders.Update(order);
+
+        // 明细全量替换（仅「待发货」可改，此时累计执行量恒为 0）
+        var oldItems = await _dbContext.SalesOrderItems
+            .Where(i => i.OrderId == order.Id)
+            .ToListAsync(cancellationToken);
+        _dbContext.SalesOrderItems.RemoveRange(oldItems);
+        _dbContext.SalesOrderItems.AddRange(items);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task UpdateStatusAsync(Guid id, OrderStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
+    public Task AddFulfilledQuantityAsync(Guid orderItemId, int delta, CancellationToken cancellationToken = default)
+        => _dbContext.SalesOrderItems
+            .Where(i => i.Id == orderItemId)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(i => i.FulfilledQuantity, i => i.FulfilledQuantity + delta),
+                cancellationToken);
+
+    /// <inheritdoc />
+    public Task UpdateFlowStatusAsync(Guid id, OrderFlowStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
         return _dbContext.SalesOrders
             .Where(o => o.Id == id)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(o => o.Status, status)
-                .SetProperty(o => o.UpdatedAt, now)
-                .SetProperty(o => o.UpdatedBy, operatorId),
-            cancellationToken);
+            .ExecuteUpdateAsync(
+                s => s
+                    .SetProperty(o => o.FlowStatus, status)
+                    .SetProperty(o => o.UpdatedAt, now)
+                    .SetProperty(o => o.UpdatedBy, operatorId),
+                cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<string> GenerateOrderNoAsync(string prefix, DateTimeOffset orderDate, CancellationToken cancellationToken = default)
     {
-        // 序号 = 当天同前缀已有单号数 + 1；唯一索引兜底并发冲突（Handler 重试，见 design.md §3.6）
+        // 序号 = 当天同前缀已有订单数 + 1；唯一索引兜底并发冲突（Handler 重试，见 design.md §3.6）
         var dateSegment = orderDate.UtcDateTime.ToString("yyyyMMdd");
         var pattern = $"{prefix}{dateSegment}";
         var count = await _dbContext.SalesOrders.CountAsync(o => o.OrderNo.StartsWith(pattern), cancellationToken);
         return $"{pattern}{(count + 1):D4}";
     }
-
 }

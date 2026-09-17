@@ -51,7 +51,7 @@ public class GetStockMovementsRequestHandlerTests
             return Task.FromResult<(IReadOnlyList<StockMovementItem>, int)>(
                 (new[]
                 {
-                    Item(StockMovementType.PurchaseInbound, 5, "PO202601010001", Guid.NewGuid()),
+                    Item(StockMovementType.PurchaseInbound, 5, "GR202601010001", Guid.NewGuid()),
                     Item(StockMovementType.SalesOutbound, -3, null, null),
                 }, 41));
         }
@@ -77,7 +77,7 @@ public class GetStockMovementsRequestHandlerTests
 
         var result = await handler.HandleAsync(new GetStockMovementsRequest
         {
-            Keyword = "PO2026",
+            Keyword = "GR2026",
             ProductId = productId,
             Type = StockMovementType.SalesOutbound,
             Start = start,
@@ -86,7 +86,7 @@ public class GetStockMovementsRequestHandlerTests
             PageSize = 50,
         });
 
-        Assert.Equal(("PO2026", productId, StockMovementType.SalesOutbound, start, end, 3, 50),
+        Assert.Equal(("GR2026", productId, StockMovementType.SalesOutbound, start, end, 3, 50),
             (repo.LastRequest.Keyword, repo.LastRequest.ProductId, repo.LastRequest.Type,
              repo.LastRequest.Start, repo.LastRequest.End, repo.LastRequest.Page, repo.LastRequest.PageSize));
 
@@ -118,7 +118,7 @@ public class GetStockMovementsRequestHandlerTests
             ProductId = product.Id,
             MovementType = StockMovementType.PurchaseInbound,
             Quantity = 1,
-            SourceNo = "PO202601010001",
+            SourceNo = "GR202601010001",
             CreatedAt = Time.AddMinutes(-5),
             CreatedBy = admin.Id,
         });
@@ -128,7 +128,7 @@ public class GetStockMovementsRequestHandlerTests
             ProductId = product.Id,
             MovementType = StockMovementType.SalesOutbound,
             Quantity = -2,
-            SourceNo = "SO202601010001",
+            SourceNo = "GI202601010001",
             CreatedAt = Time,
             CreatedBy = null, // 系统操作：操作人姓名为 null
         });
