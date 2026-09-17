@@ -17,6 +17,7 @@ import {
   IconPackage,
   IconPackages,
   IconReceipt,
+  IconReceiptRefund,
   IconStack2,
   IconTags,
   IconTruckDelivery,
@@ -32,7 +33,12 @@ const auth = useAuthStore()
 const collapsed = ref<boolean>(false)
 
 /** 详情等子路由归属到所属一级菜单，保证侧边栏高亮正确 */
-const MENU_ROUTE_MAP: Record<string, string> = { userDetail: 'users', purchaseDetail: 'purchases', salesDetail: 'sales' }
+const MENU_ROUTE_MAP: Record<string, string> = {
+  userDetail: 'users',
+  purchaseDetail: 'purchases',
+  purchaseReturnDetail: 'purchaseReturns',
+  salesDetail: 'sales',
+}
 
 /** 菜单选中项：与当前路由名联动（单一数据源） */
 const selectedKeys = computed<string[]>(() => {
@@ -50,7 +56,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'sales', 'salesNew']
+const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'sales', 'salesNew']
 
 // —— reactive state ——
 
@@ -217,6 +223,12 @@ function onLogout(): void {
               <IconTruckDelivery />
             </template>
             <span>采购入库</span>
+          </a-menu-item>
+          <a-menu-item key="purchaseReturns">
+            <template #icon>
+              <IconReceiptRefund />
+            </template>
+            <span>采购退货</span>
           </a-menu-item>
           <a-menu-item key="sales">
             <template #icon>
