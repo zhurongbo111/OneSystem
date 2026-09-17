@@ -179,7 +179,7 @@ async function createInbound(page: Page, supplierName: string, code: string, qty
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expect(page.getByText('采购单已创建')).toBeVisible()
   await expect(page).toHaveURL(/\/purchases\/detail\//)
-  return (await page.locator('.detail-desc').getByText(/^PO\d{12}$/).first().innerText()).trim()
+  return (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
 }
 
 /** 在退货单详情页取单号 */

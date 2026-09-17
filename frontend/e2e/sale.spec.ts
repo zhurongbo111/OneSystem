@@ -35,10 +35,10 @@ async function login(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/$/)
 }
 
-/** 经侧边菜单（进销存分组）进入销售开单页 */
+/** 经侧边菜单（进销存分组）进入销售出库页 */
 async function goSales(page: Page): Promise<void> {
   await login(page)
-  await clickMenuItem(page, '销售开单')
+  await clickMenuItem(page, '销售出库')
   await expect(page).toHaveURL(/\/sales$/)
 }
 
@@ -155,7 +155,7 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
 /**
  * 采购单垫库存（数量 10），返回单号。
  */
-async function createPurchaseOrderToSeedStock(
+async function createPurchaseReceiptToSeedStock(
   page: Page,
   supplierName: string,
   productCode: string,
@@ -178,16 +178,16 @@ async function createPurchaseOrderToSeedStock(
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expect(page.getByText('采购单已创建')).toBeVisible()
   await expect(page).toHaveURL(/\/purchases\/detail\//)
-  const orderNo = (await page.locator('.detail-desc').getByText(/^PO\d{12}$/).first().innerText()).trim()
+  const orderNo = (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
   return orderNo
 }
 
 /**
- * 在销售开单页填一张 2 行明细的销售单并提交：
+ * 在销售出库页填一张 2 行明细的销售单并提交：
  * 行1 商品A 数量 2（单价默认带出销售价 20）、行2 商品B 数量 1 且改单价 20 → 15。
  * 后端重算：总额 = 2×20 + 1×15 = 55。返回单号。
  */
-async function createSalesOrder(
+async function createSalesShipment(
   page: Page,
   customerName: string,
   productACode: string,
@@ -230,11 +230,11 @@ async function createSalesOrder(
 
   // 详情页断言：总额 55.00（后端重算 2×20 + 1×15）
   await expect(page.getByText('¥ 55.00', { exact: true })).toBeVisible()
-  const orderNo = (await page.locator('.detail-desc').getByText(/^SO\d{12}$/).first().innerText()).trim()
+  const orderNo = (await page.locator('.detail-desc').getByText(/^GI\d{12}$/).first().innerText()).trim()
   return orderNo
 }
 
-test.describe('销售开单（列表）', () => {
+test.describe('销售出库（列表）', () => {
   test('列设置可隐藏 / 恢复列，序号与操作列固定显示（specs/011-action-column §5）', async ({ page }) => {
     await goSales(page)
     await expect(page.getByRole('columnheader', { name: '创建时间' })).toBeVisible()
@@ -243,18 +243,18 @@ test.describe('销售开单（列表）', () => {
     // 序号与操作列固定显示，不参与列设置
     await expect(page.locator('.col-settings .arco-checkbox', { hasText: '操作' })).toHaveCount(0)
     await page.locator('.col-settings .arco-checkbox', { hasText: '创建时间' }).click()
-    await page.getByRole('heading', { name: '销售开单' }).click()
+    await page.getByRole('heading', { name: '销售出库' }).click()
     await expect(page.getByRole('columnheader', { name: '创建时间' })).toHaveCount(0)
 
     // 重新勾选后恢复显示
     await page.getByRole('button', { name: '列设置' }).click()
     await page.locator('.col-settings .arco-checkbox', { hasText: '创建时间' }).click()
-    await page.getByRole('heading', { name: '销售开单' }).click()
+    await page.getByRole('heading', { name: '销售出库' }).click()
     await expect(page.getByRole('columnheader', { name: '创建时间' })).toBeVisible()
   })
 })
 
-test.describe('销售开单（集成）', () => {
+test.describe('销售出库（集成）', () => {
   test.beforeAll(async ({ request }) => {
     try {
       const res = await request.get(BACKEND_HEALTH, { timeout: 5000 })
@@ -280,9 +280,9 @@ test.describe('销售开单（集成）', () => {
 
     // 采购单垫库存：A / B 各 10（每张单提交后停在详情页，开下一张前先返回列表）
     await goPurchases(page)
-    await createPurchaseOrderToSeedStock(page, supplier, codeA)
+    await createPurchaseReceiptToSeedStock(page, supplier, codeA)
     await goPurchases(page)
-    await createPurchaseOrderToSeedStock(page, supplier, codeB)
+    await createPurchaseReceiptToSeedStock(page, supplier, codeB)
     await goInventory(page)
     await searchInventory(page, codeA)
     await expect(stockOf(page)).toHaveText('10')
@@ -291,7 +291,7 @@ test.describe('销售开单（集成）', () => {
 
     // 开销售单：A×2（单价默认销售价 20）+ B×1（改单价 15）→ 总额 55.00，跳详情
     await goSales(page)
-    const orderNo = await createSalesOrder(page, customer, codeA, codeB)
+    const orderNo = await createSalesShipment(page, customer, codeA, codeB)
 
     // 库存减少：A → 8，B → 9
     await goInventory(page)
@@ -365,7 +365,7 @@ test.describe('销售开单（集成）', () => {
 
     // 采购单垫库存 5
     await goPurchases(page)
-    await createPurchaseOrderToSeedStock2(page, supplier, codeA)
+    await createPurchaseReceiptToSeedStock2(page, supplier, codeA)
     await goInventory(page)
     await searchInventory(page, codeA)
     await expect(stockOf(page)).toHaveText('5')
@@ -389,7 +389,7 @@ test.describe('销售开单（集成）', () => {
     // 提交后等待 40103 响应（业务异常统一 HTTP 200，body.code = 40103，message 含商品名 / 当前 / 需要）
     const submit = page.getByRole('button', { name: '提交', exact: true }).click()
     const errorResponse = page.waitForResponse(
-      (res) => res.url().includes('/api/sales-orders') && res.request().method() === 'POST',
+      (res) => res.url().includes('/api/sales-shipments') && res.request().method() === 'POST',
       { timeout: 10000 },
     )
     await submit
@@ -413,7 +413,7 @@ test.describe('销售开单（集成）', () => {
 /**
  * 采购单垫库存（数量 5），用于库存不足用例。
  */
-async function createPurchaseOrderToSeedStock2(
+async function createPurchaseReceiptToSeedStock2(
   page: Page,
   supplierName: string,
   productCode: string,
@@ -436,6 +436,6 @@ async function createPurchaseOrderToSeedStock2(
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expect(page.getByText('采购单已创建')).toBeVisible()
   await expect(page).toHaveURL(/\/purchases\/detail\//)
-  const orderNo = (await page.locator('.detail-desc').getByText(/^PO\d{12}$/).first().innerText()).trim()
+  const orderNo = (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
   return orderNo
 }

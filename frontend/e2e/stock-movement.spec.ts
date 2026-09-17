@@ -55,10 +55,10 @@ async function goPurchases(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/purchases$/)
 }
 
-/** 经侧边菜单进入销售开单页 */
+/** 经侧边菜单进入销售出库页 */
 async function goSales(page: Page): Promise<void> {
   await login(page)
-  await clickMenuItem(page, '销售开单')
+  await clickMenuItem(page, '销售出库')
   await expect(page).toHaveURL(/\/sales$/)
 }
 
@@ -145,7 +145,7 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
 }
 
 /** 开一张单行明细的采购单（商品 × qty），返回单号 */
-async function createPurchaseOrderQty(
+async function createPurchaseReceiptQty(
   page: Page,
   supplierName: string,
   code: string,
@@ -163,11 +163,11 @@ async function createPurchaseOrderQty(
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expect(page.getByText('采购单已创建')).toBeVisible()
   await expect(page).toHaveURL(/\/purchases\/detail\//)
-  return (await page.locator('.detail-desc').getByText(/^PO\d{12}$/).first().innerText()).trim()
+  return (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
 }
 
 /** 开一张单行明细的销售单（商品 × qty，单价默认带出销售价），返回单号 */
-async function createSalesOrderQty(
+async function createSalesShipmentQty(
   page: Page,
   customerName: string,
   code: string,
@@ -185,7 +185,7 @@ async function createSalesOrderQty(
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expect(page.getByText('销售单已创建')).toBeVisible()
   await expect(page).toHaveURL(/\/sales\/detail\//)
-  return (await page.locator('.detail-desc').getByText(/^SO\d{12}$/).first().innerText()).trim()
+  return (await page.locator('.detail-desc').getByText(/^GI\d{12}$/).first().innerText()).trim()
 }
 
 /** 在采购 / 销售列表按单号找到该行并作废 */
@@ -233,7 +233,7 @@ test.describe('库存流水（集成）', () => {
 
     // 采购入库 3 → 流水页该单号 1 行，「采购入库」+3（绿字）
     await goPurchases(page)
-    poNo = await createPurchaseOrderQty(page, supplier, code, 3)
+    poNo = await createPurchaseReceiptQty(page, supplier, code, 3)
     await goStockMovements(page)
     await searchByOrderNo(page, poNo)
     await expect(dataRows(page)).toHaveCount(1)
@@ -244,7 +244,7 @@ test.describe('库存流水（集成）', () => {
 
     // 销售出库 2 → 「销售出库」-2（红字）
     await goSales(page)
-    soNo = await createSalesOrderQty(page, customer, code, 2)
+    soNo = await createSalesShipmentQty(page, customer, code, 2)
     await goStockMovements(page)
     await searchByOrderNo(page, soNo)
     await expect(dataRows(page)).toHaveCount(1)
@@ -309,7 +309,7 @@ test.describe('库存流水（集成）', () => {
     await goProducts(page)
     await createProduct(page, code, `下钻商品${Date.now() % 100000}`)
     await goPurchases(page)
-    await createPurchaseOrderQty(page, supplier, code, 1)
+    await createPurchaseReceiptQty(page, supplier, code, 1)
 
     // 库存页找到该商品行 → 操作列「流水」
     await goInventory(page)

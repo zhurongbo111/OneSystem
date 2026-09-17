@@ -151,7 +151,7 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
  * 行1 商品A 数量 2、行2 商品B 数量 1 且改单价为 15（默认采购价 10 → 15）。
  * 后端重算：总额 = 2×10 + 1×15 = 35。
  */
-async function createPurchaseOrder(
+async function createPurchaseReceipt(
   page: Page,
   supplierName: string,
   productACode: string,
@@ -195,7 +195,7 @@ async function createPurchaseOrder(
 
   // 详情页断言：总额 35.00（后端重算 2×10 + 1×15）
   await expect(page.getByText('¥ 35.00', { exact: true })).toBeVisible()
-  const orderNo = (await page.locator('.detail-desc').getByText(/^PO\d{12}$/).first().innerText()).trim()
+  const orderNo = (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
   return orderNo
 }
 
@@ -250,7 +250,7 @@ test.describe('采购入库（集成）', () => {
 
     // 开单：A×2（单价 10）+ B×1（改单价 15）→ 总额 35.00，跳详情
     await goPurchases(page)
-    const orderNo = await createPurchaseOrder(page, supplier, codeA, codeB)
+    const orderNo = await createPurchaseReceipt(page, supplier, codeA, codeB)
 
     // 库存增加：A → 2，B → 1
     await goInventory(page)
