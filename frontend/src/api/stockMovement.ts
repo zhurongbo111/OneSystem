@@ -2,7 +2,7 @@ import { get } from './request'
 import type { PagedResult } from './user'
 
 /** 变动类型（对应后端 StockMovementType 小整数；取值 5–10 由后续规格追加） */
-export type StockMovementType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+export type StockMovementType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 
 /** 库存流水行（对应后端 StockMovementListItemDto） */
 export interface StockMovementListItem {

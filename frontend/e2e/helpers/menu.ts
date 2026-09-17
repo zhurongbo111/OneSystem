@@ -13,6 +13,7 @@ const MENU_GROUP_MAP: Record<string, string> = {
   采购入库: '进销存',
   采购退货: '进销存',
   销售开单: '进销存',
+  销售退货: '进销存',
   库存盘点: '进销存',
 }
 
