@@ -24,10 +24,10 @@ backend/
 **命名规律**（据此定位，不逐一列举）：
 
 - `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem`）。
-- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `OrderSettlementStatus` / `StockMovementType`（6 值，取值 7–10 由 021–023 追加）/ `StockTakeType`（020，期初建账 / 库存盘点）。
+- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `OrderSettlementStatus` / `StockMovementType`（8 值，取值 9–10 由 022 追加）/ `StockTakeType`（020，期初建账 / 库存盘点）。
 - 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）。
 - `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
-- `AppDbContext` 含 13 个 DbSet（与实体一一对应，另有 PurchaseOrderItems / SalesOrderItems / StockTakeItems 三张明细表）。
+- `AppDbContext` 含 15 个 DbSet（与实体一一对应，另有 PurchaseOrderItems / SalesOrderItems / StockTakeItems / PurchaseReturnItems 四张明细表）。
 - **共享出参与映射**：各功能在 `Features/<Feature>/` 下放跨用例共享 DTO 与 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
 - **当前用户与审计**：id 解析入口 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
 - **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）。
@@ -45,6 +45,7 @@ backend/
 | Inventory | GetInventory |
 | StockMovements | GetStockMovements |
 | Purchases | CreatePurchaseOrder、GetPurchaseOrders、GetPurchaseOrderById、VoidPurchaseOrder、UpdatePurchaseOrderSettlement |
+| PurchaseReturns | CreatePurchaseReturn、GetPurchaseReturns、GetPurchaseReturnById、VoidPurchaseReturn、UpdatePurchaseReturnSettlement |
 | Sales | CreateSalesOrder、GetSalesOrders、GetSalesOrderById、VoidSalesOrder、UpdateSalesOrderSettlement |
 | StockTakes | CreateStockTake、GetStockTakes、GetStockTakeById、GetStockTakePickProducts |
 
@@ -91,6 +92,7 @@ frontend/
 - `InventoryManagement/` — InventoryView（只读；操作列含「流水」下钻到 StockMovementManagement）
 - `StockMovementManagement/` — StockMovementsView（只读；API 在 `api/stockMovement.ts`）
 - `PurchaseManagement/` — PurchasesView + PurchaseFormPage + PurchaseDetailView
+- `PurchaseReturnManagement/` — PurchaseReturnsView + PurchaseReturnFormPage + PurchaseReturnDetailView（API 在 `api/purchaseReturn.ts`）
 - `SalesManagement/` — SalesView + SaleFormPage + SaleDetailView
 - `StockTakeManagement/` — StockTakesView + StockTakeFormPage + StockTakeDetailView（API 在 `api/stockTake.ts`）
 - 无功能域归属的独立页平铺在 `views/` 根：`LoginView.vue` / `HomeView.vue`（菜单归属见 `components/AppLayout.vue`）。
@@ -132,8 +134,8 @@ frontend/
 - 工程 / 脚手架：`001-project-scaffold`、`003-api-swagger`
 - 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
 - 业务：`009-user-management`
-- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`
-- ERP 扩展路线（规划中，**未实现**）：批次二 `021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`（均已起草规格；`024` 含待用户确认的命名决策）；批次三及以后待起草，见 `specs/ROADMAP.md`
+- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`
+- ERP 扩展路线（规划中，**未实现**）：批次二 `022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`（均已起草规格；`024` 含待用户确认的命名决策）；批次三及以后待起草，见 `specs/ROADMAP.md`
 
 `specs/ROADMAP.md` 是 ERP 功能组的**路线索引**（单文件，非 spec 目录、无三件套）：记录批次、序号、依赖与状态，并写明跨功能前置决策（多仓 / 结算 / 权限等）。接续 ERP 功能前先读它，再进具体规格。
 
