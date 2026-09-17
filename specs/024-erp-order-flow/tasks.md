@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # 任务清单：两段式单据（erp-order-flow）
@@ -12,7 +12,7 @@ updated: 2026-09-16
 
 ## 零、前置门禁（未确认不得开工）
 
-- [ ] 0.1 **用户确认** `design.md` §5 的两项：「既有单据表重命名（`PurchaseOrders` → `PurchaseReceipts`、`SalesOrders` → `SalesShipments`）」与「历史单号前缀改写（`PO`→`GR`、`SO`→`GI`）」；确认后才进入阶段一
+- [x] 0.1 **用户确认**（2026-09-17 已确认，按 `design.md` §5 推荐路径执行）：「既有单据表重命名（`PurchaseOrders` → `PurchaseReceipts`、`SalesOrders` → `SalesShipments`）」与「历史单号前缀改写（`PO`→`GR`、`SO`→`GI`）」**两项均做**；确认后进入阶段一
 
 ## 一、阶段 A：重命名既有单据域（重构，行为与 UI 不变）
 
