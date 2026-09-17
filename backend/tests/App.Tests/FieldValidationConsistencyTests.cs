@@ -5,6 +5,11 @@ using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
 using App.Core.Features.PurchaseReceipts.GetPurchaseReceipts;
+using App.Core.Features.Reports;
+using App.Core.Features.Reports.GetInventoryFlow;
+using App.Core.Features.Reports.GetPurchaseSummary;
+using App.Core.Features.Reports.GetSalesSummary;
+using App.Core.Features.Reports.GetStockBalance;
 using App.Core.Features.SalesShipments.CreateSalesShipment;
 using App.Core.Features.SalesShipments.GetSalesShipments;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
@@ -604,6 +609,44 @@ public class FieldValidationConsistencyTests
             OrderDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             Items = items,
         }).IsValid;
+    }
+
+    // ============================== 报表字段约束（期间上限与关键词，specs/025-erp-report）==============================
+
+    [Fact]
+    public void 报表期间上限_三个含期间用例应引用同一常量()
+    {
+        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var maxEnd = start.AddDays(ReportFieldConstraints.MaxRangeDays);
+        var exceededEnd = maxEnd.AddDays(1);
+
+        // 边界（= 上限）通过、超一天拒绝：三处行为一致即证明同源引用 ReportFieldConstraints.MaxRangeDays
+        Assert.True(new GetInventoryFlowRequestValidator()
+            .Validate(new GetInventoryFlowRequest { Start = start, End = maxEnd }).IsValid);
+        Assert.True(new GetPurchaseSummaryRequestValidator()
+            .Validate(new GetPurchaseSummaryRequest { Start = start, End = maxEnd }).IsValid);
+        Assert.True(new GetSalesSummaryRequestValidator()
+            .Validate(new GetSalesSummaryRequest { Start = start, End = maxEnd }).IsValid);
+
+        Assert.False(new GetInventoryFlowRequestValidator()
+            .Validate(new GetInventoryFlowRequest { Start = start, End = exceededEnd }).IsValid);
+        Assert.False(new GetPurchaseSummaryRequestValidator()
+            .Validate(new GetPurchaseSummaryRequest { Start = start, End = exceededEnd }).IsValid);
+        Assert.False(new GetSalesSummaryRequestValidator()
+            .Validate(new GetSalesSummaryRequest { Start = start, End = exceededEnd }).IsValid);
+    }
+
+    [Fact]
+    public void 报表查询关键词长度_应不超过商品列长度()
+    {
+        var ok = new string('a', ProductFieldConstraints.KeywordMaxLength);
+        var tooLong = new string('a', ProductFieldConstraints.KeywordMaxLength + 1);
+
+        // 库存余额表关键词匹配商品编码（32）/ 名称（50），上限取两者较大者并引用商品域常量
+        Assert.True(new GetStockBalanceRequestValidator()
+            .Validate(new GetStockBalanceRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetStockBalanceRequestValidator()
+            .Validate(new GetStockBalanceRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
     }
 
     private static bool ValidateUsername(CreateUserRequestValidator validator, string username)
