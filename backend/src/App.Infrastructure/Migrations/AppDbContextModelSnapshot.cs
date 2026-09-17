@@ -196,6 +196,12 @@ namespace App.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ExpectedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("FlowStatus")
+                        .HasColumnType("smallint");
+
                     b.Property<DateTimeOffset>("OrderDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -215,14 +221,6 @@ namespace App.Infrastructure.Migrations
                     b.Property<string>("Remark")
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
-
-                    b.Property<decimal>("SettledAmount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("numeric(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<short>("Status")
-                        .HasColumnType("smallint");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("numeric(18,2)");
@@ -246,6 +244,11 @@ namespace App.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<int>("FulfilledQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
@@ -277,6 +280,113 @@ namespace App.Infrastructure.Migrations
                     b.HasIndex("OrderId");
 
                     b.ToTable("PurchaseOrderItems", (string)null);
+                });
+
+            modelBuilder.Entity("App.Core.Entities.PurchaseReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OrderDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OrderNo")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PartnerName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("ReceiptNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Remark")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<decimal>("SettledAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ReceiptNo")
+                        .IsUnique();
+
+                    b.ToTable("PurchaseReceipts", (string)null);
+                });
+
+            modelBuilder.Entity("App.Core.Entities.PurchaseReceiptItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("OrderItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ReceiptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiptId");
+
+                    b.ToTable("PurchaseReceiptItems", (string)null);
                 });
 
             modelBuilder.Entity("App.Core.Entities.PurchaseReturn", b =>
@@ -386,6 +496,12 @@ namespace App.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ExpectedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("FlowStatus")
+                        .HasColumnType("smallint");
+
                     b.Property<DateTimeOffset>("OrderDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -405,14 +521,6 @@ namespace App.Infrastructure.Migrations
                     b.Property<string>("Remark")
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
-
-                    b.Property<decimal>("SettledAmount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("numeric(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<short>("Status")
-                        .HasColumnType("smallint");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("numeric(18,2)");
@@ -436,6 +544,11 @@ namespace App.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<int>("FulfilledQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
@@ -562,6 +675,113 @@ namespace App.Infrastructure.Migrations
                     b.HasIndex("ReturnId");
 
                     b.ToTable("SalesReturnItems", (string)null);
+                });
+
+            modelBuilder.Entity("App.Core.Entities.SalesShipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OrderDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OrderNo")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<Guid>("PartnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PartnerName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Remark")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<decimal>("SettledAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("ShipmentNo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ShipmentNo")
+                        .IsUnique();
+
+                    b.ToTable("SalesShipments", (string)null);
+                });
+
+            modelBuilder.Entity("App.Core.Entities.SalesShipmentItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("OrderItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ShipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShipmentId");
+
+                    b.ToTable("SalesShipmentItems", (string)null);
                 });
 
             modelBuilder.Entity("App.Core.Entities.Settlement", b =>

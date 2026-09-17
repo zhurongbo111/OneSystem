@@ -114,7 +114,7 @@ public class SettlementQueryHandlerTests
             SettlementId = settlement.Id,
             OrderType = SettlementOrderType.SalesOutbound,
             OrderId = Guid.NewGuid(),
-            OrderNo = "SO202512200001",
+            OrderNo = "GI202512200001",
             OrderDate = OrderDate,
             OrderTotalAmount = 1000m,
             Amount = 400m,
@@ -128,7 +128,7 @@ public class SettlementQueryHandlerTests
         Assert.Equal(400m, result.TotalAmount);
         var line = Assert.Single(result.Items);
         Assert.Equal((int)SettlementOrderType.SalesOutbound, line.OrderType);
-        Assert.Equal("SO202512200001", line.OrderNo);
+        Assert.Equal("GI202512200001", line.OrderNo);
         Assert.Equal(OrderDate, line.OrderDate);
         Assert.Equal(1000m, line.OrderTotalAmount);
         Assert.Equal(400m, line.Amount);
@@ -156,7 +156,7 @@ public class SettlementQueryHandlerTests
             {
                 OrderType = SettlementOrderType.SalesOutbound,
                 OrderId = Guid.NewGuid(),
-                OrderNo = "SO202512200001",
+                OrderNo = "GI202512200001",
                 OrderDate = OrderDate,
                 TotalAmount = 1000m,
                 SettledAmount = 400m,

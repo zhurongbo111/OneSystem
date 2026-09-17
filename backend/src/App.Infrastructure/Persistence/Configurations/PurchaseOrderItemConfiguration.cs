@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace App.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// 采购单明细表映射配置（表名 PurchaseOrderItems，OrderId 索引；外键不级联删除）
+/// 采购订单明细表映射配置（表名 PurchaseOrderItems，OrderId 索引；外键不级联删除）
 /// </summary>
 internal sealed class PurchaseOrderItemConfiguration : IEntityTypeConfiguration<PurchaseOrderItem>
 {
@@ -28,6 +28,9 @@ internal sealed class PurchaseOrderItemConfiguration : IEntityTypeConfiguration<
         builder.Property(i => i.Quantity).IsRequired();
         builder.Property(i => i.UnitPrice).IsRequired().HasColumnType("numeric(18,2)");
         builder.Property(i => i.Subtotal).IsRequired().HasColumnType("numeric(18,2)");
+
+        // 累计已收数量：新建订单恒为 0，由出入库单关联回写（design.md §2.2）
+        builder.Property(i => i.FulfilledQuantity).IsRequired().HasDefaultValue(0);
 
         builder.HasIndex(i => i.OrderId);
     }

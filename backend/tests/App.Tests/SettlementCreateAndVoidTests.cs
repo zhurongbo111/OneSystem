@@ -23,8 +23,8 @@ public class SettlementCreateAndVoidTests
         AppDbContext Context,
         Partner Partner,
         FakeSettlementRepository Settlements,
-        FakePurchaseOrderRepository PurchaseOrders,
-        FakeSalesOrderRepository SalesOrders,
+        FakePurchaseReceiptRepository PurchaseReceipts,
+        FakeSalesShipmentRepository SalesShipments,
         FakePurchaseReturnRepository PurchaseReturns,
         FakeSalesReturnRepository SalesReturns,
         RecordingUnitOfWork Uow,
@@ -45,8 +45,8 @@ public class SettlementCreateAndVoidTests
             context,
             partner,
             new FakeSettlementRepository(calls),
-            new FakePurchaseOrderRepository(calls),
-            new FakeSalesOrderRepository(calls),
+            new FakePurchaseReceiptRepository(calls),
+            new FakeSalesShipmentRepository(calls),
             new FakePurchaseReturnRepository(calls),
             new FakeSalesReturnRepository(calls),
             new RecordingUnitOfWork(calls),
@@ -57,8 +57,8 @@ public class SettlementCreateAndVoidTests
     private static CreateSettlementRequestHandler CreateHandler(Harness harness)
         => new(
             harness.Settlements,
-            harness.PurchaseOrders,
-            harness.SalesOrders,
+            harness.PurchaseReceipts,
+            harness.SalesShipments,
             harness.PurchaseReturns,
             harness.SalesReturns,
             new PartnerRepository(harness.Context),
@@ -68,20 +68,20 @@ public class SettlementCreateAndVoidTests
     private static VoidSettlementRequestHandler CreateVoidHandler(Harness harness)
         => new(
             harness.Settlements,
-            harness.PurchaseOrders,
-            harness.SalesOrders,
+            harness.PurchaseReceipts,
+            harness.SalesShipments,
             harness.PurchaseReturns,
             harness.SalesReturns,
             harness.Uow,
             harness.User);
 
-    private static SalesOrder NewSalesOrder(Guid partnerId, decimal totalAmount = 1000m, OrderStatus status = OrderStatus.Normal)
+    private static SalesShipment NewSalesShipment(Guid partnerId, decimal totalAmount = 1000m, OrderStatus status = OrderStatus.Normal)
     {
         var now = DateTimeOffset.UtcNow;
-        return new SalesOrder
+        return new SalesShipment
         {
             Id = Guid.NewGuid(),
-            OrderNo = "SO202512200001",
+            ShipmentNo = "GI202512200001",
             PartnerId = partnerId,
             PartnerName = "往来一",
             OrderDate = OrderDate,
@@ -93,13 +93,13 @@ public class SettlementCreateAndVoidTests
         };
     }
 
-    private static PurchaseOrder NewPurchaseOrder(Guid partnerId, decimal totalAmount = 1000m, OrderStatus status = OrderStatus.Normal)
+    private static PurchaseReceipt NewPurchaseReceipt(Guid partnerId, decimal totalAmount = 1000m, OrderStatus status = OrderStatus.Normal)
     {
         var now = DateTimeOffset.UtcNow;
-        return new PurchaseOrder
+        return new PurchaseReceipt
         {
             Id = Guid.NewGuid(),
-            OrderNo = "PO202512200001",
+            ReceiptNo = "GR202512200001",
             PartnerId = partnerId,
             PartnerName = "往来一",
             OrderDate = OrderDate,
@@ -170,8 +170,8 @@ public class SettlementCreateAndVoidTests
     public async Task 新增收款单_核销销售出库单_应落单并累加已结金额()
     {
         var harness = await CreateHarnessAsync();
-        var order = NewSalesOrder(harness.Partner.Id);
-        harness.SalesOrders.Seed(order, Array.Empty<SalesOrderItem>());
+        var order = NewSalesShipment(harness.Partner.Id);
+        harness.SalesShipments.Seed(order, Array.Empty<SalesShipmentItem>());
 
         var result = await CreateHandler(harness).HandleAsync(
             Request(harness.Partner.Id, SettlementType.Receipt, SettlementMethod.BankTransfer,
@@ -188,13 +188,13 @@ public class SettlementCreateAndVoidTests
         var line = Assert.Single(result.Items);
         Assert.Equal((int)SettlementOrderType.SalesOutbound, line.OrderType);
         Assert.Equal(order.Id.ToString(), line.OrderId);
-        Assert.Equal(order.OrderNo, line.OrderNo);
+        Assert.Equal(order.ShipmentNo, line.OrderNo);
         Assert.Equal(order.OrderDate, line.OrderDate);
         Assert.Equal(1000m, line.OrderTotalAmount);
         Assert.Equal(400m, line.Amount);
 
         // 单据已结算金额被原子累加，且事务提交
-        var (updated, _) = await harness.SalesOrders.GetDetailAsync(order.Id);
+        var (updated, _) = await harness.SalesShipments.GetDetailAsync(order.Id);
         Assert.Equal(400m, updated!.SettledAmount);
         Assert.Contains("AddSettledAmount", harness.Calls);
         Assert.Contains("Commit", harness.Calls);
@@ -204,8 +204,8 @@ public class SettlementCreateAndVoidTests
     public async Task 新增付款单_核销采购入库单_应落单并累加已结金额()
     {
         var harness = await CreateHarnessAsync(PartnerType.Supplier);
-        var order = NewPurchaseOrder(harness.Partner.Id);
-        harness.PurchaseOrders.Seed(order, Array.Empty<PurchaseOrderItem>());
+        var order = NewPurchaseReceipt(harness.Partner.Id);
+        harness.PurchaseReceipts.Seed(order, Array.Empty<PurchaseReceiptItem>());
 
         var result = await CreateHandler(harness).HandleAsync(
             Request(harness.Partner.Id, SettlementType.Payment, SettlementMethod.Cash,
@@ -213,7 +213,7 @@ public class SettlementCreateAndVoidTests
 
         Assert.Matches("^PY20260101\\d{4}$", result.SettlementNo);
         Assert.Equal(250m, result.TotalAmount);
-        var (updated, _) = await harness.PurchaseOrders.GetDetailAsync(order.Id);
+        var (updated, _) = await harness.PurchaseReceipts.GetDetailAsync(order.Id);
         Assert.Equal(250m, updated!.SettledAmount);
         Assert.Contains("Commit", harness.Calls);
     }
@@ -254,10 +254,10 @@ public class SettlementCreateAndVoidTests
     public async Task 新增收款单_多行核销_总额应为各行合计()
     {
         var harness = await CreateHarnessAsync();
-        var order1 = NewSalesOrder(harness.Partner.Id, 1000m);
-        var order2 = NewSalesOrder(harness.Partner.Id, 300m);
-        harness.SalesOrders.Seed(order1, Array.Empty<SalesOrderItem>());
-        harness.SalesOrders.Seed(order2, Array.Empty<SalesOrderItem>());
+        var order1 = NewSalesShipment(harness.Partner.Id, 1000m);
+        var order2 = NewSalesShipment(harness.Partner.Id, 300m);
+        harness.SalesShipments.Seed(order1, Array.Empty<SalesShipmentItem>());
+        harness.SalesShipments.Seed(order2, Array.Empty<SalesShipmentItem>());
 
         var result = await CreateHandler(harness).HandleAsync(
             Request(harness.Partner.Id, SettlementType.Receipt, SettlementMethod.Cash,
@@ -348,8 +348,8 @@ public class SettlementCreateAndVoidTests
     public async Task 新增收款单_被核销单据已作废_应报OrderVoided()
     {
         var harness = await CreateHarnessAsync();
-        var order = NewSalesOrder(harness.Partner.Id, status: OrderStatus.Voided);
-        harness.SalesOrders.Seed(order, Array.Empty<SalesOrderItem>());
+        var order = NewSalesShipment(harness.Partner.Id, status: OrderStatus.Voided);
+        harness.SalesShipments.Seed(order, Array.Empty<SalesShipmentItem>());
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => CreateHandler(harness).HandleAsync(
             Request(harness.Partner.Id, SettlementType.Receipt, SettlementMethod.Cash,
@@ -363,31 +363,31 @@ public class SettlementCreateAndVoidTests
     public async Task 新增收款单_往来与单据不一致_应报PartnerMismatch()
     {
         var harness = await CreateHarnessAsync();
-        var order = NewSalesOrder(Guid.NewGuid()); // 单据属于另一个客户
-        harness.SalesOrders.Seed(order, Array.Empty<SalesOrderItem>());
+        var order = NewSalesShipment(Guid.NewGuid()); // 单据属于另一个客户
+        harness.SalesShipments.Seed(order, Array.Empty<SalesShipmentItem>());
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => CreateHandler(harness).HandleAsync(
             Request(harness.Partner.Id, SettlementType.Receipt, SettlementMethod.Cash,
                 Line(SettlementOrderType.SalesOutbound, order.Id, 10m))));
 
         Assert.Equal(ErrorCode.SettlementPartnerMismatch, ex.Code);
-        Assert.Contains(order.OrderNo, ex.Message);
+        Assert.Contains(order.ShipmentNo, ex.Message);
     }
 
     [Fact]
     public async Task 新增收款单_核销金额超过未结金额_应报AmountExceeded且不累加()
     {
         var harness = await CreateHarnessAsync();
-        var order = NewSalesOrder(harness.Partner.Id, 1000m);
+        var order = NewSalesShipment(harness.Partner.Id, 1000m);
         order.SettledAmount = 600m; // 未结 400
-        harness.SalesOrders.Seed(order, Array.Empty<SalesOrderItem>());
+        harness.SalesShipments.Seed(order, Array.Empty<SalesShipmentItem>());
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => CreateHandler(harness).HandleAsync(
             Request(harness.Partner.Id, SettlementType.Receipt, SettlementMethod.Cash,
                 Line(SettlementOrderType.SalesOutbound, order.Id, 400.01m))));
 
         Assert.Equal(ErrorCode.SettlementAmountExceeded, ex.Code);
-        Assert.Contains(order.OrderNo, ex.Message);
+        Assert.Contains(order.ShipmentNo, ex.Message);
         Assert.Contains("400.00", ex.Message);
         Assert.DoesNotContain("AddSettledAmount", harness.Calls);
     }
@@ -396,8 +396,8 @@ public class SettlementCreateAndVoidTests
     public async Task 新增收款单_落单失败_应回滚且不遗留已结金额()
     {
         var harness = await CreateHarnessAsync();
-        var order = NewSalesOrder(harness.Partner.Id);
-        harness.SalesOrders.Seed(order, Array.Empty<SalesOrderItem>());
+        var order = NewSalesShipment(harness.Partner.Id);
+        harness.SalesShipments.Seed(order, Array.Empty<SalesShipmentItem>());
         harness.Settlements.AddFailure = () => new InvalidOperationException("db down");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => CreateHandler(harness).HandleAsync(
@@ -414,9 +414,9 @@ public class SettlementCreateAndVoidTests
     public async Task 作废收付款单_成功_应逐行回退已结金额并置作废()
     {
         var harness = await CreateHarnessAsync();
-        var order = NewSalesOrder(harness.Partner.Id, 1000m);
+        var order = NewSalesShipment(harness.Partner.Id, 1000m);
         order.SettledAmount = 400m;
-        harness.SalesOrders.Seed(order, Array.Empty<SalesOrderItem>());
+        harness.SalesShipments.Seed(order, Array.Empty<SalesShipmentItem>());
 
         var settlement = new Settlement
         {
@@ -440,7 +440,7 @@ public class SettlementCreateAndVoidTests
                 SettlementId = settlement.Id,
                 OrderType = SettlementOrderType.SalesOutbound,
                 OrderId = order.Id,
-                OrderNo = order.OrderNo,
+                OrderNo = order.ShipmentNo,
                 OrderDate = order.OrderDate,
                 OrderTotalAmount = 1000m,
                 Amount = 400m,
@@ -450,7 +450,7 @@ public class SettlementCreateAndVoidTests
         var result = await CreateVoidHandler(harness).HandleAsync(new VoidSettlementRequest { Id = settlement.Id });
 
         Assert.Equal((int)OrderStatus.Voided, result.Status);
-        var (updated, _) = await harness.SalesOrders.GetDetailAsync(order.Id);
+        var (updated, _) = await harness.SalesShipments.GetDetailAsync(order.Id);
         Assert.Equal(0m, updated!.SettledAmount);
         Assert.Contains("Begin", harness.Calls);
         Assert.Contains("Commit", harness.Calls);
@@ -472,9 +472,9 @@ public class SettlementCreateAndVoidTests
     public async Task 作废收付款单_已作废_应报OrderVoided且不重复回退()
     {
         var harness = await CreateHarnessAsync();
-        var order = NewSalesOrder(harness.Partner.Id, 1000m);
+        var order = NewSalesShipment(harness.Partner.Id, 1000m);
         order.SettledAmount = 400m;
-        harness.SalesOrders.Seed(order, Array.Empty<SalesOrderItem>());
+        harness.SalesShipments.Seed(order, Array.Empty<SalesShipmentItem>());
 
         var settlement = new Settlement
         {
@@ -498,7 +498,7 @@ public class SettlementCreateAndVoidTests
                 SettlementId = settlement.Id,
                 OrderType = SettlementOrderType.SalesOutbound,
                 OrderId = order.Id,
-                OrderNo = order.OrderNo,
+                OrderNo = order.ShipmentNo,
                 OrderDate = order.OrderDate,
                 OrderTotalAmount = 1000m,
                 Amount = 400m,
@@ -510,7 +510,7 @@ public class SettlementCreateAndVoidTests
 
         Assert.Equal(ErrorCode.OrderVoided, ex.Code);
         Assert.DoesNotContain("AddSettledAmount", harness.Calls);
-        var (unchanged, _) = await harness.SalesOrders.GetDetailAsync(order.Id);
+        var (unchanged, _) = await harness.SalesShipments.GetDetailAsync(order.Id);
         Assert.Equal(400m, unchanged!.SettledAmount);
     }
 }

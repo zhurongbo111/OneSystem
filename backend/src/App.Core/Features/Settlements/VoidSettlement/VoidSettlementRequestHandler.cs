@@ -12,8 +12,8 @@ namespace App.Core.Features.Settlements.VoidSettlement;
 public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlementRequest, SettlementDetailDto>
 {
     private readonly ISettlementRepository _settlementRepository;
-    private readonly IPurchaseOrderRepository _purchaseOrderRepository;
-    private readonly ISalesOrderRepository _salesOrderRepository;
+    private readonly IPurchaseReceiptRepository _purchaseReceiptRepository;
+    private readonly ISalesShipmentRepository _salesShipmentRepository;
     private readonly IPurchaseReturnRepository _purchaseReturnRepository;
     private readonly ISalesReturnRepository _salesReturnRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -24,16 +24,16 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
     /// </summary>
     public VoidSettlementRequestHandler(
         ISettlementRepository settlementRepository,
-        IPurchaseOrderRepository purchaseOrderRepository,
-        ISalesOrderRepository salesOrderRepository,
+        IPurchaseReceiptRepository purchaseReceiptRepository,
+        ISalesShipmentRepository salesShipmentRepository,
         IPurchaseReturnRepository purchaseReturnRepository,
         ISalesReturnRepository salesReturnRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser)
     {
         _settlementRepository = settlementRepository;
-        _purchaseOrderRepository = purchaseOrderRepository;
-        _salesOrderRepository = salesOrderRepository;
+        _purchaseReceiptRepository = purchaseReceiptRepository;
+        _salesShipmentRepository = salesShipmentRepository;
         _purchaseReturnRepository = purchaseReturnRepository;
         _salesReturnRepository = salesReturnRepository;
         _unitOfWork = unitOfWork;
@@ -96,12 +96,12 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
     {
         if (orderType == SettlementOrderType.PurchaseInbound)
         {
-            return _purchaseOrderRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
+            return _purchaseReceiptRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
         }
 
         if (orderType == SettlementOrderType.SalesOutbound)
         {
-            return _salesOrderRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
+            return _salesShipmentRepository.AddSettledAmountAsync(orderId, delta, operatorId, cancellationToken);
         }
 
         if (orderType == SettlementOrderType.PurchaseReturn)

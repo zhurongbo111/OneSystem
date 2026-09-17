@@ -34,13 +34,13 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
         if (type == SettlementType.Receipt)
         {
             // 收款方向：销售出库单（客户欠我们）+ 采购退货单（供应商欠我们）
-            candidates.AddRange(await _dbContext.SalesOrders.AsNoTracking()
+            candidates.AddRange(await _dbContext.SalesShipments.AsNoTracking()
                 .Where(o => o.PartnerId == partnerId && o.Status == OrderStatus.Normal && o.SettledAmount < o.TotalAmount)
                 .Select(o => new SettlementCandidateItem
                 {
                     OrderType = SettlementOrderType.SalesOutbound,
                     OrderId = o.Id,
-                    OrderNo = o.OrderNo,
+                    OrderNo = o.ShipmentNo,
                     OrderDate = o.OrderDate,
                     TotalAmount = o.TotalAmount,
                     SettledAmount = o.SettledAmount,
@@ -63,13 +63,13 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
         else
         {
             // 付款方向：采购入库单（我们欠供应商）+ 销售退货单（我们欠客户）
-            candidates.AddRange(await _dbContext.PurchaseOrders.AsNoTracking()
+            candidates.AddRange(await _dbContext.PurchaseReceipts.AsNoTracking()
                 .Where(o => o.PartnerId == partnerId && o.Status == OrderStatus.Normal && o.SettledAmount < o.TotalAmount)
                 .Select(o => new SettlementCandidateItem
                 {
                     OrderType = SettlementOrderType.PurchaseInbound,
                     OrderId = o.Id,
-                    OrderNo = o.OrderNo,
+                    OrderNo = o.ReceiptNo,
                     OrderDate = o.OrderDate,
                     TotalAmount = o.TotalAmount,
                     SettledAmount = o.SettledAmount,
@@ -139,7 +139,7 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
         var ids = partners.Select(p => p.Id).ToList();
 
         // 四类单据按往来聚合：总额 + 未结单据数（未作废且未结金额 > 0）
-        var salesOrders = await _dbContext.SalesOrders.AsNoTracking()
+        var salesShipments = await _dbContext.SalesShipments.AsNoTracking()
             .Where(o => ids.Contains(o.PartnerId) && o.Status == OrderStatus.Normal)
             .GroupBy(o => o.PartnerId)
             .Select(g => new
@@ -161,7 +161,7 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
             })
             .ToListAsync(cancellationToken);
 
-        var purchaseOrders = await _dbContext.PurchaseOrders.AsNoTracking()
+        var purchaseReceipts = await _dbContext.PurchaseReceipts.AsNoTracking()
             .Where(o => ids.Contains(o.PartnerId) && o.Status == OrderStatus.Normal)
             .GroupBy(o => o.PartnerId)
             .Select(g => new
@@ -190,16 +190,16 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
             .Select(g => new { g.Key.PartnerId, g.Key.Type, Amount = g.Sum(s => s.TotalAmount) })
             .ToListAsync(cancellationToken);
 
-        var salesOrderMap = salesOrders.ToDictionary(x => x.PartnerId);
+        var salesShipmentMap = salesShipments.ToDictionary(x => x.PartnerId);
         var salesReturnMap = salesReturns.ToDictionary(x => x.PartnerId);
-        var purchaseOrderMap = purchaseOrders.ToDictionary(x => x.PartnerId);
+        var purchaseReceiptMap = purchaseReceipts.ToDictionary(x => x.PartnerId);
         var purchaseReturnMap = purchaseReturns.ToDictionary(x => x.PartnerId);
 
         var items = partners.Select(p =>
         {
-            var salesTotal = salesOrderMap.TryGetValue(p.Id, out var so) ? so.Amount : 0m;
+            var salesTotal = salesShipmentMap.TryGetValue(p.Id, out var so) ? so.Amount : 0m;
             var salesReturnTotal = salesReturnMap.TryGetValue(p.Id, out var sr) ? sr.Amount : 0m;
-            var purchaseTotal = purchaseOrderMap.TryGetValue(p.Id, out var po) ? po.Amount : 0m;
+            var purchaseTotal = purchaseReceiptMap.TryGetValue(p.Id, out var po) ? po.Amount : 0m;
             var purchaseReturnTotal = purchaseReturnMap.TryGetValue(p.Id, out var pr) ? pr.Amount : 0m;
 
             var received = settlements
@@ -210,9 +210,9 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
                 .Sum(s => s.Amount);
 
             var unsettledCount =
-                (salesOrderMap.TryGetValue(p.Id, out var so2) ? so2.UnsettledCount : 0)
+                (salesShipmentMap.TryGetValue(p.Id, out var so2) ? so2.UnsettledCount : 0)
                 + (salesReturnMap.TryGetValue(p.Id, out var sr2) ? sr2.UnsettledCount : 0)
-                + (purchaseOrderMap.TryGetValue(p.Id, out var po2) ? po2.UnsettledCount : 0)
+                + (purchaseReceiptMap.TryGetValue(p.Id, out var po2) ? po2.UnsettledCount : 0)
                 + (purchaseReturnMap.TryGetValue(p.Id, out var pr2) ? pr2.UnsettledCount : 0);
 
             return new ReconciliationItem

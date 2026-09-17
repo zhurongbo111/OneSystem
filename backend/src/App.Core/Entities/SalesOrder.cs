@@ -1,16 +1,17 @@
 namespace App.Core.Entities;
 
 /// <summary>
-/// 销售单实体（对应 PostgreSQL 表 SalesOrders，与 <c>PurchaseOrder</c> 同构）。
-/// 一步式单据：保存即生效（库存立即减少）；不支持编辑，只支持作废回冲。
-/// 客户名称 / 明细商品名称与单价均为快照，后续档案修改不影响历史单据。
+/// 销售订单实体（对应 PostgreSQL 表 SalesOrders，与 <c>PurchaseOrder</c> 同构）。
+/// 计划单据：**不直接影响库存、不追加库存流水**（specs/024-erp-order-flow design.md §1）；
+/// 由销售出库单关联回写明细的累计已发数量（<c>FulfilledQuantity</c>）并推导 <see cref="OrderFlowStatus"/>。
+/// 客户名称 / 明细商品名称与单价均为快照，后续档案修改不影响历史订单。
 /// </summary>
 public sealed class SalesOrder
 {
-    /// <summary>销售单 ID</summary>
+    /// <summary>订单 ID</summary>
     public Guid Id { get; set; }
 
-    /// <summary>单号，唯一，后端生成（SO + yyyyMMdd + 4 位序号，如 SO202609110001）</summary>
+    /// <summary>订单号，唯一，后端生成（SO + yyyyMMdd + 4 位序号，如 SO202609170001）</summary>
     public string OrderNo { get; set; } = string.Empty;
 
     /// <summary>客户 ID（外键 → Partners(Id)）</summary>
@@ -19,17 +20,17 @@ public sealed class SalesOrder
     /// <summary>客户名称快照（列表 / 审计免 join）</summary>
     public string PartnerName { get; set; } = string.Empty;
 
-    /// <summary>业务日期（UTC 午夜）</summary>
+    /// <summary>下单日期（UTC 午夜）</summary>
     public DateTimeOffset OrderDate { get; set; }
+
+    /// <summary>预计发货日期，可空</summary>
+    public DateTimeOffset? ExpectedDate { get; set; }
 
     /// <summary>总金额 = Σ 明细小计（后端重算，不信任前端传值）</summary>
     public decimal TotalAmount { get; set; }
 
-    /// <summary>已结算金额（由收付款单核销累加 / 作废回退，不允许手工直接改；specs/023-erp-settlement/design.md §2.3）</summary>
-    public decimal SettledAmount { get; set; }
-
-    /// <summary>单据状态（1=正常 0=已作废；作废后禁止再操作）</summary>
-    public OrderStatus Status { get; set; } = OrderStatus.Normal;
+    /// <summary>订单流转状态（待发货 / 部分发货 / 已完成 / 已关闭 / 已作废，见 design.md §0）</summary>
+    public OrderFlowStatus FlowStatus { get; set; } = OrderFlowStatus.Pending;
 
     /// <summary>备注</summary>
     public string? Remark { get; set; }
