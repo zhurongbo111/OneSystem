@@ -23,7 +23,7 @@ backend/
 
 **命名规律**（据此定位，不逐一列举）：
 
-- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem` / `SettlementCandidateItem` / `ReconciliationItem`）。
+- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem` / `SettlementCandidateItem` / `ReconciliationItem` / `InventoryFlowItem` / `StockBalanceItem` / `PurchaseSummaryItem` / `SalesSummaryItem` 及对应 `*Total` 合计模型）。
 - `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）/ `OrderFlowStatus`（024，订单流转状态：待收货 / 部分收货 / 已完成 / 已关闭 / 已作废）。
 - 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）。
 - `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
@@ -52,6 +52,7 @@ backend/
 | SalesReturns | CreateSalesReturn、GetSalesReturns、GetSalesReturnById、VoidSalesReturn、UpdateSalesReturnSettlement |
 | StockTakes | CreateStockTake、GetStockTakes、GetStockTakeById、GetStockTakePickProducts |
 | Settlements | GetSettlements、CreateSettlement、GetSettlementById、VoidSettlement、GetUnsettledOrders、GetReconciliation |
+| Reports | GetInventoryFlow、GetStockBalance、GetPurchaseSummary、GetSalesSummary（只读，经 `IReportQueryRepository` 跨表聚合，不新增写路径） |
 
 **基准参照**：
 
@@ -103,6 +104,7 @@ frontend/
 - `SalesManagement/` — SalesView + SaleFormPage + SaleDetailView（销售出库；开单页可关联销售订单）
 - `StockTakeManagement/` — StockTakesView + StockTakeFormPage + StockTakeDetailView（API 在 `api/stockTake.ts`）
 - `SettlementManagement/` — SettlementsView + SettlementFormPage + SettlementDetailView + ReconciliationView（收付款 + 往来对账；API 在 `api/settlement.ts`）
+- `ReportManagement/` — InventoryFlowReportView + StockBalanceReportView + PurchaseSummaryReportView + SalesSummaryReportView（进销存报表 / 库存余额表 / 采购汇总 / 销售汇总；API 在 `api/report.ts`）
 - 无功能域归属的独立页平铺在 `views/` 根：`LoginView.vue` / `HomeView.vue`（菜单归属见 `components/AppLayout.vue`）。
 
 **图标选型**：业务图标（侧边菜单、列表工具条、操作列）统一 Tabler（`@tabler/icons-vue`）；仅「图标」示例页为演示保留三套并存；优先级见前端规则 §4.7。
@@ -142,8 +144,8 @@ frontend/
 - 工程 / 脚手架：`001-project-scaffold`、`003-api-swagger`
 - 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
 - 业务：`009-user-management`
-- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`
-- ERP 扩展路线（**规格已起草、均未实现**）：批次三 `025-erp-report`、`026-erp-cost`、`027-erp-export`、`028-erp-rbac`、`029-erp-audit-log`；批次四 `030-erp-multi-warehouse`、`031-erp-transfer`、`032-erp-batch-expiry`、`033-erp-partner-price`、`034-erp-invoice`；批次五 `035-erp-stock-alert`、`036-erp-approval`。待确认的裁剪 / 契约决策见 `specs/ROADMAP.md` §4.8
+- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`、`025-erp-report`
+- ERP 扩展路线（**规格已起草、均未实现**）：批次三 `026-erp-cost`、`027-erp-export`、`028-erp-rbac`、`029-erp-audit-log`；批次四 `030-erp-multi-warehouse`、`031-erp-transfer`、`032-erp-batch-expiry`、`033-erp-partner-price`、`034-erp-invoice`；批次五 `035-erp-stock-alert`、`036-erp-approval`。待确认的裁剪 / 契约决策见 `specs/ROADMAP.md` §4.8
 
 `specs/ROADMAP.md` 是 ERP 功能组的**路线索引**（单文件，非 spec 目录、无三件套）：记录批次、序号、依赖与状态，并写明跨功能前置决策（多仓 / 结算 / 权限等）。接续 ERP 功能前先读它，再进具体规格。
 

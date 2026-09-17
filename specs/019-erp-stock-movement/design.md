@@ -31,6 +31,7 @@ updated: 2026-09-17
 | `TransferInVoid = 14` | 调拨转入作废 | 减少 | `magenta` | `-N`（红字） |
 
 > 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加；7 / 8 由 `specs/021-erp-purchase-return/` 追加；9 / 10 由 `specs/022-erp-sale-return/` 追加；11–14 由 `specs/031-erp-transfer/` 追加（各自落地时同步启用；前端类型下拉以本表为准）。
+> **演进（erp-report）**：进销存报表按变动类型将流水归类「期间入 / 期间出」的归类口径见 `specs/025-erp-report/design.md` §0.1（`StockTakeAdjust` 按符号双向拆分、两侧各计一次；`Transfer*` 11–14 落地时在 §0.1 续行）。
 
 - 变动量列展示**带符号整数**（`+N` / `-N`），入库 / 回增绿字、出库 / 回冲红字；e2e 断言该文本。
 - 空值渲染：来源单号为空显示 `-`（后续盘点 / 期初场景），操作人为空显示 `-`（系统操作）。

@@ -92,6 +92,7 @@ updated: 2026-09-17
 | `PurchaseSummaryItem` | `Key`（`Guid?`，往来或商品 id）/ `Name` / `Unit`? / `OrderCount` / `InboundQuantity` / `InboundAmount` / `ReturnQuantity` / `ReturnAmount` | F3 采购汇总行 |
 | `SalesSummaryItem` | 同上 | F4 销售汇总行 |
 | `InventoryFlowTotal` | `OpeningQuantity` / `InboundQuantity` / `OutboundQuantity` / `ClosingQuantity` | F1 合计行 |
+| `StockBalanceTotal` / `PurchaseSummaryTotal` / `SalesSummaryTotal` | 各自行的字段合计（汇总合计不含净额，净额在出参层由 Mapper 计算） | F2 / F3 / F4 合计行 |
 
 - `ClosingQuantity` 由仓储计算（`期初 + 入 − 出`），保证与单测断言一致；`BelowSafetyCount` 口径 = `Products.SafetyStock > 0 AND Inventory.Quantity < Products.SafetyStock`（与 `014` 同口径，仅统计启用商品）。
 
@@ -122,7 +123,7 @@ updated: 2026-09-17
 | `/api/reports/purchase-summary` | GET | `Reports/GetPurchaseSummary` | `{ items, total, page, pageSize, summary }` | 40000 |
 | `/api/reports/sales-summary` | GET | `Reports/GetSalesSummary` | `{ items, total, page, pageSize, summary }` | 40000 |
 
-- 分页结构遵循 `AGENTS.md` §4.3；**合计字段**用出参包装类型 `ReportPageDto<T>`（`items` / `total` / `page` / `pageSize` / `summary`）表达，`summary` 为对应合计模型（不进 `PagedResult<T>`，避免污染全局分页契约）。该类型放 `Features/Reports/`，仅本规格使用。
+- 分页结构遵循 `AGENTS.md` §4.3；**合计字段**用出参包装类型 `ReportPageDto<TItem, TSummary>`（`items` / `total` / `page` / `pageSize` / `summary`）表达，`summary` 为对应合计模型（不进 `PagedResult<T>`，避免污染全局分页契约）。该类型放 `Features/Reports/`，仅本规格使用。
 - 路由注意：`/api/reports/*` 为固定段，无 `{id}` 冲突。
 
 ### 3.4 关键用例流程（Handler）
