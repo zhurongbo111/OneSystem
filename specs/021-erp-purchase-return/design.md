@@ -8,6 +8,8 @@ updated: 2026-09-17
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase` / `erp-sale` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格为其消费方 `erp-purchase`（单据域共用约定 §0）、`erp-product`（商品与库存）、`erp-stock-movement`（流水）的**新增单据类型**，不修改既有用例语义。
+>
+> **演进（erp-settlement）**：结算已由 `SettlementStatus`（0/1 状态位）升级为 `SettledAmount`（已结算金额）+ 推导状态（未结 / 部分 / 结清）；手工切换端点 `PUT /api/purchase-returns/{id}/settlement` 与按钮已移除，结算变化一律由收付款单核销驱动；列表筛选参数 `settlement`（0/1）改为 `settlementState`（0/1/2），列表 / 详情出参 `settlementStatus` 改为 `settledAmount` / `unsettledAmount` / `settlementState`。采购退货单的核销方向为**收款**（供应商退我们钱）。现行为准见 `specs/023-erp-settlement/`。
 
 ## 0. 退货单域共用约定（erp-sale-return 继承）
 

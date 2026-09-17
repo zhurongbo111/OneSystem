@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # 设计规格：销售出库（erp-sale）
@@ -8,6 +8,8 @@ updated: 2026-09-16
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > **本规格继承 erp-purchase design §0「单据域共用约定」**：`SalesOrders` / `SalesOrderItems` 与 `PurchaseOrders` / `PurchaseOrderItems` 结构完全同构，实现时照抄 erp-purchase 模板并按 §1 替换规则做三处差异替换；共用枚举（`OrderStatus` / `OrderSettlementStatus`）、常量（`OrderFieldConstraints` + `ProductFieldConstraints` 的 quantity / unitPrice 边界）、单号生成（`GenerateOrderNoAsync`，前缀参数化）、校验结构**均不重复定义**。本规格只定义销售特有差异。
+>
+> **演进（erp-settlement）**：结算已由 `SettlementStatus`（0/1 状态位）升级为 `SettledAmount`（已结算金额）+ 推导状态（未结 / 部分 / 结清）；手工切换端点 `PUT /api/sales-orders/{id}/settlement` 与按钮已移除，结算变化一律由收付款单核销驱动；列表筛选参数 `settlement`（0/1）改为 `settlementState`（0/1/2），列表 / 详情出参 `settlementStatus` 改为 `settledAmount` / `unsettledAmount` / `settlementState`。销售出库单的核销方向为**收款**（我们收客户钱）。现行为准见 `specs/023-erp-settlement/`。
 
 ## 1. 相对 erp-purchase 的替换规则
 
