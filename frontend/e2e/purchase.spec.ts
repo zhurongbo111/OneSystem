@@ -229,7 +229,7 @@ test.describe('采购入库（集成）', () => {
     }
   })
 
-  test('开单 → 库存增加 → 标记已结算 → 作废回冲（全链路）', async ({ page }) => {
+  test('开单 → 库存增加 → 去收付款跳转 → 作废回冲（全链路）', async ({ page }) => {
     const codeA = uniqueProductCode('po_a')
     const codeB = uniqueProductCode('po_b')
     const supplier = uniquePartnerName()
@@ -268,49 +268,39 @@ test.describe('采购入库（集成）', () => {
     // 初始未结算
     await expect(row.getByText('未结算', { exact: true })).toBeVisible()
 
-    // 操作列按钮带图标：详情 / 结算切换 / 作废
+    // 操作列按钮带图标：详情 / 收付款 / 作废（手工结算切换已移除，结算由收付款单核销驱动）
     await expect(row.getByRole('button', { name: '详情' }).locator('svg')).toHaveCount(1)
     await expect(row.getByRole('button', { name: '作废' }).locator('svg')).toHaveCount(1)
-    await expect(row.getByRole('button', { name: '标记已结算' }).locator('svg')).toHaveCount(1)
-    // 按钮顺序：详情 → 标记已结算 → 作废（specs/011-action-column §5.1 主操作 → 中性 → 完成 → 警示 → 危险）
+    await expect(row.getByRole('button', { name: '收付款' }).locator('svg')).toHaveCount(1)
+    // 按钮顺序：详情 → 收付款 → 作废（specs/011-action-column §0 主操作 → 中性 → 危险）
     const rowActions = row.locator('td.action-cell button')
     await expect(rowActions).toHaveCount(3)
     await expect(rowActions.nth(0)).toHaveText(/详情/)
-    await expect(rowActions.nth(1)).toHaveText(/标记已结算/)
+    await expect(rowActions.nth(1)).toHaveText(/收付款/)
     await expect(rowActions.nth(2)).toHaveText(/作废/)
-    // 配色区分：标记已结算 = success（绿），与「已结算」绿标签呼应；作废 = danger（红），与「已作废」红标签呼应
-    await expect(row.getByRole('button', { name: '标记已结算' })).toHaveClass(/arco-btn-status-success/)
+    // 配色：作废 = danger（红），与「已作废」红标签呼应；收付款为中性
     await expect(row.getByRole('button', { name: '作废' })).toHaveClass(/arco-btn-status-danger/)
-    await expect(row.getByRole('button', { name: '详情' })).not.toHaveClass(/arco-btn-status-success/)
+    await expect(row.getByRole('button', { name: '详情' })).not.toHaveClass(/arco-btn-status-danger/)
 
-    // 标记已结算
-    await row.getByRole('button', { name: '标记已结算' }).click()
-    await expect(page.getByText('确认标记为已结算？')).toBeVisible()
-    await confirmPopconfirm(page, '确认标记为已结算？')
-    await expect(page.getByText('已标记为已结算')).toBeVisible()
-    const rowSettled = dataRows(page).first()
-    await expect(rowSettled.getByText('已结算', { exact: true })).toBeVisible()
-    // 已结算态：结算按钮切为「改回未结算」，次要色（灰），不再是 success 色
-    await expect(rowSettled.getByRole('button', { name: '改回未结算' }).locator('svg')).toHaveCount(1)
-    await expect(rowSettled.getByRole('button', { name: '改回未结算' })).toHaveClass(
-      /action-btn-secondary/,
-    )
-    await expect(rowSettled.getByRole('button', { name: '改回未结算' })).not.toHaveClass(
-      /arco-btn-status-success/,
-    )
+    // 去收付款：跳新建收付款页并按单据类型预置付款方向（核销链路见 settlement.spec.ts）
+    await row.getByRole('button', { name: '收付款' }).click()
+    await expect(page).toHaveURL(/\/settlements\/new/)
+    await expect(page.getByRole('radio', { name: '付款' })).toBeChecked()
 
     // 作废：库存回冲
-    await rowSettled.getByRole('button', { name: '作废' }).click()
+    await goPurchases(page)
+    await page.getByPlaceholder('搜索单号 / 供应商').fill(orderNo)
+    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await dataRows(page).first().getByRole('button', { name: '作废' }).click()
     await expect(page.getByText('确认作废该采购单？')).toBeVisible()
     await confirmPopconfirm(page, '确认作废该采购单？')
     await expect(page.getByText('已作废，库存已回冲')).toBeVisible()
 
-    // 单据状态「已作废」且操作（作废 / 结算）消失
+    // 单据状态「已作废」且操作（作废 / 收付款）消失
     const rowVoided = dataRows(page).first()
     await expect(rowVoided.getByText('已作废', { exact: true })).toBeVisible()
     await expect(rowVoided.getByRole('button', { name: '作废' })).toHaveCount(0)
-    await expect(rowVoided.getByRole('button', { name: '标记已结算' })).toHaveCount(0)
-    await expect(rowVoided.getByRole('button', { name: '改回未结算' })).toHaveCount(0)
+    await expect(rowVoided.getByRole('button', { name: '收付款' })).toHaveCount(0)
 
     // 库存回冲：A → 0，B → 0
     await goInventory(page)
