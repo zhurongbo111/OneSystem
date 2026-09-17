@@ -51,10 +51,10 @@ async function goReconciliation(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/reconciliation$/)
 }
 
-/** 经侧边菜单进入销售开单页 */
+/** 经侧边菜单进入销售出库页 */
 async function goSales(page: Page): Promise<void> {
   await login(page)
-  await clickMenuItem(page, '销售开单')
+  await clickMenuItem(page, '销售出库')
   await expect(page).toHaveURL(/\/sales$/)
 }
 
@@ -156,7 +156,7 @@ async function seedStockByPurchase(page: Page, supplierName: string, productCode
 /**
  * 开一张单行销售单：数量 1、单价默认带出销售价 20 → 总额 20.00；返回单号。
  */
-async function createSingleLineSalesOrder(
+async function createSingleLineSalesShipment(
   page: Page,
   customerName: string,
   productCode: string,
@@ -178,7 +178,7 @@ async function createSingleLineSalesOrder(
   await expect(page.getByText('销售单已创建')).toBeVisible()
   await expect(page).toHaveURL(/\/sales\/detail\//)
   await expect(page.getByText('¥ 20.00', { exact: true }).first()).toBeVisible()
-  return (await page.locator('.detail-desc').getByText(/^SO\d{12}$/).first().innerText()).trim()
+  return (await page.locator('.detail-desc').getByText(/^GI\d{12}$/).first().innerText()).trim()
 }
 
 /** 销售列表按单号定位并返回该行 */
@@ -235,7 +235,7 @@ test.describe('收付款与往来对账（集成）', () => {
     await goPurchases(page)
     await seedStockByPurchase(page, supplier, code)
     await goSales(page)
-    const orderNo = await createSingleLineSalesOrder(page, customer, code)
+    const orderNo = await createSingleLineSalesShipment(page, customer, code)
 
     // 销售列表：初始未结算，操作列含「收付款」
     const row = await findSalesRow(page, orderNo)
@@ -315,7 +315,7 @@ test.describe('收付款与往来对账（集成）', () => {
     await goPurchases(page)
     await seedStockByPurchase(page, supplier, code)
     await goSales(page)
-    const orderNo = await createSingleLineSalesOrder(page, customer, code)
+    const orderNo = await createSingleLineSalesShipment(page, customer, code)
 
     // 前端约束：核销金额输入框 max = 未结金额（超额被 clamp，无法提交超额）
     const salesRow = await findSalesRow(page, orderNo)
@@ -339,7 +339,7 @@ test.describe('收付款与往来对账（集成）', () => {
     const partnerId = (await partnerRes.json()).data.items[0].id as string
 
     const orderRes = await request.get(
-      `${BACKEND}/api/sales-orders?keyword=${orderNo}&page=1&pageSize=20`,
+      `${BACKEND}/api/sales-shipments?keyword=${orderNo}&page=1&pageSize=20`,
       { headers },
     )
     const order = (await orderRes.json()).data.items[0] as { id: string; totalAmount: number }
