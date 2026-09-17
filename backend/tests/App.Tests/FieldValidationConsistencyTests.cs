@@ -7,6 +7,8 @@ using App.Core.Features.Purchases.CreatePurchaseOrder;
 using App.Core.Features.Purchases.GetPurchaseOrders;
 using App.Core.Features.Sales.CreateSalesOrder;
 using App.Core.Features.Sales.GetSalesOrders;
+using App.Core.Features.SalesReturns.CreateSalesReturn;
+using App.Core.Features.SalesReturns.GetSalesReturns;
 using App.Core.Features.StockMovements.GetStockMovements;
 using App.Core.Features.StockTakes.CreateStockTake;
 using App.Core.Features.StockTakes.GetStockTakes;
@@ -446,6 +448,115 @@ public class FieldValidationConsistencyTests
             .Select(_ => new CreatePurchaseReturnItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
             .ToList();
         return validator.Validate(new CreatePurchaseReturnRequest
+        {
+            PartnerId = Guid.NewGuid(),
+            ReturnDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Items = items,
+        }).IsValid;
+    }
+
+    // ============================== 销售退货单字段约束（与采购退货同组常量，保证两退货单同规格）==============================
+
+    [Fact]
+    public void EF模型_SalesReturns表ReturnNo列长度_应等于字段约束常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<SalesReturn>(dbContext, nameof(SalesReturn.ReturnNo)));
+        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<SalesReturn>(dbContext, nameof(SalesReturn.Remark)));
+    }
+
+    [Fact]
+    public void EF模型_SalesReturnItems表快照列长度_应等于商品域常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        // 名称 / 单位为开单时快照，列长取自商品档案（同一规则同源）
+        Assert.Equal(ProductFieldConstraints.NameMaxLength, GetMaxLength<SalesReturnItem>(dbContext, nameof(SalesReturnItem.ProductName)));
+        Assert.Equal(ProductFieldConstraints.UnitMaxLength, GetMaxLength<SalesReturnItem>(dbContext, nameof(SalesReturnItem.Unit)));
+    }
+
+    [Fact]
+    public void 退货单明细数量边界_采购退货与销售退货应一致()
+    {
+        var purchase = new CreatePurchaseReturnRequestValidator();
+        var sales = new CreateSalesReturnRequestValidator();
+
+        foreach (var quantity in new[]
+                 {
+                     ProductFieldConstraints.QuantityMinValue,
+                     ProductFieldConstraints.QuantityMaxValue,
+                     ProductFieldConstraints.QuantityMinValue - 1,
+                     ProductFieldConstraints.QuantityMaxValue + 1,
+                 })
+        {
+            Assert.Equal(ValidatePurchaseReturn(purchase, quantity: quantity), ValidateSalesReturn(sales, quantity: quantity));
+        }
+
+        Assert.True(ValidateSalesReturn(sales, quantity: ProductFieldConstraints.QuantityMaxValue));
+        Assert.False(ValidateSalesReturn(sales, quantity: ProductFieldConstraints.QuantityMaxValue + 1));
+    }
+
+    [Fact]
+    public void 退货单明细单价边界_采购退货与销售退货应一致()
+    {
+        var purchase = new CreatePurchaseReturnRequestValidator();
+        var sales = new CreateSalesReturnRequestValidator();
+
+        foreach (var unitPrice in new[]
+                 {
+                     ProductFieldConstraints.PriceMinValue,
+                     ProductFieldConstraints.PriceMaxValue,
+                     ProductFieldConstraints.PriceMinValue - 0.01m,
+                     ProductFieldConstraints.PriceMaxValue + 0.01m,
+                 })
+        {
+            Assert.Equal(ValidatePurchaseReturn(purchase, unitPrice: unitPrice), ValidateSalesReturn(sales, unitPrice: unitPrice));
+        }
+
+        Assert.True(ValidateSalesReturn(sales, unitPrice: ProductFieldConstraints.PriceMinValue));
+        Assert.False(ValidateSalesReturn(sales, unitPrice: ProductFieldConstraints.PriceMaxValue + 0.01m));
+    }
+
+    [Fact]
+    public void 退货单明细行数上限_采购退货与销售退货应一致()
+    {
+        var purchase = new CreatePurchaseReturnRequestValidator();
+        var sales = new CreateSalesReturnRequestValidator();
+
+        foreach (var itemCount in new[] { 1, OrderFieldConstraints.ItemsMaxCount, OrderFieldConstraints.ItemsMaxCount + 1 })
+        {
+            Assert.Equal(ValidatePurchaseReturn(purchase, itemCount: itemCount), ValidateSalesReturn(sales, itemCount: itemCount));
+        }
+
+        Assert.True(ValidateSalesReturn(sales, itemCount: OrderFieldConstraints.ItemsMaxCount));
+        Assert.False(ValidateSalesReturn(sales, itemCount: OrderFieldConstraints.ItemsMaxCount + 1));
+    }
+
+    [Fact]
+    public void 退货单查询关键词长度_采购退货与销售退货应一致且不超过ReturnNo列长()
+    {
+        var ok = new string('a', OrderFieldConstraints.KeywordMaxLength);
+        var tooLong = new string('a', OrderFieldConstraints.KeywordMaxLength + 1);
+
+        Assert.True(new GetSalesReturnsRequestValidator()
+            .Validate(new GetSalesReturnsRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetSalesReturnsRequestValidator()
+            .Validate(new GetSalesReturnsRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+
+        Assert.True(new GetPurchaseReturnsRequestValidator()
+            .Validate(new GetPurchaseReturnsRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetPurchaseReturnsRequestValidator()
+            .Validate(new GetPurchaseReturnsRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
+    private static bool ValidateSalesReturn(CreateSalesReturnRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
+    {
+        var items = Enumerable
+            .Range(0, itemCount)
+            .Select(_ => new CreateSalesReturnItem { ProductId = Guid.NewGuid(), Quantity = quantity, UnitPrice = unitPrice })
+            .ToList();
+        return validator.Validate(new CreateSalesReturnRequest
         {
             PartnerId = Guid.NewGuid(),
             ReturnDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
