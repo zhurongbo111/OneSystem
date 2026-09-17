@@ -6,13 +6,17 @@ import { get, post, put } from './request'
 /** 单据状态（0 已作废 / 1 正常） */
 export type OrderStatus = 0 | 1
 
-/** 采购单列表行（对应后端 PurchaseOrderListItemDto） */
-export interface PurchaseOrderListItem {
+/** 采购入库单列表行（对应后端 PurchaseReceiptListItemDto） */
+export interface PurchaseReceiptListItem {
   id: string
-  orderNo: string
+  receiptNo: string
   partnerId: string
   partnerName: string
   orderDate: string
+  /** 关联采购订单 id（可空：不关联订单的直通单据） */
+  orderId: string | null
+  /** 关联采购订单号快照（可空） */
+  orderNo: string | null
   totalAmount: number
   settledAmount: number
   unsettledAmount: number
@@ -21,8 +25,8 @@ export interface PurchaseOrderListItem {
   createdAt: string
 }
 
-/** 采购单明细行（快照字段原样返回，对应后端 PurchaseOrderItemDto） */
-export interface PurchaseOrderItem {
+/** 采购入库单明细行（快照字段原样返回，对应后端 PurchaseReceiptItemDto） */
+export interface PurchaseReceiptItem {
   id: string
   productId: string
   productName: string
@@ -30,22 +34,26 @@ export interface PurchaseOrderItem {
   quantity: number
   unitPrice: number
   subtotal: number
+  /** 关联采购订单明细行 id（可空：不关联订单的直通单据） */
+  orderItemId: string | null
 }
 
-/** 采购单详情（对应后端 PurchaseOrderDetailDto，明细按插入顺序） */
-export interface PurchaseOrderDetail extends Omit<PurchaseOrderListItem, 'status'> {
+/** 采购入库单详情（对应后端 PurchaseReceiptDetailDto，明细按插入顺序） */
+export interface PurchaseReceiptDetail extends Omit<PurchaseReceiptListItem, 'status'> {
   remark: string | null
   createdBy: string | null
-  items: PurchaseOrderItem[]
+  items: PurchaseReceiptItem[]
   status: OrderStatus
 }
 
-/** 采购单列表查询参数（对应后端 GetPurchaseOrdersRequest） */
-export interface PurchaseOrderQuery {
+/** 采购入库单列表查询参数（对应后端 GetPurchaseReceiptsRequest） */
+export interface PurchaseReceiptQuery {
   page: number
   pageSize: number
   keyword?: string
   partnerId?: string
+  /** 关联采购订单 id（订单详情的「关联入库单」列表用） */
+  orderId?: string
   start?: string
   end?: string
   settlementState?: SettlementState
@@ -54,6 +62,7 @@ export interface PurchaseOrderQuery {
 /**
  * 开单明细行本地类型（含快照展示字段）：
  * `subtotal` 为前端实时计算（数量 × 单价）仅用于展示，提交 payload 不含小计 / 总额（design §4.2）。
+ * 关联订单时额外携带订单明细行 id 与未收数量（作为本次数量上限，design §4.3）。
  */
 export interface PurchaseFormLine {
   key: string
@@ -63,14 +72,55 @@ export interface PurchaseFormLine {
   quantity: number
   unitPrice: number
   subtotal: number
+  /** 关联订单明细行 id（关联模式下提交时必填） */
+  orderItemId?: string
+  /** 未收数量（关联模式下的数量上限；未关联订单时为空表示不限） */
+  remainingQuantity?: number
+  /** 订购数量（关联订单时展示订单行信息） */
+  orderedQuantity?: number
+  /** 累计已收数量（关联订单时展示订单行信息） */
+  fulfilledQuantity?: number
 }
 
-/** 新增采购单入参（对应后端 CreatePurchaseOrderRequest；不传小计 / 总额） */
-export interface CreatePurchaseOrderPayload {
+/** 新增采购入库单入参（对应后端 CreatePurchaseReceiptRequest；不传小计 / 总额） */
+export interface CreatePurchaseReceiptPayload {
   partnerId: string
   orderDate: string
-  items: { productId: string; quantity: number; unitPrice: number }[]
+  /** 关联采购订单 id（可选） */
+  orderId?: string
+  items: { productId: string; quantity: number; unitPrice: number; orderItemId?: string }[]
   remark?: string
+}
+
+/** 可关联采购订单候选（对应后端 PurchaseOrderPickDto） */
+export interface PurchaseOrderPick {
+  id: string
+  orderNo: string
+  orderDate: string
+  expectedDate: string | null
+  totalAmount: number
+}
+
+/** 关联订单明细行（对应后端 PurchaseOrderLineDto） */
+export interface PurchaseOrderLine {
+  orderItemId: string
+  productId: string
+  productName: string
+  unit: string
+  quantity: number
+  fulfilledQuantity: number
+  remainingQuantity: number
+  unitPrice: number
+}
+
+/** 关联订单明细（对应后端 PurchaseOrderLinesDto） */
+export interface PurchaseOrderLines {
+  orderId: string
+  orderNo: string
+  partnerId: string
+  partnerName: string
+  expectedDate: string | null
+  items: PurchaseOrderLine[]
 }
 
 /**
@@ -95,22 +145,32 @@ export function toUtcMidnight(date: string): string {
   return new Date(`${date}T00:00:00Z`).toISOString()
 }
 
-/** 分页查询采购单（含作废单据，作废行前端置灰） */
-export function getPurchaseOrders(query: PurchaseOrderQuery): Promise<PagedResult<PurchaseOrderListItem>> {
-  return get<PagedResult<PurchaseOrderListItem>>('/purchase-orders', { params: query })
+/** 分页查询采购入库单（含作废单据，作废行前端置灰） */
+export function getPurchaseReceipts(query: PurchaseReceiptQuery): Promise<PagedResult<PurchaseReceiptListItem>> {
+  return get<PagedResult<PurchaseReceiptListItem>>('/purchase-receipts', { params: query })
 }
 
-/** 查询采购单详情（含明细行，快照字段原样返回） */
-export function getPurchaseOrder(id: string): Promise<PurchaseOrderDetail> {
-  return get<PurchaseOrderDetail>(`/purchase-orders/${id}`)
+/** 查询采购入库单详情（含明细行，快照字段原样返回） */
+export function getPurchaseReceipt(id: string): Promise<PurchaseReceiptDetail> {
+  return get<PurchaseReceiptDetail>(`/purchase-receipts/${id}`)
 }
 
-/** 新增采购单（一步式：保存即生效，库存立即增加；返回详情含后端生成的单号与重算金额） */
-export function createPurchaseOrder(payload: CreatePurchaseOrderPayload): Promise<PurchaseOrderDetail> {
-  return post<PurchaseOrderDetail>('/purchase-orders', payload)
+/** 新增采购入库单（一步式：保存即生效，库存立即增加；可关联采购订单） */
+export function createPurchaseReceipt(payload: CreatePurchaseReceiptPayload): Promise<PurchaseReceiptDetail> {
+  return post<PurchaseReceiptDetail>('/purchase-receipts', payload)
 }
 
-/** 作废采购单（回冲库存；仅改状态不删数据） */
-export function voidPurchaseOrder(id: string): Promise<PurchaseOrderDetail> {
-  return put<PurchaseOrderDetail>(`/purchase-orders/${id}/void`)
+/** 作废采购入库单（回冲库存，关联订单时回退累计已收；仅改状态不删数据） */
+export function voidPurchaseReceipt(id: string): Promise<PurchaseReceiptDetail> {
+  return put<PurchaseReceiptDetail>(`/purchase-receipts/${id}/void`)
+}
+
+/** 可关联采购订单候选（按供应商，状态为待收货 / 部分收货；入库开单页下拉） */
+export function getPurchaseOrderPicks(partnerId: string): Promise<PurchaseOrderPick[]> {
+  return get<PurchaseOrderPick[]>('/purchase-receipts/pick-orders', { params: { partnerId } })
+}
+
+/** 关联订单明细（含未收数量；入库开单页选择订单后带出） */
+export function getPurchaseOrderLines(orderId: string): Promise<PurchaseOrderLines> {
+  return get<PurchaseOrderLines>('/purchase-receipts/order-lines', { params: { orderId } })
 }

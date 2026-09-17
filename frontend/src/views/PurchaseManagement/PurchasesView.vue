@@ -5,10 +5,10 @@ import { useRouter } from 'vue-router'
 import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
 import {
-  getPurchaseOrders,
+  getPurchaseReceipts,
   toDateRange,
-  voidPurchaseOrder,
-  type PurchaseOrderListItem,
+  voidPurchaseReceipt,
+  type PurchaseReceiptListItem,
 } from '@/api/purchase'
 import { formatDateTime } from '@/utils/datetime'
 import {
@@ -40,7 +40,7 @@ const router = useRouter()
 const loading = ref(false)
 /** 正在作废的单据 id（design §4.5：voidingId） */
 const voidingId = ref<string | undefined>(undefined)
-const items = ref<PurchaseOrderListItem[]>([])
+const items = ref<PurchaseReceiptListItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -81,7 +81,8 @@ const pagination = computed(() => ({
 
 /** 可选列（序号与操作列固定显示，不参与列设置：specs/011-action-column §5） */
 const columnOptions = [
-  { label: '单号', value: 'orderNo' },
+  { label: '单号', value: 'receiptNo' },
+  { label: '关联订单', value: 'orderNo' },
   { label: '供应商', value: 'partnerName' },
   { label: '单据日期', value: 'orderDate' },
   { label: '总金额', value: 'totalAmount' },
@@ -92,6 +93,7 @@ const columnOptions = [
 
 /** 列显示设置（不持久化） */
 const visibleColumns = ref<string[]>([
+  'receiptNo',
   'orderNo',
   'partnerName',
   'orderDate',
@@ -104,8 +106,11 @@ const visibleColumns = ref<string[]>([
 /** 表格列：序号 + 可选列 + 操作（序号与操作固定显示） */
 const columns = computed<TableColumnData[]>(() => {
   const cols: TableColumnData[] = [{ title: '序号', slotName: 'seq', width: 64, align: 'center' }]
+  if (visibleColumns.value.includes('receiptNo')) {
+    cols.push({ title: '单号', slotName: 'receiptNo', width: 160 })
+  }
   if (visibleColumns.value.includes('orderNo')) {
-    cols.push({ title: '单号', slotName: 'orderNo', width: 160 })
+    cols.push({ title: '关联订单', slotName: 'orderNo', width: 160 })
   }
   if (visibleColumns.value.includes('partnerName')) {
     cols.push({
@@ -162,7 +167,7 @@ async function fetchList(): Promise<void> {
     const { start, end } = appliedRange.value
       ? toDateRange(appliedRange.value[0], appliedRange.value[1])
       : {}
-    const result = await getPurchaseOrders({
+    const result = await getPurchaseReceipts({
       keyword: appliedKeyword.value.trim() || undefined,
       partnerId: appliedPartner.value,
       start,
@@ -225,21 +230,21 @@ function onCreate(): void {
   void router.push({ name: 'purchaseNew' })
 }
 
-function onDetail(row: PurchaseOrderListItem): void {
+function onDetail(row: PurchaseReceiptListItem): void {
   void router.push({ name: 'purchaseDetail', params: { id: row.id } })
 }
 
 /** 作废行整体置灰（design §4.4） */
-function rowClassName(record: PurchaseOrderListItem): string {
+function rowClassName(record: PurchaseReceiptListItem): string {
   return record.status === 0 ? 'row-voided' : ''
 }
 
 /** 作废：回冲库存，仅改状态不删数据 */
-async function onVoid(row: PurchaseOrderListItem): Promise<void> {
+async function onVoid(row: PurchaseReceiptListItem): Promise<void> {
   if (voidingId.value) return
   voidingId.value = row.id
   try {
-    await voidPurchaseOrder(row.id)
+    await voidPurchaseReceipt(row.id)
     Message.success('已作废，库存已回冲')
     void fetchList()
   } catch {
@@ -250,7 +255,7 @@ async function onVoid(row: PurchaseOrderListItem): Promise<void> {
 }
 
 /** 去收付款：采购单为付款方向（type=1），预置往来单位（design §4.4；同步路由跳转不置 loading） */
-function onGoSettlement(row: PurchaseOrderListItem): void {
+function onGoSettlement(row: PurchaseReceiptListItem): void {
   void router.push({ name: 'settlementNew', query: { type: '1', partnerId: row.partnerId } })
 }
 </script>
@@ -401,29 +406,32 @@ function onGoSettlement(row: PurchaseOrderListItem): void {
         <template #seq="{ rowIndex }">
           {{ (page - 1) * pageSize + rowIndex + 1 }}
         </template>
+        <template #receiptNo="{ record }">
+          {{ (record as PurchaseReceiptListItem).receiptNo }}
+        </template>
         <template #orderNo="{ record }">
-          {{ (record as PurchaseOrderListItem).orderNo }}
+          {{ (record as PurchaseReceiptListItem).orderNo || '—' }}
         </template>
         <template #orderDate="{ record }">
-          {{ formatDateTime((record as PurchaseOrderListItem).orderDate).slice(0, 10) }}
+          {{ formatDateTime((record as PurchaseReceiptListItem).orderDate).slice(0, 10) }}
         </template>
         <template #totalAmount="{ record }">
           <span class="amount">
-            ¥ {{ (record as PurchaseOrderListItem).totalAmount.toFixed(2) }}
+            ¥ {{ (record as PurchaseReceiptListItem).totalAmount.toFixed(2) }}
           </span>
         </template>
         <template #settlement="{ record }">
-          <a-tag :color="settlementStateColor((record as PurchaseOrderListItem).settlementState)">
-            {{ settlementStateLabel((record as PurchaseOrderListItem).settlementState, (record as PurchaseOrderListItem).unsettledAmount) }}
+          <a-tag :color="settlementStateColor((record as PurchaseReceiptListItem).settlementState)">
+            {{ settlementStateLabel((record as PurchaseReceiptListItem).settlementState, (record as PurchaseReceiptListItem).unsettledAmount) }}
           </a-tag>
         </template>
         <template #status="{ record }">
-          <a-tag :color="(record as PurchaseOrderListItem).status === 1 ? 'green' : 'red'">
-            {{ (record as PurchaseOrderListItem).status === 1 ? '正常' : '已作废' }}
+          <a-tag :color="(record as PurchaseReceiptListItem).status === 1 ? 'green' : 'red'">
+            {{ (record as PurchaseReceiptListItem).status === 1 ? '正常' : '已作废' }}
           </a-tag>
         </template>
         <template #createdAt="{ record }">
-          {{ formatDateTime((record as PurchaseOrderListItem).createdAt) }}
+          {{ formatDateTime((record as PurchaseReceiptListItem).createdAt) }}
         </template>
         <!-- 操作列：详情 恒显；收付款 / 作废 仅正常单显示（design §4.4） -->
         <template #action="{ record }">
@@ -434,7 +442,7 @@ function onGoSettlement(row: PurchaseOrderListItem): void {
             <a-button
               type="text"
               size="small"
-              @click="onDetail(record as PurchaseOrderListItem)"
+              @click="onDetail(record as PurchaseReceiptListItem)"
             >
               <template #icon>
                 <IconEye />
@@ -443,10 +451,10 @@ function onGoSettlement(row: PurchaseOrderListItem): void {
             </a-button>
 
             <a-button
-              v-if="(record as PurchaseOrderListItem).status === 1"
+              v-if="(record as PurchaseReceiptListItem).status === 1"
               type="text"
               size="small"
-              @click="onGoSettlement(record as PurchaseOrderListItem)"
+              @click="onGoSettlement(record as PurchaseReceiptListItem)"
             >
               <template #icon>
                 <IconCash />
@@ -454,16 +462,16 @@ function onGoSettlement(row: PurchaseOrderListItem): void {
               收付款
             </a-button>
             <a-popconfirm
-              v-if="(record as PurchaseOrderListItem).status === 1"
+              v-if="(record as PurchaseReceiptListItem).status === 1"
               type="warning"
               content="确认作废该采购单？作废后库存将回冲，且不可恢复"
-              @ok="onVoid(record as PurchaseOrderListItem)"
+              @ok="onVoid(record as PurchaseReceiptListItem)"
             >
               <a-button
                 type="text"
                 size="small"
                 status="danger"
-                :loading="voidingId === (record as PurchaseOrderListItem).id"
+                :loading="voidingId === (record as PurchaseReceiptListItem).id"
               >
                 <template #icon>
                   <IconBan />

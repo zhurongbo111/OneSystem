@@ -6,9 +6,9 @@ import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
 import { getProductPickList } from '@/api/product'
 import type { ProductPickItem } from '@/api/product'
-import { createSalesShipment, getSalesOrderLines, getSalesOrderPicks, toUtcMidnight } from '@/api/sale'
-import type { SalesFormLine, SalesOrderPick } from '@/api/sale'
-import { getSalesOrder } from '@/api/saleOrder'
+import { toUtcMidnight } from '@/api/sale'
+import { createSalesOrder, getSalesOrder, updateSalesOrder } from '@/api/saleOrder'
+import type { SalesOrderFormLine } from '@/api/saleOrder'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
 import { IconPlus } from '@tabler/icons-vue'
@@ -20,25 +20,11 @@ const MAX_ITEMS = 100
 const QUANTITY_MIN = 1
 const QUANTITY_MAX = 999999
 
-/** 未关联订单时的明细列（与既有一步式开单完全一致） */
-const plainItemColumns: TableColumnData[] = [
+const itemColumns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '商品', slotName: 'product' },
   { title: '数量', slotName: 'quantity', width: 150 },
   { title: '单价', slotName: 'unitPrice', width: 170 },
-  { title: '小计', slotName: 'subtotal', width: 120, align: 'right' },
-  { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
-]
-
-/** 关联订单时的明细列：固定为订单明细，展示订购 / 已发 / 未发（design §4.3） */
-const linkedItemColumns: TableColumnData[] = [
-  { title: '序号', slotName: 'seq', width: 64, align: 'center' },
-  { title: '商品', slotName: 'product' },
-  { title: '订购数量', slotName: 'orderedQuantity', width: 100, align: 'right' },
-  { title: '已发', slotName: 'fulfilledQuantity', width: 90, align: 'right' },
-  { title: '未发', slotName: 'remainingQuantity', width: 90, align: 'right' },
-  { title: '本次数量', slotName: 'quantity', width: 150 },
-  { title: '单价', slotName: 'unitPrice', width: 140, align: 'right' },
   { title: '小计', slotName: 'subtotal', width: 120, align: 'right' },
   { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
 ]
@@ -50,11 +36,11 @@ function newKey(): string {
   return `i-${Date.now()}-${itemSeq}`
 }
 
-function newLine(): SalesFormLine {
+function newLine(): SalesOrderFormLine {
   return { key: newKey(), productId: undefined, productName: '', unit: '', quantity: 1, unitPrice: 0, subtotal: 0 }
 }
 
-/** 当天本地日期 YYYY-MM-DD（单据日期默认值） */
+/** 当天本地日期 YYYY-MM-DD（订单日期默认值） */
 function todayLocal(): string {
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -65,30 +51,31 @@ function todayLocal(): string {
 const route = useRoute()
 const router = useRouter()
 
+/** 新建 / 编辑共用本页（design §4.3） */
+const isEdit = computed(() => route.name === 'salesOrderEdit')
+const orderId = computed(() => (isEdit.value ? (route.params.id as string) : undefined))
+
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
+const loading = ref(false)
 const itemsErrorShown = ref(false)
 
 /** 表头 */
 const partnerId = ref<string | undefined>(undefined)
 const orderDate = ref(todayLocal())
+const expectedDate = ref<string | undefined>(undefined)
 const remark = ref('')
-
-/** 关联销售订单（可选；选择后明细固定为订单明细，design §4.3） */
-const orderId = ref<string | undefined>(undefined)
-const orderPicks = ref<SalesOrderPick[]>([])
-const orderLinesLoading = ref(false)
 
 /** 客户 / 商品下拉数据源（远程全量拉取，仅启用） */
 const partners = ref<Partner[]>([])
 const products = ref<ProductPickItem[]>([])
 
-/** 明细行（subtotal 为前端实时计算，仅展示；提交不含小计 / 总额） */
-const lines = ref<SalesFormLine[]>([newLine()])
+/** 明细行（subtotal 为前端实时计算，仅展示） */
+const lines = ref<SalesOrderFormLine[]>([newLine()])
 
 const rules = {
   partnerId: [{ required: true, message: '请选择客户' }],
-  orderDate: [{ required: true, message: '请选择单据日期' }],
+  orderDate: [{ required: true, message: '请选择订单日期' }],
 }
 
 // —— computed ——
@@ -105,41 +92,20 @@ const productOptions = computed(() =>
   })),
 )
 
-/** 是否已关联订单（关联模式下：明细固定为订单明细、单价只读、数量上限为未发数量） */
-const isLinked = computed(() => !!orderId.value)
-
-/** 关联订单下拉选项：单号 + 下单日期 */
-const orderPickOptions = computed(() =>
-  orderPicks.value.map((o) => ({
-    label: `${o.orderNo}（${o.orderDate.slice(0, 10)}）`,
-    value: o.id,
-  })),
-)
-
-/** 明细列随关联状态切换 */
-const itemColumns = computed<TableColumnData[]>(() => (isLinked.value ? linkedItemColumns : plainItemColumns))
-
 /** 总金额 = Σ 小计（仅展示，后端落库时重算） */
 const totalAmount = computed(() => lines.value.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0))
 
-/** 明细行校验：非表单字段，提交时手动校验，错误提示随输入自动清除（computed 派生） */
+/** 明细行校验：非表单字段，提交时手动校验，错误提示随输入自动清除 */
 const itemsInvalid = computed(
   () =>
     lines.value.length === 0 ||
     lines.value.length > MAX_ITEMS ||
-    lines.value.some(
-      (l) =>
-        !l.productId ||
-        l.quantity < QUANTITY_MIN ||
-        l.quantity > QUANTITY_MAX ||
-        (isLinked.value && l.remainingQuantity !== undefined && l.quantity > l.remainingQuantity),
-    ),
+    lines.value.some((l) => !l.productId || l.quantity < QUANTITY_MIN || l.quantity > QUANTITY_MAX),
 )
 
 // —— lifecycle ——
 onMounted(async () => {
   try {
-    // 客户查询仅支持单值 type，分两次拉取后前端取并集
     const [customer, both, pick] = await Promise.all([
       getPartners({ type: 2, status: 1, page: 1, pageSize: 100 }),
       getPartners({ type: 3, status: 1, page: 1, pageSize: 100 }),
@@ -152,100 +118,52 @@ onMounted(async () => {
     // 错误提示已由请求层统一处理
   }
 
-  // 订单详情「去出库」跳转时预置关联订单（design §4.3）
-  const presetOrderId = route.query.orderId as string | undefined
-  if (presetOrderId) {
-    await applyPresetOrder(presetOrderId)
+  if (isEdit.value && orderId.value) {
+    await loadOrder(orderId.value)
   }
 })
 
 // —— methods ——
-/** 客户变化：清空已关联订单并重置明细，再按新客户拉候选订单 */
-async function onPartnerChange(value?: string): Promise<void> {
-  partnerId.value = value
-  orderId.value = undefined
-  lines.value = [newLine()]
-  orderPicks.value = []
-  if (!value) return
-  await loadOrderPicks(value)
-}
-
-async function loadOrderPicks(value: string): Promise<void> {
+/** 编辑回填：字段逐个赋值 + 明细深拷贝（不污染接口返回对象） */
+async function loadOrder(id: string): Promise<void> {
+  loading.value = true
   try {
-    orderPicks.value = await getSalesOrderPicks(value)
-  } catch {
-    // 错误提示已由请求层统一处理
-  }
-}
-
-/** 订单详情「去出库」预置：先取订单头拿客户，再按客户拉候选并按订单带出明细 */
-async function applyPresetOrder(value: string): Promise<void> {
-  try {
-    const order = await getSalesOrder(value)
-    partnerId.value = order.partnerId
-    await loadOrderPicks(order.partnerId)
-    await onOrderChange(value)
-  } catch {
-    // 错误提示已由请求层统一处理
-  }
-}
-
-/** 关联订单变化：选择订单后带出明细；清空则恢复自由开单 */
-async function onOrderChange(value?: string): Promise<void> {
-  orderId.value = value
-  if (!value) {
-    lines.value = [newLine()]
-    return
-  }
-
-  orderLinesLoading.value = true
-  try {
-    const detail = await getSalesOrderLines(value)
-    // 明细固定为订单明细：每行对应一个订单行，默认本次数量取未发数量（可改小）
+    const detail = await getSalesOrder(id)
+    partnerId.value = detail.partnerId
+    orderDate.value = detail.orderDate.slice(0, 10)
+    expectedDate.value = detail.expectedDate ? detail.expectedDate.slice(0, 10) : undefined
+    remark.value = detail.remark ?? ''
     lines.value = detail.items.map((item) => ({
       key: newKey(),
       productId: item.productId,
       productName: item.productName,
       unit: item.unit,
-      quantity: item.remainingQuantity,
+      quantity: item.quantity,
       unitPrice: item.unitPrice,
-      subtotal: item.remainingQuantity * item.unitPrice,
-      orderItemId: item.orderItemId,
-      remainingQuantity: item.remainingQuantity,
-      orderedQuantity: item.quantity,
-      fulfilledQuantity: item.fulfilledQuantity,
+      subtotal: item.subtotal,
     }))
-    itemsErrorShown.value = false
   } catch {
-    orderId.value = undefined
-    lines.value = [newLine()]
+    // 错误提示已由请求层统一处理
   } finally {
-    orderLinesLoading.value = false
+    loading.value = false
   }
 }
 
-function onLineProductChange(line: SalesFormLine, value?: string): void {
+function onLineProductChange(line: SalesOrderFormLine, value?: string): void {
   line.productId = value
   const p = products.value.find((it) => it.id === value)
   line.productName = p?.name ?? ''
   line.unit = p?.unit ?? ''
-  // 单价默认带出商品销售价（开单时可改）
+  // 单价默认带出商品销售价（可改）
   line.unitPrice = p?.salePrice ?? 0
 }
 
-function onLineQuantityChange(line: SalesFormLine, value: number | undefined): void {
+function onLineQuantityChange(line: SalesOrderFormLine, value: number | undefined): void {
   line.quantity = value ?? 0
 }
 
-function onLineUnitPriceChange(line: SalesFormLine, value: number | undefined): void {
+function onLineUnitPriceChange(line: SalesOrderFormLine, value: number | undefined): void {
   line.unitPrice = value ?? 0
-}
-
-/** 行数量是否超库存（前端预警标红，仅提示不拦截，最终以后端 40103 为准；design §4.4） */
-function isOverStock(line: SalesFormLine): boolean {
-  if (!line.productId) return false
-  const p = products.value.find((it) => it.id === line.productId)
-  return p !== undefined && line.quantity > p.stockQuantity
 }
 
 function addItem(): void {
@@ -267,7 +185,7 @@ function validateItems(): boolean {
 }
 
 function goBack(): void {
-  void router.push({ name: 'sales' })
+  void router.push({ name: 'salesOrders' })
 }
 
 async function onSubmit(): Promise<void> {
@@ -277,28 +195,32 @@ async function onSubmit(): Promise<void> {
     const result = await formRef.value?.validate()
     if (result !== undefined) return
     if (!validateItems()) {
-      Message.error(
-        isLinked.value
-          ? '请检查明细：每行本次数量不得超过未发数量'
-          : '请检查明细：至少一行，且每行需选择商品并填写有效数量',
-      )
+      Message.error('请检查明细：至少一行，且每行需选择商品并填写有效数量')
       return
     }
-    const saved = await createSalesShipment({
+    if (expectedDate.value && expectedDate.value < orderDate.value) {
+      Message.error('预计发货日期不能早于订单日期')
+      return
+    }
+
+    const payload = {
       partnerId: partnerId.value as string,
-      // 所选日期 → UTC 午夜 ISO 串（同采购单约定；裸日期会被后端按服务器本地时区解析导致入库失败）
       orderDate: toUtcMidnight(orderDate.value),
-      orderId: orderId.value,
+      expectedDate: expectedDate.value ? toUtcMidnight(expectedDate.value) : undefined,
       items: lines.value.map((l) => ({
         productId: l.productId as string,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
-        orderItemId: l.orderItemId,
       })),
       remark: remark.value.trim() || undefined,
-    })
-    Message.success('销售单已创建')
-    void router.push({ name: 'salesDetail', params: { id: saved.id } })
+    }
+
+    const saved =
+      isEdit.value && orderId.value
+        ? await updateSalesOrder(orderId.value, payload)
+        : await createSalesOrder(payload)
+    Message.success(isEdit.value ? '销售订单已保存' : '销售订单已创建')
+    void router.push({ name: 'salesOrderDetail', params: { id: saved.id } })
   } catch {
     // 错误提示已由请求层统一处理
   } finally {
@@ -310,11 +232,14 @@ async function onSubmit(): Promise<void> {
 <template>
   <div class="form-page">
     <a-page-header
-      title="开销售出库单"
+      :title="isEdit ? '编辑销售订单' : '新建销售订单'"
       @back="goBack"
     />
 
-    <a-card :bordered="false">
+    <a-card
+      :bordered="false"
+      :loading="loading"
+    >
       <a-form
         ref="formRef"
         :model="{ partnerId, orderDate }"
@@ -325,7 +250,7 @@ async function onSubmit(): Promise<void> {
           基本信息
         </a-divider>
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :span="8">
             <a-form-item
               label="客户"
               field="partnerId"
@@ -337,37 +262,30 @@ async function onSubmit(): Promise<void> {
                 allow-search
                 allow-clear
                 :loading="partners.length === 0"
-                @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onPartnerChange(v as string | undefined)"
               />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="8">
             <a-form-item
-              label="单据日期"
+              label="订单日期"
               field="orderDate"
             >
               <a-date-picker
                 v-model="orderDate"
                 value-format="YYYY-MM-DD"
                 style="width: 100%"
-                placeholder="请选择单据日期"
+                placeholder="请选择订单日期"
               />
             </a-form-item>
           </a-col>
-        </a-row>
-        <a-row :gutter="24">
-          <a-col :span="12">
-            <a-form-item label="关联销售订单">
-              <a-select
-                :model-value="orderId"
-                class="order-select"
-                :options="orderPickOptions"
-                placeholder="不关联（货到即入账）"
-                allow-search
+          <a-col :span="8">
+            <a-form-item label="预计发货">
+              <a-date-picker
+                v-model="expectedDate"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+                placeholder="选填"
                 allow-clear
-                :disabled="!partnerId"
-                :loading="orderLinesLoading"
-                @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onOrderChange(v as string | undefined)"
               />
             </a-form-item>
           </a-col>
@@ -378,7 +296,6 @@ async function onSubmit(): Promise<void> {
         </a-divider>
         <div class="items-toolbar">
           <a-button
-            v-if="!isLinked"
             size="small"
             @click="addItem"
           >
@@ -393,7 +310,6 @@ async function onSubmit(): Promise<void> {
           size="small"
           :columns="itemColumns"
           :data="lines"
-          :loading="orderLinesLoading"
           :pagination="false"
         >
           <template #seq="{ rowIndex }">
@@ -401,69 +317,44 @@ async function onSubmit(): Promise<void> {
           </template>
           <template #product="{ record }">
             <a-select
-              v-if="!isLinked"
-              :value="(record as SalesFormLine).productId"
+              :value="(record as SalesOrderFormLine).productId"
               :options="productOptions"
               placeholder="请选择商品"
               allow-search
               allow-clear
-              @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as SalesFormLine, v as string | undefined)"
+              @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as SalesOrderFormLine, v as string | undefined)"
             />
-            <span v-else>{{ (record as SalesFormLine).productName }}</span>
-          </template>
-          <template #orderedQuantity="{ record }">
-            {{ (record as SalesFormLine).orderedQuantity ?? 0 }}
-          </template>
-          <template #fulfilledQuantity="{ record }">
-            {{ (record as SalesFormLine).fulfilledQuantity ?? 0 }}
-          </template>
-          <template #remainingQuantity="{ record }">
-            {{ (record as SalesFormLine).remainingQuantity ?? 0 }}
           </template>
           <template #quantity="{ record }">
             <a-input-number
-              :model-value="(record as SalesFormLine).quantity"
+              :model-value="(record as SalesOrderFormLine).quantity"
               :min="QUANTITY_MIN"
-              :max="(record as SalesFormLine).remainingQuantity ?? QUANTITY_MAX"
-              :status="isOverStock(record as SalesFormLine) ? 'error' : undefined"
+              :max="QUANTITY_MAX"
               style="width: 100%"
-              @change="(v: number | undefined) => onLineQuantityChange(record as SalesFormLine, v)"
+              @change="(v: number | undefined) => onLineQuantityChange(record as SalesOrderFormLine, v)"
             />
           </template>
           <template #unitPrice="{ record }">
             <a-input-number
-              v-if="!isLinked"
-              :model-value="(record as SalesFormLine).unitPrice"
+              :model-value="(record as SalesOrderFormLine).unitPrice"
               :min="0"
               :precision="2"
               prefix="¥"
               style="width: 100%"
-              @change="(v: number | undefined) => onLineUnitPriceChange(record as SalesFormLine, v)"
+              @change="(v: number | undefined) => onLineUnitPriceChange(record as SalesOrderFormLine, v)"
             />
-            <span
-              v-else
-              class="line-unit-price"
-            >¥ {{ (record as SalesFormLine).unitPrice.toFixed(2) }}</span>
           </template>
           <template #subtotal="{ record }">
-            <div>
-              <span class="line-subtotal">
-                {{ ((record as SalesFormLine).quantity * (record as SalesFormLine).unitPrice).toFixed(2) }}
-              </span>
-              <div
-                v-if="isOverStock(record as SalesFormLine)"
-                class="stock-warning"
-              >
-                库存不足，当前库存 {{ products.find((it) => it.id === (record as SalesFormLine).productId)?.stockQuantity ?? 0 }}
-              </div>
-            </div>
+            <span class="line-subtotal">
+              {{ ((record as SalesOrderFormLine).quantity * (record as SalesOrderFormLine).unitPrice).toFixed(2) }}
+            </span>
           </template>
           <template #itemAction="{ record }">
             <a-button
               type="text"
               status="danger"
               size="small"
-              @click="removeItem((record as SalesFormLine).key)"
+              @click="removeItem((record as SalesOrderFormLine).key)"
             >
               删除
             </a-button>
@@ -474,7 +365,7 @@ async function onSubmit(): Promise<void> {
           type="error"
           class="items-error"
         >
-          {{ isLinked ? '每行本次数量不得超过未发数量' : '请至少添加一行明细，且每行需选择商品、填写有效数量' }}
+          请至少添加一行明细，且每行需选择商品、填写有效数量
         </a-alert>
 
         <a-divider orientation="left">
@@ -519,32 +410,18 @@ async function onSubmit(): Promise<void> {
   width: 100%;
 }
 
-.order-select {
-  width: 100%;
-}
-
 .items-toolbar {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 8px;
-  min-height: 24px;
 }
 
 .items-error {
   margin-top: 8px;
 }
 
-.line-subtotal,
-.line-unit-price {
+.line-subtotal {
   font-variant-numeric: tabular-nums;
-}
-
-.stock-warning {
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: rgb(var(--red-6));
-  text-align: right;
 }
 
 .form-footer {

@@ -2,8 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getSalesOrder, voidSalesOrder } from '@/api/sale'
-import type { SalesOrderDetail, SalesOrderItem } from '@/api/sale'
+import { getSalesShipment, voidSalesShipment } from '@/api/sale'
+import type { SalesShipmentDetail, SalesShipmentItem } from '@/api/sale'
 import { getUser } from '@/api/user'
 import { formatDateTime } from '@/utils/datetime'
 import { settlementStateColor, settlementStateLabel } from '@/utils/settlement'
@@ -15,7 +15,7 @@ const route = useRoute()
 const router = useRouter()
 
 /** 详情数据（null = 尚未加载；undefined = 已加载但不存在 → 404 结果页） */
-const detail = ref<SalesOrderDetail | null>(null)
+const detail = ref<SalesShipmentDetail | null>(null)
 const notFound = ref(false)
 const loading = ref(false)
 
@@ -53,7 +53,7 @@ async function fetchDetail(): Promise<void> {
   }
   loading.value = true
   try {
-    detail.value = await getSalesOrder(id.value)
+    detail.value = await getSalesShipment(id.value)
     notFound.value = false
     creatorName.value = null
     if (detail.value.createdBy) {
@@ -81,9 +81,9 @@ async function onVoid(): Promise<void> {
   if (voidingId.value || !detail.value) return
   voidingId.value = detail.value.id
   try {
-    await voidSalesOrder(detail.value.id)
+    await voidSalesShipment(detail.value.id)
     Message.success('已作废，库存已回冲')
-    detail.value = await getSalesOrder(detail.value.id)
+    detail.value = await getSalesShipment(detail.value.id)
   } catch {
     // 错误提示已由请求层统一处理
   } finally {
@@ -132,7 +132,10 @@ function onGoSettlement(): void {
           class="detail-desc"
         >
           <a-descriptions-item label="单号">
-            {{ detail.orderNo }}
+            {{ detail.shipmentNo }}
+          </a-descriptions-item>
+          <a-descriptions-item label="关联订单">
+            {{ detail.orderNo || '—' }}
           </a-descriptions-item>
           <a-descriptions-item label="客户">
             {{ detail.partnerName }}
@@ -181,13 +184,13 @@ function onGoSettlement(): void {
             {{ rowIndex + 1 }}
           </template>
           <template #quantity="{ record }">
-            {{ (record as SalesOrderItem).quantity }}
+            {{ (record as SalesShipmentItem).quantity }}
           </template>
           <template #unitPrice="{ record }">
-            ¥ {{ (record as SalesOrderItem).unitPrice.toFixed(2) }}
+            ¥ {{ (record as SalesShipmentItem).unitPrice.toFixed(2) }}
           </template>
           <template #subtotal="{ record }">
-            ¥ {{ (record as SalesOrderItem).subtotal.toFixed(2) }}
+            ¥ {{ (record as SalesShipmentItem).subtotal.toFixed(2) }}
           </template>
         </a-table>
       </a-card>

@@ -124,6 +124,30 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'purchase-orders',
+        name: 'purchaseOrders',
+        component: () => import('@/views/PurchaseOrderManagement/PurchaseOrdersView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'purchase-orders/new',
+        name: 'purchaseOrderNew',
+        component: () => import('@/views/PurchaseOrderManagement/PurchaseOrderFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'purchase-orders/edit/:id',
+        name: 'purchaseOrderEdit',
+        component: () => import('@/views/PurchaseOrderManagement/PurchaseOrderFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'purchase-orders/detail/:id',
+        name: 'purchaseOrderDetail',
+        component: () => import('@/views/PurchaseOrderManagement/PurchaseOrderDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'purchases',
         name: 'purchases',
         component: () => import('@/views/PurchaseManagement/PurchasesView.vue'),
@@ -175,6 +199,30 @@ const routes: RouteRecordRaw[] = [
         path: 'sales/detail/:id',
         name: 'salesDetail',
         component: () => import('@/views/SalesManagement/SaleDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'sales-orders',
+        name: 'salesOrders',
+        component: () => import('@/views/SalesOrderManagement/SalesOrdersView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'sales-orders/new',
+        name: 'salesOrderNew',
+        component: () => import('@/views/SalesOrderManagement/SalesOrderFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'sales-orders/edit/:id',
+        name: 'salesOrderEdit',
+        component: () => import('@/views/SalesOrderManagement/SalesOrderFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'sales-orders/detail/:id',
+        name: 'salesOrderDetail',
+        component: () => import('@/views/SalesOrderManagement/SalesOrderDetailView.vue'),
         meta: { requiresAuth: true },
       },
       {
