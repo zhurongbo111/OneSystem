@@ -23,14 +23,14 @@ backend/
 
 **命名规律**（据此定位，不逐一列举）：
 
-- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem`）。
-- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `OrderSettlementStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）。
+- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem` / `SettlementCandidateItem` / `ReconciliationItem`）。
+- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）。
 - 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）。
 - `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
-- `AppDbContext` 含 17 个 DbSet（与实体一一对应，另有 PurchaseOrderItems / SalesOrderItems / StockTakeItems / PurchaseReturnItems / SalesReturnItems 五张明细表）。
+- `AppDbContext` 含 19 个 DbSet（与实体一一对应，另有 PurchaseOrderItems / SalesOrderItems / StockTakeItems / PurchaseReturnItems / SalesReturnItems / SettlementItems 六张明细表）。
 - **共享出参与映射**：各功能在 `Features/<Feature>/` 下放跨用例共享 DTO 与 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
 - **当前用户与审计**：id 解析入口 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
-- **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）。
+- **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）、`App.Core/SettlementStateCalculator.cs`（单据结算状态 / 未结金额推导，四类单据 DTO 映射共用）。
 
 **已实现的 Features**（`App.Core/Features/`，每用例四件套）：
 
@@ -49,6 +49,7 @@ backend/
 | SalesReturns | CreateSalesReturn、GetSalesReturns、GetSalesReturnById、VoidSalesReturn、UpdateSalesReturnSettlement |
 | Sales | CreateSalesOrder、GetSalesOrders、GetSalesOrderById、VoidSalesOrder、UpdateSalesOrderSettlement |
 | StockTakes | CreateStockTake、GetStockTakes、GetStockTakeById、GetStockTakePickProducts |
+| Settlements | GetSettlements、CreateSettlement、GetSettlementById、VoidSettlement、GetUnsettledOrders、GetReconciliation |
 
 **基准参照**：
 
@@ -78,7 +79,7 @@ frontend/
     ├── api/         # request.ts（统一解包 / 40100 处置）+ 按业务域拆分 <entity>.ts
     ├── components/  # AppLayout.vue（侧边菜单：「示例页面」「进销存」两组，子菜单默认折叠、仅当前分组自动展开；`025` 落地后改为多顶级分组，目标结构见 `specs/025-erp-report/design.md` §0.2）
     ├── composables/ # useOrderStore.ts（演示用）
-    ├── router/ stores/ utils/   # index.ts（路由懒加载）/ auth.ts（Pinia）/ datetime.ts
+    ├── router/ stores/ utils/   # index.ts（路由懒加载）/ auth.ts（Pinia）/ datetime.ts / settlement.ts（结算状态文案与颜色）
     └── views/       # 按功能域分目录（域内文件平铺，不套子目录）
 ```
 
@@ -97,6 +98,7 @@ frontend/
 - `SalesReturnManagement/` — SalesReturnsView + SalesReturnFormPage + SalesReturnDetailView（API 在 `api/saleReturn.ts`）
 - `SalesManagement/` — SalesView + SaleFormPage + SaleDetailView
 - `StockTakeManagement/` — StockTakesView + StockTakeFormPage + StockTakeDetailView（API 在 `api/stockTake.ts`）
+- `SettlementManagement/` — SettlementsView + SettlementFormPage + SettlementDetailView + ReconciliationView（收付款 + 往来对账；API 在 `api/settlement.ts`）
 - 无功能域归属的独立页平铺在 `views/` 根：`LoginView.vue` / `HomeView.vue`（菜单归属见 `components/AppLayout.vue`）。
 
 **图标选型**：业务图标（侧边菜单、列表工具条、操作列）统一 Tabler（`@tabler/icons-vue`）；仅「图标」示例页为演示保留三套并存；优先级见前端规则 §4.7。
@@ -136,8 +138,8 @@ frontend/
 - 工程 / 脚手架：`001-project-scaffold`、`003-api-swagger`
 - 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
 - 业务：`009-user-management`
-- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`
-- ERP 扩展路线（**规格已起草、均未实现**）：批次二 `023-erp-settlement`、`024-erp-order-flow`（`024` 含待用户确认的命名决策）；批次三 `025-erp-report`、`026-erp-cost`、`027-erp-export`、`028-erp-rbac`、`029-erp-audit-log`；批次四 `030-erp-multi-warehouse`、`031-erp-transfer`、`032-erp-batch-expiry`、`033-erp-partner-price`、`034-erp-invoice`；批次五 `035-erp-stock-alert`、`036-erp-approval`。待确认的裁剪 / 契约决策见 `specs/ROADMAP.md` §4.8
+- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`
+- ERP 扩展路线（**规格已起草、均未实现**）：批次二 `024-erp-order-flow`（`024` 含待用户确认的命名决策）；批次三 `025-erp-report`、`026-erp-cost`、`027-erp-export`、`028-erp-rbac`、`029-erp-audit-log`；批次四 `030-erp-multi-warehouse`、`031-erp-transfer`、`032-erp-batch-expiry`、`033-erp-partner-price`、`034-erp-invoice`；批次五 `035-erp-stock-alert`、`036-erp-approval`。待确认的裁剪 / 契约决策见 `specs/ROADMAP.md` §4.8
 
 `specs/ROADMAP.md` 是 ERP 功能组的**路线索引**（单文件，非 spec 目录、无三件套）：记录批次、序号、依赖与状态，并写明跨功能前置决策（多仓 / 结算 / 权限等）。接续 ERP 功能前先读它，再进具体规格。
 
