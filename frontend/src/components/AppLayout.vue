@@ -5,14 +5,17 @@ import { useRoute, useRouter, RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
   IconApps,
+  IconArrowsExchange,
   IconBuildingWarehouse,
   IconCash,
+  IconChartBar,
   IconClipboardCheck,
+  IconClipboardList,
   IconComponents,
+  IconDatabase,
+  IconFileInvoice,
   IconFileText,
   IconHistory,
-  IconClipboardList,
-  IconFileInvoice,
   IconHome,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
@@ -22,12 +25,16 @@ import {
   IconReceipt,
   IconReceiptRefund,
   IconScale,
+  IconSettings,
+  IconShoppingBag,
+  IconShoppingCart,
   IconStack2,
   IconTags,
   IconTruckDelivery,
   IconTruckReturn,
   IconUser,
   IconUsers,
+  IconWallet,
 } from '@tabler/icons-vue'
 
 const route = useRoute()
@@ -59,15 +66,20 @@ const selectedKeys = computed<string[]>(() => {
 
 // —— constants ——
 
-/** 「示例页面」子菜单 key */
-const SHOWCASE_MENU_KEY = 'showcase'
-/** 示例页路由名（进入这些路由时自动展开「示例页面」子菜单） */
-const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
-
-/** 「进销存」子菜单 key */
-const ERP_MENU_KEY = 'erp'
-/** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail', 'settlements', 'settlementNew', 'settlementDetail', 'reconciliation']
+/**
+ * 顶级分组 key → 该分组内的路由名集合（进入这些路由时自动展开所属分组）。
+ * 分组与子项规划的唯一事实源见 specs/025-erp-report/design.md §0.2（未实现的后续规格子项落地时续行）。
+ */
+const MENU_GROUPS: Record<string, string[]> = {
+  showcase: ['components', 'list', 'form'],
+  basedata: ['products', 'categories', 'partners'],
+  purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
+  sale: ['salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
+  stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
+  fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation'],
+  report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport'],
+  system: ['users', 'userDetail', 'loginLogs'],
+}
 
 // —— reactive state ——
 
@@ -86,19 +98,12 @@ watch(
   () => route.name,
   (name) => {
     if (typeof name !== 'string') return
-    if (SHOWCASE_ROUTE_NAMES.includes(name)) {
-      if (!openKeys.value.includes(SHOWCASE_MENU_KEY)) {
-        openKeys.value = [...openKeys.value, SHOWCASE_MENU_KEY]
-      }
-      return
-    }
-    if (ERP_ROUTE_NAMES.includes(name)) {
-      if (!openKeys.value.includes(ERP_MENU_KEY)) {
-        openKeys.value = [...openKeys.value, ERP_MENU_KEY]
-      }
+    const group = Object.keys(MENU_GROUPS).find((key) => MENU_GROUPS[key].includes(name))
+    if (group && !openKeys.value.includes(group)) {
+      openKeys.value = [...openKeys.value, group]
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 onMounted(() => {
@@ -174,24 +179,12 @@ function onLogout(): void {
             <span>表单与详情示例</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-menu-item key="users">
+        <a-sub-menu key="basedata">
           <template #icon>
-            <IconUser />
-          </template>
-          <span>用户管理</span>
-        </a-menu-item>
-        <a-menu-item key="loginLogs">
-          <template #icon>
-            <IconHistory />
-          </template>
-          <span>登录日志</span>
-        </a-menu-item>
-        <a-sub-menu key="erp">
-          <template #icon>
-            <IconBuildingWarehouse />
+            <IconDatabase />
           </template>
           <template #title>
-            <span>进销存</span>
+            <span>基础档案</span>
           </template>
           <a-menu-item key="products">
             <template #icon>
@@ -211,24 +204,14 @@ function onLogout(): void {
             </template>
             <span>往来单位</span>
           </a-menu-item>
-          <a-menu-item key="inventory">
-            <template #icon>
-              <IconPackages />
-            </template>
-            <span>库存查询</span>
-          </a-menu-item>
-          <a-menu-item key="stockTakes">
-            <template #icon>
-              <IconClipboardCheck />
-            </template>
-            <span>库存盘点</span>
-          </a-menu-item>
-          <a-menu-item key="stockMovements">
-            <template #icon>
-              <IconStack2 />
-            </template>
-            <span>库存流水</span>
-          </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="purchase">
+          <template #icon>
+            <IconShoppingCart />
+          </template>
+          <template #title>
+            <span>采购</span>
+          </template>
           <a-menu-item key="purchaseOrders">
             <template #icon>
               <IconClipboardList />
@@ -247,6 +230,14 @@ function onLogout(): void {
             </template>
             <span>采购退货</span>
           </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="sale">
+          <template #icon>
+            <IconShoppingBag />
+          </template>
+          <template #title>
+            <span>销售</span>
+          </template>
           <a-menu-item key="salesOrders">
             <template #icon>
               <IconFileInvoice />
@@ -265,6 +256,40 @@ function onLogout(): void {
             </template>
             <span>销售退货</span>
           </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="stock">
+          <template #icon>
+            <IconBuildingWarehouse />
+          </template>
+          <template #title>
+            <span>库存</span>
+          </template>
+          <a-menu-item key="inventory">
+            <template #icon>
+              <IconPackages />
+            </template>
+            <span>库存查询</span>
+          </a-menu-item>
+          <a-menu-item key="stockMovements">
+            <template #icon>
+              <IconStack2 />
+            </template>
+            <span>库存流水</span>
+          </a-menu-item>
+          <a-menu-item key="stockTakes">
+            <template #icon>
+              <IconClipboardCheck />
+            </template>
+            <span>库存盘点</span>
+          </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="fund">
+          <template #icon>
+            <IconWallet />
+          </template>
+          <template #title>
+            <span>资金</span>
+          </template>
           <a-menu-item key="settlements">
             <template #icon>
               <IconCash />
@@ -276,6 +301,58 @@ function onLogout(): void {
               <IconScale />
             </template>
             <span>往来对账</span>
+          </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="report">
+          <template #icon>
+            <IconChartBar />
+          </template>
+          <template #title>
+            <span>报表</span>
+          </template>
+          <a-menu-item key="inventoryFlowReport">
+            <template #icon>
+              <IconArrowsExchange />
+            </template>
+            <span>进销存报表</span>
+          </a-menu-item>
+          <a-menu-item key="stockBalanceReport">
+            <template #icon>
+              <IconStack2 />
+            </template>
+            <span>库存余额表</span>
+          </a-menu-item>
+          <a-menu-item key="purchaseSummaryReport">
+            <template #icon>
+              <IconShoppingCart />
+            </template>
+            <span>采购汇总</span>
+          </a-menu-item>
+          <a-menu-item key="salesSummaryReport">
+            <template #icon>
+              <IconShoppingBag />
+            </template>
+            <span>销售汇总</span>
+          </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu key="system">
+          <template #icon>
+            <IconSettings />
+          </template>
+          <template #title>
+            <span>系统</span>
+          </template>
+          <a-menu-item key="users">
+            <template #icon>
+              <IconUser />
+            </template>
+            <span>用户管理</span>
+          </a-menu-item>
+          <a-menu-item key="loginLogs">
+            <template #icon>
+              <IconHistory />
+            </template>
+            <span>登录日志</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>

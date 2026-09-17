@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { getInventory } from '@/api/inventory'
 import type { InventoryItem } from '@/api/inventory'
@@ -11,6 +11,7 @@ import type { TableColumnData } from '@arco-design/web-vue'
 import { IconListDetails, IconRefresh, IconRestore, IconSearch, IconSettings } from '@tabler/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 
 // —— constants ——
 /** 列显示设置（不持久化；操作列「流水」固定显示，不参与列设置） */
@@ -100,6 +101,12 @@ const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.wi
 
 // —— lifecycle ——
 onMounted(() => {
+  // 报表「库存余额表」下钻预置分类筛选（specs/025-erp-report design.md §4.4）
+  const categoryId = typeof route.query.categoryId === 'string' ? route.query.categoryId : undefined
+  if (categoryId) {
+    categoryIdInput.value = categoryId
+    appliedCategoryId.value = categoryId
+  }
   void fetchCategories()
   void fetchList()
 })
