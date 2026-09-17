@@ -28,7 +28,7 @@ internal sealed class FakeSalesOrderRepository : ISalesOrderRepository
 
     public Task<(IReadOnlyList<SalesOrder> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end,
-        OrderSettlementStatus? settlement, int page, int pageSize, CancellationToken cancellationToken = default)
+        SettlementState? settlementState, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<SalesOrder> empty = Array.Empty<SalesOrder>();
         return Task.FromResult((empty, 0));
@@ -59,11 +59,11 @@ internal sealed class FakeSalesOrderRepository : ISalesOrderRepository
         return Task.CompletedTask;
     }
 
-    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default)
+    public Task AddSettledAmountAsync(Guid id, decimal delta, Guid? operatorId, CancellationToken cancellationToken = default)
     {
-        _calls?.Add("UpdateSettlement");
+        _calls?.Add("AddSettledAmount");
         var order = _orders[id];
-        order.SettlementStatus = settlement;
+        order.SettledAmount += delta;
         order.UpdatedBy = operatorId;
         order.UpdatedAt = DateTimeOffset.UtcNow;
         return Task.CompletedTask;

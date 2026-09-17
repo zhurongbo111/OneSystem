@@ -81,7 +81,9 @@ public class CreateSalesReturnRequestHandlerTests
 
         // 单号：SR + yyyyMMdd + 4 位序号
         Assert.Matches("^SR20260101\\d{4}$", result.ReturnNo);
-        Assert.Equal((int)OrderSettlementStatus.Unsettled, result.SettlementStatus);
+        Assert.Equal(0m, result.SettledAmount);
+        Assert.Equal(24.5m, result.UnsettledAmount);
+        Assert.Equal((int)SettlementState.Unsettled, result.SettlementState);
         Assert.Equal((int)OrderStatus.Normal, result.Status);
         Assert.Equal(partner.Name, result.PartnerName);
 

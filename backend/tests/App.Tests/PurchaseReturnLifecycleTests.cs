@@ -4,7 +4,6 @@ using App.Core.Errors;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
-using App.Core.Features.PurchaseReturns.UpdatePurchaseReturnSettlement;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
 using App.Core.Features.Purchases.CreatePurchaseOrder;
 using App.Core.Responses;
@@ -16,7 +15,7 @@ namespace App.Tests;
 /// <summary>
 /// 采购退货单生命周期用例测试（design.md §6）：
 /// VoidPurchaseReturn（成功逐行回冲 IncrementAsync(+qty) + 正方向流水 + UpdateStatusAsync(Voided)；不存在 40400；已作废 40104 且不重复回冲）；
-/// UpdatePurchaseReturnSettlement（成功切换；已作废 40104；不存在 40400；幂等）；
+/// 结算状态推导（specs/023-erp-settlement §0：SettledAmount ≤ 0 / 部分 / ≥ 总额 三态）；
 /// GetPurchaseReturnById（存在含明细映射；不存在 40400）；GetPurchaseReturns（筛选传参 + 分页映射）；
 /// 对账一致性（采购入库 → 退货 → 退货作废链路后 Σ 流水变动量 == Inventory.Quantity）。
 /// 单据 / 库存 / 流水 / 工作单元用行为型假实现（规避 InMemory 不支持 ExecuteUpdateAsync）。
@@ -52,7 +51,7 @@ public class PurchaseReturnLifecycleTests
             PartnerName = partner.Name,
             ReturnDate = ReturnDate,
             TotalAmount = 24.5m,
-            SettlementStatus = OrderSettlementStatus.Unsettled,
+            SettledAmount = 0m,
             Status = OrderStatus.Normal,
             CreatedAt = now,
             UpdatedAt = now,
@@ -136,62 +135,25 @@ public class PurchaseReturnLifecycleTests
         Assert.Equal(10, inventory.GetQuantity(p1.Id));
     }
 
-    // ============================== UpdatePurchaseReturnSettlement ==============================
+    // ============================== 结算状态推导（erp-settlement） ==============================
 
-    [Fact]
-    public async Task 更新结算_成功_应切换结算状态()
+    [Theory]
+    [InlineData(0, SettlementState.Unsettled)]
+    [InlineData(10, SettlementState.PartiallySettled)]
+    [InlineData(24.5, SettlementState.Settled)]
+    [InlineData(30, SettlementState.Settled)]
+    public async Task 结算状态推导_按已结金额与总额四态(decimal settledAmount, SettlementState expected)
     {
-        var (returns, inventory, _, user, purchaseReturn, p1, _, calls) = SeedNormal();
-        var handler = new UpdatePurchaseReturnSettlementRequestHandler(returns, user);
+        var (returns, _, _, _, purchaseReturn, _, _, _) = SeedNormal();
+        purchaseReturn.SettledAmount = settledAmount;
+        var handler = new GetPurchaseReturnByIdRequestHandler(returns);
 
-        var result = await handler.HandleAsync(
-            new UpdatePurchaseReturnSettlementRequest { Id = purchaseReturn.Id, SettlementStatus = (int)OrderSettlementStatus.Settled });
+        var result = await handler.HandleAsync(new GetPurchaseReturnByIdRequest { Id = purchaseReturn.Id });
 
-        Assert.Equal((int)OrderSettlementStatus.Settled, result.SettlementStatus);
-        var (afterSettle, _) = await returns.GetDetailAsync(purchaseReturn.Id);
-        Assert.Equal(OrderSettlementStatus.Settled, afterSettle!.SettlementStatus);
-        Assert.Equal(user.UserId, purchaseReturn.UpdatedBy);
-        Assert.Contains("UpdateSettlement", calls);
-        // 库存不受结算影响
-        Assert.Equal(10, inventory.GetQuantity(p1.Id));
-        Assert.Empty(inventory.Increments);
-    }
-
-    [Fact]
-    public async Task 更新结算_已作废_应报OrderVoided()
-    {
-        var (returns, _, _, user, purchaseReturn, _, _, _) = SeedNormal();
-        await returns.UpdateStatusAsync(purchaseReturn.Id, OrderStatus.Voided, null);
-
-        var handler = new UpdatePurchaseReturnSettlementRequestHandler(returns, user);
-
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(
-            new UpdatePurchaseReturnSettlementRequest { Id = purchaseReturn.Id, SettlementStatus = (int)OrderSettlementStatus.Settled }));
-        Assert.Equal(ErrorCode.OrderVoided, ex.Code);
-    }
-
-    [Fact]
-    public async Task 更新结算_不存在_应报NotFound()
-    {
-        var (returns, _, _, user, _, _, _, _) = SeedNormal();
-        var handler = new UpdatePurchaseReturnSettlementRequestHandler(returns, user);
-
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(
-            new UpdatePurchaseReturnSettlementRequest { Id = Guid.NewGuid(), SettlementStatus = (int)OrderSettlementStatus.Settled }));
-        Assert.Equal(ErrorCode.NotFound, ex.Code);
-    }
-
-    [Fact]
-    public async Task 更新结算_目标与当前相同_应为无操作()
-    {
-        var (returns, _, _, user, purchaseReturn, _, _, calls) = SeedNormal();
-        var handler = new UpdatePurchaseReturnSettlementRequestHandler(returns, user);
-
-        // 当前为 Unsettled，再设为 Unsettled → 幂等，不调用 UpdateSettlementAsync
-        var result = await handler.HandleAsync(
-            new UpdatePurchaseReturnSettlementRequest { Id = purchaseReturn.Id, SettlementStatus = (int)OrderSettlementStatus.Unsettled });
-        Assert.Equal((int)OrderSettlementStatus.Unsettled, result.SettlementStatus);
-        Assert.DoesNotContain("UpdateSettlement", calls);
+        // 0 未结算 / 1 部分结算 / 2 已结算（SettledAmount ≥ TotalAmount 视为结清）；未结金额 = 总额 − 已结
+        Assert.Equal((int)expected, result.SettlementState);
+        Assert.Equal(purchaseReturn.TotalAmount - settledAmount, result.UnsettledAmount);
+        Assert.Equal(settledAmount, result.SettledAmount);
     }
 
     // ============================== GetPurchaseReturnById ==============================
@@ -247,7 +209,7 @@ public class PurchaseReturnLifecycleTests
             PartnerId = purchaseReturn.PartnerId,
             Start = start,
             End = end,
-            Settlement = OrderSettlementStatus.Unsettled,
+            SettlementState = SettlementState.Unsettled,
         });
 
         // 筛选入参原样透传给仓储
@@ -256,7 +218,7 @@ public class PurchaseReturnLifecycleTests
         Assert.Equal(purchaseReturn.PartnerId, query.PartnerId);
         Assert.Equal(start, query.Start);
         Assert.Equal(end, query.End);
-        Assert.Equal(OrderSettlementStatus.Unsettled, query.Settlement);
+        Assert.Equal(SettlementState.Unsettled, query.SettlementState);
         Assert.Equal(2, query.Page);
         Assert.Equal(10, query.PageSize);
 
