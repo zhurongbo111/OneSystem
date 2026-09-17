@@ -2,10 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getSalesReturn, updateSalesReturnSettlement, voidSalesReturn } from '@/api/saleReturn'
-import type { SalesReturnDetail, SalesReturnItem, SettlementStatus } from '@/api/saleReturn'
+import { getSalesReturn, voidSalesReturn } from '@/api/saleReturn'
+import type { SalesReturnDetail, SalesReturnItem } from '@/api/saleReturn'
 import { getUser } from '@/api/user'
 import { formatDateTime } from '@/utils/datetime'
+import { settlementStateColor, settlementStateLabel } from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 
@@ -21,9 +22,8 @@ const loading = ref(false)
 /** 创建人姓名（createdBy 为用户 id，解析为可读姓名） */
 const creatorName = ref<string | null>(null)
 
-/** 作废 / 结算切换 loading（design.md §4.5：voidingId / settlingId） */
+/** 作废 loading（design.md §4.5：voidingId） */
 const voidingId = ref<string | undefined>(undefined)
-const settlingId = ref<string | undefined>(undefined)
 
 // —— constants ——
 const itemColumns: TableColumnData[] = [
@@ -91,20 +91,10 @@ async function onVoid(): Promise<void> {
   }
 }
 
-/** 结算切换：未结算 ↔ 已结算（库存不变） */
-async function onToggleSettlement(): Promise<void> {
-  if (settlingId.value || !detail.value) return
-  settlingId.value = detail.value.id
-  try {
-    const next: SettlementStatus = detail.value.settlementStatus === 1 ? 0 : 1
-    await updateSalesReturnSettlement(detail.value.id, next)
-    Message.success(next === 1 ? '已标记为已结算' : '已改回未结算')
-    detail.value = await getSalesReturn(detail.value.id)
-  } catch {
-    // 错误提示已由请求层统一处理
-  } finally {
-    settlingId.value = undefined
-  }
+/** 去收付款：销售退货单为付款方向（type=1，我们退客户钱），预置往来单位 */
+function onGoSettlement(): void {
+  if (!detail.value) return
+  void router.push({ name: 'settlementNew', query: { type: '1', partnerId: detail.value.partnerId } })
 }
 </script>
 
@@ -154,8 +144,8 @@ async function onToggleSettlement(): Promise<void> {
             <span class="amount">¥ {{ detail.totalAmount.toFixed(2) }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="结算状态">
-            <a-tag :color="detail.settlementStatus === 1 ? 'green' : 'gray'">
-              {{ detail.settlementStatus === 1 ? '已结算' : '未结算' }}
+            <a-tag :color="settlementStateColor(detail.settlementState)">
+              {{ settlementStateLabel(detail.settlementState, detail.unsettledAmount) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="单据状态">
@@ -208,6 +198,12 @@ async function onToggleSettlement(): Promise<void> {
         class="detail-actions"
       >
         <a-space>
+          <a-button
+            type="primary"
+            @click="onGoSettlement"
+          >
+            去收付款
+          </a-button>
           <a-popconfirm
             type="warning"
             content="确认作废该销售退货单？作废后库存将回冲，且不可恢复"
@@ -218,18 +214,6 @@ async function onToggleSettlement(): Promise<void> {
               :loading="voidingId === detail.id"
             >
               作废
-            </a-button>
-          </a-popconfirm>
-          <a-popconfirm
-            type="info"
-            :content="detail.settlementStatus === 1 ? '确认改回未结算？' : '确认标记为已结算？'"
-            @ok="onToggleSettlement"
-          >
-            <a-button
-              :type="detail.settlementStatus === 1 ? 'outline' : 'primary'"
-              :loading="settlingId === detail.id"
-            >
-              {{ detail.settlementStatus === 1 ? '改回未结算' : '标记已结算' }}
             </a-button>
           </a-popconfirm>
         </a-space>

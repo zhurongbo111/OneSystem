@@ -1,8 +1,7 @@
+import type { SettlementState } from '@/utils/settlement'
+
 import type { PagedResult } from './product'
 import { get, post, put } from './request'
-
-/** 结算状态（0 未结算 / 1 已结算，复用单据域语义） */
-export type SettlementStatus = 0 | 1
 
 /** 单据状态（0 已作废 / 1 正常） */
 export type OrderStatus = 0 | 1
@@ -15,7 +14,9 @@ export interface PurchaseReturnListItem {
   partnerName: string
   returnDate: string
   totalAmount: number
-  settlementStatus: SettlementStatus
+  settledAmount: number
+  unsettledAmount: number
+  settlementState: SettlementState
   status: OrderStatus
   createdAt: string
 }
@@ -47,7 +48,7 @@ export interface PurchaseReturnQuery {
   partnerId?: string
   start?: string
   end?: string
-  settlement?: SettlementStatus
+  settlementState?: SettlementState
 }
 
 /**
@@ -114,9 +115,4 @@ export function createPurchaseReturn(payload: CreatePurchaseReturnPayload): Prom
 /** 作废采购退货单（回冲库存；仅改状态不删数据） */
 export function voidPurchaseReturn(id: string): Promise<PurchaseReturnDetail> {
   return put<PurchaseReturnDetail>(`/purchase-returns/${id}/void`)
-}
-
-/** 更新结算状态（仅 未结算 ↔ 已结算；库存不变） */
-export function updatePurchaseReturnSettlement(id: string, settlementStatus: SettlementStatus): Promise<PurchaseReturnDetail> {
-  return put<PurchaseReturnDetail>(`/purchase-returns/${id}/settlement`, { settlementStatus })
 }

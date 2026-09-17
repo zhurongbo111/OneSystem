@@ -1,8 +1,7 @@
+import type { SettlementState } from '@/utils/settlement'
+
 import type { PagedResult } from './product'
 import { get, post, put } from './request'
-
-/** 结算状态（0 未结算 / 1 已结算，复用单据域语义） */
-export type SettlementStatus = 0 | 1
 
 /** 单据状态（0 已作废 / 1 正常） */
 export type OrderStatus = 0 | 1
@@ -15,7 +14,9 @@ export interface SalesReturnListItem {
   partnerName: string
   returnDate: string
   totalAmount: number
-  settlementStatus: SettlementStatus
+  settledAmount: number
+  unsettledAmount: number
+  settlementState: SettlementState
   status: OrderStatus
   createdAt: string
 }
@@ -47,7 +48,7 @@ export interface SalesReturnQuery {
   partnerId?: string
   start?: string
   end?: string
-  settlement?: SettlementStatus
+  settlementState?: SettlementState
 }
 
 /**
@@ -113,9 +114,4 @@ export function createSalesReturn(payload: CreateSalesReturnPayload): Promise<Sa
 /** 作废销售退货单（回冲库存；仅改状态不删数据） */
 export function voidSalesReturn(id: string): Promise<SalesReturnDetail> {
   return put<SalesReturnDetail>(`/sales-returns/${id}/void`)
-}
-
-/** 更新结算状态（仅 未结算 ↔ 已结算；库存不变） */
-export function updateSalesReturnSettlement(id: string, settlementStatus: SettlementStatus): Promise<SalesReturnDetail> {
-  return put<SalesReturnDetail>(`/sales-returns/${id}/settlement`, { settlementStatus })
 }
