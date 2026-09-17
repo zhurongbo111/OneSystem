@@ -11,6 +11,8 @@ import {
   IconComponents,
   IconFileText,
   IconHistory,
+  IconClipboardList,
+  IconFileInvoice,
   IconHome,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
@@ -38,8 +40,12 @@ const collapsed = ref<boolean>(false)
 /** 详情等子路由归属到所属一级菜单，保证侧边栏高亮正确 */
 const MENU_ROUTE_MAP: Record<string, string> = {
   userDetail: 'users',
+  purchaseOrderEdit: 'purchaseOrders',
+  purchaseOrderDetail: 'purchaseOrders',
   purchaseDetail: 'purchases',
   purchaseReturnDetail: 'purchaseReturns',
+  salesOrderEdit: 'salesOrders',
+  salesOrderDetail: 'salesOrders',
   salesDetail: 'sales',
   saleReturnDetail: 'salesReturns',
   settlementDetail: 'settlements',
@@ -61,7 +67,7 @@ const SHOWCASE_ROUTE_NAMES = ['components', 'list', 'form']
 /** 「进销存」子菜单 key */
 const ERP_MENU_KEY = 'erp'
 /** 进销存页路由名（进入这些路由时自动展开「进销存」子菜单） */
-const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail', 'settlements', 'settlementNew', 'settlementDetail', 'reconciliation']
+const ERP_ROUTE_NAMES = ['products', 'categories', 'partners', 'inventory', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'stockMovements', 'purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail', 'settlements', 'settlementNew', 'settlementDetail', 'reconciliation']
 
 // —— reactive state ——
 
@@ -223,6 +229,12 @@ function onLogout(): void {
             </template>
             <span>库存流水</span>
           </a-menu-item>
+          <a-menu-item key="purchaseOrders">
+            <template #icon>
+              <IconClipboardList />
+            </template>
+            <span>采购订单</span>
+          </a-menu-item>
           <a-menu-item key="purchases">
             <template #icon>
               <IconTruckDelivery />
@@ -235,11 +247,17 @@ function onLogout(): void {
             </template>
             <span>采购退货</span>
           </a-menu-item>
+          <a-menu-item key="salesOrders">
+            <template #icon>
+              <IconFileInvoice />
+            </template>
+            <span>销售订单</span>
+          </a-menu-item>
           <a-menu-item key="sales">
             <template #icon>
               <IconReceipt />
             </template>
-            <span>销售开单</span>
+            <span>销售出库</span>
           </a-menu-item>
           <a-menu-item key="salesReturns">
             <template #icon>

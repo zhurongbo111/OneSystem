@@ -4,24 +4,18 @@ import { useRouter } from 'vue-router'
 
 import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
-import {
-  getSalesShipments,
-  toDateRange,
-  voidSalesShipment,
-  type SalesShipmentListItem,
-} from '@/api/sale'
+import { toDateRange } from '@/api/sale'
+import { closeSalesOrder, getSalesOrders, voidSalesOrder } from '@/api/saleOrder'
+import type { SalesOrderListItem } from '@/api/saleOrder'
 import { formatDateTime } from '@/utils/datetime'
-import {
-  SETTLEMENT_STATE_OPTIONS,
-  settlementStateColor,
-  settlementStateLabel,
-  type SettlementState,
-} from '@/utils/settlement'
-import { Message } from '@arco-design/web-vue'
+import { orderFlowStatusColor, orderFlowStatusLabel, orderFlowStatusOptions } from '@/utils/orderFlow'
+import { Message, Modal } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
+  IconArchive,
   IconBan,
-  IconCash,
+  IconDotsVertical,
+  IconEdit,
   IconEye,
   IconPlus,
   IconRefresh,
@@ -34,26 +28,30 @@ import {
 /** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
 let fetchSeq = 0
 
+/** 状态下拉选项（文案取自 design.md §0，销售侧为待发货 / 部分发货） */
+const flowStatusOptions = orderFlowStatusOptions('sales')
+
 // —— reactive state ——
 const router = useRouter()
 
 const loading = ref(false)
-/** 正在作废的单据 id */
+/** 正在作废 / 关闭的订单 id（design §4.4：voidingId / closingId） */
 const voidingId = ref<string | undefined>(undefined)
-const items = ref<SalesShipmentListItem[]>([])
+const closingId = ref<string | undefined>(undefined)
+const items = ref<SalesOrderListItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-/** 关键词 / 客户 / 日期范围 / 结算：输入态与已应用态分离（点搜索才生效） */
+/** 关键词 / 客户 / 状态 / 日期范围：输入态与已应用态分离（点搜索才生效） */
 const keywordInput = ref('')
 const partnerInput = ref<string | undefined>(undefined)
+const flowStatusInput = ref<number | undefined>(undefined)
 const dateRangeInput = ref<string[] | undefined>(undefined)
-const settlementInput = ref<SettlementState | undefined>(undefined)
 const appliedKeyword = ref('')
 const appliedPartner = ref<string | undefined>(undefined)
+const appliedFlowStatus = ref<number | undefined>(undefined)
 const appliedRange = ref<[string, string] | null>(null)
-const appliedSettlement = ref<SettlementState | undefined>(undefined)
 
 /** 客户下拉数据源（全量拉取后前端筛「客户 / 两者」，后端查询仅支持单值 type） */
 const partners = ref<Partner[]>([])
@@ -66,7 +64,7 @@ const customerOptions = computed(() =>
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
 const tableKey = computed(
-  () => `${appliedKeyword.value}|${appliedPartner.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}|${appliedSettlement.value ?? ''}`,
+  () => `${appliedKeyword.value}|${appliedPartner.value ?? ''}|${appliedFlowStatus.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}`,
 )
 
 /** 服务端分页配置 */
@@ -81,36 +79,33 @@ const pagination = computed(() => ({
 
 /** 可选列（序号与操作列固定显示，不参与列设置：specs/011-action-column §5） */
 const columnOptions = [
-  { label: '单号', value: 'shipmentNo' },
-  { label: '关联订单', value: 'orderNo' },
+  { label: '单号', value: 'orderNo' },
   { label: '客户', value: 'partnerName' },
-  { label: '单据日期', value: 'orderDate' },
+  { label: '订单日期', value: 'orderDate' },
+  { label: '预计发货', value: 'expectedDate' },
   { label: '总金额', value: 'totalAmount' },
-  { label: '结算状态', value: 'settlement' },
-  { label: '单据状态', value: 'status' },
+  { label: '未发数量', value: 'unfulfilledQuantity' },
+  { label: '订单状态', value: 'flowStatus' },
   { label: '创建时间', value: 'createdAt' },
 ]
 
 /** 列显示设置（不持久化） */
 const visibleColumns = ref<string[]>([
-  'shipmentNo',
   'orderNo',
   'partnerName',
   'orderDate',
+  'expectedDate',
   'totalAmount',
-  'settlement',
-  'status',
+  'unfulfilledQuantity',
+  'flowStatus',
   'createdAt',
 ])
 
 /** 表格列：序号 + 可选列 + 操作（序号与操作固定显示） */
 const columns = computed<TableColumnData[]>(() => {
   const cols: TableColumnData[] = [{ title: '序号', slotName: 'seq', width: 64, align: 'center' }]
-  if (visibleColumns.value.includes('shipmentNo')) {
-    cols.push({ title: '单号', slotName: 'shipmentNo', width: 160 })
-  }
   if (visibleColumns.value.includes('orderNo')) {
-    cols.push({ title: '关联订单', slotName: 'orderNo', width: 160 })
+    cols.push({ title: '单号', slotName: 'orderNo', width: 160 })
   }
   if (visibleColumns.value.includes('partnerName')) {
     cols.push({
@@ -122,21 +117,24 @@ const columns = computed<TableColumnData[]>(() => {
     })
   }
   if (visibleColumns.value.includes('orderDate')) {
-    cols.push({ title: '单据日期', slotName: 'orderDate', width: 110 })
+    cols.push({ title: '订单日期', slotName: 'orderDate', width: 110 })
+  }
+  if (visibleColumns.value.includes('expectedDate')) {
+    cols.push({ title: '预计发货', slotName: 'expectedDate', width: 110 })
   }
   if (visibleColumns.value.includes('totalAmount')) {
     cols.push({ title: '总金额', slotName: 'totalAmount', width: 120, align: 'right' })
   }
-  if (visibleColumns.value.includes('settlement')) {
-    cols.push({ title: '结算状态', slotName: 'settlement', width: 100, align: 'center' })
+  if (visibleColumns.value.includes('unfulfilledQuantity')) {
+    cols.push({ title: '未发数量', slotName: 'unfulfilledQuantity', width: 100, align: 'right' })
   }
-  if (visibleColumns.value.includes('status')) {
-    cols.push({ title: '单据状态', slotName: 'status', width: 100, align: 'center' })
+  if (visibleColumns.value.includes('flowStatus')) {
+    cols.push({ title: '订单状态', slotName: 'flowStatus', width: 100, align: 'center' })
   }
   if (visibleColumns.value.includes('createdAt')) {
     cols.push({ title: '创建时间', slotName: 'createdAt', width: 172 })
   }
-  cols.push({ title: '操作', slotName: 'action', width: 280, bodyCellClass: 'action-cell' })
+  cols.push({ title: '操作', slotName: 'action', width: 240, bodyCellClass: 'action-cell' })
   return cols
 })
 
@@ -167,12 +165,12 @@ async function fetchList(): Promise<void> {
     const { start, end } = appliedRange.value
       ? toDateRange(appliedRange.value[0], appliedRange.value[1])
       : {}
-    const result = await getSalesShipments({
+    const result = await getSalesOrders({
       keyword: appliedKeyword.value.trim() || undefined,
       partnerId: appliedPartner.value,
+      flowStatus: appliedFlowStatus.value as never,
       start,
       end,
-      settlementState: appliedSettlement.value,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -186,31 +184,28 @@ async function fetchList(): Promise<void> {
   }
 }
 
-/** 搜索：应用输入条件并回到第 1 页 */
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedPartner.value = partnerInput.value
+  appliedFlowStatus.value = flowStatusInput.value
   appliedRange.value = dateRangeInput.value ? (dateRangeInput.value as [string, string]) : null
-  appliedSettlement.value = settlementInput.value
   page.value = 1
   void fetchList()
 }
 
-/** 重置：清空条件并回到第 1 页 */
 function onReset(): void {
   keywordInput.value = ''
   partnerInput.value = undefined
+  flowStatusInput.value = undefined
   dateRangeInput.value = undefined
-  settlementInput.value = undefined
   appliedKeyword.value = ''
   appliedPartner.value = undefined
+  appliedFlowStatus.value = undefined
   appliedRange.value = null
-  appliedSettlement.value = undefined
   page.value = 1
   void fetchList()
 }
 
-/** 刷新当前页 */
 function onRefresh(): void {
   void fetchList()
 }
@@ -227,25 +222,44 @@ function onPageSizeChange(size: number): void {
 }
 
 function onCreate(): void {
-  void router.push({ name: 'salesNew' })
+  void router.push({ name: 'salesOrderNew' })
 }
 
-function onDetail(row: SalesShipmentListItem): void {
-  void router.push({ name: 'salesDetail', params: { id: row.id } })
+function onDetail(row: SalesOrderListItem): void {
+  void router.push({ name: 'salesOrderDetail', params: { id: row.id } })
 }
 
-/** 作废行整体置灰 */
-function rowClassName(record: SalesShipmentListItem): string {
-  return record.status === 0 ? 'row-voided' : ''
+function onEdit(row: SalesOrderListItem): void {
+  void router.push({ name: 'salesOrderEdit', params: { id: row.id } })
 }
 
-/** 作废：回冲库存，仅改状态不删数据 */
-async function onVoid(row: SalesShipmentListItem): Promise<void> {
+/** 已作废 / 已关闭行整体置灰（design §4.3） */
+function rowClassName(record: SalesOrderListItem): string {
+  return record.flowStatus === 0 || record.flowStatus === 4 ? 'row-voided' : ''
+}
+
+/** 关闭订单：剩余不再发货（保留累计量） */
+async function onClose(row: SalesOrderListItem): Promise<void> {
+  if (closingId.value) return
+  closingId.value = row.id
+  try {
+    await closeSalesOrder(row.id)
+    Message.success('订单已关闭，剩余数量不再发货')
+    void fetchList()
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    closingId.value = undefined
+  }
+}
+
+/** 作废订单：仅改状态不删数据（无库存影响） */
+async function onVoid(row: SalesOrderListItem): Promise<void> {
   if (voidingId.value) return
   voidingId.value = row.id
   try {
-    await voidSalesShipment(row.id)
-    Message.success('已作废，库存已回冲')
+    await voidSalesOrder(row.id)
+    Message.success('订单已作废')
     void fetchList()
   } catch {
     // 错误提示已由请求层统一处理
@@ -254,18 +268,23 @@ async function onVoid(row: SalesShipmentListItem): Promise<void> {
   }
 }
 
-/** 去收付款：销售单为收款方向（type=0），预置往来单位（同步路由跳转不置 loading） */
-function onGoSettlement(row: SalesShipmentListItem): void {
-  void router.push({ name: 'settlementNew', query: { type: '0', partnerId: row.partnerId } })
+/** 「更多」内的作废无法用 a-popconfirm 包裹菜单项，改用函数式确认框（等价二次确认，specs/011-action-column §0） */
+function confirmVoid(row: SalesOrderListItem): void {
+  Modal.warning({
+    title: '作废订单',
+    content: `确认作废订单 ${row.orderNo}？作废后不可恢复`,
+    hideCancel: false,
+    okText: '确认作废',
+    onOk: () => onVoid(row),
+  })
 }
 </script>
 
 <template>
   <div class="list-page">
-    <!-- 页面头：仅标题（主操作已并入表格上方工具条左组） -->
     <div class="page-header">
       <h1 class="page-title">
-        销售出库
+        销售订单
       </h1>
     </div>
 
@@ -274,7 +293,6 @@ function onGoSettlement(row: SalesShipmentListItem): void {
       class="table-card"
     >
       <div class="toolbar">
-        <!-- 筛选行 -->
         <a-row
           class="toolbar-filter"
           :gutter="16"
@@ -308,9 +326,9 @@ function onGoSettlement(row: SalesShipmentListItem): void {
           </a-col>
           <a-col :span="3">
             <a-select
-              v-model="settlementInput"
-              :options="SETTLEMENT_STATE_OPTIONS"
-              placeholder="结算状态"
+              v-model="flowStatusInput"
+              :options="flowStatusOptions"
+              placeholder="订单状态"
               allow-clear
             />
           </a-col>
@@ -339,7 +357,6 @@ function onGoSettlement(row: SalesShipmentListItem): void {
           </a-col>
         </a-row>
 
-        <!-- 操作行：左组主操作（开销售单）靠左，右组视图操作（列设置/刷新）靠右，同一行 -->
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
@@ -350,7 +367,7 @@ function onGoSettlement(row: SalesShipmentListItem): void {
               <template #icon>
                 <IconPlus />
               </template>
-              开销售单
+              新建订单
             </a-button>
           </div>
           <div class="toolbar-actions__right">
@@ -406,43 +423,54 @@ function onGoSettlement(row: SalesShipmentListItem): void {
         <template #seq="{ rowIndex }">
           {{ (page - 1) * pageSize + rowIndex + 1 }}
         </template>
-        <template #shipmentNo="{ record }">
-          {{ (record as SalesShipmentListItem).shipmentNo }}
-        </template>
         <template #orderNo="{ record }">
-          {{ (record as SalesShipmentListItem).orderNo || '—' }}
+          {{ (record as SalesOrderListItem).orderNo }}
         </template>
         <template #orderDate="{ record }">
-          {{ formatDateTime((record as SalesShipmentListItem).orderDate).slice(0, 10) }}
+          {{ formatDateTime((record as SalesOrderListItem).orderDate).slice(0, 10) }}
+        </template>
+        <template #expectedDate="{ record }">
+          {{ (record as SalesOrderListItem).expectedDate ? formatDateTime((record as SalesOrderListItem).expectedDate as string).slice(0, 10) : '—' }}
         </template>
         <template #totalAmount="{ record }">
           <span class="amount">
-            ¥ {{ (record as SalesShipmentListItem).totalAmount.toFixed(2) }}
+            ¥ {{ (record as SalesOrderListItem).totalAmount.toFixed(2) }}
           </span>
         </template>
-        <template #settlement="{ record }">
-          <a-tag :color="settlementStateColor((record as SalesShipmentListItem).settlementState)">
-            {{ settlementStateLabel((record as SalesShipmentListItem).settlementState, (record as SalesShipmentListItem).unsettledAmount) }}
-          </a-tag>
+        <template #unfulfilledQuantity="{ record }">
+          <span :class="{ 'qty-zero': (record as SalesOrderListItem).unfulfilledQuantity === 0 }">
+            {{ (record as SalesOrderListItem).unfulfilledQuantity }}
+          </span>
         </template>
-        <template #status="{ record }">
-          <a-tag :color="(record as SalesShipmentListItem).status === 1 ? 'green' : 'red'">
-            {{ (record as SalesShipmentListItem).status === 1 ? '正常' : '已作废' }}
+        <template #flowStatus="{ record }">
+          <a-tag :color="orderFlowStatusColor((record as SalesOrderListItem).flowStatus)">
+            {{ orderFlowStatusLabel((record as SalesOrderListItem).flowStatus, 'sales') }}
           </a-tag>
         </template>
         <template #createdAt="{ record }">
-          {{ formatDateTime((record as SalesShipmentListItem).createdAt) }}
+          {{ formatDateTime((record as SalesOrderListItem).createdAt) }}
         </template>
-        <!-- 操作列：详情 恒显；收付款 / 作废 仅正常单显示 -->
         <template #action="{ record }">
           <a-space
             class="row-actions"
             :size="4"
           >
             <a-button
+              v-if="(record as SalesOrderListItem).flowStatus === 1"
               type="text"
               size="small"
-              @click="onDetail(record as SalesShipmentListItem)"
+              @click="onEdit(record as SalesOrderListItem)"
+            >
+              <template #icon>
+                <IconEdit />
+              </template>
+              编辑
+            </a-button>
+
+            <a-button
+              type="text"
+              size="small"
+              @click="onDetail(record as SalesOrderListItem)"
             >
               <template #icon>
                 <IconEye />
@@ -450,35 +478,50 @@ function onGoSettlement(row: SalesShipmentListItem): void {
               详情
             </a-button>
 
-            <a-button
-              v-if="(record as SalesShipmentListItem).status === 1"
-              type="text"
-              size="small"
-              @click="onGoSettlement(record as SalesShipmentListItem)"
-            >
-              <template #icon>
-                <IconCash />
-              </template>
-              收付款
-            </a-button>
             <a-popconfirm
-              v-if="(record as SalesShipmentListItem).status === 1"
+              v-if="(record as SalesOrderListItem).flowStatus === 1 || (record as SalesOrderListItem).flowStatus === 2"
               type="warning"
-              content="确认作废该销售单？作废后库存将回冲，且不可恢复"
-              @ok="onVoid(record as SalesShipmentListItem)"
+              content="确认关闭该订单？关闭后剩余数量不再发货，且不可恢复"
+              @ok="onClose(record as SalesOrderListItem)"
             >
               <a-button
                 type="text"
-                status="danger"
                 size="small"
-                :loading="voidingId === (record as SalesShipmentListItem).id"
+                status="warning"
+                :loading="closingId === (record as SalesOrderListItem).id"
               >
                 <template #icon>
-                  <IconBan />
+                  <IconArchive />
                 </template>
-                作废
+                关闭
               </a-button>
             </a-popconfirm>
+
+            <a-dropdown
+              v-if="(record as SalesOrderListItem).flowStatus === 1"
+              trigger="click"
+            >
+              <a-button
+                type="text"
+                size="small"
+                :loading="voidingId === (record as SalesOrderListItem).id"
+              >
+                <template #icon>
+                  <IconDotsVertical />
+                </template>
+              </a-button>
+              <template #content>
+                <a-doption
+                  :disabled="!!voidingId"
+                  @click="confirmVoid(record as SalesOrderListItem)"
+                >
+                  <template #icon>
+                    <IconBan />
+                  </template>
+                  作废
+                </a-doption>
+              </template>
+            </a-dropdown>
           </a-space>
         </template>
       </a-table>
@@ -554,7 +597,10 @@ function onGoSettlement(row: SalesShipmentListItem): void {
   font-variant-numeric: tabular-nums;
 }
 
-/* 列设置下拉面板 */
+.qty-zero {
+  color: var(--color-text-3);
+}
+
 .col-settings {
   min-width: 160px;
   padding: 8px 12px;
@@ -563,26 +609,14 @@ function onGoSettlement(row: SalesShipmentListItem): void {
   box-shadow: var(--box-shadow-2);
 }
 
-/* 操作列密度：收窄 Arco 文本按钮默认水平 padding */
 .row-actions :deep(.arco-btn-text) {
   padding: 0 8px;
 }
 
-/* 次要操作（如「改回未结算」）：降为次级文字色，与「详情」主题色区分 */
-.row-actions :deep(.arco-btn-text.action-btn-secondary) {
-  color: var(--color-text-2);
-}
-
-.row-actions :deep(.arco-btn-text.action-btn-secondary:hover) {
-  color: var(--color-text-1);
-}
-
-/* 操作列兜底：按钮组不折行 */
 :deep(.action-cell) {
   white-space: nowrap;
 }
 
-/* 作废行整体置灰 */
 :deep(.row-voided) {
   opacity: 0.55;
 }
