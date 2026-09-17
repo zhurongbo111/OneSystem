@@ -67,7 +67,8 @@ public class SalesOrderLifecycleTests
     public async Task 作废销售单_成功_应逐行回冲库存并置作废()
     {
         var (orders, inventory, uow, user, order, p1, p2, calls) = SeedNormal();
-        var handler = new VoidSalesOrderRequestHandler(orders, inventory, uow, user);
+        var movements = new FakeStockMovementRepository(calls);
+        var handler = new VoidSalesOrderRequestHandler(orders, inventory, movements, uow, user);
 
         var result = await handler.HandleAsync(new VoidSalesOrderRequest { Id = order.Id });
 
@@ -78,19 +79,30 @@ public class SalesOrderLifecycleTests
         Assert.Equal(13, inventory.GetQuantity(p1.Id)); // 10 + 3
         Assert.Equal(10, inventory.GetQuantity(p2.Id)); // 8 + 2
 
-        // 状态置作废（事务序列：Begin → Increment ×2 → UpdateStatus → Commit）
+        // 逐行追加销售作废回增流水：类型 / 正方向 / 来源 / 操作人
+        Assert.Equal(2, movements.Appended.Count);
+        Assert.Equal(new[] { (p1.Id, 3), (p2.Id, 2) }, movements.Appended.Select(m => (m.ProductId, m.Quantity)).ToArray());
+        Assert.All(movements.Appended, m =>
+        {
+            Assert.Equal(StockMovementType.SalesVoid, m.MovementType);
+            Assert.Equal(user.UserId, m.CreatedBy);
+            Assert.Equal(order.Id, m.SourceId);
+            Assert.Equal(order.OrderNo, m.SourceNo);
+        });
+
+        // 状态置作废（事务序列：Begin → Increment → Append → Increment → Append → UpdateStatus → Commit）
         var (afterVoid, _) = await orders.GetDetailAsync(order.Id);
         Assert.Equal(OrderStatus.Voided, afterVoid!.Status);
         Assert.Equal(user.UserId, order.UpdatedBy);
         Assert.Equal((int)OrderStatus.Voided, result.Status);
-        Assert.Equal(new[] { "Begin", "Increment", "Increment", "UpdateStatus", "Commit" }, calls.ToArray());
+        Assert.Equal(new[] { "Begin", "Increment", "Append", "Increment", "Append", "UpdateStatus", "Commit" }, calls.ToArray());
     }
 
     [Fact]
     public async Task 作废销售单_不存在_应报NotFound()
     {
         var (orders, inventory, uow, user, _, _, _, _) = SeedNormal();
-        var handler = new VoidSalesOrderRequestHandler(orders, inventory, uow, user);
+        var handler = new VoidSalesOrderRequestHandler(orders, inventory, new FakeStockMovementRepository(), uow, user);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesOrderRequest { Id = Guid.NewGuid() }));
@@ -104,14 +116,16 @@ public class SalesOrderLifecycleTests
         // 预置为已作废
         await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided, null);
 
-        var handler = new VoidSalesOrderRequestHandler(orders, inventory, uow, user);
+        var movements = new FakeStockMovementRepository(calls);
+        var handler = new VoidSalesOrderRequestHandler(orders, inventory, movements, uow, user);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesOrderRequest { Id = order.Id }));
         Assert.Equal(ErrorCode.OrderVoided, ex.Code);
 
-        // 未开启事务、未回冲
+        // 未开启事务、未回冲、不写流水
         Assert.Empty(inventory.Increments);
+        Assert.Empty(movements.Appended);
         Assert.DoesNotContain("Begin", calls);
         Assert.Equal(10, inventory.GetQuantity(p1.Id));
     }

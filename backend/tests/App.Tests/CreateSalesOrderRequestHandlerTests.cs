@@ -19,23 +19,25 @@ public class CreateSalesOrderRequestHandlerTests
     private static readonly DateTimeOffset OrderDate = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     private static (AppDbContext Context, StubCurrentUser User, FakeSalesOrderRepository Orders,
-        FakeInventoryRepository Inventory, RecordingUnitOfWork Uow, CreateSalesOrderRequestHandler Handler,
-        List<string> Calls) CreateHandler()
+        FakeInventoryRepository Inventory, FakeStockMovementRepository Movements, RecordingUnitOfWork Uow,
+        CreateSalesOrderRequestHandler Handler, List<string> Calls) CreateHandler()
     {
         var context = TestSupport.CreateDbContext();
         var user = new StubCurrentUser(Guid.NewGuid());
         var calls = new List<string>();
         var orders = new FakeSalesOrderRepository(calls);
         var inventory = new FakeInventoryRepository(calls);
+        var movements = new FakeStockMovementRepository(calls);
         var uow = new RecordingUnitOfWork(calls);
         var handler = new CreateSalesOrderRequestHandler(
             orders,
             new PartnerRepository(context),
             new ProductRepository(context),
             inventory,
+            movements,
             uow,
             user);
-        return (context, user, orders, inventory, uow, handler, calls);
+        return (context, user, orders, inventory, movements, uow, handler, calls);
     }
 
     private static CreateSalesOrderRequest RequestWith(Guid partnerId, params (Guid ProductId, int Qty, decimal Price)[] lines)
@@ -72,7 +74,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_成功_应生成单号并重算小计总额且逐行库存减少()
     {
-        var (context, _, orders, inventory, _, handler, _) = CreateHandler();
+        var (context, user, orders, inventory, movements, _, handler, _) = CreateHandler();
         var (partner, p1, p2) = await SeedAsync(context, inventory: inventory);
 
         var result = await handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 3, 1.5m), (p2.Id, 2, 10m)));
@@ -98,12 +100,27 @@ public class CreateSalesOrderRequestHandlerTests
             inventory.Decrements.Select(i => (i.ProductId, i.Amount)).ToArray());
         Assert.Equal(7, inventory.GetQuantity(p1.Id));   // 10 - 3
         Assert.Equal(6, inventory.GetQuantity(p2.Id));   // 8 - 2
+
+        // 逐行追加销售出库流水：类型 / 负方向 / 来源 / 操作人
+        Assert.Equal(2, movements.Appended.Count);
+        Assert.All(movements.Appended, m =>
+        {
+            Assert.Equal(StockMovementType.SalesOutbound, m.MovementType);
+            Assert.Equal(user.UserId, m.CreatedBy);
+            Assert.Equal(Guid.Parse(result.Id), m.SourceId);
+            Assert.Equal(result.OrderNo, m.SourceNo);
+        });
+        Assert.Equal(new[] { (p1.Id, -3), (p2.Id, -2) }, movements.Appended.Select(m => (m.ProductId, m.Quantity)).ToArray());
+
+        // 对账一致性：Σ 流水变动量 == 库存净变动量（种子库存不入流水，故为负值而非终值）
+        Assert.Equal(-3, await movements.SumQuantityAsync(p1.Id));
+        Assert.Equal(-2, await movements.SumQuantityAsync(p2.Id));
     }
 
     [Fact]
     public async Task 新增销售单_当天已有单据_单号序号应递增()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var (partner, p1, _) = await SeedAsync(context, inventory: inventory);
 
         var first = await handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m)));
@@ -120,13 +137,13 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_成功_事务调用顺序应为Begin_TryDecrement_Generate_Add_Commit()
     {
-        var (context, _, _, inventory, _, handler, calls) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, calls) = CreateHandler();
         var (partner, p1, _) = await SeedAsync(context, inventory: inventory);
 
         await handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m)));
 
-        // 销售先扣库存、成功后再插单（design.md §3.4）
-        Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Commit" }, calls.ToArray());
+        // 销售先扣库存、成功后再插单、写流水（design.md §3.4）
+        Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Append", "Commit" }, calls.ToArray());
     }
 
     // ============================== 库存不足 ==============================
@@ -134,8 +151,8 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_库存不足_应报InsufficientStock且回滚整单()
     {
-        var (context, _, _, inventory, uow, handler, calls) = CreateHandler();
-        var (partner, p1, p2) = await SeedAsync(context, stock1: 5, stock2: 8, inventory: inventory);
+        var (context, _, _, inventory, movements, uow, handler, calls) = CreateHandler();
+        var (partner, p1, _) = await SeedAsync(context, stock1: 5, stock2: 8, inventory: inventory);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(
             RequestWith(partner.Id, (p1.Id, 10, 1m)))); // 10 > 当前库存 5
@@ -144,18 +161,19 @@ public class CreateSalesOrderRequestHandlerTests
         Assert.Contains("商品一", ex.Message);
         Assert.Contains("5", ex.Message);
 
-        // 回滚整单：Rollback 被调用、Add 未被调用（单据未插入）
+        // 回滚整单：Rollback 被调用、Add 未被调用（单据未插入）、不写流水
         Assert.Contains("Rollback", calls);
         Assert.DoesNotContain("Add", calls);
         Assert.DoesNotContain("Commit", calls);
         Assert.Empty(inventory.Decrements);
+        Assert.Empty(movements.Appended);
         Assert.Equal(5, inventory.GetQuantity(p1.Id)); // 库存未变动
     }
 
     [Fact]
     public async Task 新增销售单_第二行库存不足_应报InsufficientStock且首行扣减一并回滚()
     {
-        var (context, _, _, inventory, _, handler, calls) = CreateHandler();
+        var (context, _, _, inventory, movements, _, handler, calls) = CreateHandler();
         var (partner, p1, p2) = await SeedAsync(context, stock1: 10, stock2: 1, inventory: inventory);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(
@@ -164,10 +182,11 @@ public class CreateSalesOrderRequestHandlerTests
         Assert.Equal(ErrorCode.InsufficientStock, ex.Code);
         Assert.Contains("商品二", ex.Message);
 
-        // 假实现无真实事务：断言未提交且未插单（真实 PostgreSQL 事务内首行扣减随 Rollback 恢复）
+        // 假实现无真实事务：断言未提交且未插单、不写流水（真实 PostgreSQL 事务内首行扣减随 Rollback 恢复）
         Assert.DoesNotContain("Add", calls);
         Assert.DoesNotContain("Commit", calls);
         Assert.Contains("Rollback", calls);
+        Assert.Empty(movements.Appended);
     }
 
     // ============================== 客户校验 ==============================
@@ -175,7 +194,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_客户不存在_应报NotFound()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var p1 = await SeedProductAsync(context, "sku-x");
         inventory.Seed(p1.Id, 10);
 
@@ -187,7 +206,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_客户停用_应报PartnerDisabled()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var partner = TestSupport.NewPartner("停用客户", type: PartnerType.Customer, status: PartnerStatus.Disabled);
         context.Partners.Add(partner);
         var p1 = await SeedProductAsync(context, "sku-off-p");
@@ -202,7 +221,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_纯供应商开销售单_应报PartnerTypeMismatch()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var partner = TestSupport.NewPartner("纯供应商", type: PartnerType.Supplier);
         context.Partners.Add(partner);
         var p1 = await SeedProductAsync(context, "sku-sup");
@@ -217,7 +236,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_两者类型_应通过类型校验()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var partner = TestSupport.NewPartner("两者单位", type: PartnerType.Both);
         context.Partners.Add(partner);
         var p1 = await SeedProductAsync(context, "sku-both");
@@ -233,7 +252,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_商品不存在_应报NotFound()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var partner = TestSupport.NewPartner("客户", type: PartnerType.Customer);
         context.Partners.Add(partner);
         await context.SaveChangesAsync();
@@ -246,7 +265,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_商品停用_应报ProductDisabled()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var partner = TestSupport.NewPartner("客户", type: PartnerType.Customer);
         context.Partners.Add(partner);
         var p1 = await SeedProductAsync(context, "sku-off", status: ProductStatus.Disabled);
@@ -261,7 +280,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_明细为空_应报OrderItemsEmpty()
     {
-        var (context, _, _, inventory, _, handler, _) = CreateHandler();
+        var (context, _, _, inventory, _, _, handler, _) = CreateHandler();
         var partner = TestSupport.NewPartner("客户", type: PartnerType.Customer);
         context.Partners.Add(partner);
         await context.SaveChangesAsync();
@@ -280,7 +299,7 @@ public class CreateSalesOrderRequestHandlerTests
     [Fact]
     public async Task 新增销售单_Add失败_应回滚且不提交()
     {
-        var (context, _, orders, inventory, uow, handler, calls) = CreateHandler();
+        var (context, _, orders, inventory, movements, uow, handler, calls) = CreateHandler();
         var (partner, p1, _) = await SeedAsync(context, inventory: inventory);
         orders.AddFailure = () => new InvalidOperationException("模拟数据库写入失败");
 
@@ -288,15 +307,16 @@ public class CreateSalesOrderRequestHandlerTests
             () => handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m))));
         Assert.Contains("模拟数据库写入失败", ex.Message);
 
-        // Begin → TryDecrement → Generate → Add → Rollback，且从未 Commit
+        // Begin → TryDecrement → Generate → Add → Rollback，且从未 Commit；Add 失败不写流水
         Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Rollback" }, calls.ToArray());
         Assert.DoesNotContain("Commit", calls);
+        Assert.Empty(movements.Appended);
     }
 
     [Fact]
     public async Task 新增销售单_Commit失败_应回滚且异常上抛()
     {
-        var (context, _, _, inventory, uow, handler, calls) = CreateHandler();
+        var (context, _, _, inventory, _, uow, handler, calls) = CreateHandler();
         var (partner, p1, _) = await SeedAsync(context, inventory: inventory);
         uow.CommitFailure = () => new InvalidOperationException("模拟提交失败");
 
@@ -304,7 +324,7 @@ public class CreateSalesOrderRequestHandlerTests
             () => handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m))));
         Assert.Contains("模拟提交失败", ex.Message);
 
-        // Begin → TryDecrement → Generate → Add → Commit(抛) → Rollback，异常上抛
-        Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Commit", "Rollback" }, calls.ToArray());
+        // Begin → TryDecrement → Generate → Add → Append → Commit(抛) → Rollback，异常上抛
+        Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Append", "Commit", "Rollback" }, calls.ToArray());
     }
 }

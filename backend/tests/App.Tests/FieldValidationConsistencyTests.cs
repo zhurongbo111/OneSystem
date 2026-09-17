@@ -5,6 +5,7 @@ using App.Core.Features.Purchases.CreatePurchaseOrder;
 using App.Core.Features.Purchases.GetPurchaseOrders;
 using App.Core.Features.Sales.CreateSalesOrder;
 using App.Core.Features.Sales.GetSalesOrders;
+using App.Core.Features.StockMovements.GetStockMovements;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.GetUsers;
 using App.Core.Features.Users.ResetPassword;
@@ -287,6 +288,30 @@ public class FieldValidationConsistencyTests
             .Validate(new GetSalesOrdersRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
         Assert.False(new GetSalesOrdersRequestValidator()
             .Validate(new GetSalesOrdersRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
+    // ============================== 库存流水字段约束（SourceNo 与单据 OrderNo 同组常量）==============================
+
+    [Fact]
+    public void EF模型_StockMovements表SourceNo列长度_应等于字段约束常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        // SourceNo 存单据单号，列长与 OrderNo 同源；Remark 与单据备注同源
+        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<StockMovement>(dbContext, nameof(StockMovement.SourceNo)));
+        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<StockMovement>(dbContext, nameof(StockMovement.Remark)));
+    }
+
+    [Fact]
+    public void 库存流水查询关键词长度_应不超过SourceNo列长()
+    {
+        var ok = new string('a', OrderFieldConstraints.KeywordMaxLength);
+        var tooLong = new string('a', OrderFieldConstraints.KeywordMaxLength + 1);
+
+        Assert.True(new GetStockMovementsRequestValidator()
+            .Validate(new GetStockMovementsRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetStockMovementsRequestValidator()
+            .Validate(new GetStockMovementsRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
     }
 
     private static bool ValidatePurchase(CreatePurchaseOrderRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)
