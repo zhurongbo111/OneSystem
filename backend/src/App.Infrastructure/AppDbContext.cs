@@ -68,6 +68,12 @@ public class AppDbContext : DbContext
     /// <summary>盘点 / 期初建账明细表</summary>
     public DbSet<StockTakeItem> StockTakeItems => Set<StockTakeItem>();
 
+    /// <summary>收付款单表</summary>
+    public DbSet<Settlement> Settlements => Set<Settlement>();
+
+    /// <summary>收付款单核销明细表</summary>
+    public DbSet<SettlementItem> SettlementItems => Set<SettlementItem>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

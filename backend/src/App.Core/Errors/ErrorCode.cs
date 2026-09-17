@@ -73,4 +73,13 @@ public static class ErrorCode
 
     /// <summary>期初建账只允许从未发生库存变动的商品（erp-stock-take 功能业务码；所选商品已有库存变动）</summary>
     public const int StockInitialNotAllowed = 40111;
+
+    /// <summary>核销金额超过单据未结金额（erp-settlement 功能业务码；message 含单号与未结金额）</summary>
+    public const int SettlementAmountExceeded = 40112;
+
+    /// <summary>核销单据的往来单位与收付款单不一致（erp-settlement 功能业务码）</summary>
+    public const int SettlementPartnerMismatch = 40113;
+
+    /// <summary>收付款方向与单据类型不匹配（erp-settlement 功能业务码，如收款单核销采购入库单）</summary>
+    public const int SettlementDirectionMismatch = 40114;
 }
