@@ -195,6 +195,30 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/SalesReturnManagement/SalesReturnDetailView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'settlements',
+        name: 'settlements',
+        component: () => import('@/views/SettlementManagement/SettlementsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'settlements/new',
+        name: 'settlementNew',
+        component: () => import('@/views/SettlementManagement/SettlementFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'settlements/detail/:id',
+        name: 'settlementDetail',
+        component: () => import('@/views/SettlementManagement/SettlementDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'reconciliation',
+        name: 'reconciliation',
+        component: () => import('@/views/SettlementManagement/ReconciliationView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {
