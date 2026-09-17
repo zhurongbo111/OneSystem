@@ -20,7 +20,7 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
     public Func<Exception?>? AddFailure { get; set; }
 
     /// <summary>已执行的分页查询入参（keyword / partnerId / start / end / settlement / page / pageSize）</summary>
-    public List<(string? Keyword, Guid? PartnerId, DateTimeOffset? Start, DateTimeOffset? End, OrderSettlementStatus? Settlement, int Page, int PageSize)> PagedQueries { get; } = new();
+    public List<(string? Keyword, Guid? PartnerId, DateTimeOffset? Start, DateTimeOffset? End, SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = new();
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
     public IReadOnlyList<SalesReturn> PagedItems { get; set; } = Array.Empty<SalesReturn>();
@@ -37,9 +37,9 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
 
     public Task<(IReadOnlyList<SalesReturn> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end,
-        OrderSettlementStatus? settlement, int page, int pageSize, CancellationToken cancellationToken = default)
+        SettlementState? settlementState, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        PagedQueries.Add((keyword, partnerId, start, end, settlement, page, pageSize));
+        PagedQueries.Add((keyword, partnerId, start, end, settlementState, page, pageSize));
         return Task.FromResult((PagedItems, PagedTotal));
     }
 
@@ -68,11 +68,11 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
         return Task.CompletedTask;
     }
 
-    public Task UpdateSettlementAsync(Guid id, OrderSettlementStatus settlement, Guid? operatorId, CancellationToken cancellationToken = default)
+    public Task AddSettledAmountAsync(Guid id, decimal delta, Guid? operatorId, CancellationToken cancellationToken = default)
     {
-        _calls?.Add("UpdateSettlement");
+        _calls?.Add("AddSettledAmount");
         var salesReturn = _returns[id];
-        salesReturn.SettlementStatus = settlement;
+        salesReturn.SettledAmount += delta;
         salesReturn.UpdatedBy = operatorId;
         salesReturn.UpdatedAt = DateTimeOffset.UtcNow;
         return Task.CompletedTask;

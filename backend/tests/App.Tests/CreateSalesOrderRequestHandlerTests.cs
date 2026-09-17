@@ -81,7 +81,9 @@ public class CreateSalesOrderRequestHandlerTests
 
         // 单号：SO + yyyyMMdd + 4 位序号
         Assert.Matches("^SO20260101\\d{4}$", result.OrderNo);
-        Assert.Equal((int)OrderSettlementStatus.Unsettled, result.SettlementStatus);
+        Assert.Equal(0m, result.SettledAmount);
+        Assert.Equal(24.5m, result.UnsettledAmount);
+        Assert.Equal((int)SettlementState.Unsettled, result.SettlementState);
         Assert.Equal((int)OrderStatus.Normal, result.Status);
         Assert.Equal(partner.Name, result.PartnerName);
 
