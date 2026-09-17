@@ -142,6 +142,24 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'purchase-returns',
+        name: 'purchaseReturns',
+        component: () => import('@/views/PurchaseReturnManagement/PurchaseReturnsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'purchase-returns/new',
+        name: 'purchaseReturnNew',
+        component: () => import('@/views/PurchaseReturnManagement/PurchaseReturnFormPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'purchase-returns/detail/:id',
+        name: 'purchaseReturnDetail',
+        component: () => import('@/views/PurchaseReturnManagement/PurchaseReturnDetailView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'sales',
         name: 'sales',
         component: () => import('@/views/SalesManagement/SalesView.vue'),
