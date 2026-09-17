@@ -68,6 +68,44 @@ public sealed class InventoryRepository : IInventoryRepository
     }
 
     /// <inheritdoc />
+    public Task<int> SetQuantityAsync(Guid productId, int quantity, CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        // 原子设定为指定值（ExecuteUpdate 行锁内完成）；无库存行时受影响行数为 0
+        return _dbContext.Inventory
+            .Where(i => i.ProductId == productId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(i => i.Quantity, quantity)
+                .SetProperty(i => i.UpdatedAt, now),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, int>> GetQuantitiesAsync(
+        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        if (productIds.Count == 0)
+        {
+            return new Dictionary<Guid, int>();
+        }
+
+        var rows = await _dbContext.Inventory
+            .AsNoTracking()
+            .Where(i => productIds.Contains(i.ProductId))
+            .Select(i => new { i.ProductId, i.Quantity })
+            .ToListAsync(cancellationToken);
+
+        var result = new Dictionary<Guid, int>(productIds.Count);
+        foreach (var id in productIds)
+        {
+            // 无库存行的商品按 0 计
+            result[id] = rows.FirstOrDefault(r => r.ProductId == id)?.Quantity ?? 0;
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task<(IReadOnlyList<InventoryItem> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? categoryId,

@@ -50,6 +50,12 @@ public class AppDbContext : DbContext
     /// <summary>库存变动流水表（纯追加）</summary>
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
+    /// <summary>盘点 / 期初建账单据表</summary>
+    public DbSet<StockTake> StockTakes => Set<StockTake>();
+
+    /// <summary>盘点 / 期初建账明细表</summary>
+    public DbSet<StockTakeItem> StockTakeItems => Set<StockTakeItem>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

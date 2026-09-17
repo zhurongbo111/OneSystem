@@ -111,6 +111,15 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     /// <summary>已执行的扣减序列（productId, amount），用于断言销售扣减调用</summary>
     public List<(Guid ProductId, int Amount)> Decrements { get; } = new();
 
+    /// <summary>设定值失败注入：返回非 null 异常时 SetQuantityAsync 抛出</summary>
+    public Func<Exception?>? SetQuantityFailure { get; set; }
+
+    /// <summary>已执行的设定序列（productId, quantity），用于断言库存校正调用</summary>
+    public List<(Guid ProductId, int Quantity)> Sets { get; } = new();
+
+    /// <summary>已读取过账面的商品 id 集合（断言「事务内读账面」发生）</summary>
+    public HashSet<Guid> BookRead { get; } = new();
+
     public void Seed(Guid productId, int quantity) => _stock[productId] = quantity;
 
     public int GetQuantity(Guid productId) => _stock.GetValueOrDefault(productId);
@@ -146,6 +155,34 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
         Decrements.Add((productId, amount));
         _stock[productId] = GetQuantity(productId) - amount;
         return Task.FromResult(true);
+    }
+
+    public Task<int> SetQuantityAsync(Guid productId, int quantity, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("SetQuantity");
+        BookRead.Add(productId);
+        var failure = SetQuantityFailure?.Invoke();
+        if (failure is not null)
+        {
+            throw failure;
+        }
+
+        Sets.Add((productId, quantity));
+        _stock[productId] = quantity;
+        return Task.FromResult(1);
+    }
+
+    public Task<IReadOnlyDictionary<Guid, int>> GetQuantitiesAsync(
+        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("GetQuantities");
+        foreach (var id in productIds)
+        {
+            BookRead.Add(id);
+        }
+
+        var dict = productIds.ToDictionary(id => id, id => GetQuantity(id));
+        return Task.FromResult<IReadOnlyDictionary<Guid, int>>(dict);
     }
 
     public Task<(IReadOnlyList<InventoryItem> Items, int Total)> GetPagedAsync(

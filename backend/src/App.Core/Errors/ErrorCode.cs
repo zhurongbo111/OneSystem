@@ -70,4 +70,7 @@ public static class ErrorCode
 
     /// <summary>单据明细不能为空（erp-purchase / erp-sale 共用；明细行数 ≥ 1）</summary>
     public const int OrderItemsEmpty = 40110;
+
+    /// <summary>期初建账只允许从未发生库存变动的商品（erp-stock-take 功能业务码；所选商品已有库存变动）</summary>
+    public const int StockInitialNotAllowed = 40111;
 }

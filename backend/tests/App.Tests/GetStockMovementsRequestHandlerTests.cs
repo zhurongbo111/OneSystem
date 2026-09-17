@@ -58,6 +58,10 @@ public class GetStockMovementsRequestHandlerTests
 
         public Task<int> SumQuantityAsync(Guid productId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
+
+        public Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
+            IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
     }
 
     // ============================== Handler：传参 / 映射 / 分页 ==============================

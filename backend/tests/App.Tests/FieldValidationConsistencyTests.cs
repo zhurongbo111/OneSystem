@@ -6,6 +6,8 @@ using App.Core.Features.Purchases.GetPurchaseOrders;
 using App.Core.Features.Sales.CreateSalesOrder;
 using App.Core.Features.Sales.GetSalesOrders;
 using App.Core.Features.StockMovements.GetStockMovements;
+using App.Core.Features.StockTakes.CreateStockTake;
+using App.Core.Features.StockTakes.GetStockTakes;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.GetUsers;
 using App.Core.Features.Users.ResetPassword;
@@ -312,6 +314,76 @@ public class FieldValidationConsistencyTests
             .Validate(new GetStockMovementsRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
         Assert.False(new GetStockMovementsRequestValidator()
             .Validate(new GetStockMovementsRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
+    // ============================== 盘点 / 期初建账字段约束（TakeNo 与单据 OrderNo 同组常量）==============================
+
+    [Fact]
+    public void EF模型_StockTakes表TakeNo列长度_应等于字段约束常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        // TakeNo 存盘点单号，列长与 OrderNo 同源；Remark 与单据备注同源
+        Assert.Equal(OrderFieldConstraints.OrderNoMaxLength, GetMaxLength<StockTake>(dbContext, nameof(StockTake.TakeNo)));
+        Assert.Equal(OrderFieldConstraints.RemarkMaxLength, GetMaxLength<StockTake>(dbContext, nameof(StockTake.Remark)));
+    }
+
+    [Fact]
+    public void EF模型_StockTakeItems表快照列长度_应等于商品域常量()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        // 编码 / 名称 / 单位为提交时快照，列长取自商品档案（同一规则同源）
+        Assert.Equal(ProductFieldConstraints.CodeMaxLength, GetMaxLength<StockTakeItem>(dbContext, nameof(StockTakeItem.ProductCode)));
+        Assert.Equal(ProductFieldConstraints.NameMaxLength, GetMaxLength<StockTakeItem>(dbContext, nameof(StockTakeItem.ProductName)));
+        Assert.Equal(ProductFieldConstraints.UnitMaxLength, GetMaxLength<StockTakeItem>(dbContext, nameof(StockTakeItem.Unit)));
+    }
+
+    [Fact]
+    public void 盘点实盘数量_边界值应通过且超界拒绝()
+    {
+        var validator = new CreateStockTakeRequestValidator();
+
+        // 实盘允许为 0（语义区别于单据明细数量下限 1），上界引用商品域
+        Assert.True(ValidateStockTake(validator, actual: StockTakeFieldConstraints.ActualQuantityMinValue));
+        Assert.True(ValidateStockTake(validator, actual: StockTakeFieldConstraints.ActualQuantityMaxValue));
+        Assert.False(ValidateStockTake(validator, actual: StockTakeFieldConstraints.ActualQuantityMinValue - 1));
+        Assert.False(ValidateStockTake(validator, actual: StockTakeFieldConstraints.ActualQuantityMaxValue + 1));
+    }
+
+    [Fact]
+    public void 盘点明细行数_上限内通过且超上限拒绝()
+    {
+        var validator = new CreateStockTakeRequestValidator();
+
+        Assert.True(ValidateStockTake(validator, itemCount: StockTakeFieldConstraints.ItemsMaxCount));
+        Assert.False(ValidateStockTake(validator, itemCount: StockTakeFieldConstraints.ItemsMaxCount + 1));
+    }
+
+    [Fact]
+    public void 盘点查询关键词长度_应不超过TakeNo列长()
+    {
+        var ok = new string('a', StockTakeFieldConstraints.KeywordMaxLength);
+        var tooLong = new string('a', StockTakeFieldConstraints.KeywordMaxLength + 1);
+
+        Assert.True(new GetStockTakesRequestValidator()
+            .Validate(new GetStockTakesRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
+        Assert.False(new GetStockTakesRequestValidator()
+            .Validate(new GetStockTakesRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
+    private static bool ValidateStockTake(CreateStockTakeRequestValidator validator, int actual = 1, int itemCount = 1)
+    {
+        var items = Enumerable
+            .Range(0, itemCount)
+            .Select(_ => new CreateStockTakeItem { ProductId = Guid.NewGuid(), ActualQuantity = actual })
+            .ToList();
+        return validator.Validate(new CreateStockTakeRequest
+        {
+            Type = StockTakeType.Take,
+            TakeDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Items = items,
+        }).IsValid;
     }
 
     private static bool ValidatePurchase(CreatePurchaseOrderRequestValidator validator, int quantity = 1, decimal unitPrice = 1m, int itemCount = 1)

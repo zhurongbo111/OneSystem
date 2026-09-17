@@ -33,4 +33,14 @@ internal sealed class FakeStockMovementRepository : IStockMovementRepository
 
     public Task<int> SumQuantityAsync(Guid productId, CancellationToken cancellationToken = default)
         => Task.FromResult(Appended.Where(m => m.ProductId == productId).Sum(m => m.Quantity));
+
+    public Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
+        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        var ids = Appended.Where(m => productIds.Contains(m.ProductId))
+            .Select(m => m.ProductId)
+            .Distinct()
+            .ToList();
+        return Task.FromResult<IReadOnlyCollection<Guid>>(ids);
+    }
 }

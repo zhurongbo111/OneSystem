@@ -45,4 +45,14 @@ public interface IStockMovementRepository
     /// <param name="productId">商品 id</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<int> SumQuantityAsync(Guid productId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量查询「已发生过库存变动」的商品 id（期初建账限制用，erp-stock-take）：
+    /// 在给定商品集合中，返回存在任意流水记录的商品 id 集合（空集合表示全部未发生变动）。
+    /// </summary>
+    /// <param name="productIds">商品 id 集合</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>已有流水变动的商品 id 集合</returns>
+    Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
+        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default);
 }
