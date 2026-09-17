@@ -8,6 +8,7 @@ updated: 2026-09-17
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照。
 > 本规格消费 erp-product 建立的 `Inventory` / `Products` / `Categories` 表与 `IInventoryRepository`，**不引入新表 / 新实体 / 新迁移**。
+> **演进（erp-report）**：库存的「分类汇总视图」（库存余额表：按分类聚合 + 占比 + 低库存 / 零库存计数）由 `specs/025-erp-report/` 提供，本页仍是「逐商品明细操作视图」；报表「查看明细」下钻本页时经 `query.categoryId` 预置分类筛选。现行为准见 `specs/025-erp-report/`。
 
 ## 1. 总体设计
 
