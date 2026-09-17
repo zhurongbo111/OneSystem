@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { getInventory } from '@/api/inventory'
 import type { InventoryItem } from '@/api/inventory'
@@ -7,10 +8,12 @@ import { getCategories } from '@/api/product'
 import type { Category } from '@/api/product'
 import { formatDateTime } from '@/utils/datetime'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconRefresh, IconRestore, IconSearch, IconSettings } from '@tabler/icons-vue'
+import { IconListDetails, IconRefresh, IconRestore, IconSearch, IconSettings } from '@tabler/icons-vue'
+
+const router = useRouter()
 
 // —— constants ——
-/** 列显示设置（不持久化；纯只读页无操作列） */
+/** 列显示设置（不持久化；操作列「流水」固定显示，不参与列设置） */
 const columnOptions = [
   { label: '编码', value: 'code' },
   { label: '名称', value: 'name' },
@@ -87,6 +90,8 @@ const columns = computed<TableColumnData[]>(() => {
   if (visibleColumns.value.includes('updatedAt')) {
     cols.push({ title: '最近变动时间', slotName: 'updatedAt', width: 172 })
   }
+  // 操作列固定显示：只读「流水」下钻入口（不参与列设置）
+  cols.push({ title: '操作', slotName: 'actions', width: 90, fixed: 'right' })
   return cols
 })
 
@@ -162,6 +167,11 @@ function onPageSizeChange(size: number): void {
   pageSize.value = size
   page.value = 1
   void fetchList()
+}
+
+/** 下钻流水页：同步路由跳转（瞬时动作不置 loading），带 productId 预置筛选 */
+function onShowMovements(record: InventoryItem): void {
+  void router.push({ name: 'stockMovements', query: { productId: record.productId } })
 }
 </script>
 
@@ -302,6 +312,19 @@ function onPageSizeChange(size: number): void {
         </template>
         <template #updatedAt="{ record }">
           {{ formatDateTime((record as InventoryItem).updatedAt) }}
+        </template>
+        <!-- 操作列：只读「流水」下钻入口（不置 loading） -->
+        <template #actions="{ record }">
+          <a-button
+            type="text"
+            size="small"
+            @click="onShowMovements(record as InventoryItem)"
+          >
+            <template #icon>
+              <IconListDetails />
+            </template>
+            流水
+          </a-button>
         </template>
       </a-table>
     </a-card>
