@@ -80,6 +80,10 @@ async function selectBySearch(selectLocator: Locator, keyword: string): Promise<
   await selectLocator.click()
   const input = selectLocator.locator('input')
   await input.fill(keyword)
+  // 远程搜索下拉异步渲染：先等匹配项出现再 Enter，否则空列表下 Enter 选不中（空库 / 冷启动必现）
+  await expect(
+    selectLocator.page().locator('.arco-select-option', { hasText: keyword }).first(),
+  ).toBeVisible()
   await input.press('Enter')
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
 }

@@ -192,12 +192,25 @@ async function detailReturnNo(page: Page): Promise<string> {
  * 断言「没有一行不含该单号」而非「首行含该单号」——最新一条流水本就是本单，
  * 只查首行会在过滤尚未生效时误判为已过滤。
  */
+/**
+ * 点「搜索」并等到命中行出现。
+ * 首屏请求进行中点按钮会被 Arco 的 loading 吞掉（不报错、筛选不生效），
+ * 而「没有一行不含关键字」在表格尚未渲染（0 行）时会提前通过，故先重试点击直到命中行出现。
+ */
+async function searchAndWaitHit(page: Page, keyword: string): Promise<void> {
+  const searchButton = page.getByRole('button', { name: '搜索', exact: true })
+  await expect(async () => {
+    await searchButton.click()
+    await expect(dataRows(page).filter({ hasText: keyword })).not.toHaveCount(0, { timeout: 2000 })
+  }).toPass({ timeout: 15000 })
+  await expect(dataRows(page).filter({ hasNotText: keyword })).toHaveCount(0)
+}
+
 async function searchMovementByOrderNo(page: Page, orderNo: string): Promise<void> {
   const input = page.getByPlaceholder('搜索来源单号')
   await input.fill(orderNo)
   await expect(input).toHaveValue(orderNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  await expect(dataRows(page).filter({ hasNotText: orderNo })).toHaveCount(0, { timeout: 15000 })
+  await searchAndWaitHit(page, orderNo)
 }
 
 /** 在退货列表按单号搜索（同样等到所有行都命中该单号，避免误判过滤已生效） */
@@ -205,8 +218,7 @@ async function searchReturnByNo(page: Page, returnNo: string): Promise<void> {
   const input = page.getByPlaceholder('搜索单号 / 供应商')
   await input.fill(returnNo)
   await expect(input).toHaveValue(returnNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  await expect(dataRows(page).filter({ hasNotText: returnNo })).toHaveCount(0, { timeout: 15000 })
+  await searchAndWaitHit(page, returnNo)
 }
 
 test.describe('采购退货（集成）', () => {
