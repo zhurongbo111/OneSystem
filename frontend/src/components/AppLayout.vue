@@ -11,6 +11,7 @@ import {
   IconChartBar,
   IconClipboardCheck,
   IconClipboardList,
+  IconCoin,
   IconComponents,
   IconDatabase,
   IconFileInvoice,
@@ -77,7 +78,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   sale: ['salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation'],
-  report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport'],
+  report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
   system: ['users', 'userDetail', 'loginLogs'],
 }
 
@@ -333,6 +334,12 @@ function onLogout(): void {
               <IconShoppingBag />
             </template>
             <span>销售汇总</span>
+          </a-menu-item>
+          <a-menu-item key="costProfitReport">
+            <template #icon>
+              <IconCoin />
+            </template>
+            <span>成本与毛利</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu key="system">

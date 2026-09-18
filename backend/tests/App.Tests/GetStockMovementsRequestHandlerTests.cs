@@ -15,7 +15,8 @@ public class GetStockMovementsRequestHandlerTests
 {
     private static readonly DateTimeOffset Time = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
 
-    private static StockMovementItem Item(StockMovementType type, int quantity, string? sourceNo, Guid? createdBy) => new()
+    private static StockMovementItem Item(
+        StockMovementType type, int quantity, string? sourceNo, Guid? createdBy, decimal unitCost = 0m) => new()
     {
         Id = Guid.NewGuid(),
         ProductId = Guid.NewGuid(),
@@ -24,11 +25,13 @@ public class GetStockMovementsRequestHandlerTests
         Unit = "个",
         MovementType = type,
         Quantity = quantity,
+        UnitCost = unitCost,
+        TotalCost = quantity * unitCost,
         SourceNo = sourceNo,
         Remark = null,
         CreatedAt = Time,
         CreatedByName = createdBy is null ? null : "管理员",
-    };
+        };
 
     /// <summary>
     /// 假仓储：记录最近一次 GetPagedAsync 入参；返回 2 行（带值 / 空值各一）
@@ -61,6 +64,18 @@ public class GetStockMovementsRequestHandlerTests
 
         public Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
             IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<decimal?> GetMovementUnitCostAsync(
+            Guid sourceId, Guid productId, StockMovementType type, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<StockMovementCostRow>> GetAllForCostAsync(
+            Guid? productId, DateTimeOffset? start, DateTimeOffset? end, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task UpdateCostAsync(
+            Guid id, decimal unitCost, decimal totalCost, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 

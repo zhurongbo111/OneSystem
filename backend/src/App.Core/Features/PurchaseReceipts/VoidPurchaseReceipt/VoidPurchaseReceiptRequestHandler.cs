@@ -80,6 +80,13 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
             {
                 await _inventoryRepository.IncrementAsync(item.ProductId, -item.Quantity, cancellationToken);
 
+                // 成本：冲销还原 —— 复用原入库流水的成本单价（erp-cost design §0.2），保证「入 + 冲回 = 0」；
+                // 查不到原流水（历史数据）按 0 计，重算用例会统计缺价
+                var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
+                    order.Id, item.ProductId, StockMovementType.PurchaseInbound, cancellationToken) ?? 0m;
+                var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
+                await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+
                 // 库存流水：采购作废回冲，与库存增减同事务（erp-stock-movement design §3.7）
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
@@ -87,6 +94,8 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
                     ProductId = item.ProductId,
                     MovementType = StockMovementType.PurchaseVoid,
                     Quantity = -item.Quantity,
+                    UnitCost = unitCost,
+                    TotalCost = -totalCost,
                     SourceId = order.Id,
                     SourceNo = order.ReceiptNo,
                     CreatedAt = now,

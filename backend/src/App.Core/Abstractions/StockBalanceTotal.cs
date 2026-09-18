@@ -16,4 +16,7 @@ public sealed record StockBalanceTotal
 
     /// <summary>低库存商品数</summary>
     public required int BelowSafetyCount { get; init; }
+
+    /// <summary>库存成本额合计（erp-cost）</summary>
+    public required decimal TotalCostAmount { get; init; }
 }

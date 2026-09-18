@@ -146,7 +146,8 @@ public class CreateSalesShipmentRequestHandlerTests
         await handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m)));
 
         // 销售先扣库存、成功后再插单、写流水（design.md §3.4）
-        Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Append", "Commit" }, calls.ToArray());
+        // 成本：销售出库按「变动前」均价结转 → 扣减前先 GetAverageCost，写流水前 ApplyOutboundCost
+        Assert.Equal(new[] { "Begin", "GetAverageCost", "TryDecrement", "Generate", "Add", "ApplyOutboundCost", "Append", "Commit" }, calls.ToArray());
     }
 
     // ============================== 库存不足 ==============================
@@ -311,7 +312,7 @@ public class CreateSalesShipmentRequestHandlerTests
         Assert.Contains("模拟数据库写入失败", ex.Message);
 
         // Begin → TryDecrement → Generate → Add → Rollback，且从未 Commit；Add 失败不写流水
-        Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Rollback" }, calls.ToArray());
+        Assert.Equal(new[] { "Begin", "GetAverageCost", "TryDecrement", "Generate", "Add", "Rollback" }, calls.ToArray());
         Assert.DoesNotContain("Commit", calls);
         Assert.Empty(movements.Appended);
     }
@@ -328,6 +329,6 @@ public class CreateSalesShipmentRequestHandlerTests
         Assert.Contains("模拟提交失败", ex.Message);
 
         // Begin → TryDecrement → Generate → Add → Append → Commit(抛) → Rollback，异常上抛
-        Assert.Equal(new[] { "Begin", "TryDecrement", "Generate", "Add", "Append", "Commit", "Rollback" }, calls.ToArray());
+        Assert.Equal(new[] { "Begin", "GetAverageCost", "TryDecrement", "Generate", "Add", "ApplyOutboundCost", "Append", "Commit", "Rollback" }, calls.ToArray());
     }
 }

@@ -33,4 +33,10 @@ public sealed class StockTakeItem
 
     /// <summary>差异 = ActualQuantity − BookQuantity（后端计算，可负）</summary>
     public int Difference { get; set; }
+
+    /// <summary>
+    /// 期初成本单价（numeric(18,4)）：仅**期初建账**模式必填（成本基线，见 specs/026-erp-cost/design.md §0.2）；
+    /// 库存盘点模式下为 0（盘点按当时移动加权均价处理，不传成本）。
+    /// </summary>
+    public decimal UnitCost { get; set; }
 }

@@ -58,6 +58,12 @@ export interface StockBalanceItem {
   belowSafetyCount: number
   /** 库存占比（0–1，分母为全量筛选结果库存总量） */
   quantityRatio: number
+  /** 库存成本额合计（erp-cost；展示收敛到 2 位） */
+  totalCostAmount: number
+  /** 移动加权平均单价（erp-cost；= 成本额 ÷ 库存，库存为 0 时为 0） */
+  averageCost: number
+  /** 成本异常（库存 &lt; 0 或成本额 &lt; 0；报表标红提示，不阻断业务） */
+  hasCostAnomaly: boolean
 }
 
 /** 库存余额表合计（对应后端 StockBalanceSummaryDto） */
@@ -66,6 +72,8 @@ export interface StockBalanceSummary {
   totalQuantity: number
   zeroStockCount: number
   belowSafetyCount: number
+  /** 库存成本额合计（erp-cost） */
+  totalCostAmount: number
 }
 
 /** 库存余额表查询参数（对应后端 GetStockBalanceRequest） */
@@ -161,6 +169,52 @@ export function toReportRangeUtc(startDate: string, endDate: string): { start: s
   const endExclusive = new Date(`${endDate}T00:00:00`)
   endExclusive.setDate(endExclusive.getDate() + 1)
   return { start: start.toISOString(), end: endExclusive.toISOString() }
+}
+
+// ============================== 成本与毛利报表（erp-cost）=============================
+
+/** 成本与毛利分组维度（对应后端 CostProfitGroupBy） */
+export type CostProfitGroupBy = 'order' | 'product' | 'partner'
+
+/** 成本与毛利报表行（对应后端 CostProfitItemDto；毛利由后端计算，毛利率收入为 0 时为 null） */
+export interface CostProfitItem {
+  /** 分组键（单据 / 商品 / 往来 id；后端恒有值） */
+  key: string
+  name: string
+  salesQuantity: number
+  salesAmount: number
+  costAmount: number
+  grossProfit: number
+  grossProfitRate: number | null
+  hasMissingCost: boolean
+}
+
+/** 成本与毛利报表合计（对应后端 CostProfitTotalDto；全量筛选口径） */
+export interface CostProfitSummary {
+  salesQuantity: number
+  salesAmount: number
+  costAmount: number
+  grossProfit: number
+  grossProfitRate: number | null
+  hasMissingCost: boolean
+}
+
+/** 成本与毛利报表查询参数（对应后端 GetCostProfitReportRequest） */
+export interface CostProfitQuery {
+  start: string
+  end: string
+  productId?: string
+  categoryId?: string
+  groupBy: CostProfitGroupBy
+  page: number
+  pageSize: number
+}
+
+/** 成本与毛利报表：期间内销售出库与退货按维度聚合收入 / 成本 / 毛利（只读） */
+export function getCostProfitReport(
+  query: CostProfitQuery,
+): Promise<ReportPage<CostProfitItem, CostProfitSummary>> {
+  return get<ReportPage<CostProfitItem, CostProfitSummary>>('/reports/cost-profit', { params: query })
 }
 
 /** 进销存报表：期间 + 商品 / 分类 / 只看有变动（只读） */

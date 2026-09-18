@@ -3,6 +3,8 @@ using App.Core.Auth;
 using App.Core.Features.Auth.Login;
 using App.Core.Features.Categories;
 using App.Core.Features.Categories.CreateCategory;
+using App.Core.Features.Costs;
+using App.Core.Features.Costs.RecalculateCosts;
 using App.Core.Features.Categories.DeleteCategory;
 using App.Core.Features.Categories.GetCategories;
 using App.Core.Features.Categories.GetCategoriesPaged;
@@ -44,6 +46,7 @@ using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
 using App.Core.Features.Reports;
+using App.Core.Features.Reports.GetCostProfitReport;
 using App.Core.Features.Reports.GetInventoryFlow;
 using App.Core.Features.Reports.GetPurchaseSummary;
 using App.Core.Features.Reports.GetSalesSummary;
@@ -112,6 +115,9 @@ public static class DependencyInjection
         // 密码哈希技术组件无状态，注册为单例（对齐 TokenService）
         services.AddSingleton<PasswordHasher>();
         services.AddSingleton<TokenService>();
+
+        // 成本重算互斥锁（erp-cost）：进程内 Singleton，用于拒绝并发重算（40118）
+        services.AddSingleton<CostRecalculationLock>();
 
         // 用例中介：Controller 只注入 IMediator，经 Send(Request) 分发到已注册的用例处理器
         services.AddScoped<IMediator, Mediator>();
@@ -227,6 +233,12 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<GetPurchaseSummaryRequest, ReportPageDto<PurchaseSummaryItemDto, PurchaseSummaryTotalDto>>, GetPurchaseSummaryRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesSummaryRequest, ReportPageDto<SalesSummaryItemDto, SalesSummaryTotalDto>>, GetSalesSummaryRequestHandler>();
 
+        // 成本与毛利报表（erp-cost；与 025 报表同域）
+        services.AddScoped<IRequestHandler<GetCostProfitReportRequest, ReportPageDto<CostProfitItemDto, CostProfitTotalDto>>, GetCostProfitReportRequestHandler>();
+
+        // 成本重算 / 初始化（erp-cost；运维动作，按流水时序重放，幂等）
+        services.AddScoped<IRequestHandler<RecalculateCostsRequest, CostRecalculateResultDto>, RecalculateCostsRequestHandler>();
+
         // 格式校验器（FluentValidation）：校验规则集中在对应用例目录；无校验器的用例（如按 id 详情）不注册
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<GetUsersRequest>, GetUsersRequestValidator>();
@@ -275,6 +287,8 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetStockBalanceRequest>, GetStockBalanceRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseSummaryRequest>, GetPurchaseSummaryRequestValidator>();
         services.AddScoped<IValidator<GetSalesSummaryRequest>, GetSalesSummaryRequestValidator>();
+        services.AddScoped<IValidator<GetCostProfitReportRequest>, GetCostProfitReportRequestValidator>();
+        services.AddScoped<IValidator<RecalculateCostsRequest>, RecalculateCostsRequestValidator>();
 
         return services;
     }

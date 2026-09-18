@@ -180,6 +180,8 @@ async function loadOrderPicks(value: string): Promise<void> {
 
 /** 订单详情「去出库」预置：先取订单头拿客户，再按客户拉候选并按订单带出明细 */
 async function applyPresetOrder(value: string): Promise<void> {
+  // 进入加载即清空占位行：避免「去出库」跳转后异步带出明细前，测试 fill 命中占位行被后续覆盖
+  lines.value = []
   try {
     const order = await getSalesOrder(value)
     partnerId.value = order.partnerId
@@ -198,6 +200,8 @@ async function onOrderChange(value?: string): Promise<void> {
     return
   }
 
+  // 加载期间清空占位行，避免旧行残留与并发 fill 竞争
+  lines.value = []
   orderLinesLoading.value = true
   try {
     const detail = await getSalesOrderLines(value)

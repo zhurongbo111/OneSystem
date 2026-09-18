@@ -291,6 +291,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ReportManagement/SalesSummaryReportView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'reports/cost-profit',
+        name: 'costProfitReport',
+        component: () => import('@/views/ReportManagement/CostProfitReportView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {

@@ -18,6 +18,8 @@ internal static class StockMovementsDtoMapper
             Unit = item.Unit,
             MovementType = item.MovementType,
             Quantity = item.Quantity,
+            UnitCost = item.UnitCost,
+            TotalCost = item.TotalCost,
             SourceNo = item.SourceNo,
             Remark = item.Remark,
             CreatedAt = item.CreatedAt,

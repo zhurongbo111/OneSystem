@@ -1,5 +1,6 @@
 using App.Core.Abstractions;
 using App.Core.Features.Reports;
+using App.Core.Features.Reports.GetCostProfitReport;
 using App.Core.Features.Reports.GetInventoryFlow;
 using App.Core.Features.Reports.GetPurchaseSummary;
 using App.Core.Features.Reports.GetSalesSummary;
@@ -75,6 +76,18 @@ public class ReportsController : ControllerBase
     [HttpGet("sales-summary")]
     public async Task<ApiResponse<ReportPageDto<SalesSummaryItemDto, SalesSummaryTotalDto>>> GetSalesSummary(
         [FromQuery] GetSalesSummaryRequest request,
+        CancellationToken cancellationToken)
+        => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 成本与毛利报表：期间内销售出库与退货按单据 / 商品 / 往来单位维度聚合收入、成本、毛利、毛利率
+    /// </summary>
+    /// <param name="request">查询请求（Query 绑定）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ReportPageDto<CostProfitItemDto, CostProfitTotalDto>>))]
+    [HttpGet("cost-profit")]
+    public async Task<ApiResponse<ReportPageDto<CostProfitItemDto, CostProfitTotalDto>>> GetCostProfitReport(
+        [FromQuery] GetCostProfitReportRequest request,
         CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 }

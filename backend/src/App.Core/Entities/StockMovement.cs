@@ -20,6 +20,15 @@ public sealed class StockMovement
     /// <summary>变动量（带符号：入库 / 回增为正，出库 / 回冲为负；恒不为 0）</summary>
     public int Quantity { get; set; }
 
+    /// <summary>
+    /// 本次变动成本单价（numeric(18,4)）：按 specs/026-erp-cost/design.md §0.2 的来源表取值
+    ///（入库取单据价 / 录入价，出库取变动前均价，冲销类复用原方向单价）。
+    /// </summary>
+    public decimal UnitCost { get; set; }
+
+    /// <summary>本次变动成本金额（numeric(18,4)，与 <see cref="Quantity"/> 同号；恒等式 Σ TotalCost == Inventory.CostAmount）</summary>
+    public decimal TotalCost { get; set; }
+
     /// <summary>来源单据 id（采购单 / 销售单）</summary>
     public Guid? SourceId { get; set; }
 

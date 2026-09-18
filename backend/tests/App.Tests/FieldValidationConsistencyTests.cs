@@ -11,6 +11,7 @@ using App.Core.Features.Reports.GetPurchaseSummary;
 using App.Core.Features.Reports.GetSalesSummary;
 using App.Core.Features.Reports.GetStockBalance;
 using App.Core.Features.SalesShipments.CreateSalesShipment;
+using App.Core.Features.StockTakes.CreateStockTake;
 using App.Core.Features.SalesShipments.GetSalesShipments;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.GetSalesReturns;
@@ -22,6 +23,8 @@ using App.Core.Features.Users.GetUsers;
 using App.Core.Features.Users.ResetPassword;
 using App.Core.Features.Users.UpdateUser;
 using App.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace App.Tests;
 
@@ -647,6 +650,67 @@ public class FieldValidationConsistencyTests
             .Validate(new GetStockBalanceRequest { Page = 1, PageSize = 20, Keyword = ok }).IsValid);
         Assert.False(new GetStockBalanceRequestValidator()
             .Validate(new GetStockBalanceRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
+    }
+
+    // ============================== 成本字段约束（erp-cost，specs/026-erp-cost）==============================
+
+    [Fact]
+    public void 期初成本单价上界_应与商品单价同源()
+    {
+        var validator = new CreateStockTakeRequestValidator();
+        var takeDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        Assert.True(validator.Validate(new CreateStockTakeRequest
+        {
+            Type = StockTakeType.Initial,
+            TakeDate = takeDate,
+            Items =
+            [
+                new CreateStockTakeItem
+                {
+                    ProductId = Guid.NewGuid(),
+                    ActualQuantity = 1,
+                    UnitCost = ProductFieldConstraints.PriceMaxValue,
+                },
+            ],
+        }).IsValid);
+
+        // 超商品单价上界一分即拒绝（成本与商品单价同源，禁止本域另立上界）
+        Assert.False(validator.Validate(new CreateStockTakeRequest
+        {
+            Type = StockTakeType.Initial,
+            TakeDate = takeDate,
+            Items =
+            [
+                new CreateStockTakeItem
+                {
+                    ProductId = Guid.NewGuid(),
+                    ActualQuantity = 1,
+                    UnitCost = ProductFieldConstraints.PriceMaxValue + 0.01m,
+                },
+            ],
+        }).IsValid);
+    }
+
+    [Fact]
+    public void 成本列精度_EF模型应为numeric18_4()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        AssertCostPrecision<Inventory>(dbContext, nameof(Inventory.CostAmount));
+        AssertCostPrecision<Inventory>(dbContext, nameof(Inventory.AverageCost));
+        AssertCostPrecision<StockMovement>(dbContext, nameof(StockMovement.UnitCost));
+        AssertCostPrecision<StockMovement>(dbContext, nameof(StockMovement.TotalCost));
+        AssertCostPrecision<StockTakeItem>(dbContext, nameof(StockTakeItem.UnitCost));
+    }
+
+    private static void AssertCostPrecision<TEntity>(AppDbContext dbContext, string propertyName)
+    {
+        var property = dbContext.Model.FindEntityType(typeof(TEntity))!.FindProperty(propertyName)!;
+
+        // InMemory 提供程序无法解析列类型（GetColumnType 依赖 RelationalTypeMapping），直接读 EF 注解
+        var columnType = property.FindAnnotation(RelationalAnnotationNames.ColumnType)?.Value as string;
+        Assert.Equal("numeric(18,4)", columnType);
     }
 
     private static bool ValidateUsername(CreateUserRequestValidator validator, string username)

@@ -48,6 +48,10 @@ internal static class ReportsDtoMapper
             ZeroStockCount = item.ZeroStockCount,
             BelowSafetyCount = item.BelowSafetyCount,
             QuantityRatio = totalQuantity > 0 ? (decimal)item.TotalQuantity / totalQuantity : 0m,
+            // 成本列（erp-cost）：金额与异常标记透传，均价 = 金额 ÷ 库存（库存为 0 时为 0）
+            TotalCostAmount = item.TotalCostAmount,
+            AverageCost = item.TotalQuantity == 0 ? 0m : CostCalculator.Round(item.TotalCostAmount / item.TotalQuantity),
+            HasCostAnomaly = item.HasCostAnomaly,
         };
 
     /// <summary>库存余额表合计读模型 → 出参</summary>
@@ -58,6 +62,7 @@ internal static class ReportsDtoMapper
             TotalQuantity = total.TotalQuantity,
             ZeroStockCount = total.ZeroStockCount,
             BelowSafetyCount = total.BelowSafetyCount,
+            TotalCostAmount = total.TotalCostAmount,
         };
 
     /// <summary>采购汇总行读模型 → 出参（净数量 / 净额 = 入库 − 退货）</summary>
@@ -116,5 +121,38 @@ internal static class ReportsDtoMapper
             ReturnAmount = total.ReturnAmount,
             NetQuantity = total.OutboundQuantity - total.ReturnQuantity,
             NetAmount = total.OutboundAmount - total.ReturnAmount,
+        };
+
+    /// <summary>
+    /// 成本与毛利报表行读模型 → 出参（毛利 / 毛利率按 specs/026-erp-cost design.md §0.3 计算：
+    /// 毛利 = 收入 − 成本，收入为 0 时毛利率为 null）
+    /// </summary>
+    public static CostProfitItemDto ToCostProfitItemDto(CostProfitItem item)
+        => new()
+        {
+            Key = item.Key?.ToString(),
+            Name = item.Name,
+            SalesQuantity = item.SalesQuantity,
+            SalesAmount = item.SalesAmount,
+            CostAmount = item.CostAmount,
+            GrossProfit = item.SalesAmount - item.CostAmount,
+            GrossProfitRate = item.SalesAmount == 0
+                ? null
+                : CostCalculator.Round((item.SalesAmount - item.CostAmount) / item.SalesAmount),
+            HasMissingCost = item.HasMissingCost,
+        };
+
+    /// <summary>成本与毛利报表合计读模型 → 出参</summary>
+    public static CostProfitTotalDto ToCostProfitTotalDto(CostProfitTotal total)
+        => new()
+        {
+            SalesQuantity = total.SalesQuantity,
+            SalesAmount = total.SalesAmount,
+            CostAmount = total.CostAmount,
+            GrossProfit = total.SalesAmount - total.CostAmount,
+            GrossProfitRate = total.SalesAmount == 0
+                ? null
+                : CostCalculator.Round((total.SalesAmount - total.CostAmount) / total.SalesAmount),
+            HasMissingCost = total.HasMissingCost,
         };
 }

@@ -1,4 +1,5 @@
 using App.Core.Entities;
+using App.Core.Features.Reports;
 
 namespace App.Core.Abstractions;
 
@@ -85,6 +86,29 @@ public interface IReportQueryRepository
         DateTimeOffset end,
         Guid? partnerId,
         bool groupByProduct,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 成本与毛利报表（erp-cost）：期间内销售出库 / 销售退货，按单据 / 商品 / 往来单位维度聚合
+    /// 「销售收入（单据）+ 销售成本（流水 <c>TotalCost</c>，退货天然冲减）+ 成本缺失标记」；
+    /// 毛利与毛利率为派生值，由用例计算。合计为**全量筛选结果**口径（不分页）。
+    /// </summary>
+    /// <param name="start">期间起（含，UTC）</param>
+    /// <param name="end">期间止（不含，UTC）</param>
+    /// <param name="productId">商品 id，可空</param>
+    /// <param name="categoryId">分类 id，可空</param>
+    /// <param name="groupBy">分组维度</param>
+    /// <param name="page">页码，从 1 起</param>
+    /// <param name="pageSize">每页条数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<(IReadOnlyList<CostProfitItem> Items, int Total, CostProfitTotal Summary)> GetCostProfitAsync(
+        DateTimeOffset start,
+        DateTimeOffset end,
+        Guid? productId,
+        Guid? categoryId,
+        CostProfitGroupBy groupBy,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

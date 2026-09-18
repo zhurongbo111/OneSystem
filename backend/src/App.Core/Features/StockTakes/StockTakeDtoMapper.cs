@@ -32,6 +32,7 @@ internal static class StockTakeDtoMapper
                 BookQuantity = i.BookQuantity,
                 ActualQuantity = i.ActualQuantity,
                 Difference = i.Difference,
+                UnitCost = i.UnitCost,
             }).ToList(),
         };
 

@@ -13,6 +13,10 @@ export interface StockMovementListItem {
   unit: string
   movementType: StockMovementType
   quantity: number
+  /** 本次变动成本单价（erp-cost；numeric(18,4)） */
+  unitCost: number
+  /** 本次变动成本金额（erp-cost；与 quantity 同号） */
+  totalCost: number
   sourceNo: string | null
   remark: string | null
   createdAt: string

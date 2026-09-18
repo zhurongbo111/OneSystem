@@ -30,4 +30,10 @@ public sealed class CreateStockTakeItem
 
     /// <summary>实盘数量（≥ 0）</summary>
     public required int ActualQuantity { get; init; }
+
+    /// <summary>
+    /// 期初成本单价（erp-cost）：**期初建账必填**（0 ~ 9999999.99，库存成本的基线，缺价会导致后续均价失真）；
+    /// 库存盘点必须为空（按当时移动加权均价处理，传入即 <c>40000</c>，避免误传成本）。
+    /// </summary>
+    public decimal? UnitCost { get; init; }
 }

@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Features.Reports;
 
 namespace App.Tests;
 
@@ -25,6 +26,16 @@ internal readonly record struct SummaryArgs(
     DateTimeOffset End,
     Guid? PartnerId,
     bool GroupByProduct,
+    int Page,
+    int PageSize);
+
+/// <summary>成本与毛利报表查询的传参快照</summary>
+internal readonly record struct CostProfitArgs(
+    DateTimeOffset Start,
+    DateTimeOffset End,
+    Guid? ProductId,
+    Guid? CategoryId,
+    CostProfitGroupBy GroupBy,
     int Page,
     int PageSize);
 
@@ -69,6 +80,7 @@ internal sealed class FakeReportQueryRepository : IReportQueryRepository
         TotalQuantity = 0,
         ZeroStockCount = 0,
         BelowSafetyCount = 0,
+        TotalCostAmount = 0m,
     };
 
     /// <summary>采购汇总：上一次调用入参</summary>
@@ -162,5 +174,38 @@ internal sealed class FakeReportQueryRepository : IReportQueryRepository
     {
         LastSalesSummaryArgs = new SummaryArgs(start, end, partnerId, groupByProduct, page, pageSize);
         return Task.FromResult((SalesSummaryItems, SalesSummaryTotal, SalesSummarySummary));
+    }
+
+    /// <summary>成本与毛利报表：上一次调用入参</summary>
+    public CostProfitArgs? LastCostProfitArgs { get; private set; }
+
+    /// <summary>成本与毛利报表：预设行</summary>
+    public IReadOnlyList<CostProfitItem> CostProfitItems { get; set; } = [];
+
+    /// <summary>成本与毛利报表：预设总条数</summary>
+    public int CostProfitTotal { get; set; }
+
+    /// <summary>成本与毛利报表：预设合计</summary>
+    public CostProfitTotal CostProfitSummary { get; set; } = new()
+    {
+        SalesQuantity = 0,
+        SalesAmount = 0,
+        CostAmount = 0,
+        HasMissingCost = false,
+    };
+
+    /// <inheritdoc />
+    public Task<(IReadOnlyList<CostProfitItem> Items, int Total, CostProfitTotal Summary)> GetCostProfitAsync(
+        DateTimeOffset start,
+        DateTimeOffset end,
+        Guid? productId,
+        Guid? categoryId,
+        CostProfitGroupBy groupBy,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        LastCostProfitArgs = new CostProfitArgs(start, end, productId, categoryId, groupBy, page, pageSize);
+        return Task.FromResult((CostProfitItems, CostProfitTotal, CostProfitSummary));
     }
 }

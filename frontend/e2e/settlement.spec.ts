@@ -92,11 +92,12 @@ function drawerTitle(page: Page, title: string): ReturnType<typeof page.locator>
 /**
  * 在 Arco search-select 中搜索并选中唯一匹配项（Enter 确认高亮项）。
  */
-async function selectBySearch(selectLocator: Locator, keyword: string): Promise<void> {
+async function selectBySearch(page: Page, selectLocator: Locator, keyword: string): Promise<void> {
   await selectLocator.click()
   const input = selectLocator.locator('input')
   await input.fill(keyword)
-  await input.press('Enter')
+  // 远程搜索下拉浮层异步渲染：等待匹配选项出现后再点击，避免 Enter 过早选中空项
+  await page.locator('.arco-select-option', { hasText: keyword }).first().click()
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
 }
 
@@ -138,12 +139,12 @@ async function seedStockByPurchase(page: Page, supplierName: string, productCode
   await page.getByRole('button', { name: '开采购单' }).click()
   await expect(page).toHaveURL(/\/purchases\/new$/)
 
-  await selectBySearch(page.locator('.arco-select').first(), supplierName)
+  await selectBySearch(page, page.locator('.arco-select').first(), supplierName)
 
   const rows = dataRows(page)
   await expect(rows).toHaveCount(1)
   const row0 = rows.nth(0)
-  await selectBySearch(row0.locator('.arco-select'), productCode)
+  await selectBySearch(page, row0.locator('.arco-select'), productCode)
   const qty0 = row0.locator('.arco-input-number').nth(0).locator('input')
   await qty0.fill('10')
   await qty0.blur()
@@ -164,12 +165,12 @@ async function createSingleLineSalesShipment(
   await page.getByRole('button', { name: '开销售单' }).click()
   await expect(page).toHaveURL(/\/sales\/new$/)
 
-  await selectBySearch(page.locator('.arco-select').first(), customerName)
+  await selectBySearch(page, page.locator('.arco-select').first(), customerName)
 
   const rows = dataRows(page)
   await expect(rows).toHaveCount(1)
   const row0 = rows.nth(0)
-  await selectBySearch(row0.locator('.arco-select'), productCode)
+  await selectBySearch(page, row0.locator('.arco-select'), productCode)
   const qty0 = row0.locator('.arco-input-number').nth(0).locator('input')
   await qty0.fill('1')
   await qty0.blur()

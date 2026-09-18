@@ -115,7 +115,13 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
  * - initial：切「期初建账」radio；否则默认「库存盘点」
  * - actual：实盘数量（期初 = 期初库存，盘点 = 实盘数，差异由后端按账面重算）
  */
-async function createStockTake(page: Page, code: string, actual: number, initial: boolean): Promise<string> {
+async function createStockTake(
+  page: Page,
+  code: string,
+  actual: number,
+  initial: boolean,
+  unitCost?: number,
+): Promise<string> {
   await page.getByRole('button', { name: '新建盘点' }).click()
   await expect(page).toHaveURL(/\/stock-takes\/new$/)
 
@@ -126,10 +132,16 @@ async function createStockTake(page: Page, code: string, actual: number, initial
   // 商品下拉（表单页仅此一个 a-select）
   const productSelect = page.locator('.arco-select')
   await selectBySearch(page, productSelect, code)
-  // 实盘数量
-  const actualInput = page.locator('.arco-input-number input')
+  // 实盘数量（期初模式下还有成本单价输入，二者均为 a-input-number，取第一个）
+  const actualInput = page.locator('.arco-input-number input').first()
   await actualInput.fill(String(actual))
   await actualInput.blur()
+
+  // 期初建账：成本单价必填（erp-cost —— 成本基线，未填无法计算成本与毛利）
+  if (initial && unitCost !== undefined) {
+    await page.locator('.arco-input-number input').nth(1).fill(String(unitCost))
+    await page.locator('.arco-input-number input').nth(1).blur()
+  }
 
   // 提交 → 跳详情页
   await page.getByRole('button', { name: '提交', exact: true }).click()
@@ -186,7 +198,7 @@ test.describe('期初建账与库存盘点（集成）', () => {
 
     // 期初建账：实盘 10
     await goStockTakes(page)
-    takeInitialNo = await createStockTake(page, codeInitial, 10, true)
+    takeInitialNo = await createStockTake(page, codeInitial, 10, true, 10)
     expect(takeInitialNo).toMatch(/^ST\d{12}$/)
 
     // 详情页：单号 / 类型 / 盘点日期 / 明细（账面 0 → 实盘 10，差异 +10）
@@ -223,7 +235,7 @@ test.describe('期初建账与库存盘点（集成）', () => {
     await goProducts(page)
     await createProduct(page, codeB, `盘点商品${Date.now() % 100000}`)
     await goStockTakes(page)
-    await createStockTake(page, codeB, 10, true)
+    await createStockTake(page, codeB, 10, true, 10)
     expect(await stockOf(page, codeB)).toBe('10')
 
     // 库存盘点：实盘 6 → 差异 -4
@@ -322,5 +334,32 @@ test.describe('期初建账与库存盘点（集成）', () => {
     await expect(dataRows(page).first()).toContainText(takeC)
     await expect(dataRows(page).first()).toContainText('盘点调整')
     await expect(dataRows(page).first().locator('.qty-plus')).toHaveText('+7')
+  })
+
+  test('期初建账未填成本单价应被拦，补填后生效（erp-cost）', async ({ page }) => {
+    const code = uniqueProductCode('stk_cost')
+    await goProducts(page)
+    await createProduct(page, code, `期初成本商品${Date.now() % 100000}`)
+
+    await goStockTakes(page)
+    await page.getByRole('button', { name: '新建盘点' }).click()
+    await expect(page).toHaveURL(/\/stock-takes\/new$/)
+    await page.locator('.arco-radio-group').getByText('期初建账', { exact: true }).click()
+    await selectBySearch(page, page.locator('.arco-select'), code)
+
+    // 只填实盘数量、不填成本单价 → 明细校验拦截（erp-cost 成本基线必填）
+    const inputs = page.locator('.arco-input-number input')
+    await inputs.nth(0).fill('10')
+    await inputs.nth(0).blur()
+    await page.getByRole('button', { name: '提交', exact: true }).click()
+    await expect(page.getByText('请检查明细')).toBeVisible()
+    await expect(page).toHaveURL(/\/stock-takes\/new$/)
+
+    // 补填成本单价后提交生效
+    await inputs.nth(1).fill('10')
+    await inputs.nth(1).blur()
+    await page.getByRole('button', { name: '提交', exact: true }).click()
+    await expect(page.getByText('盘点单已生效')).toBeVisible()
+    await expect(page).toHaveURL(/\/stock-takes\/detail\//)
   })
 })

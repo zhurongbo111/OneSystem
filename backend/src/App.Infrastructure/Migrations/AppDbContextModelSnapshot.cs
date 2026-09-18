@@ -50,6 +50,12 @@ namespace App.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("AverageCost")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("CostAmount")
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
@@ -914,6 +920,12 @@ namespace App.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<decimal>("TotalCost")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasColumnType("numeric(18,4)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt")
@@ -1008,6 +1020,9 @@ namespace App.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("varchar(10)");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasColumnType("numeric(18,4)");
 
                     b.HasKey("Id");
 

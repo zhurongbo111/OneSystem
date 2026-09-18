@@ -1,5 +1,6 @@
 using App.Core.Abstractions;
 using App.Core.Entities;
+using App.Core.Features.Reports;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -170,6 +171,8 @@ public sealed class ReportQueryRepository : IReportQueryRepository
                         p.Name,
                         p.SafetyStock,
                         Quantity = i == null ? 0 : i.Quantity,
+                        // 成本列（erp-cost）：结存成本额，用于库存金额与均价聚合
+                        CostAmount = i == null ? 0 : i.CostAmount,
                     };
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -195,6 +198,12 @@ public sealed class ReportQueryRepository : IReportQueryRepository
                 ZeroStockCount = g.Count(x => x.Quantity == 0),
                 // 低库存口径与库存查询页同源：安全阈值 > 0（0 表示不提醒）且库存 < 阈值
                 BelowSafetyCount = g.Count(x => x.SafetyStock > 0 && x.Quantity < x.SafetyStock),
+                // 成本列（erp-cost）：库存金额合计、按「金额 ÷ 数量」的均价、成本异常标记
+                TotalCostAmount = g.Sum(x => x.CostAmount),
+                AverageCost = g.Sum(x => x.Quantity) == 0
+                    ? 0m
+                    : g.Sum(x => x.CostAmount) / g.Sum(x => x.Quantity),
+                HasCostAnomaly = g.Any(x => x.Quantity < 0 || x.CostAmount < 0),
             })
             .ToListAsync(cancellationToken);
 
@@ -204,6 +213,7 @@ public sealed class ReportQueryRepository : IReportQueryRepository
             TotalQuantity = grouped.Sum(x => x.TotalQuantity),
             ZeroStockCount = grouped.Sum(x => x.ZeroStockCount),
             BelowSafetyCount = grouped.Sum(x => x.BelowSafetyCount),
+            TotalCostAmount = grouped.Sum(x => x.TotalCostAmount),
         };
 
         var ordered = grouped.OrderBy(x => x.CategoryName, StringComparer.Ordinal).ToList();
@@ -542,5 +552,275 @@ public sealed class ReportQueryRepository : IReportQueryRepository
 
         /// <summary>退货金额</summary>
         public decimal ReturnAmount { get; set; }
+    }
+
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<CostProfitItem> Items, int Total, CostProfitTotal Summary)> GetCostProfitAsync(
+        DateTimeOffset start,
+        DateTimeOffset end,
+        Guid? productId,
+        Guid? categoryId,
+        CostProfitGroupBy groupBy,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        // 收入口径与 025 销售汇总同源：期间内未作废销售出库单 − 未作废销售退货单
+        var shipmentQuery = _dbContext.SalesShipments.AsNoTracking()
+            .Where(o => o.Status == OrderStatus.Normal && o.OrderDate >= start && o.OrderDate < end);
+        var returnQuery = _dbContext.SalesReturns.AsNoTracking()
+            .Where(r => r.Status == OrderStatus.Normal && r.ReturnDate >= start && r.ReturnDate < end);
+
+        // 成本口径：期间内销售出库（负）与销售退货入库（正）流水，TotalCost 与 Quantity 同号，天然冲减
+        var movementQuery = _dbContext.StockMovements.AsNoTracking()
+            .Where(m => m.CreatedAt >= start && m.CreatedAt < end
+                && (m.MovementType == StockMovementType.SalesOutbound
+                    || m.MovementType == StockMovementType.SalesReturnIn));
+
+        // 商品 / 分类筛选：先取命中的商品集合，再统一作用于流水与单据（收入侧按明细命中）
+        IReadOnlyCollection<Guid>? scopedProductIds = null;
+        if (productId is not null || categoryId is not null)
+        {
+            var productQuery = _dbContext.Products.AsNoTracking().AsQueryable();
+
+            if (productId is not null)
+            {
+                var value = productId.Value;
+                productQuery = productQuery.Where(p => p.Id == value);
+            }
+
+            if (categoryId is not null)
+            {
+                var value = categoryId.Value;
+                productQuery = productQuery.Where(p => p.CategoryId == value);
+            }
+
+            scopedProductIds = await productQuery.Select(p => p.Id).ToListAsync(cancellationToken);
+        }
+
+        if (scopedProductIds is not null)
+        {
+            movementQuery = movementQuery.Where(m => scopedProductIds.Contains(m.ProductId));
+            shipmentQuery = shipmentQuery.Where(o => _dbContext.SalesShipmentItems
+                .Any(i => i.ShipmentId == o.Id && scopedProductIds.Contains(i.ProductId)));
+            returnQuery = returnQuery.Where(r => _dbContext.SalesReturnItems
+                .Any(i => i.ReturnId == r.Id && scopedProductIds.Contains(i.ProductId)));
+        }
+
+        var items = groupBy switch
+        {
+            CostProfitGroupBy.Order => await AggregateByOrderAsync(shipmentQuery, returnQuery, movementQuery, cancellationToken),
+            CostProfitGroupBy.Product => await AggregateByProductAsync(shipmentQuery, returnQuery, movementQuery, _dbContext, cancellationToken),
+            _ => await AggregateByPartnerAsync(shipmentQuery, returnQuery, movementQuery, cancellationToken),
+        };
+
+        var ordered = items.OrderBy(x => x.Name, StringComparer.Ordinal).ToList();
+
+        var summary = new CostProfitTotal
+        {
+            SalesQuantity = ordered.Sum(x => x.SalesQuantity),
+            SalesAmount = ordered.Sum(x => x.SalesAmount),
+            CostAmount = ordered.Sum(x => x.CostAmount),
+            HasMissingCost = ordered.Any(x => x.HasMissingCost),
+        };
+
+        var total = ordered.Count;
+        var pageItems = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+        return (pageItems, total, summary);
+    }
+
+    /// <summary>按销售单据聚合：出库单与退货单各自成行，收入取单据金额（退货取负）</summary>
+    private static async Task<List<CostProfitItem>> AggregateByOrderAsync(
+        IQueryable<SalesShipment> shipmentQuery,
+        IQueryable<SalesReturn> returnQuery,
+        IQueryable<StockMovement> movementQuery,
+        CancellationToken cancellationToken)
+    {
+        var costRows = await movementQuery
+            .Where(m => m.SourceId != null)
+            .GroupBy(m => m.SourceId!.Value)
+            .Select(g => new
+            {
+                SourceId = g.Key,
+                Quantity = g.Sum(m => m.Quantity),
+                Cost = g.Sum(m => m.TotalCost),
+                HasMissing = g.Any(m => m.UnitCost == 0),
+            })
+            .ToListAsync(cancellationToken);
+
+        var amountMap = new Dictionary<Guid, (string No, decimal Amount)>();
+        foreach (var shipment in await shipmentQuery
+            .Select(o => new { o.Id, o.ShipmentNo, o.TotalAmount })
+            .ToListAsync(cancellationToken))
+        {
+            amountMap[shipment.Id] = (shipment.ShipmentNo, shipment.TotalAmount);
+        }
+
+        foreach (var salesReturn in await returnQuery
+            .Select(r => new { r.Id, r.ReturnNo, r.TotalAmount })
+            .ToListAsync(cancellationToken))
+        {
+            amountMap[salesReturn.Id] = (salesReturn.ReturnNo, -salesReturn.TotalAmount);
+        }
+
+        return costRows
+            .Select(row =>
+            {
+                if (!amountMap.TryGetValue(row.SourceId, out var info))
+                {
+                    info = (string.Empty, 0m);
+                }
+
+                return new CostProfitItem
+                {
+                    Key = row.SourceId,
+                    Name = info.No,
+                    // 出库流水数量为负、退货入库为正：销售数量 = −Σ Quantity，销售成本 = −Σ TotalCost
+                    SalesQuantity = -row.Quantity,
+                    SalesAmount = info.Amount,
+                    CostAmount = -row.Cost,
+                    HasMissingCost = row.HasMissing,
+                };
+            })
+            .ToList();
+    }
+
+    /// <summary>按商品聚合：收入取出库 / 退货明细小计（退货取负），名称取商品档案当前名</summary>
+    private static async Task<List<CostProfitItem>> AggregateByProductAsync(
+        IQueryable<SalesShipment> shipmentQuery,
+        IQueryable<SalesReturn> returnQuery,
+        IQueryable<StockMovement> movementQuery,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var costRows = await movementQuery
+            .GroupBy(m => m.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(m => m.Quantity),
+                Cost = g.Sum(m => m.TotalCost),
+                HasMissing = g.Any(m => m.UnitCost == 0),
+            })
+            .ToListAsync(cancellationToken);
+
+        var amountMap = new Dictionary<Guid, decimal>();
+        foreach (var row in await (from o in shipmentQuery
+                                   join i in dbContext.SalesShipmentItems.AsNoTracking() on o.Id equals i.ShipmentId
+                                   group i by i.ProductId into g
+                                   select new { ProductId = g.Key, Amount = g.Sum(x => x.Subtotal) })
+                 .ToListAsync(cancellationToken))
+        {
+            amountMap[row.ProductId] = amountMap.GetValueOrDefault(row.ProductId) + row.Amount;
+        }
+
+        foreach (var row in await (from r in returnQuery
+                                   join i in dbContext.SalesReturnItems.AsNoTracking() on r.Id equals i.ReturnId
+                                   group i by i.ProductId into g
+                                   select new { ProductId = g.Key, Amount = g.Sum(x => x.Subtotal) })
+                 .ToListAsync(cancellationToken))
+        {
+            amountMap[row.ProductId] = amountMap.GetValueOrDefault(row.ProductId) - row.Amount;
+        }
+
+        var productIds = costRows.Select(x => x.ProductId).Distinct().ToList();
+        var names = (await dbContext.Products.AsNoTracking()
+                .Where(p => productIds.Contains(p.Id))
+                .Select(p => new { p.Id, p.Name })
+                .ToListAsync(cancellationToken))
+            .ToDictionary(p => p.Id, p => p.Name);
+
+        return costRows
+            .Select(row => new CostProfitItem
+            {
+                Key = row.ProductId,
+                Name = names.TryGetValue(row.ProductId, out var name) ? name : string.Empty,
+                SalesQuantity = -row.Quantity,
+                SalesAmount = amountMap.GetValueOrDefault(row.ProductId),
+                CostAmount = -row.Cost,
+                HasMissingCost = row.HasMissing,
+            })
+            .ToList();
+    }
+
+    /// <summary>按往来单位（客户）聚合：成本由流水经单据关联到客户，收入取单据金额（退货取负）</summary>
+    private static async Task<List<CostProfitItem>> AggregateByPartnerAsync(
+        IQueryable<SalesShipment> shipmentQuery,
+        IQueryable<SalesReturn> returnQuery,
+        IQueryable<StockMovement> movementQuery,
+        CancellationToken cancellationToken)
+    {
+        var partners = new Dictionary<Guid, (string Name, int Quantity, decimal Cost, bool HasMissing)>();
+
+        void Accumulate(Guid partnerId, string name, int quantity, decimal cost, bool hasMissing)
+        {
+            partners[partnerId] = partners.TryGetValue(partnerId, out var current)
+                ? (current.Name, current.Quantity + quantity, current.Cost + cost, current.HasMissing || hasMissing)
+                : (name, quantity, cost, hasMissing);
+        }
+
+        // 出库流水的成本（关联出库单取客户）
+        foreach (var row in await (from m in movementQuery.Where(m => m.MovementType == StockMovementType.SalesOutbound)
+                                   join o in shipmentQuery on m.SourceId equals o.Id
+                                   group new { m, o } by new { o.PartnerId, o.PartnerName } into g
+                                   select new
+                                   {
+                                       g.Key.PartnerId,
+                                       g.Key.PartnerName,
+                                       Quantity = g.Sum(x => x.m.Quantity),
+                                       Cost = g.Sum(x => x.m.TotalCost),
+                                       HasMissing = g.Any(x => x.m.UnitCost == 0),
+                                   })
+                 .ToListAsync(cancellationToken))
+        {
+            Accumulate(row.PartnerId, row.PartnerName, row.Quantity, row.Cost, row.HasMissing);
+        }
+
+        // 销售退货入库流水的成本（关联退货单取客户）
+        foreach (var row in await (from m in movementQuery.Where(m => m.MovementType == StockMovementType.SalesReturnIn)
+                                   join r in returnQuery on m.SourceId equals r.Id
+                                   group new { m, r } by new { r.PartnerId, r.PartnerName } into g
+                                   select new
+                                   {
+                                       g.Key.PartnerId,
+                                       g.Key.PartnerName,
+                                       Quantity = g.Sum(x => x.m.Quantity),
+                                       Cost = g.Sum(x => x.m.TotalCost),
+                                       HasMissing = g.Any(x => x.m.UnitCost == 0),
+                                   })
+                 .ToListAsync(cancellationToken))
+        {
+            Accumulate(row.PartnerId, row.PartnerName, row.Quantity, row.Cost, row.HasMissing);
+        }
+
+        var amountMap = new Dictionary<Guid, decimal>();
+        foreach (var row in await shipmentQuery
+            .GroupBy(o => o.PartnerId)
+            .Select(g => new { PartnerId = g.Key, Amount = g.Sum(o => o.TotalAmount) })
+            .ToListAsync(cancellationToken))
+        {
+            amountMap[row.PartnerId] = amountMap.GetValueOrDefault(row.PartnerId) + row.Amount;
+        }
+
+        foreach (var row in await returnQuery
+            .GroupBy(r => r.PartnerId)
+            .Select(g => new { PartnerId = g.Key, Amount = g.Sum(r => r.TotalAmount) })
+            .ToListAsync(cancellationToken))
+        {
+            amountMap[row.PartnerId] = amountMap.GetValueOrDefault(row.PartnerId) - row.Amount;
+        }
+
+        return partners
+            .Select(pair => new CostProfitItem
+            {
+                Key = pair.Key,
+                Name = pair.Value.Name,
+                SalesQuantity = -pair.Value.Quantity,
+                SalesAmount = amountMap.GetValueOrDefault(pair.Key),
+                CostAmount = -pair.Value.Cost,
+                HasMissingCost = pair.Value.HasMissing,
+            })
+            .ToList();
     }
 }
