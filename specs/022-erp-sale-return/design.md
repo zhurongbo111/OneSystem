@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # 设计规格：销售退货（erp-sale-return）
@@ -185,3 +185,8 @@ src/
 - **UpdateSalesReturnSettlement / GetSalesReturns / GetSalesReturnById**：同 `021` 对应用例（客户维度筛选传参 / 分页映射 / 明细快照 / 不存在 `40400`）。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`SalesReturns.ReturnNo` `HasMaxLength` 20 == `OrderFieldConstraints.OrderNoMaxLength`；同一字段在采购退货 / 销售退货 Validator 中边界一致（quantity / unitPrice / items / keyword）。
 - **对账一致性**：销售出库 → 退货 → 退货作废链路后 `Σ 流水变动量 == Inventory.Quantity`。
+
+## 7. 演进（erp-cost，`026`）
+
+- 退货 / 作废回冲写入流水时一并回填**成本列**：`StockMovement.UnitCost` / `TotalCost`（销售退货按原销售成本入、作废回冲按原流水单价还原；成本缺失兜底按 0），详见 `specs/026-erp-cost/design.md` §3。
+- 前端退货单页面不改成本展示。

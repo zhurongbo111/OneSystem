@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-18
 ---
 
 # 设计规格：期初建账与库存盘点（erp-stock-take）
@@ -254,3 +254,10 @@ src/
 - **GetStockTakePickProducts**：`hasMovements` 标记正确（有流水商品为 true）；仅返回启用商品（仓储已过滤，Handler 不重复过滤）。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`StockTakeItem` EF `HasMaxLength`（32 / 50 / 10）== 商品域常量；`TakeNo` 20 == `OrderFieldConstraints.OrderNoMaxLength`；`actualQuantity` 0 通过 / 999999 通过 / 1000000 拒绝；items 100 行通过 / 101 行拒绝；`keyword` 20 通过 / 21 拒绝。
 - **对账一致性**：期初 + 盘点调整后，`Σ 流水变动量 == Inventory.Quantity`（行为型假实现累计断言）。
+
+## 7. 演进（erp-cost，`026`）
+
+- 期初建账新增**成本单价**（必填）：`StockTakeItem` 追加 `UnitCost`（`numeric(18,4)`）；`CreateStockTakeRequest` 期初模式 `unitCost` 必填（区间同源 `ProductFieldConstraints.PriceMaxValue`），盘点模式禁止传入（Validator 拦截）。
+- 成本结转：期初按录入单价结转（`Inventory.AverageCost` 设为该单价、`CostAmount` = 实盘 × 单价）；盘点按当前均价（盘盈入 / 盘亏出）。
+- 前端 `StockTakeFormPage.vue` 期初模式明细区新增「成本单价」列 + 期初金额 computed（= 实盘 × 单位成本）；模式切换清空成本列。
+- 成本口径以 `specs/026-erp-cost/design.md` §3 为准。
