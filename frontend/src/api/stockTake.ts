@@ -26,6 +26,8 @@ export interface StockTakeItem {
   bookQuantity: number
   actualQuantity: number
   difference: number
+  /** 期初成本单价（erp-cost；仅期初建账明细有值，盘点明细为 0） */
+  unitCost: number
 }
 
 /** 盘点单详情（对应后端 StockTakeDetailDto，明细按插入顺序） */
@@ -66,7 +68,8 @@ export interface StockTakeQuery {
 export interface CreateStockTakePayload {
   type: StockTakeType
   takeDate: string
-  items: { productId: string; actualQuantity: number }[]
+  /** unitCost 仅期初建账模式传（erp-cost：成本基线必填）；库存盘点模式不传 */
+  items: { productId: string; actualQuantity: number; unitCost?: number }[]
   remark?: string
 }
 

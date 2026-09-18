@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import {
@@ -19,6 +19,8 @@ const MAX_ITEMS = 100
 /** 实盘数量边界（StockTakeFieldConstraints.ActualQuantityMinValue / MaxValue） */
 const ACTUAL_MIN = 0
 const ACTUAL_MAX = 999999
+/** 期初成本单价上界（erp-cost；ProductFieldConstraints.PriceMaxValue，与商品单价同源） */
+const COST_MAX = 9999999.99
 
 /** 类型选项（design §4.4：默认「库存盘点」） */
 const typeOptions: { label: string; value: StockTakeType }[] = [
@@ -26,14 +28,31 @@ const typeOptions: { label: string; value: StockTakeType }[] = [
   { label: '期初建账', value: 0 },
 ]
 
-const itemColumns: TableColumnData[] = [
-  { title: '序号', slotName: 'seq', width: 64, align: 'center' },
-  { title: '商品', slotName: 'product' },
-  { title: '账面数量', slotName: 'book', width: 110, align: 'right' },
-  { title: '实盘数量', slotName: 'actual', width: 160 },
-  { title: '差异', slotName: 'diff', width: 90, align: 'right' },
-  { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
-]
+/**
+ * 明细列（erp-cost）：**期初建账**模式追加「成本单价」（必填，成本基线）与「期初金额」预览列；
+ * 库存盘点模式不展示成本（按当时移动加权均价处理，传成本会被后端拒绝）。
+ */
+const itemColumns = computed<TableColumnData[]>(() => {
+  const cols: TableColumnData[] = [
+    { title: '序号', slotName: 'seq', width: 64, align: 'center' },
+    { title: '商品', slotName: 'product' },
+    { title: '账面数量', slotName: 'book', width: 110, align: 'right' },
+    { title: '实盘数量', slotName: 'actual', width: 160 },
+  ]
+
+  if (takeType.value === 0) {
+    cols.push(
+      { title: '成本单价', slotName: 'unitCost', width: 160 },
+      { title: '期初金额', slotName: 'amount', width: 120, align: 'right' },
+    )
+  }
+
+  cols.push(
+    { title: '差异', slotName: 'diff', width: 90, align: 'right' },
+    { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
+  )
+  return cols
+})
 
 // —— helpers ——
 let lineSeq = 0
@@ -69,10 +88,12 @@ interface StockTakeFormLine {
   key: string
   productId?: string
   actualQuantity: number | undefined
+  /** 期初成本单价（erp-cost）：仅期初建账模式必填；盘点模式不传 */
+  unitCost: number | undefined
 }
 
 function newLine(): StockTakeFormLine {
-  return { key: newKey(), productId: undefined, actualQuantity: undefined }
+  return { key: newKey(), productId: undefined, actualQuantity: undefined, unitCost: undefined }
 }
 
 const lines = ref<StockTakeFormLine[]>([newLine()])
@@ -117,13 +138,31 @@ function rowDiffClass(line: StockTakeFormLine): string {
   return 'diff-zero'
 }
 
+/** 行期初金额 = 实盘数量 × 成本单价（erp-cost；仅期初建账展示） */
+function rowAmount(line: StockTakeFormLine): number {
+  return rowActual(line) * (line.unitCost ?? 0)
+}
+
 /** 明细行校验：非表单字段，提交时手动校验，错误提示随输入自动清除（computed 派生） */
 const itemsInvalid = computed(
   () =>
     lines.value.length === 0 ||
     lines.value.length > MAX_ITEMS ||
-    lines.value.some((l) => !l.productId || l.actualQuantity === undefined || l.actualQuantity < ACTUAL_MIN || l.actualQuantity > ACTUAL_MAX),
+    lines.value.some((l) => !l.productId || l.actualQuantity === undefined || l.actualQuantity < ACTUAL_MIN || l.actualQuantity > ACTUAL_MAX) ||
+    // 期初建账：每行成本单价必填（成本基线，缺价会让后续均价与毛利失真）
+    (takeType.value === 0 && lines.value.some((l) => l.unitCost === undefined || l.unitCost < 0 || l.unitCost > COST_MAX)),
 )
+
+// —— watch ——
+
+// 切到「库存盘点」时清空成本单价：盘点按当时移动加权均价处理，传成本会被后端拒绝（避免误传）
+watch(takeType, (value) => {
+  if (value === 1) {
+    lines.value.forEach((l) => {
+      l.unitCost = undefined
+    })
+  }
+})
 
 // —— lifecycle ——
 onMounted(async () => {
@@ -143,6 +182,10 @@ function onLineProductChange(line: StockTakeFormLine, value?: string): void {
 
 function onLineActualChange(line: StockTakeFormLine, value: number | undefined): void {
   line.actualQuantity = value
+}
+
+function onLineUnitCostChange(line: StockTakeFormLine, value: number | undefined): void {
+  line.unitCost = value
 }
 
 function addItem(): void {
@@ -181,7 +224,12 @@ async function onSubmit(): Promise<void> {
       type: takeType.value,
       // 所选日期 → UTC 午夜 ISO 串（design §4.2；裸日期会被后端按服务器本地时区解析导致入库失败）
       takeDate: toUtcMidnight(takeDate.value),
-      items: lines.value.map((l) => ({ productId: l.productId as string, actualQuantity: l.actualQuantity as number })),
+      // 成本单价仅期初建账模式传（erp-cost）：盘点模式按当时均价处理，传成本会被后端拒绝
+      items: lines.value.map((l) => ({
+        productId: l.productId as string,
+        actualQuantity: l.actualQuantity as number,
+        unitCost: takeType.value === 0 ? l.unitCost : undefined,
+      })),
       remark: remark.value.trim() || undefined,
     })
     Message.success('盘点单已生效')
@@ -243,7 +291,7 @@ async function onSubmit(): Promise<void> {
           label=" "
         >
           <a-alert type="info">
-            期初建账仅可选未发生库存变动的商品（已建账 / 有单据业务的商品请用库存盘点调整）
+            期初建账仅可选未发生库存变动的商品（已建账 / 有单据业务的商品请用库存盘点调整）；成本单价是库存成本的基线，未填无法计算成本与毛利
           </a-alert>
         </a-form-item>
 
@@ -298,6 +346,22 @@ async function onSubmit(): Promise<void> {
               @change="(v: number | undefined) => onLineActualChange(record as StockTakeFormLine, v)"
             />
           </template>
+          <template #unitCost="{ record }">
+            <a-input-number
+              :model-value="(record as StockTakeFormLine).unitCost"
+              :min="0"
+              :max="COST_MAX"
+              :precision="4"
+              placeholder="成本单价"
+              style="width: 100%"
+              @change="(v: number | undefined) => onLineUnitCostChange(record as StockTakeFormLine, v)"
+            />
+          </template>
+          <template #amount="{ record }">
+            <span class="num">
+              {{ rowAmount(record as StockTakeFormLine).toFixed(2) }}
+            </span>
+          </template>
           <template #diff="{ record }">
             <span :class="rowDiffClass(record as StockTakeFormLine)">
               {{ rowDiff(record as StockTakeFormLine) }}
@@ -319,7 +383,9 @@ async function onSubmit(): Promise<void> {
           type="error"
           class="items-error"
         >
-          请至少添加一行明细，且每行需选择商品、填写有效实盘数量（0–999999）
+          请至少添加一行明细，且每行需选择商品、填写有效实盘数量（0–999999）<template v-if="takeType === 0">
+            与成本单价（0–9999999.99）
+          </template>
         </a-alert>
 
         <a-divider orientation="left">

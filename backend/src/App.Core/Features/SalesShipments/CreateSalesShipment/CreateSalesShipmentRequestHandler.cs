@@ -164,6 +164,14 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
             try
             {
+                // 成本：出库按「变动前」移动加权均价结转（erp-cost design §0.2）—— 必须在扣减前读取
+                var outboundUnitCosts = new Dictionary<Guid, decimal>(request.Items.Count);
+                foreach (var line in request.Items)
+                {
+                    outboundUnitCosts[line.ProductId] =
+                        await _inventoryRepository.GetAverageCostAsync(line.ProductId, cancellationToken);
+                }
+
                 // 逐行扣减：任一行库存不足 → 回滚整单（报首个不足商品）
                 foreach (var line in request.Items)
                 {
@@ -221,12 +229,19 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                 // 库存流水：销售出库，与库存扣减同事务（逐行 TryDecrementAsync 已全部成功后才走到这里）
                 foreach (var item in items)
                 {
+                    // 成本：按变动前均价结转（均价不变 —— 按均价出库不改变均值）
+                    var unitCost = outboundUnitCosts[item.ProductId];
+                    var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
+                    await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
                         MovementType = StockMovementType.SalesOutbound,
                         Quantity = -item.Quantity,
+                        UnitCost = unitCost,
+                        TotalCost = -totalCost,
                         SourceId = order.Id,
                         SourceNo = shipmentNo,
                         CreatedAt = now,

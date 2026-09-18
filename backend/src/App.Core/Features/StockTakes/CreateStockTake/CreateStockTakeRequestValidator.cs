@@ -40,6 +40,32 @@ public sealed class CreateStockTakeRequestValidator : AbstractValidator<CreateSt
                     .WithMessage("实盘数量超出允许范围");
             });
 
+        // 成本单价（erp-cost design §3.5）：期初建账必填且落在单价区间（成本基线，缺价会让后续均价失真）；
+        // 库存盘点必须为空（按当时移动加权均价处理，传入即拒绝，避免误传成本）
+        When(x => x.Type == StockTakeType.Initial, () =>
+        {
+            RuleForEach(x => x.Items)
+                .ChildRules(item =>
+                {
+                    item.RuleFor(i => i.UnitCost)
+                        .NotNull().WithMessage("期初建账必须录入成本单价");
+                    item.RuleFor(i => i.UnitCost)
+                        .Must(v => v is null
+                            || (v.Value >= ProductFieldConstraints.PriceMinValue && v.Value <= ProductFieldConstraints.PriceMaxValue))
+                        .WithMessage($"成本单价不能超过 {ProductFieldConstraints.PriceMaxValue}");
+                });
+        });
+
+        When(x => x.Type == StockTakeType.Take, () =>
+        {
+            RuleForEach(x => x.Items)
+                .ChildRules(item =>
+                {
+                    item.RuleFor(i => i.UnitCost)
+                        .Null().WithMessage("库存盘点不允许录入成本单价");
+                });
+        });
+
         RuleFor(x => x.Remark).MaximumLength(StockTakeFieldConstraints.RemarkMaxLength).When(x => x.Remark is not null)
             .WithMessage("备注超长");
     }

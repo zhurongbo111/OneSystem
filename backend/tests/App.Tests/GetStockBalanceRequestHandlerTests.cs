@@ -8,7 +8,13 @@ namespace App.Tests;
 /// </summary>
 public class GetStockBalanceRequestHandlerTests
 {
-    private static StockBalanceItem NewBalanceItem(string categoryName, int productCount, int totalQuantity, int zero, int belowSafety)
+    private static StockBalanceItem NewBalanceItem(
+        string categoryName,
+        int productCount,
+        int totalQuantity,
+        int zero,
+        int belowSafety,
+        decimal totalCostAmount = 0m)
         => new()
         {
             CategoryId = Guid.NewGuid(),
@@ -17,6 +23,9 @@ public class GetStockBalanceRequestHandlerTests
             TotalQuantity = totalQuantity,
             ZeroStockCount = zero,
             BelowSafetyCount = belowSafety,
+            TotalCostAmount = totalCostAmount,
+            AverageCost = totalQuantity == 0 ? 0m : totalCostAmount / totalQuantity,
+            HasCostAnomaly = false,
         };
 
     [Fact]
@@ -55,6 +64,7 @@ public class GetStockBalanceRequestHandlerTests
                 TotalQuantity = 100,
                 ZeroStockCount = 1,
                 BelowSafetyCount = 2,
+                TotalCostAmount = 0m,
             },
         };
         var handler = new GetStockBalanceRequestHandler(repository);
@@ -84,6 +94,7 @@ public class GetStockBalanceRequestHandlerTests
                 TotalQuantity = 0,
                 ZeroStockCount = 1,
                 BelowSafetyCount = 0,
+                TotalCostAmount = 0m,
             },
         };
         var handler = new GetStockBalanceRequestHandler(repository);

@@ -25,6 +25,15 @@ public sealed class StockBalanceItemDto
 
     /// <summary>库存占比（该分类库存占筛选结果全量的比例，0–1，由 Mapper 计算；全库为 0 时为 0）</summary>
     public decimal QuantityRatio { get; init; }
+
+    /// <summary>库存成本额合计（erp-cost；numeric(18,4)，展示层收敛到 2 位）</summary>
+    public decimal TotalCostAmount { get; init; }
+
+    /// <summary>移动加权平均单价（erp-cost；= 成本额 ÷ 库存，由 Mapper 计算，库存为 0 时为 0）</summary>
+    public decimal AverageCost { get; init; }
+
+    /// <summary>成本异常（erp-cost：库存 &lt; 0 或成本额 &lt; 0；报表标红提示，不阻断业务）</summary>
+    public bool HasCostAnomaly { get; init; }
 }
 
 /// <summary>
@@ -43,4 +52,7 @@ public sealed class StockBalanceSummaryDto
 
     /// <summary>低库存商品数</summary>
     public int BelowSafetyCount { get; init; }
+
+    /// <summary>库存成本额合计（erp-cost）</summary>
+    public decimal TotalCostAmount { get; init; }
 }

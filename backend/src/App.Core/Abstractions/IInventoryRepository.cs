@@ -76,4 +76,52 @@ public interface IInventoryRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 读取当前移动加权平均单价（erp-cost；无库存行返回 0）。
+    /// 均价是 <c>CostAmount / Quantity</c> 的派生值，只作为读取与兜底用，不作为事实源。
+    /// </summary>
+    /// <param name="productId">商品 id</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<decimal> GetAverageCostAsync(Guid productId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 入库成本写入（erp-cost）：<c>CostAmount += Round(quantity × unitCost, 4)</c> 并按新数量重算 <c>AverageCost</c>；
+    /// 调用方**必须先完成数量增加**（先加数量再加金额，否则均价基数错）。数量为 0 时保留最后均价。
+    /// </summary>
+    /// <param name="productId">商品 id</param>
+    /// <param name="quantity">入库数量（正数，已计入库存）</param>
+    /// <param name="unitCost">本次入库成本单价</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task ApplyInboundCostAsync(
+        Guid productId,
+        int quantity,
+        decimal unitCost,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 出库成本结转（erp-cost）：<c>CostAmount −= totalCost</c>，**均价不变**（按均价出库不改变均值）；
+    /// 数量归零时成本额归 0 以消除尾差。
+    /// </summary>
+    /// <param name="productId">商品 id</param>
+    /// <param name="totalCost">本次出库成本金额（正数，按 变动前均价 × 数量 计算）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task ApplyOutboundCostAsync(
+        Guid productId,
+        decimal totalCost,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 直接设定库存成本两列（erp-cost）：**仅成本重算使用**——重算按流水时序推演出结存金额与均价后一次性写回，
+    /// 不参与日常写入路径（日常只允许 <c>ApplyInboundCostAsync</c> / <c>ApplyOutboundCostAsync</c> 增量更新）。
+    /// </summary>
+    /// <param name="productId">商品 id</param>
+    /// <param name="costAmount">结存成本额</param>
+    /// <param name="averageCost">移动加权平均单价（派生值）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task SetCostAsync(
+        Guid productId,
+        decimal costAmount,
+        decimal averageCost,
+        CancellationToken cancellationToken = default);
 }

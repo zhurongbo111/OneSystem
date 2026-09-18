@@ -124,6 +124,8 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                         BookQuantity = book,
                         ActualQuantity = line.ActualQuantity,
                         Difference = difference,
+                        // 期初成本单价（成本基线，Validator 保证必填）；盘点模式为 0 —— 按当时均价处理
+                        UnitCost = request.Type == StockTakeType.Initial ? line.UnitCost ?? 0m : 0m,
                     });
                 }
 
@@ -161,6 +163,21 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                     // 库存按实盘数量设定（原子）
                     await _inventoryRepository.SetQuantityAsync(item.ProductId, item.ActualQuantity, cancellationToken);
 
+                    // 成本（erp-cost design §0.2）：期初按录入单价加权；盘点按当时移动加权均价（盘盈入 / 盘亏出）
+                    var unitCost = request.Type == StockTakeType.Initial
+                        ? item.UnitCost
+                        : await _inventoryRepository.GetAverageCostAsync(item.ProductId, cancellationToken);
+                    var absQuantity = Math.Abs(item.Difference);
+                    var totalCost = CostCalculator.TotalCost(absQuantity, unitCost);
+                    if (item.Difference > 0)
+                    {
+                        await _inventoryRepository.ApplyInboundCostAsync(item.ProductId, absQuantity, unitCost, cancellationToken);
+                    }
+                    else
+                    {
+                        await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+                    }
+
                     // 流水：与库存设定同事务，变动量 = 差异（带符号），指向盘点单
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
@@ -168,6 +185,8 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                         ProductId = item.ProductId,
                         MovementType = movementType,
                         Quantity = item.Difference,
+                        UnitCost = unitCost,
+                        TotalCost = item.Difference > 0 ? totalCost : -totalCost,
                         SourceId = take.Id,
                         SourceNo = takeNo,
                         CreatedAt = now,

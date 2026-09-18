@@ -100,7 +100,8 @@ public class PurchaseReturnLifecycleTests
         Assert.Equal(OrderStatus.Voided, afterVoid!.Status);
         Assert.Equal(user.UserId, purchaseReturn.UpdatedBy);
         Assert.Equal((int)OrderStatus.Voided, result.Status);
-        Assert.Equal(new[] { "Begin", "Increment", "Append", "Increment", "Append", "UpdateStatus", "Commit" }, calls.ToArray());
+        // 成本：采购退货作废按原出库单价回正（ApplyInboundCost），与数量回冲同事务
+        Assert.Equal(new[] { "Begin", "Increment", "ApplyInboundCost", "Append", "Increment", "ApplyInboundCost", "Append", "UpdateStatus", "Commit" }, calls.ToArray());
     }
 
     [Fact]

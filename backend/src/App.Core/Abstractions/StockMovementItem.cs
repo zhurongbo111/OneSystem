@@ -29,6 +29,12 @@ public sealed record StockMovementItem
     /// <summary>变动量（带符号：入库 / 回增为正，出库 / 回冲为负）</summary>
     public required int Quantity { get; init; }
 
+    /// <summary>本次变动成本单价（erp-cost；numeric(18,4)）</summary>
+    public required decimal UnitCost { get; init; }
+
+    /// <summary>本次变动成本金额（erp-cost；numeric(18,4)，与 Quantity 同号）</summary>
+    public required decimal TotalCost { get; init; }
+
     /// <summary>来源单据号（无来源单据时为 null）</summary>
     public string? SourceNo { get; init; }
 

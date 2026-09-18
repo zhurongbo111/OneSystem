@@ -99,7 +99,8 @@ public class SalesReturnLifecycleTests
         Assert.Equal(OrderStatus.Voided, afterVoid!.Status);
         Assert.Equal(user.UserId, salesReturn.UpdatedBy);
         Assert.Equal((int)OrderStatus.Voided, result.Status);
-        Assert.Equal(new[] { "Begin", "Increment", "Append", "Increment", "Append", "UpdateStatus", "Commit" }, calls.ToArray());
+        // 成本：销售退货作废按原入库单价回冲（ApplyOutboundCost），与数量回冲同事务
+        Assert.Equal(new[] { "Begin", "Increment", "ApplyOutboundCost", "Append", "Increment", "ApplyOutboundCost", "Append", "UpdateStatus", "Commit" }, calls.ToArray());
     }
 
     [Fact]

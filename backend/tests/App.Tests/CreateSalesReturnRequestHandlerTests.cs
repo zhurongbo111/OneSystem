@@ -157,7 +157,8 @@ public class CreateSalesReturnRequestHandlerTests
         await handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m)));
 
         // 销售退货无库存约束：生成单号 → 插单 → 回增 + 流水（design.md §3.5）
-        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "Append", "Commit" }, calls.ToArray());
+        // 成本：销售退货入库按原出库成本（查不到兜底均价）→ ApplyInboundCost
+        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "GetAverageCost", "ApplyInboundCost", "Append", "Commit" }, calls.ToArray());
     }
 
     [Fact]
@@ -332,6 +333,6 @@ public class CreateSalesReturnRequestHandlerTests
         Assert.Contains("模拟提交失败", ex.Message);
 
         // Begin → Generate → Add → Increment → Append → Commit(抛) → Rollback，异常上抛
-        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "Append", "Commit", "Rollback" }, calls.ToArray());
+        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "GetAverageCost", "ApplyInboundCost", "Append", "Commit", "Rollback" }, calls.ToArray());
     }
 }

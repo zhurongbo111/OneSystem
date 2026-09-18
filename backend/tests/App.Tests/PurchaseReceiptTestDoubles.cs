@@ -120,6 +120,21 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     /// <summary>已执行的设定序列（productId, quantity），用于断言库存校正调用</summary>
     public List<(Guid ProductId, int Quantity)> Sets { get; } = new();
 
+    /// <summary>结存成本额台账（productId → CostAmount；erp-cost）</summary>
+    public Dictionary<Guid, decimal> CostAmounts { get; } = new();
+
+    /// <summary>移动加权平均单价台账（productId → AverageCost；erp-cost，派生值）</summary>
+    public Dictionary<Guid, decimal> AverageCosts { get; } = new();
+
+    /// <summary>入库成本调用序列（productId, quantity, unitCost），用于断言「成本与数量同事务」</summary>
+    public List<(Guid ProductId, int Quantity, decimal UnitCost)> InboundCosts { get; } = new();
+
+    /// <summary>出库成本结转序列（productId, totalCost）</summary>
+    public List<(Guid ProductId, decimal TotalCost)> OutboundCosts { get; } = new();
+
+    /// <summary>均价读取序列（productId），用于断言「出库前先读均价」发生</summary>
+    public List<Guid> AverageCostReads { get; } = new();
+
     /// <summary>已读取过账面的商品 id 集合（断言「事务内读账面」发生）</summary>
     public HashSet<Guid> BookRead { get; } = new();
 
@@ -173,6 +188,54 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
         Sets.Add((productId, quantity));
         _stock[productId] = quantity;
         return Task.FromResult(1);
+    }
+
+    public Task<decimal> GetAverageCostAsync(Guid productId, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("GetAverageCost");
+        AverageCostReads.Add(productId);
+        return Task.FromResult(AverageCosts.GetValueOrDefault(productId));
+    }
+
+    public Task ApplyInboundCostAsync(
+        Guid productId, int quantity, decimal unitCost, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("ApplyInboundCost");
+        InboundCosts.Add((productId, quantity, unitCost));
+
+        // 与真实仓储同口径：金额 += Round(数量 × 单价, 4)；均价 = 金额 ÷ 数量（数量为 0 时保留最后均价）
+        var amount = CostAmounts.GetValueOrDefault(productId)
+            + Math.Round(quantity * unitCost, 4, MidpointRounding.AwayFromZero);
+        CostAmounts[productId] = amount;
+
+        var qty = GetQuantity(productId);
+        if (qty != 0)
+        {
+            AverageCosts[productId] = Math.Round(amount / qty, 4, MidpointRounding.AwayFromZero);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task ApplyOutboundCostAsync(
+        Guid productId, decimal totalCost, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("ApplyOutboundCost");
+        OutboundCosts.Add((productId, totalCost));
+
+        // 出库不改变均价；数量归零时成本额归 0（消除尾差）
+        var qty = GetQuantity(productId);
+        CostAmounts[productId] = qty == 0 ? 0m : CostAmounts.GetValueOrDefault(productId) - totalCost;
+        return Task.CompletedTask;
+    }
+
+    public Task SetCostAsync(
+        Guid productId, decimal costAmount, decimal averageCost, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("SetCost");
+        CostAmounts[productId] = costAmount;
+        AverageCosts[productId] = averageCost;
+        return Task.CompletedTask;
     }
 
     public Task<IReadOnlyDictionary<Guid, int>> GetQuantitiesAsync(

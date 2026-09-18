@@ -67,6 +67,9 @@ const columns: TableColumnData[] = [
   { title: '单位', dataIndex: 'unit', width: 80, align: 'center' },
   { title: '变动类型', slotName: 'movementType', width: 110, align: 'center' },
   { title: '变动量', slotName: 'quantity', width: 100, align: 'right' },
+  // 成本列（erp-cost）：只读展示，与变动量同源
+  { title: '成本单价', slotName: 'unitCost', width: 110, align: 'right' },
+  { title: '成本金额', slotName: 'totalCost', width: 120, align: 'right' },
   { title: '来源单号', slotName: 'sourceNo', width: 180, ellipsis: true, tooltip: true },
   { title: '操作人', slotName: 'createdByName', width: 120 },
   { title: '备注', slotName: 'remark', width: 180, ellipsis: true, tooltip: true },
@@ -302,6 +305,13 @@ function onPageSizeChange(size: number): void {
           <span :class="(record as StockMovementListItem).quantity > 0 ? 'qty-plus' : 'qty-minus'">
             {{ (record as StockMovementListItem).quantity > 0 ? '+' : '' }}{{ (record as StockMovementListItem).quantity }}
           </span>
+        </template>
+        <!-- 成本列（erp-cost）：只读展示，金额 2 位 -->
+        <template #unitCost="{ record }">
+          {{ (record as StockMovementListItem).unitCost.toFixed(2) }}
+        </template>
+        <template #totalCost="{ record }">
+          {{ (record as StockMovementListItem).totalCost.toFixed(2) }}
         </template>
         <!-- 空值渲染：来源单号 / 操作人为空显示 - -->
         <template #sourceNo="{ record }">

@@ -95,6 +95,8 @@ public sealed class StockMovementRepository : IStockMovementRepository
                 Unit = x.p.Unit,
                 MovementType = x.m.MovementType,
                 Quantity = x.m.Quantity,
+                UnitCost = x.m.UnitCost,
+                TotalCost = x.m.TotalCost,
                 SourceNo = x.m.SourceNo,
                 Remark = x.m.Remark,
                 CreatedAt = x.m.CreatedAt,
@@ -130,4 +132,133 @@ public sealed class StockMovementRepository : IStockMovementRepository
             .Distinct()
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<decimal?> GetMovementUnitCostAsync(
+        Guid sourceId,
+        Guid productId,
+        StockMovementType type,
+        CancellationToken cancellationToken = default)
+    {
+        // 冲销类还原成本：取同一来源单据 + 商品 + 指定类型流水的成本单价（无匹配返回 null，由调用方兜底）
+        return await _dbContext.StockMovements
+            .AsNoTracking()
+            .Where(m => m.SourceId == sourceId && m.ProductId == productId && m.MovementType == type)
+            .Select(m => (decimal?)m.UnitCost)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<StockMovementCostRow>> GetAllForCostAsync(
+        Guid? productId,
+        DateTimeOffset? start,
+        DateTimeOffset? end,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.StockMovements.AsNoTracking().AsQueryable();
+
+        if (productId is not null)
+        {
+            var value = productId.Value;
+            query = query.Where(m => m.ProductId == value);
+        }
+
+        if (start is not null)
+        {
+            var value = start.Value;
+            query = query.Where(m => m.CreatedAt >= value);
+        }
+
+        if (end is not null)
+        {
+            var value = end.Value;
+            query = query.Where(m => m.CreatedAt < value);
+        }
+
+        var movements = await query
+            .OrderBy(m => m.CreatedAt)
+            .ThenBy(m => m.Id)
+            .Select(m => new StockMovementCostRow
+            {
+                Id = m.Id,
+                ProductId = m.ProductId,
+                MovementType = m.MovementType,
+                Quantity = m.Quantity,
+                SourceId = m.SourceId,
+                SourceNo = m.SourceNo,
+                CreatedAt = m.CreatedAt,
+            })
+            .ToListAsync(cancellationToken);
+
+        if (movements.Count == 0)
+        {
+            return movements;
+        }
+
+        // 关联单价按「单据 id + 商品」两趟取数后在内存组装：
+        // 直接 join 明细表会因「同一单据同一商品多行」产生笛卡尔放大，导致重算重复计流水
+        var purchaseSourceIds = movements
+            .Where(m => m.MovementType == StockMovementType.PurchaseInbound && m.SourceId is not null)
+            .Select(m => m.SourceId!.Value)
+            .Distinct()
+            .ToList();
+
+        var purchasePriceMap = new Dictionary<(Guid, Guid), decimal>();
+        if (purchaseSourceIds.Count > 0)
+        {
+            var receiptItems = await _dbContext.PurchaseReceiptItems.AsNoTracking()
+                .Where(i => purchaseSourceIds.Contains(i.ReceiptId))
+                .Select(i => new { i.ReceiptId, i.ProductId, i.UnitPrice })
+                .ToListAsync(cancellationToken);
+
+            foreach (var group in receiptItems.GroupBy(i => (i.ReceiptId, i.ProductId)))
+            {
+                purchasePriceMap[group.Key] = group.First().UnitPrice;
+            }
+        }
+
+        var initialSourceIds = movements
+            .Where(m => m.MovementType == StockMovementType.InitialStock && m.SourceId is not null)
+            .Select(m => m.SourceId!.Value)
+            .Distinct()
+            .ToList();
+
+        var initialCostMap = new Dictionary<(Guid, Guid), decimal>();
+        if (initialSourceIds.Count > 0)
+        {
+            var takeItems = await _dbContext.StockTakeItems.AsNoTracking()
+                .Where(i => initialSourceIds.Contains(i.StockTakeId))
+                .Select(i => new { i.StockTakeId, i.ProductId, i.UnitCost })
+                .ToListAsync(cancellationToken);
+
+            foreach (var group in takeItems.GroupBy(i => (i.StockTakeId, i.ProductId)))
+            {
+                initialCostMap[group.Key] = group.First().UnitCost;
+            }
+        }
+
+        return movements
+            .Select(m => m with
+            {
+                PurchaseUnitPrice = m.SourceId is not null
+                    && purchasePriceMap.TryGetValue((m.SourceId.Value, m.ProductId), out var price)
+                    ? price
+                    : null,
+                InitialUnitCost = m.SourceId is not null
+                    && initialCostMap.TryGetValue((m.SourceId.Value, m.ProductId), out var cost)
+                    ? cost
+                    : null,
+            })
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public Task UpdateCostAsync(
+        Guid id, decimal unitCost, decimal totalCost, CancellationToken cancellationToken = default)
+        => _dbContext.StockMovements
+            .Where(m => m.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.UnitCost, unitCost)
+                .SetProperty(m => m.TotalCost, totalCost),
+            cancellationToken);
 }

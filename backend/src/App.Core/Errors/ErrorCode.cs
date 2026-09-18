@@ -91,4 +91,7 @@ public static class ErrorCode
 
     /// <summary>出入库单的往来单位与所关联订单不一致（erp-order-flow 功能业务码）</summary>
     public const int OrderPartnerMismatch = 40117;
+
+    /// <summary>成本重算正在进行，请稍后重试（erp-cost 功能业务码；内存锁并发拒绝）</summary>
+    public const int CostRecalculationRunning = 40118;
 }

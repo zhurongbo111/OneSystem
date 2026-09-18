@@ -55,4 +55,47 @@ public interface IStockMovementRepository
     /// <returns>已有流水变动的商品 id 集合</returns>
     Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
         IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 取某来源单据 + 商品的指定类型流水的成本单价（erp-cost；冲销类还原成本用）。
+    /// 作废 / 退货作废一律复用**原方向**流水的 <c>UnitCost</c>，保证「入 + 冲回 = 0」；
+    /// 无匹配流水（如历史数据、被退销售单无原单关联）时返回 <c>null</c>，由调用方按 §0.2 兜底。
+    /// </summary>
+    /// <param name="sourceId">来源单据 id</param>
+    /// <param name="productId">商品 id</param>
+    /// <param name="type">被还原的变动类型（如 <see cref="StockMovementType.PurchaseInbound"/>）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<decimal?> GetMovementUnitCostAsync(
+        Guid sourceId,
+        Guid productId,
+        StockMovementType type,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 成本重算取数（erp-cost）：按 <c>CreatedAt, Id</c> 升序返回流水行，并左连接带出关联单价
+    ///（采购入库取采购单明细单价、期初建账取盘点明细成本单价），避免重算时 N+1 反查。
+    /// </summary>
+    /// <param name="productId">商品 id，可空（不传表示全部商品）</param>
+    /// <param name="start">期间起（含），可空</param>
+    /// <param name="end">期间止（不含），可空</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<IReadOnlyList<StockMovementCostRow>> GetAllForCostAsync(
+        Guid? productId,
+        DateTimeOffset? start,
+        DateTimeOffset? end,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 写回单条流水的成本列（erp-cost）：**仅成本重算使用**（历史成本补齐 / 异常修复）。
+    /// 流水既定约束为「只追加、不更新」，重算是唯一例外，且只改成本两列、不动数量与其它字段。
+    /// </summary>
+    /// <param name="id">流水 id</param>
+    /// <param name="unitCost">成本单价</param>
+    /// <param name="totalCost">成本金额（与 Quantity 同号）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task UpdateCostAsync(
+        Guid id,
+        decimal unitCost,
+        decimal totalCost,
+        CancellationToken cancellationToken = default);
 }

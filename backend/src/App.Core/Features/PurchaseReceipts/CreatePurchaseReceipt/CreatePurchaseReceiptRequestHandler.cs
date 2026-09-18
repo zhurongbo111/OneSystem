@@ -209,6 +209,10 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     // 采购入库：库存 += 数量（同事务，回冲在作废用例执行）
                     await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
 
+                    // 成本：入库按采购单明细单价加权（erp-cost design §0.2）—— 先加数量再加金额
+                    await _inventoryRepository.ApplyInboundCostAsync(
+                        item.ProductId, item.Quantity, item.UnitPrice, cancellationToken);
+
                     // 库存流水：与库存增减同事务，1:1 追加（erp-stock-movement design §3.7）
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
@@ -216,6 +220,8 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                         ProductId = item.ProductId,
                         MovementType = StockMovementType.PurchaseInbound,
                         Quantity = item.Quantity,
+                        UnitCost = item.UnitPrice,
+                        TotalCost = CostCalculator.TotalCost(item.Quantity, item.UnitPrice),
                         SourceId = order.Id,
                         SourceNo = receiptNo,
                         CreatedAt = now,

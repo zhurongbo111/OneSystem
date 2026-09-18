@@ -20,6 +20,14 @@ internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<Stoc
         builder.Property(m => m.Quantity).IsRequired();
         builder.Property(m => m.CreatedAt).IsRequired();
 
+        // 成本列（erp-cost）：本次变动的单价与金额，精度 numeric(18,4)，默认 0（无索引需求）
+        builder.Property(m => m.UnitCost)
+            .IsRequired()
+            .HasColumnType("numeric(18,4)");
+        builder.Property(m => m.TotalCost)
+            .IsRequired()
+            .HasColumnType("numeric(18,4)");
+
         // 列长取自 OrderFieldConstraints（单一来源）：来源即单据单号，长度规则与单据域同源
         builder.Property(m => m.SourceNo).HasMaxLength(OrderFieldConstraints.OrderNoMaxLength);
         builder.Property(m => m.Remark).HasMaxLength(OrderFieldConstraints.RemarkMaxLength);

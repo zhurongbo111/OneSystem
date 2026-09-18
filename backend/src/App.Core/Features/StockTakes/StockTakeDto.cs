@@ -62,6 +62,9 @@ public sealed class StockTakeItemDto
 
     /// <summary>差异（实盘 − 账面，后端重算，可负）</summary>
     public required int Difference { get; init; }
+
+    /// <summary>期初成本单价（erp-cost；仅期初建账明细有值，盘点明细为 0）</summary>
+    public decimal UnitCost { get; init; }
 }
 
 /// <summary>盘点单列表行出参模型（差异行数供前端标橙）</summary>

@@ -23,4 +23,13 @@ public sealed record StockBalanceItem
 
     /// <summary>分类下低库存商品数（安全阈值 &gt; 0 且库存 &lt; 阈值）</summary>
     public required int BelowSafetyCount { get; init; }
+
+    /// <summary>分类下库存成本额合计（erp-cost；numeric(18,4)，来自 Inventory.CostAmount）</summary>
+    public required decimal TotalCostAmount { get; init; }
+
+    /// <summary>分类下移动加权平均单价（erp-cost；= 成本额合计 ÷ 库存合计，库存合计为 0 时为 0）</summary>
+    public required decimal AverageCost { get; init; }
+
+    /// <summary>分类下是否存在成本异常（erp-cost；任一行库存 &lt; 0 或成本额 &lt; 0）</summary>
+    public required bool HasCostAnomaly { get; init; }
 }

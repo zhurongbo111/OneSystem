@@ -159,4 +159,61 @@ public sealed class InventoryRepository : IInventoryRepository
 
         return (items, total);
     }
+
+    /// <inheritdoc />
+    public async Task<decimal> GetAverageCostAsync(Guid productId, CancellationToken cancellationToken = default)
+    {
+        // 无库存行的商品按 0 处理（与 GetQuantityAsync 的无行即 0 语义一致）
+        return await _dbContext.Inventory
+            .AsNoTracking()
+            .Where(i => i.ProductId == productId)
+            .Select(i => i.AverageCost)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task ApplyInboundCostAsync(
+        Guid productId,
+        int quantity,
+        decimal unitCost,
+        CancellationToken cancellationToken = default)
+    {
+        // 入库金额在应用侧按财务惯例四舍五入（AwayFromZero），不依赖数据库舍入语义；
+        // 调用方已先完成数量增加，此处读到的 Quantity 即结存新值（先加数量再加金额）
+        var delta = Math.Round(quantity * unitCost, 4, MidpointRounding.AwayFromZero);
+
+        return _dbContext.Inventory
+            .Where(i => i.ProductId == productId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(i => i.CostAmount, i => i.CostAmount + delta)
+                // 均价 = 结存金额 ÷ 结存数量（派生值）；数量为 0 时保留最后均价，避免除零与均价丢失
+                .SetProperty(i => i.AverageCost, i => i.Quantity == 0
+                    ? i.AverageCost
+                    : (i.CostAmount + delta) / i.Quantity),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task ApplyOutboundCostAsync(
+        Guid productId,
+        decimal totalCost,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.Inventory
+            .Where(i => i.ProductId == productId)
+            .ExecuteUpdateAsync(s => s
+                // 数量归零时成本额归 0（消除长期小额尾差）；均价不变 —— 按均价出库不改变均值
+                .SetProperty(i => i.CostAmount, i => i.Quantity == 0 ? 0m : i.CostAmount - totalCost),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task SetCostAsync(
+        Guid productId, decimal costAmount, decimal averageCost, CancellationToken cancellationToken = default)
+        => _dbContext.Inventory
+            .Where(i => i.ProductId == productId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(i => i.CostAmount, costAmount)
+                .SetProperty(i => i.AverageCost, averageCost),
+            cancellationToken);
 }

@@ -20,7 +20,13 @@ const items = ref<StockBalanceItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
-const summary = ref<StockBalanceSummary>({ productCount: 0, totalQuantity: 0, zeroStockCount: 0, belowSafetyCount: 0 })
+const summary = ref<StockBalanceSummary>({
+  productCount: 0,
+  totalQuantity: 0,
+  zeroStockCount: 0,
+  belowSafetyCount: 0,
+  totalCostAmount: 0,
+})
 
 /** 分类 / 关键词：输入态与已应用态分离 */
 const keywordInput = ref('')
@@ -51,6 +57,10 @@ const columns: TableColumnData[] = [
   { title: '零库存商品数', slotName: 'zeroStockCount', width: 120, align: 'right' },
   { title: '低库存商品数', slotName: 'belowSafetyCount', width: 130, align: 'right' },
   { title: '库存占比', slotName: 'quantityRatio', width: 180 },
+  // 成本列（erp-cost）：库存金额 / 均价 / 成本异常标记
+  { title: '库存金额', slotName: 'totalCostAmount', width: 130, align: 'right' },
+  { title: '均价', slotName: 'averageCost', width: 110, align: 'right' },
+  { title: '成本异常', slotName: 'hasCostAnomaly', width: 110, align: 'center' },
   { title: '操作', slotName: 'actions', width: 110, fixed: 'right' },
 ]
 
@@ -238,6 +248,13 @@ function onShowDetail(record: StockBalanceItem): void {
           />
         </a-col>
         <a-col :span="4">
+          <a-statistic
+            title="库存金额"
+            :value="summary.totalCostAmount"
+            :precision="2"
+          />
+        </a-col>
+        <a-col :span="4">
           <a-tag
             color="arcoblue"
             size="small"
@@ -279,6 +296,22 @@ function onShowDetail(record: StockBalanceItem): void {
             :percent="Number(((record as StockBalanceItem).quantityRatio * 100).toFixed(1))"
             size="small"
           />
+        </template>
+        <template #totalCostAmount="{ record }">
+          {{ (record as StockBalanceItem).totalCostAmount.toFixed(2) }}
+        </template>
+        <template #averageCost="{ record }">
+          {{ (record as StockBalanceItem).averageCost.toFixed(2) }}
+        </template>
+        <template #hasCostAnomaly="{ record }">
+          <a-tag
+            v-if="(record as StockBalanceItem).hasCostAnomaly"
+            color="red"
+            size="small"
+          >
+            成本异常
+          </a-tag>
+          <span v-else>-</span>
         </template>
         <template #actions="{ record }">
           <a-button

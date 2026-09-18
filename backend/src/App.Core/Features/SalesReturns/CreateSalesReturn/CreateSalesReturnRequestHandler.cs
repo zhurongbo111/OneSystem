@@ -158,12 +158,22 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                 {
                     await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
 
+                    // 成本（erp-cost design §0.2）：按被退销售单原出库成本单价退回；
+                    // 销售退货不关联原单（specs/021 §5），查不到原流水时兜底按当前移动加权均价
+                    var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
+                        salesReturn.Id, item.ProductId, StockMovementType.SalesOutbound, cancellationToken)
+                        ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, cancellationToken);
+                    var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
+                    await _inventoryRepository.ApplyInboundCostAsync(item.ProductId, item.Quantity, unitCost, cancellationToken);
+
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
                         MovementType = StockMovementType.SalesReturnIn,
                         Quantity = item.Quantity,
+                        UnitCost = unitCost,
+                        TotalCost = totalCost,
                         SourceId = salesReturn.Id,
                         SourceNo = returnNo,
                         CreatedAt = now,

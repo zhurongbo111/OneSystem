@@ -35,6 +35,11 @@ internal sealed class StockTakeItemConfiguration : IEntityTypeConfiguration<Stoc
         builder.Property(i => i.ActualQuantity).IsRequired();
         builder.Property(i => i.Difference).IsRequired();
 
+        // 期初成本单价（erp-cost）：numeric(18,4)，默认 0；仅期初建账模式由前端录入
+        builder.Property(i => i.UnitCost)
+            .IsRequired()
+            .HasColumnType("numeric(18,4)");
+
         builder.HasIndex(i => i.StockTakeId);
 
         // 商品停用不影响历史盘点凭证 → 外键禁止级联删除

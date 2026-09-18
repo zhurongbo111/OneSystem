@@ -142,7 +142,8 @@ public class CreatePurchaseReceiptRequestHandlerTests
 
         await handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m)));
 
-        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "Append", "Commit" }, calls.ToArray());
+        // 成本：采购入库按明细单价加权（先加数量再加金额）
+        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "ApplyInboundCost", "Append", "Commit" }, calls.ToArray());
     }
 
     // ============================== 供应商校验 ==============================
@@ -276,6 +277,6 @@ public class CreatePurchaseReceiptRequestHandlerTests
         Assert.Contains("模拟提交失败", ex.Message);
 
         // Begin → Generate → Add → Increment → Append → Commit(抛) → Rollback，异常上抛
-        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "Append", "Commit", "Rollback" }, calls.ToArray());
+        Assert.Equal(new[] { "Begin", "Generate", "Add", "Increment", "ApplyInboundCost", "Append", "Commit", "Rollback" }, calls.ToArray());
     }
 }

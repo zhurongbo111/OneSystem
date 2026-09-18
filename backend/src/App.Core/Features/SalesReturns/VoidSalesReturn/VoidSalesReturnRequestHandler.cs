@@ -65,6 +65,12 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
             {
                 await _inventoryRepository.IncrementAsync(item.ProductId, -item.Quantity, cancellationToken);
 
+                // 成本：冲销还原 —— 复用该销售退货原入库流水的成本单价（erp-cost design §0.2）
+                var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
+                    salesReturn.Id, item.ProductId, StockMovementType.SalesReturnIn, cancellationToken) ?? 0m;
+                var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
+                await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+
                 // 库存流水：销售退货作废回冲（负方向），与库存增减同事务（design.md §3.7）
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
@@ -72,6 +78,8 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
                     ProductId = item.ProductId,
                     MovementType = StockMovementType.SalesReturnVoid,
                     Quantity = -item.Quantity,
+                    UnitCost = unitCost,
+                    TotalCost = -totalCost,
                     SourceId = salesReturn.Id,
                     SourceNo = salesReturn.ReturnNo,
                     CreatedAt = now,
