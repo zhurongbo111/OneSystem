@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /**
  * 库存流水（specs/019-erp-stock-movement）：
@@ -99,7 +101,7 @@ async function selectBySearch(selectLocator: Locator, keyword: string): Promise<
   await input.fill(keyword)
   // 远程搜索下拉异步渲染：先等匹配项出现再 Enter，否则空列表下 Enter 选不中（空库 / 冷启动必现）
   await expect(
-    selectLocator.page().locator('.arco-select-option', { hasText: keyword }).first(),
+    selectLocator.page().locator('.arco-select-option:visible', { hasText: keyword }).first(),
   ).toBeVisible()
   await input.press('Enter')
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
@@ -123,8 +125,7 @@ async function createPartner(page: Page, name: string, typeLabel: '客户' | '�
   const drawer = page.locator('.arco-drawer')
   await drawer.getByPlaceholder('1-50 字符，创建后不可修改').fill(name)
   await drawer.locator('.arco-radio-group').getByText(typeLabel, { exact: true }).click()
-  await drawer.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('往来单位已创建')).toBeVisible()
+  await clickUntil(page, '提交', page.getByText('往来单位已创建'))
 }
 
 /** 新增商品（分类就地新建） */
@@ -144,8 +145,7 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   const numberInputs = page.locator('.arco-drawer .arco-input-number input')
   await numberInputs.nth(0).fill('10.00')
   await numberInputs.nth(1).fill('20.00')
-  await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('商品已创建').last()).toBeVisible()
+  await clickUntil(page, '提交', page.getByText('商品已创建').last())
 }
 
 /** 开一张单行明细的采购单（商品 × qty），返回单号 */
@@ -164,8 +164,7 @@ async function createPurchaseReceiptQty(
   const qtyInput = row.locator('.arco-input-number').nth(0).locator('input')
   await qtyInput.fill(String(qty))
   await qtyInput.blur()
-  await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('采购单已创建')).toBeVisible()
+  await clickUntil(page, '提交', page.getByText('采购单已创建'))
   await expect(page).toHaveURL(/\/purchases\/detail\//)
   return (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
 }
@@ -186,8 +185,7 @@ async function createSalesShipmentQty(
   const qtyInput = row.locator('.arco-input-number').nth(0).locator('input')
   await qtyInput.fill(String(qty))
   await qtyInput.blur()
-  await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('销售单已创建')).toBeVisible()
+  await clickUntil(page, '提交', page.getByText('销售单已创建'))
   await expect(page).toHaveURL(/\/sales\/detail\//)
   return (await page.locator('.detail-desc').getByText(/^GI\d{12}$/).first().innerText()).trim()
 }
@@ -199,7 +197,7 @@ async function voidOrder(page: Page, kind: 'purchase' | 'sale', orderNo: string)
   const confirmText = kind === 'purchase' ? '确认作废该采购单？' : '确认作废该销售单？'
   await go(page)
   await page.getByPlaceholder(placeholder).fill(orderNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await searchAndWaitHit(page, orderNo)
   const row = dataRows(page).first()
   await row.getByRole('button', { name: '作废' }).click()
   await expect(page.getByText(confirmText)).toBeVisible()
@@ -210,7 +208,7 @@ async function voidOrder(page: Page, kind: 'purchase' | 'sale', orderNo: string)
 /** 流水页按来源单号搜索 */
 async function searchByOrderNo(page: Page, orderNo: string): Promise<void> {
   await page.getByPlaceholder('搜索来源单号').fill(orderNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await searchAndWaitHit(page, orderNo)
 }
 
 test.describe('库存流水（集成）', () => {
@@ -287,20 +285,17 @@ test.describe('库存流水（集成）', () => {
     // 类型筛选「销售出库」→ 收窄为 1 行
     const typeSelect = page.locator('.filter-bar__type')
     await typeSelect.click()
-    await page.locator('.arco-select-option', { hasText: '销售出库' }).click()
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await page.locator('.arco-select-option:visible', { hasText: '销售出库' }).click()
+    await searchAndWaitHit(page, soNo)
     await expect(dataRows(page)).toHaveCount(1)
     await expect(dataRows(page).first()).toContainText('销售出库')
 
     // 关键词未命中 → 空状态
     await page.getByPlaceholder('搜索来源单号').fill('NO_SUCH_ORDER')
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
-    await expect(page.locator('tbody .arco-table-tr-empty')).toBeVisible()
+    await clickUntil(page, '搜索', page.locator('tbody .arco-table-tr-empty'))
 
     // 重置：清空条件（含类型），数据恢复
-    await page.getByRole('button', { name: '重置', exact: true }).click()
-    await expect(page.locator('tbody .arco-table-tr-empty')).toHaveCount(0)
-    await expect(dataRows(page)).not.toHaveCount(0)
+    await clickUntil(page, '重置', dataRows(page).first())
   })
 
   test('库存页操作列「流水」下钻 → 流水页带 productId 预置且仅展示该商品流水', async ({ page }) => {
@@ -318,7 +313,7 @@ test.describe('库存流水（集成）', () => {
     // 库存页找到该商品行 → 操作列「流水」
     await goInventory(page)
     await page.getByPlaceholder('搜索商品编码或名称').fill(code)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await searchAndWaitHit(page, code)
     await expect(dataRows(page)).toHaveCount(1)
     await dataRows(page).first().getByRole('button', { name: '流水' }).click()
 

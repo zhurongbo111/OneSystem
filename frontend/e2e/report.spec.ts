@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { clickUntil, clickUntilCount } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
 
 /**
@@ -107,8 +108,7 @@ test.describe('进销存报表（集成）', () => {
 
     // 按商品关键词搜到其唯一分类行，占比列以进度条展示
     await page.getByPlaceholder('搜索商品编码或名称').fill(code)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
-    await expect(dataRows(page)).toHaveCount(1)
+    await clickUntilCount(page, '搜索', dataRows(page), 1)
     await expect(dataRows(page).first().locator('.arco-progress')).toBeVisible()
 
     // 查看明细 → 库存查询页预置分类筛选
@@ -127,16 +127,14 @@ test.describe('进销存报表（集成）', () => {
 
     // 分组维度切换为「商品」→ 出现「单位」列，名称列变「商品」
     await page.getByText('商品', { exact: true }).click()
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
-    await expect(page.locator('th', { hasText: '单位' })).toBeVisible()
+    await clickUntil(page, '搜索', page.locator('th', { hasText: '单位' }))
     await expect(page.locator('th', { hasText: '商品' })).toBeVisible()
 
     await goReport(page, '销售汇总', /\/reports\/sales-summary$/)
     await expect(page.locator('th', { hasText: '出库金额' })).toBeVisible()
     await expect(page.locator('th', { hasText: '净金额' })).toBeVisible()
     await page.getByText('商品', { exact: true }).click()
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
-    await expect(page.locator('th', { hasText: '单位' })).toBeVisible()
+    await clickUntil(page, '搜索', page.locator('th', { hasText: '单位' }))
   })
 
   test('菜单多顶级分组联动：基础档案 / 采购 / 销售 / 库存 / 资金 / 报表 / 系统分组可达', async ({ page }) => {

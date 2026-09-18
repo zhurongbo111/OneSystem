@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /**
  * 采购退货（specs/021-erp-purchase-return）：
@@ -157,8 +159,7 @@ async function searchInventory(page: Page, keyword: string): Promise<void> {
   const input = page.getByPlaceholder('搜索商品编码或名称')
   await input.fill(keyword)
   await expect(input).toHaveValue(keyword)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  await expect(dataRows(page).first()).toContainText(keyword, { timeout: 15000 })
+  await searchAndWaitHit(page, keyword)
 }
 
 /** 库存页当前行的库存数字 */
@@ -192,20 +193,6 @@ async function detailReturnNo(page: Page): Promise<string> {
  * 断言「没有一行不含该单号」而非「首行含该单号」——最新一条流水本就是本单，
  * 只查首行会在过滤尚未生效时误判为已过滤。
  */
-/**
- * 点「搜索」并等到命中行出现。
- * 首屏请求进行中点按钮会被 Arco 的 loading 吞掉（不报错、筛选不生效），
- * 而「没有一行不含关键字」在表格尚未渲染（0 行）时会提前通过，故先重试点击直到命中行出现。
- */
-async function searchAndWaitHit(page: Page, keyword: string): Promise<void> {
-  const searchButton = page.getByRole('button', { name: '搜索', exact: true })
-  await expect(async () => {
-    await searchButton.click()
-    await expect(dataRows(page).filter({ hasText: keyword })).not.toHaveCount(0, { timeout: 2000 })
-  }).toPass({ timeout: 15000 })
-  await expect(dataRows(page).filter({ hasNotText: keyword })).toHaveCount(0)
-}
-
 async function searchMovementByOrderNo(page: Page, orderNo: string): Promise<void> {
   const input = page.getByPlaceholder('搜索来源单号')
   await input.fill(orderNo)
@@ -296,7 +283,7 @@ test.describe('采购退货（集成）', () => {
     await page.getByRole('button', { name: '重置' }).click()
     await page.locator('.toolbar-filter .arco-select').nth(0).click()
     await page.locator('.arco-select-option', { hasText: supplier }).click()
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: returnNo }).first())
     await expect(dataRows(page).first()).toContainText(returnNo)
 
     // 日期范围筛选（当天 → 当天）
@@ -309,7 +296,7 @@ test.describe('采购退货（集成）', () => {
     // 结算状态筛选：未结算
     await page.locator('.toolbar-filter .arco-select').nth(1).click()
     await page.locator('.arco-select-option', { hasText: '未结算' }).click()
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: returnNo }).first())
     await expect(dataRows(page).first()).toContainText(returnNo)
 
     // 重置回全量后按单号重新定位

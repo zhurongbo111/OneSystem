@@ -160,6 +160,8 @@ frontend/
 
 ### 10.1 e2e 稳定性（强制）
 
-- **禁止在加载态中点击**：Arco Button 在 `loading` 期间会**吞掉 click**（不报错、无副作用），用例若在页面首屏请求完成前点「搜索」，表现为筛选未应用，极易被误判为功能 bug / 后端未过滤。触发前须先等首屏数据就绪，或改用输入框**回车**触发（回车不走按钮，不受 loading 影响）。
+- **禁止在加载态中点击**：Arco Button 在 `loading` 期间会**吞掉 click**（不报错、无副作用），用例若在页面首屏请求完成前点「搜索」，表现为筛选未应用，极易被误判为功能 bug / 后端未过滤。统一改用 helpers 的重试点击：`clickUntil`（`e2e/helpers/action.ts`，点按钮直到判据成立）、`searchAndWaitHit`（`e2e/helpers/table-search.ts`，关键字搜索直到命中行出现且未命中行归零）；不要手写「点一次 + 断言」。
+- **重试判据必须取用例自身的期望**：判据可以是命中行 / 空状态（`.arco-empty`）/ 精确行数 / URL / 表头列等，**不可一律写成「命中关键字」**——空结果用例、按分类聚合（行内不含商品编码）的报表页，该判据与用例语义相反、必然失败。行数类判据用 `clickUntilCount`，URL 等无法用可见性表达的判据给 `clickUntil` 传断言块。
 - **断言必须落在可见结果上**：筛选类用例除校验请求参数外，必须断言过滤**确实生效**（行数 / 内容符合筛选条件），否则「点击被吞、筛选未应用」会被静默漏过。
+- **下拉选项的等待 / 点击须限定可见**：Arco Select 选中后旧弹层 DOM 会残留且处于隐藏态，`page.locator('.arco-select-option').first()` 会命中隐藏的旧浮层（表现为 `toBeVisible` 始终 hidden、或 click 卡在 actionability），须用 `.arco-select-option:visible` 限定当前浮层。
 - 用例失败时先排查上述时序问题，再怀疑业务实现；排查依据以 `test-results/<用例名>/error-context.md`（失败时由 Playwright 生成，含页面实际内容）为准，不靠猜测。
