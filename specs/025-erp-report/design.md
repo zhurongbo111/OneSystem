@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # 设计规格：进销存报表（erp-report）
@@ -237,3 +237,9 @@ src/
 - **Validator 边界**：`start < end` 边界（相等拒绝、366 天内通过、367 天拒绝）；`pageSize` 100 / 101；`keyword` 50 / 51（对齐 `ProductFieldConstraints.KeywordMaxLength`）。
 - **对账一致性**：以既有 `019` 的「流水 → 库存」行为型假实现构造「期初 + 采购 + 销售 + 盘点」链路，断言报表 `期末 == Inventory.Quantity`（本规格的核心口径用例）。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`ReportFieldConstraints.MaxRangeDays` 生效于 4 个请求的 Validator（同源一致）；`keyword` 上限 == `ProductFieldConstraints.KeywordMaxLength`。
+
+## 7. 演进（erp-cost，`026`）
+
+- 库存余额表追加**库存金额 / 均价 / 成本异常**列与合计：`StockBalanceItem` 由 `026` 扩展 `TotalCostAmount` / `AverageCost` / `HasCostAnomaly`，页面 `StockBalanceReportView.vue` 追加对应列（成本异常以 `a-tag` 标注）。
+- 成本毛利报表（`CostProfitReportView`，路由 `reports/cost-profit`）由 `026` 独立交付；毛利 = 收入 − 成本、毛利率口径以 `specs/026-erp-cost/design.md` §0.3 为准。
+- 本规格 §5 已预告「库存金额列延后，由 `026` 追加」，本演进即落实该注记。

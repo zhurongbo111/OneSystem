@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # 设计规格：库存流水（erp-stock-movement）
@@ -241,3 +241,9 @@ src/
   - 事务性：`Commit` 抛异常 → `RollbackAsync` 被调用（库存与流水一起回滚）。
 - **对账一致性**：以行为型假实现累计 `AppendAsync` 的 `Quantity`，断言 `Σ 变动量 == Inventory.Quantity`（覆盖采购入库 → 作废、销售出库 → 作废四条链路的正负抵消）。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`SourceNo` EF `HasMaxLength` 20 == `OrderFieldConstraints.OrderNoMaxLength`；`GetStockMovementsRequest` 的 `keyword` 20 通过 / 21 拒绝，且与 `SourceNo` 列长一致（后端规则 §5.3 第 ③ 条）。
+
+## 7. 演进（erp-cost，`026`）
+
+- 流水追加**成本列**：`StockMovement` 实体新增 `UnitCost` / `TotalCost`（`numeric(18,4)`，默认 0）；读模型 `StockMovementItem` 同步追加 `UnitCost` / `TotalCost`，前端 `StockMovementsView.vue` 表格追加「成本单价 / 成本金额」列。
+- 成本单价来源：各写入路径按对应成本口径回填（采购入库按单据明细单价加权、销售出库按变动前均价、退货与作废回冲按原流水单价还原），详见 `specs/026-erp-cost/design.md` §0 / §3；历史流水由 `Costs/RecalculateCosts` 统一重算写回。
+- 本文件 §0 变动类型表的成本列不重复定义，以 `026` 写入路径口径为准。

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # 设计规格：采购退货（erp-purchase-return）
@@ -259,3 +259,8 @@ src/
 - **GetPurchaseReturns / GetPurchaseReturnById**：筛选传参组合、分页映射（含 `Status` / 结算状态）、明细快照透传、不存在 `40400`。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`PurchaseReturns.ReturnNo` `HasMaxLength` 20 == `OrderFieldConstraints.OrderNoMaxLength`；明细列长（50 / 10）== 商品域常量；quantity / unitPrice / items / keyword 边界与采购 / 销售**同源同值**。
 - **对账一致性**：采购入库 → 退货 → 退货作废链路后 `Σ 流水变动量 == Inventory.Quantity`（行为型假实现累计断言）。
+
+## 7. 演进（erp-cost，`026`）
+
+- 退货 / 作废回冲写入流水时一并回填**成本列**：`StockMovement.UnitCost` / `TotalCost`（采购退货按均价出、作废回冲按原流水单价还原；成本缺失兜底按 0 计入且不阻断），详见 `specs/026-erp-cost/design.md` §3。
+- 前端退货单页面不改成本展示（成本仅在流水页 / 成本毛利报表体现）。
