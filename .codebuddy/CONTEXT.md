@@ -78,7 +78,7 @@ backend/
 ```
 frontend/
 ├── index.html / vite.config.ts / playwright.config.ts / eslint.config.js
-├── e2e/        # 每功能域一个 <域名>.spec.ts（kebab-case）+ helpers/（如 clickMenuItem：点子菜单项时先展开所属分组）
+├── e2e/        # 每功能域一个 <域名>.spec.ts（kebab-case）+ helpers/（如 clickMenuItem：点子菜单项时先展开所属分组）+ global-setup.ts（冷启动预热，见前端规则 §10）
 └── src/
     ├── main.ts / App.vue / env.d.ts
     ├── api/         # request.ts（统一解包 / 40100 处置）+ 按业务域拆分 <entity>.ts
