@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
@@ -81,7 +83,7 @@ async function selectBySearch(selectLocator: Locator, keyword: string): Promise<
   await input.fill(keyword)
   // 远程搜索下拉异步渲染：先等匹配项出现再 Enter，否则空列表下 Enter 选不中（空库 / 冷启动必现）
   await expect(
-    selectLocator.page().locator('.arco-select-option', { hasText: keyword }).first(),
+    selectLocator.page().locator('.arco-select-option:visible', { hasText: keyword }).first(),
   ).toBeVisible()
   await input.press('Enter')
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
@@ -179,10 +181,8 @@ async function receiveFromOrder(page: Page, quantity: number): Promise<string> {
 /** 订单列表按单号搜索并返回目标行 */
 async function findOrderRow(page: Page, orderNo: string): Promise<ReturnType<typeof page.locator>> {
   await page.getByPlaceholder('搜索单号 / 供应商').fill(orderNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  const row = dataRows(page).first()
-  await expect(row).toContainText(orderNo)
-  return row
+  await searchAndWaitHit(page, orderNo)
+  return dataRows(page).first()
 }
 
 /** 订单行内「未收数量」列的数值（第 7 列，index 6） */
@@ -349,7 +349,7 @@ test.describe('采购订单（集成）', () => {
     // 回采购入库列表作废该入库单
     await goPurchases(page)
     await page.getByPlaceholder('搜索单号 / 供应商').fill(supplier)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: supplier }).first())
     await dataRows(page).first().getByRole('button', { name: '作废' }).click()
     await confirmPopconfirm(page, '确认作废该采购单？')
     await expect(page.getByText('已作废，库存已回冲')).toBeVisible()

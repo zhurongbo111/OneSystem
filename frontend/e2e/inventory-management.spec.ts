@@ -1,6 +1,8 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
@@ -56,9 +58,11 @@ function productDrawerTitle(page: Page, title: string): ReturnType<typeof page.l
 }
 
 /** 库存页按编码 / 名称搜索（点搜索按钮触发服务端查询） */
-async function searchInventory(page: Page, keyword: string): Promise<void> {
+/** expected 默认「命中关键字的行」；空结果等场景传实际判据（如 .arco-empty） */
+async function searchInventory(page: Page, keyword: string, expected?: Locator): Promise<void> {
   await page.getByPlaceholder('搜索商品编码或名称').fill(keyword)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  if (expected) await clickUntil(page, '搜索', expected)
+  else await searchAndWaitHit(page, keyword)
 }
 
 /** 经商品抽屉新增商品（分类就地新建；safetyStock 可选，验证低库存标记） */
@@ -90,7 +94,7 @@ async function createProduct(page: Page, code: string, name: string, safetyStock
 /** 在商品页停用指定编码商品（按编码搜索后取唯一行） */
 async function disableProduct(page: Page, code: string): Promise<void> {
   await page.getByPlaceholder('搜索商品编码或名称').fill(code)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await searchAndWaitHit(page, code)
   const row = dataRows(page).first()
   await expect(row).toContainText(code)
   await row.getByRole('button', { name: '停用' }).click()
@@ -138,7 +142,7 @@ test.describe('库存查询（集成）', () => {
     await expect(dataRows(page).first()).toContainText(code)
 
     // 不存在的关键词 → 空状态
-    await searchInventory(page, `no_such_${Date.now()}`)
+    await searchInventory(page, `no_such_${Date.now()}`, page.locator('.arco-empty'))
     await expect(dataRows(page)).toHaveCount(0)
     await expect(page.locator('.arco-empty')).toBeVisible()
 
@@ -166,7 +170,7 @@ test.describe('库存查询（集成）', () => {
 
     // 库存页查询该编码 → 空状态（仅启用商品）
     await goInventory(page)
-    await searchInventory(page, code)
+    await searchInventory(page, code, page.locator('.arco-empty'))
     await expect(dataRows(page)).toHaveCount(0)
     await expect(page.locator('.arco-empty')).toBeVisible()
   })

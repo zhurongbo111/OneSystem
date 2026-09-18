@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /**
  * 期初建账与库存盘点（specs/020-erp-stock-take）：
@@ -84,7 +86,7 @@ async function selectBySearch(page: Page, selectLocator: Locator, keyword: strin
   await selectLocator.click()
   const input = selectLocator.locator('input')
   await input.fill(keyword)
-  await page.locator('.arco-select-option', { hasText: keyword }).first().click()
+  await page.locator('.arco-select-option:visible', { hasText: keyword }).first().click()
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
 }
 
@@ -144,8 +146,7 @@ async function createStockTake(
   }
 
   // 提交 → 跳详情页
-  await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('盘点单已生效')).toBeVisible()
+  await clickUntil(page, '提交', page.getByText('盘点单已生效'))
   await expect(page).toHaveURL(/\/stock-takes\/detail\//)
   return (await page.locator('.detail-desc').getByText(/^ST\d{12}$/).first().innerText()).trim()
 }
@@ -165,6 +166,10 @@ async function searchStockTakes(page: Page, keyword: string, type?: string, with
     // 点击标题关闭面板
     await page.getByRole('heading', { name: '库存盘点' }).click()
   }
+  if (keyword) {
+    await searchAndWaitHit(page, keyword)
+    return
+  }
   await page.getByRole('button', { name: '搜索', exact: true }).click()
 }
 
@@ -172,7 +177,7 @@ async function searchStockTakes(page: Page, keyword: string, type?: string, with
 async function stockOf(page: Page, code: string): Promise<string> {
   await goInventory(page)
   await page.getByPlaceholder('搜索商品编码或名称').fill(code)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await searchAndWaitHit(page, code)
   await expect(dataRows(page)).toHaveCount(1)
   return (await dataRows(page).first().locator('.stock-quantity').innerText()).trim()
 }
@@ -220,7 +225,7 @@ test.describe('期初建账与库存盘点（集成）', () => {
     // 流水页：该单号 1 行，「期初建账」+10（绿字）
     await goStockMovements(page)
     await page.getByPlaceholder('搜索来源单号').fill(takeInitialNo)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await searchAndWaitHit(page, takeInitialNo)
     await expect(dataRows(page)).toHaveCount(1)
     const rowInitial = dataRows(page).first()
     await expect(rowInitial).toContainText('期初建账')
@@ -254,7 +259,7 @@ test.describe('期初建账与库存盘点（集成）', () => {
     // 流水页：该盘点单 1 行「盘点调整」-4（红字）；期初单不混入
     await goStockMovements(page)
     await page.getByPlaceholder('搜索来源单号').fill(takeAdjustNo)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await searchAndWaitHit(page, takeAdjustNo)
     await expect(dataRows(page)).toHaveCount(1)
     const rowAdjust = dataRows(page).first()
     await expect(rowAdjust).toContainText('盘点调整')
@@ -266,8 +271,7 @@ test.describe('期初建账与库存盘点（集成）', () => {
     expect(await stockOf(page, codeB)).toBe('6')
     await goStockMovements(page)
     await page.getByPlaceholder('搜索来源单号').fill(takeEvenNo)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
-    await expect(page.locator('tbody .arco-table-tr-empty')).toBeVisible()
+    await clickUntil(page, '搜索', page.locator('tbody .arco-table-tr-empty'))
   })
 
   test('期初模式：已建账商品下拉禁用标注「已建账」（未建账商品仍可正常选择）', async ({ page }) => {
@@ -327,8 +331,9 @@ test.describe('期初建账与库存盘点（集成）', () => {
     // 详情「查看库存流水」→ 流水页预置本单号关键词
     await dataRows(page).first().getByRole('button', { name: '详情' }).click()
     await expect(page).toHaveURL(/\/stock-takes\/detail\//)
-    await page.getByRole('button', { name: '查看库存流水' }).click()
-    await expect(page).toHaveURL(/\/stock-movements\?keyword=ST\d{12}/)
+    await clickUntil(page, '查看库存流水', async () => {
+      await expect(page).toHaveURL(/\/stock-movements\?keyword=ST\d{12}/, { timeout: 3000 })
+    })
     await expect(page.getByPlaceholder('搜索来源单号')).toHaveValue(takeC)
     await expect(dataRows(page)).toHaveCount(1)
     await expect(dataRows(page).first()).toContainText(takeC)

@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
@@ -86,7 +87,7 @@ async function selectBySearch(selectLocator: Locator, keyword: string): Promise<
   await input.fill(keyword)
   // 远程搜索下拉异步渲染：先等匹配项出现再 Enter，否则空列表下 Enter 选不中（空库 / 冷启动必现）
   await expect(
-    selectLocator.page().locator('.arco-select-option', { hasText: keyword }).first(),
+    selectLocator.page().locator('.arco-select-option:visible', { hasText: keyword }).first(),
   ).toBeVisible()
   await input.press('Enter')
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
@@ -112,7 +113,7 @@ async function confirmPopconfirm(page: Page, contentText: string): Promise<void>
 /** 库存页按编码搜索（点搜索按钮触发服务端查询） */
 async function searchInventory(page: Page, keyword: string): Promise<void> {
   await page.getByPlaceholder('搜索商品编码或名称').fill(keyword)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await searchAndWaitHit(page, keyword)
 }
 
 /** 库存页指定编码行的当前库存数字 */
@@ -307,7 +308,7 @@ test.describe('销售出库（集成）', () => {
     // 回销售列表，按单号找到该行
     await goSales(page)
     await page.getByPlaceholder('搜索单号 / 客户').fill(orderNo)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await searchAndWaitHit(page, orderNo)
     const row = dataRows(page).first()
     await expect(row).toContainText(orderNo)
     // 初始未结算
@@ -335,7 +336,7 @@ test.describe('销售出库（集成）', () => {
     // 作废：库存回冲
     await goSales(page)
     await page.getByPlaceholder('搜索单号 / 客户').fill(orderNo)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await searchAndWaitHit(page, orderNo)
     await dataRows(page).first().getByRole('button', { name: '作废' }).click()
     await expect(page.getByText('确认作废该销售单？')).toBeVisible()
     await confirmPopconfirm(page, '确认作废该销售单？')

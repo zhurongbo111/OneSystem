@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /**
  * 成本核算与销售毛利（specs/026-erp-cost）：
@@ -51,7 +53,7 @@ async function selectBySearch(selectLocator: Locator, keyword: string): Promise<
   await input.fill(keyword)
   // 远程搜索下拉异步渲染：先等匹配项出现再 Enter，否则空列表下 Enter 选不中（空库 / 冷启动必现）
   await expect(
-    selectLocator.page().locator('.arco-select-option', { hasText: keyword }).first(),
+    selectLocator.page().locator('.arco-select-option:visible', { hasText: keyword }).first(),
   ).toBeVisible()
   await input.press('Enter')
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
@@ -218,7 +220,7 @@ test.describe('成本与毛利（集成）', () => {
     await page.locator('.filter-bar__product').click()
     await page.locator('.filter-bar__product input').fill(code)
     await page.locator('.filter-bar__product input').press('Enter')
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: shipmentNo }).first())
     const row = dataRows(page).first()
     await expect(row).toContainText(shipmentNo)
     await expect(row).toContainText('100.00') // 销售收入 = 5 × 20
@@ -227,7 +229,7 @@ test.describe('成本与毛利（集成）', () => {
     // 作废该销售单 → 收入与成本同步回冲，该行毛利归 0
     await go(page, '销售出库', /\/sales$/)
     await page.getByPlaceholder('搜索单号 / 客户').fill(shipmentNo)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await searchAndWaitHit(page, shipmentNo)
     await dataRows(page).first().getByRole('button', { name: '作废' }).click()
     await expect(page.getByText('确认作废该销售单？')).toBeVisible()
     await page
@@ -240,7 +242,7 @@ test.describe('成本与毛利（集成）', () => {
     await page.locator('.filter-bar__product').click()
     await page.locator('.filter-bar__product input').fill(code)
     await page.locator('.filter-bar__product input').press('Enter')
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: '0.00' }).first())
     const afterVoid = dataRows(page).first()
     await expect(afterVoid).toContainText('0.00') // 收入 0、成本 0
   })

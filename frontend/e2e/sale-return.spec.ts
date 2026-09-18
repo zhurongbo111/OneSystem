@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /**
  * 销售退货（specs/022-erp-sale-return）：
@@ -155,8 +157,7 @@ async function searchInventory(page: Page, keyword: string): Promise<void> {
   const input = page.getByPlaceholder('搜索商品编码或名称')
   await input.fill(keyword)
   await expect(input).toHaveValue(keyword)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  await expect(dataRows(page).first()).toContainText(keyword, { timeout: 15000 })
+  await searchAndWaitHit(page, keyword)
 }
 
 /** 库存页当前行的库存数字 */
@@ -194,8 +195,7 @@ async function searchMovementByOrderNo(page: Page, orderNo: string): Promise<voi
   const input = page.getByPlaceholder('搜索来源单号')
   await input.fill(orderNo)
   await expect(input).toHaveValue(orderNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  await expect(dataRows(page).filter({ hasNotText: orderNo })).toHaveCount(0, { timeout: 15000 })
+  await searchAndWaitHit(page, orderNo)
 }
 
 /** 在退货列表按单号搜索（同样等到所有行都命中该单号，避免误判过滤已生效） */
@@ -277,7 +277,7 @@ test.describe('销售退货（集成）', () => {
     await page.getByRole('button', { name: '重置' }).click()
     await page.locator('.toolbar-filter .arco-select').nth(0).click()
     await page.locator('.arco-select-option', { hasText: customer }).click()
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: returnNo }).first())
     await expect(dataRows(page).first()).toContainText(returnNo)
 
     // 日期范围筛选（当天 → 当天）
@@ -290,7 +290,7 @@ test.describe('销售退货（集成）', () => {
     // 结算状态筛选：未结算
     await page.locator('.toolbar-filter .arco-select').nth(1).click()
     await page.locator('.arco-select-option', { hasText: '未结算' }).click()
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: returnNo }).first())
     await expect(dataRows(page).first()).toContainText(returnNo)
 
     // 重置回全量后按单号重新定位

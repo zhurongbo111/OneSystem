@@ -1,6 +1,8 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
+import { clickUntil } from './helpers/action'
 import { clickMenuItem } from './helpers/menu'
+import { searchAndWaitHit } from './helpers/table-search'
 
 /** dev 后端地址（API 直连，不经前端 dev server） */
 const BACKEND = 'http://localhost:5080'
@@ -97,7 +99,7 @@ async function selectBySearch(page: Page, selectLocator: Locator, keyword: strin
   const input = selectLocator.locator('input')
   await input.fill(keyword)
   // 远程搜索下拉浮层异步渲染：等待匹配选项出现后再点击，避免 Enter 过早选中空项
-  await page.locator('.arco-select-option', { hasText: keyword }).first().click()
+  await page.locator('.arco-select-option:visible', { hasText: keyword }).first().click()
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
 }
 
@@ -186,10 +188,8 @@ async function createSingleLineSalesShipment(
 async function findSalesRow(page: Page, orderNo: string): Promise<ReturnType<typeof page.locator>> {
   await goSales(page)
   await page.getByPlaceholder('搜索单号 / 客户').fill(orderNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  const row = dataRows(page).first()
-  await expect(row).toContainText(orderNo)
-  return row
+  await searchAndWaitHit(page, orderNo)
+  return dataRows(page).first()
 }
 
 /** 在新建收付款页完成一次收款核销并提交（amount 为本次核销金额） */
@@ -265,7 +265,7 @@ test.describe('收付款与往来对账（集成）', () => {
     const keywordBox = page.getByPlaceholder('搜索往来名称')
     await keywordBox.fill(customer)
     await expect(keywordBox).toHaveValue(customer)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: customer }).first())
     const reconRow = dataRows(page).filter({ hasText: customer }).first()
     await expect(reconRow).toBeVisible()
     await expect(reconRow).toContainText('12.00')
@@ -287,7 +287,7 @@ test.describe('收付款与往来对账（集成）', () => {
     // 作废第一张收款单（8.00）→ 单据回到部分结算（未结 12.00）
     await goSettlements(page)
     await page.getByPlaceholder('搜索单号 / 往来单位').fill(customer)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: '8.00' }).first())
     const receiptRow = dataRows(page).filter({ hasText: '8.00' }).first()
     await receiptRow.getByRole('button', { name: '作废' }).click()
     await expect(page.getByText('确认作废该收付款单？')).toBeVisible()
