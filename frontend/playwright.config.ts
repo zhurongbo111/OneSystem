@@ -11,8 +11,11 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 30_000,
-  expect: { timeout: 5_000 },
+  // 冷启动预热：dev 后端刚启动 / 数据库刚重建时首个请求较慢，先登录一次再跑用例（见 e2e/global-setup.ts）
+  globalSetup: "./e2e/global-setup.ts",
+  // 超时按 dev 冷启动（JIT / EF 查询编译）留足余量，避免偶发超时被误判为功能问题
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

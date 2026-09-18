@@ -49,6 +49,10 @@ async function selectBySearch(selectLocator: Locator, keyword: string): Promise<
   await selectLocator.click()
   const input = selectLocator.locator('input')
   await input.fill(keyword)
+  // 远程搜索下拉异步渲染：先等匹配项出现再 Enter，否则空列表下 Enter 选不中（空库 / 冷启动必现）
+  await expect(
+    selectLocator.page().locator('.arco-select-option', { hasText: keyword }).first(),
+  ).toBeVisible()
   await input.press('Enter')
   await expect(selectLocator).toContainText(keyword.slice(0, 12))
 }
@@ -175,9 +179,16 @@ test.describe('成本与毛利（集成）', () => {
     await createPurchaseReceipt(page, supplier, code, 10, 20)
 
     await go(page, '库存余额表', /\/reports\/stock-balance$/)
-    await page.getByPlaceholder('搜索商品编码或名称').fill(code)
-    await page.getByRole('button', { name: '搜索', exact: true }).click()
-    const row = dataRows(page).first()
+    // 等首屏数据渲染完成：页面挂载未稳时填入的关键词会被重置
+    await expect(dataRows(page).first()).toBeVisible()
+    // 用回车触发搜索（与成本毛利报表一致）：首屏请求未回时按钮为 loading，点击会被吞掉
+    const keyword = page.getByPlaceholder('搜索商品编码或名称')
+    await keyword.fill(code)
+    await keyword.press('Enter')
+    // 库存余额表按分类聚合：先确认按商品编码过滤已生效（仅该商品所属分类一行），再断言聚合值
+    const rows = dataRows(page)
+    await expect(rows).toHaveCount(1)
+    const row = rows.first()
     await expect(row).toContainText('20') // 库存合计
     await expect(row).toContainText('300.00') // 库存金额 = 100 + 200
     await expect(row).toContainText('15.00') // 均价 = 300 / 20
