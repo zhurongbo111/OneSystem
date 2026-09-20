@@ -92,6 +92,15 @@ frontend/
 - Arco 组件的 `#icon` 插槽（含 §5.2 操作列固定图标）**同样优先 Tabler**；用 Lucide / Arco 时在 import 处加来源注释。
 - 同一业务图标全项目同来源；尺寸 / 线宽沿用全局统一样式，不逐处写。
 
+### 4.8 表单组件受控绑定（强制）
+
+> 目的：回填场景（编辑页 / 关联单据带出明细）必须让组件拿到外部值，绑定写错会静默表现为「下拉显示占位符，像数据没查到」。
+> 判据只此一条，无对应规格正文（非某类页面特有，写代码时任何受控组件都适用）。
+
+- `a-select` 只用 `v-model` / `:model-value` 绑定值：**它没有 `value` 属性**（只有 `modelValue` / `defaultValue`），写 `:value` 会作为透传 DOM 属性被忽略，`modelValue` 恒为 `undefined`——新建时手选看不出问题（组件内部有状态），编辑回填 / 关联带出时下拉恒显示 placeholder。
+- 子表格（明细行）内的受控组件一律「`:model-value` + `@change` 写回」；`a-input-number` 等同理，不得用 `:value`。
+- 选项数据源与回填写值必须同源：回填值不在选项列表内时下拉同样显示为空（如仅启用商品的下拉遇到已停用商品），需先确认数据源口径而非改绑定。
+
 ## 5. 列表页约定
 
 > **正文（页面布局、表格配置、列宽策略、交互模式）见 `specs/006-list-showcase/design.md` §0**；本节只留判据。参照实现：`src/views/Showcase/ListShowcaseView.vue`。
