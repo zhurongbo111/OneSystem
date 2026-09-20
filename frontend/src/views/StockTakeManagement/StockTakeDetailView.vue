@@ -6,7 +6,7 @@ import { getStockTakeById, type StockTakeDetail, type StockTakeItem, type StockT
 import { getUser } from '@/api/user'
 import { formatDateTime } from '@/utils/datetime'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconStack2 } from '@tabler/icons-vue'
+import { IconPrinter, IconStack2 } from '@tabler/icons-vue'
 
 // —— constants ——
 /** 类型渲染（design §4.4：期初建账 purple / 库存盘点 gold） */
@@ -88,6 +88,11 @@ function goBack(): void {
   void router.push({ name: 'stockTakes' })
 }
 
+/** 打开打印视图（specs/027-erp-export §4.3：详情页头部打印入口） */
+function onPrint(): void {
+  void router.push({ name: 'stockTakePrint', params: { id: id.value } })
+}
+
 /** 查看库存流水：跳流水页并预置本单号关键词（design §4.4，复用 019 页面） */
 function onShowMovements(): void {
   if (!detail.value) return
@@ -121,7 +126,19 @@ function onShowMovements(): void {
         class="detail-header"
         title="盘点单详情"
         @back="goBack"
-      />
+      >
+        <template #extra>
+          <a-button
+            size="small"
+            @click="onPrint"
+          >
+            <template #icon>
+              <IconPrinter />
+            </template>
+            打印
+          </a-button>
+        </template>
+      </a-page-header>
 
       <a-card :bordered="false">
         <a-descriptions

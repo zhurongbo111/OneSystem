@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import { getCategories, getProductPickList } from '@/api/product'
 import type { Category, ProductPickItem } from '@/api/product'
-import { getInventoryFlow, toReportRangeUtc } from '@/api/report'
+import { exportInventoryFlow, getInventoryFlow, toReportRangeUtc } from '@/api/report'
 import type { InventoryFlowItem, InventoryFlowSummary } from '@/api/report'
 import { toDateInput } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
@@ -35,6 +35,8 @@ let fetchSeq = 0
 
 // —— reactive state ——
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 const items = ref<InventoryFlowItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -191,6 +193,28 @@ function onRefresh(): void {
   void fetchList()
 }
 
+/** 导出当前已应用筛选的全量进销存报表（含合计行）；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    const { start, end } = toReportRangeUtc(appliedRange.value[0], appliedRange.value[1])
+    await exportInventoryFlow({
+      start,
+      end,
+      productId: appliedProductId.value,
+      categoryId: appliedCategoryId.value,
+      onlyChanged: appliedOnlyChanged.value,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 function onPageChange(current: number): void {
   page.value = current
   void fetchList()
@@ -279,12 +303,13 @@ function onPageSizeChange(size: number): void {
           </a-col>
         </a-row>
 
-        <!-- 操作行：导出（027 交付前禁用）+ 列设置 + 刷新 -->
+        <!-- 操作行：导出 + 列设置 + 刷新 -->
         <div class="toolbar-actions">
           <a-button
             size="small"
-            disabled
-            title="导出功能开发中"
+            :loading="exporting"
+            :disabled="exporting"
+            @click="onExport"
           >
             <template #icon>
               <IconDownload />

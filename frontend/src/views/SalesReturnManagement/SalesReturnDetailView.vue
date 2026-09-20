@@ -9,6 +9,7 @@ import { formatDateTime } from '@/utils/datetime'
 import { settlementStateColor, settlementStateLabel } from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
+import { IconPrinter } from '@tabler/icons-vue'
 
 // —— reactive state ——
 const route = useRoute()
@@ -76,6 +77,11 @@ function goBack(): void {
   void router.push({ name: 'salesReturns' })
 }
 
+/** 打开打印视图（specs/027-erp-export §4.3：详情页头部打印入口） */
+function onPrint(): void {
+  void router.push({ name: 'saleReturnPrint', params: { id: id.value } })
+}
+
 /** 作废：回冲库存，仅改状态不删数据 */
 async function onVoid(): Promise<void> {
   if (voidingId.value || !detail.value) return
@@ -124,7 +130,19 @@ function onGoSettlement(): void {
         class="detail-header"
         title="销售退货单详情"
         @back="goBack"
-      />
+      >
+        <template #extra>
+          <a-button
+            size="small"
+            @click="onPrint"
+          >
+            <template #icon>
+              <IconPrinter />
+            </template>
+            打印
+          </a-button>
+        </template>
+      </a-page-header>
 
       <a-card :bordered="false">
         <a-descriptions

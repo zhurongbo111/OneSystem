@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
+import { exportPartners } from '@/api/export'
 import { getPartners, updatePartnerStatus } from '@/api/partner'
 import type { Partner, PartnerStatus, PartnerType } from '@/api/partner'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
+  IconDownload,
   IconEdit,
   IconEye,
   IconPlayerPlay,
@@ -60,6 +62,8 @@ let fetchSeq = 0
 
 // —— reactive state ——
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 /** 正在启停的往来单位 id：行内按钮 loading 与写操作互斥用 */
 const togglingId = ref<string | undefined>(undefined)
 const items = ref<Partner[]>([])
@@ -223,6 +227,25 @@ function onDetail(row: Partner): void {
   drawerVisible.value = true
 }
 
+/** 导出当前已应用筛选的全量往来单位列表；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    await exportPartners({
+      keyword: appliedKeyword.value.trim() || undefined,
+      type: appliedType.value,
+      status: appliedStatus.value,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 /** 启用 / 停用 */
 async function onToggleStatus(row: Partner): Promise<void> {
   if (togglingId.value) return
@@ -331,6 +354,21 @@ async function onToggleStatus(row: Partner): Promise<void> {
             </a-button>
           </div>
           <div class="toolbar-actions__right">
+            <a-button
+              size="small"
+              :loading="exporting"
+              :disabled="exporting"
+              @click="onExport"
+            >
+              <template #icon>
+                <IconDownload />
+              </template>
+              导出
+            </a-button>
+            <a-divider
+              direction="vertical"
+              class="toolbar-actions__divider"
+            />
             <a-dropdown trigger="click">
               <a-button size="small">
                 <template #icon>
@@ -520,6 +558,10 @@ async function onToggleStatus(row: Partner): Promise<void> {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.toolbar-actions__divider {
+  margin: 0;
 }
 
 .table-card {

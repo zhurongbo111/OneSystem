@@ -1,4 +1,4 @@
-import { get } from './request'
+import { downloadBlob, get } from './request'
 
 /**
  * 报表分页结果（对应后端 ReportPageDto<TItem, TSummary>）：
@@ -243,4 +243,37 @@ export function getSalesSummary(
   query: SalesSummaryQuery,
 ): Promise<ReportPage<SalesSummaryItem, SalesSummaryTotal>> {
   return get<ReportPage<SalesSummaryItem, SalesSummaryTotal>>('/reports/sales-summary', { params: query })
+}
+
+// ============================== 报表导出（erp-export）==============================
+
+/**
+ * 报表导出（erp-export）：导出**当前筛选条件下的全量数据 + 与页面一致的合计行**（服务端生成 xlsx）。
+ * 与报表查询同域，故并入本文件（列表类导出集中在 `api/export.ts`）；
+ * 二进制下载与契约例外分流见 `api/request.ts` 的 `downloadBlob`。
+ */
+
+/** 导出进销存报表（含合计行） */
+export function exportInventoryFlow(params: Omit<InventoryFlowQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/reports/inventory-flow/export', params)
+}
+
+/** 导出库存余额表（含合计行） */
+export function exportStockBalance(params: Omit<StockBalanceQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/reports/stock-balance/export', params)
+}
+
+/** 导出采购汇总（含合计行） */
+export function exportPurchaseSummary(params: Omit<PurchaseSummaryQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/reports/purchase-summary/export', params)
+}
+
+/** 导出销售汇总（含合计行） */
+export function exportSalesSummary(params: Omit<SalesSummaryQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/reports/sales-summary/export', params)
+}
+
+/** 导出成本与毛利报表（含合计行） */
+export function exportCostProfit(params: Omit<CostProfitQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/reports/cost-profit/export', params)
 }

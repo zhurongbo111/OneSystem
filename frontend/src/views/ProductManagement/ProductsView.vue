@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
+import { exportProducts } from '@/api/export'
 import { getCategories, getProducts, updateProductStatus } from '@/api/product'
 import type { Category, Product, ProductStatus } from '@/api/product'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
+  IconDownload,
   IconEdit,
   IconEye,
   IconPlayerPlay,
@@ -44,6 +46,8 @@ let fetchSeq = 0
 
 // —— reactive state ——
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 /** 正在启停的商品 id：行内按钮 loading 与写操作互斥用 */
 const togglingId = ref<string | undefined>(undefined)
 const items = ref<Product[]>([])
@@ -240,6 +244,25 @@ function onDetail(row: Product): void {
   drawerVisible.value = true
 }
 
+/** 导出当前已应用筛选的全量商品列表；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    await exportProducts({
+      keyword: appliedKeyword.value.trim() || undefined,
+      categoryId: appliedCategoryId.value,
+      status: appliedStatus.value,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 /** 启用 / 停用 */
 async function onToggleStatus(row: Product): Promise<void> {
   if (togglingId.value) return
@@ -354,6 +377,21 @@ function formatAmount(v: number): string {
             </a-button>
           </div>
           <div class="toolbar-actions__right">
+            <a-button
+              size="small"
+              :loading="exporting"
+              :disabled="exporting"
+              @click="onExport"
+            >
+              <template #icon>
+                <IconDownload />
+              </template>
+              导出
+            </a-button>
+            <a-divider
+              direction="vertical"
+              class="toolbar-actions__divider"
+            />
             <a-dropdown trigger="click">
               <a-button size="small">
                 <template #icon>
@@ -570,6 +608,10 @@ function formatAmount(v: number): string {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.toolbar-actions__divider {
+  margin: 0;
 }
 
 .table-card {

@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { recalculateCosts } from '@/api/cost'
 import { getCategories, getProductPickList } from '@/api/product'
 import type { Category, ProductPickItem } from '@/api/product'
-import { getCostProfitReport, toReportRangeUtc } from '@/api/report'
+import { exportCostProfit, getCostProfitReport, toReportRangeUtc } from '@/api/report'
 import type { CostProfitGroupBy, CostProfitItem, CostProfitSummary } from '@/api/report'
 import { toDateInput } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
@@ -43,6 +43,8 @@ let fetchSeq = 0
 const loading = ref(false)
 /** 重算成本（运维动作，与查询 loading 分开） */
 const recalculating = ref(false)
+/** 导出（erp-export）：与查询 / 重算 loading 分开，防重入 */
+const exporting = ref(false)
 const items = ref<CostProfitItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -196,6 +198,28 @@ function onRefresh(): void {
   void fetchList()
 }
 
+/** 导出当前已应用筛选的全量成本与毛利报表（含合计行）；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    const { start, end } = toReportRangeUtc(appliedRange.value[0], appliedRange.value[1])
+    await exportCostProfit({
+      start,
+      end,
+      productId: appliedProductId.value,
+      categoryId: appliedCategoryId.value,
+      groupBy: appliedGroupBy.value,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 /** 重算成本（popconfirm 确认；防重入按按钮 loading 状态） */
 async function onRecalculate(): Promise<void> {
   recalculating.value = true
@@ -330,8 +354,9 @@ function formatRate(value: number | null): string {
           </a-popconfirm>
           <a-button
             size="small"
-            disabled
-            title="导出功能开发中"
+            :loading="exporting"
+            :disabled="exporting"
+            @click="onExport"
           >
             <template #icon>
               <IconDownload />

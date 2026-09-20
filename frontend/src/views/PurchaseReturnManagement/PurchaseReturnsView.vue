@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { exportPurchaseReturns } from '@/api/export'
 import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
 import {
@@ -22,8 +23,11 @@ import type { TableColumnData } from '@arco-design/web-vue'
 import {
   IconBan,
   IconCash,
+  IconDotsVertical,
+  IconDownload,
   IconEye,
   IconPlus,
+  IconPrinter,
   IconRefresh,
   IconRestore,
   IconSearch,
@@ -38,6 +42,8 @@ let fetchSeq = 0
 const router = useRouter()
 
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 /** 正在作废的单据 id（design §4.5：voidingId） */
 const voidingId = ref<string | undefined>(undefined)
 const items = ref<PurchaseReturnListItem[]>([])
@@ -229,6 +235,35 @@ function onDetail(row: PurchaseReturnListItem): void {
   void router.push({ name: 'purchaseReturnDetail', params: { id: row.id } })
 }
 
+/** 导出当前已应用筛选的全量采购退货单（单据 + 明细两个工作表）；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    const { start, end } = appliedRange.value
+      ? toDateRange(appliedRange.value[0], appliedRange.value[1])
+      : {}
+    await exportPurchaseReturns({
+      keyword: appliedKeyword.value.trim() || undefined,
+      partnerId: appliedPartner.value,
+      start,
+      end,
+      settlementState: appliedSettlement.value,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
+/** 打印单据：同步路由跳转（瞬时动作不置 loading） */
+function onPrint(row: PurchaseReturnListItem): void {
+  void router.push({ name: 'purchaseReturnPrint', params: { id: row.id } })
+}
+
 /** 作废行整体置灰（design §4.4） */
 function rowClassName(record: PurchaseReturnListItem): string {
   return record.status === 0 ? 'row-voided' : ''
@@ -349,6 +384,21 @@ function onGoSettlement(row: PurchaseReturnListItem): void {
             </a-button>
           </div>
           <div class="toolbar-actions__right">
+            <a-button
+              size="small"
+              :loading="exporting"
+              :disabled="exporting"
+              @click="onExport"
+            >
+              <template #icon>
+                <IconDownload />
+              </template>
+              导出
+            </a-button>
+            <a-divider
+              direction="vertical"
+              class="toolbar-actions__divider"
+            />
             <a-dropdown trigger="click">
               <a-button size="small">
                 <template #icon>
@@ -425,7 +475,7 @@ function onGoSettlement(row: PurchaseReturnListItem): void {
         <template #createdAt="{ record }">
           {{ formatDateTime((record as PurchaseReturnListItem).createdAt) }}
         </template>
-        <!-- 操作列：详情 恒显；作废 / 结算切换 仅正常单显示（design §4.4） -->
+        <!-- 操作列（specs/011-action-column §0）：4 个操作 > 3，平铺 详情/收付款/作废，「打印」收纳进「更多」；详情恒显，作废/收付款仅正常单显示（design §4.4） -->
         <template #action="{ record }">
           <a-space
             class="row-actions"
@@ -471,6 +521,28 @@ function onGoSettlement(row: PurchaseReturnListItem): void {
                 作废
               </a-button>
             </a-popconfirm>
+            <a-dropdown trigger="click">
+              <a-button
+                type="text"
+                size="small"
+                aria-label="更多操作"
+              >
+                <template #icon>
+                  <IconDotsVertical />
+                </template>
+              </a-button>
+              <template #content>
+                <a-doption
+                  value="print"
+                  @click="onPrint(record as PurchaseReturnListItem)"
+                >
+                  <template #icon>
+                    <IconPrinter />
+                  </template>
+                  打印
+                </a-doption>
+              </template>
+            </a-dropdown>
           </a-space>
         </template>
       </a-table>
@@ -536,6 +608,10 @@ function onGoSettlement(row: PurchaseReturnListItem): void {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.toolbar-actions__divider {
+  margin: 0;
 }
 
 .table-card {

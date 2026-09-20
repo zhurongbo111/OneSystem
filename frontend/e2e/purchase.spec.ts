@@ -273,8 +273,9 @@ test.describe('采购入库（集成）', () => {
     await expect(row.getByRole('button', { name: '作废' }).locator('svg')).toHaveCount(1)
     await expect(row.getByRole('button', { name: '收付款' }).locator('svg')).toHaveCount(1)
     // 按钮顺序：详情 → 收付款 → 作废（specs/011-action-column §0 主操作 → 中性 → 危险）
+    // 4 个操作：详情 / 收付款 / 作废 + 收纳「打印」的「更多」触发按钮（specs/027-erp-export）
     const rowActions = row.locator('td.action-cell button')
-    await expect(rowActions).toHaveCount(3)
+    await expect(rowActions).toHaveCount(4)
     await expect(rowActions.nth(0)).toHaveText(/详情/)
     await expect(rowActions.nth(1)).toHaveText(/收付款/)
     await expect(rowActions.nth(2)).toHaveText(/作废/)

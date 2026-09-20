@@ -262,8 +262,9 @@ test.describe('销售退货（集成）', () => {
     await expect(row).toContainText(returnNo)
     await expect(row.getByText('未结算', { exact: true })).toBeVisible()
     // 操作列按钮带图标：详情 / 收付款 / 作废（specs/011-action-column §0 顺序；手工结算切换已移除）
+    // 4 个操作：详情 / 收付款 / 作废 + 收纳「打印」的「更多」触发按钮（specs/027-erp-export）
     const rowActions = row.locator('td.action-cell button')
-    await expect(rowActions).toHaveCount(3)
+    await expect(rowActions).toHaveCount(4)
     await expect(rowActions.nth(0)).toHaveText(/详情/)
     await expect(rowActions.nth(1)).toHaveText(/收付款/)
     await expect(rowActions.nth(2)).toHaveText(/作废/)
