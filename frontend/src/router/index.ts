@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+import { setUnauthorizedHandler } from '@/api/request'
 import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
@@ -308,6 +309,18 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+})
+
+// 40100 统一处置：清空认证状态后以 SPA 路由跳转登录页（带 redirect 回跳目标，不整页刷新）
+setUnauthorizedHandler(() => {
+  const auth = useAuthStore()
+  const current = router.currentRoute.value
+  // 顺序不可颠倒：先清认证状态再跳转，否则守卫会把 /login 重定向回首页
+  auth.logout()
+  if (current.name === 'login') return
+  router.replace({ name: 'login', query: { redirect: current.fullPath } }).catch(() => {
+    // 重复导航 / 导航被取消等场景，无需处理
+  })
 })
 
 // 全局前置守卫：未登录访问受保护路由 → 跳转登录页

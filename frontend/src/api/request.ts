@@ -27,16 +27,26 @@ export const tokenStorage = {
   clear: (): void => localStorage.removeItem(TOKEN_KEY),
 }
 
-/** 40100 处理：清除凭证并跳转登录页（防重复） */
+/**
+ * 40100 处置回调（由应用层注入）。
+ *
+ * 请求层不直接依赖 router / store：`stores/auth` 已依赖本模块，反向依赖会成环；
+ * 且"跳哪里、怎么跳"属路由层职责，本层只负责清凭证。
+ */
+let unauthorizedHandler: (() => void) | null = null
+
+/** 注册 40100 处置回调（应用启动时调用一次） */
+export function setUnauthorizedHandler(handler: () => void): void {
+  unauthorizedHandler = handler
+}
+
+/** 40100 处理：清除本地凭证，并交由处置回调跳转登录页（防重复触发） */
 function handleUnauthorized(): void {
   tokenStorage.clear()
   if (redirecting) return
   redirecting = true
-  const { pathname } = window.location
-  if (pathname !== '/login') {
-    window.location.href = '/login'
-  }
-  // 跳转后复位（hash 路由下 pathname 不变，依赖 location.href 触发整页刷新）
+  unauthorizedHandler?.()
+  // 处置回调为 SPA 内跳转，稍后复位标志位，避免并发 40100 重复跳转
   window.setTimeout(() => {
     redirecting = false
   }, 1000)
