@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-16
+updated: 2026-09-20
 ---
 
 # 设计规格：往来单位（erp-partner）
@@ -91,6 +91,7 @@ updated: 2026-09-16
 | code | 常量 | 含义 |
 |---:|---|---|
 | 40102 | `PartnerNameExists` | 往来单位名称已存在 |
+| 40119 | `PartnerTypeNarrowingNotAllowed` | 往来单位类型不允许收窄（只可保持原类型或改为两者） |
 
 > `40400 NotFound` / `40000 Validation` 复用全局。其余进销存错误码由 erp-product / erp-purchase / erp-sale 各自定义。
 
@@ -110,6 +111,7 @@ updated: 2026-09-16
 
 **UpdatePartner**：`GetByIdAsync`（不存在 → `40400`）→ 更新类型 / 联系人 / 电话 / 地址 / 备注（**不触碰 `Name`**）→ 更新审计。
 - 可选字段（联系人 / 电话 / 地址 / 备注）遵循 `AGENTS.md` §4.5 全量覆盖语义（缺字段 / 空串 / 纯空白一律清空落 `null`）；`Name` 为不可改字段（接口不接受）。
+- **类型只放宽不收窄**（跨字段业务约束，需读原档案，归 Handler 判定）：仅允许 `Type == 原类型` 或 `Type == Both`；供应商 / 客户互改、`Both` 改回单一类型抛 `40119`。理由：采购 / 销售单据（含编辑）按档案当前类型重校验（如 `UpdatePurchaseOrderRequestHandler`），收窄会使既有单据不可编辑。
 
 **UpdatePartnerStatus**：`GetByIdAsync`（不存在 → `40400`）→ 置 `Status` → 更新审计。
 
@@ -120,7 +122,7 @@ updated: 2026-09-16
 | 请求 | 规则 |
 |---|---|
 | `CreatePartnerRequest` | `name` 必填 1–50；`type` 必填且 ∈ {1,2,3}；`contact` ≤20；`phone` 选填 `PhonePattern`；`address` ≤100；`remark` ≤200 |
-| `UpdatePartnerRequest` | 同 create，去掉 `name`（不可改） |
+| `UpdatePartnerRequest` | 同 create，去掉 `name`（不可改）；类型「只放宽不收窄」属跨字段业务约束，归 Handler（见 §3.4） |
 | `GetPartnersRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 50（`KeywordMaxLength`）；`type` / `status` 可空或合法值 |
 | `UpdatePartnerStatusRequest` | `status` ∈ {0, 1} |
 
@@ -171,6 +173,7 @@ src/
 
 **往来单位抽屉 `PartnerFormDrawer.vue`**：
 - 新增：名称、类型、联系人、电话、地址、备注；编辑：同上去掉名称（只读展示）。
+- 编辑态类型单选按原类型**只放宽不收窄**渲染：保持原类型与「两者」可选，会收窄的单一类型项 `disabled`（供应商 / 客户→仅可保持或改「两者」，「两者」→仅可保持），并给出说明文案；新增态三项均可选（与后端 §3.4 规则一致，前端做引导、后端做兜底）。
 - 打开时先 `Object.assign(form, emptyForm())` 重置（防数据串台）；提交 `submitting` + 防重入。
 
 ### 4.5 按钮 loading（遵循前端规则 §4.6）
@@ -187,6 +190,7 @@ src/
 |---|---|---|
 | 供应商 / 客户合并一张表 + `Type` | `Partners` + `PartnerType` | 一份档案可既是客户又是供应商；类型校验在 erp-purchase / erp-sale 的 Handler（`Both` 兼容两类单据） |
 | 名称唯一且不可改 | 应用层大小写不敏感 + 数据库唯一索引兜底 | 避免单据引用歧义，同用户名不可改原则；名称是业务标识 |
+| 类型只放宽不收窄 | 仅允许保持原类型或改为 `Both`，反例抛 `40119` | 档案被历史单据引用，收窄会使既有单据在编辑时类型重校验失败；放宽（→`Both`）不影响任何既有单据 |
 | 只停用不删除 | 停用不可被新单据选择，保留历史引用 | 单据引用往来单位，删除会破坏审计轨迹 |
 | 往来单位不做独立详情页 | 抽屉 disabled 态查看 | 字段 < 5 个的简单实体，符合前端规则 §5.5 例外条款 |
 | 无 RBAC | 登录即可见往来单位菜单 | 用户确认本期不做权限；后续权限模块统一接入 |
@@ -197,7 +201,7 @@ src/
 
 - **GetPartners**：关键词（命中名称或联系人）/ 类型 / 状态筛选传参断言；分页映射。
 - **CreatePartner**：成功；重名（大小写不敏感）→ `40102`。
-- **UpdatePartner**：成功（断言不改 `Name`）；不存在 → `40400`。
+- **UpdatePartner**：成功（断言不改 `Name`）；不存在 → `40400`；**类型收窄**（供应商→客户、两者→供应商 / 客户）→ `40119`；**类型放宽**（供应商 / 客户→`Both`）与保持原类型成功。
 - **UpdatePartnerStatus**：成功；不存在 → `40400`。
 - **GetPartnerById**：存在 / 不存在（`40400`）。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：Name 50 通过 / 51 拒绝；Phone 边界（11 位合法通过 / 10 位拒绝）；EF `HasMaxLength` == `PartnerFieldConstraints`；`keyword` 50 通过 / 51 拒绝。
