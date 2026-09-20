@@ -317,7 +317,7 @@ async function onSubmit(): Promise<void> {
           </template>
           <template #product="{ record }">
             <a-select
-              :value="(record as PurchaseOrderFormLine).productId"
+              :model-value="(record as PurchaseOrderFormLine).productId"
               :options="productOptions"
               placeholder="请选择商品"
               allow-search
