@@ -32,13 +32,6 @@ const emit = defineEmits<{
   (e: 'saved'): void
 }>()
 
-// —— constants ——
-const typeOptions: { label: string; value: PartnerType }[] = [
-  { label: '供应商', value: 1 },
-  { label: '客户', value: 2 },
-  { label: '两者', value: 3 },
-]
-
 // —— helpers ——
 function emptyForm(): PartnerFormState {
   return {
@@ -60,6 +53,9 @@ const form = reactive<PartnerFormState>(emptyForm())
 /** 查看态审计信息（不参与表单提交） */
 const detailCreatedAt = ref<string | null>(null)
 const detailUpdatedAt = ref<string | null>(null)
+
+/** 编辑态原类型（「只放宽不收窄」判定用；新增 / 查看为 null） */
+const originalType = ref<PartnerType | null>(null)
 
 // —— computed ——
 const drawerTitle = computed(() =>
@@ -85,6 +81,20 @@ const rules = computed<Record<string, FieldRule[]>>(() => ({
   remark: [{ max: 200, message: '备注长度不能超过 200' }],
 }))
 
+/** 类型可选项：编辑态只允许放宽（保持原类型或改为「两者」），会收窄的项禁用 */
+const typeOptions = computed<{ label: string; value: PartnerType; disabled: boolean }[]>(() => {
+  const options: { label: string; value: PartnerType }[] = [
+    { label: '供应商', value: 1 },
+    { label: '客户', value: 2 },
+    { label: '两者', value: 3 },
+  ]
+  const original = originalType.value
+  return options.map((o) => ({
+    ...o,
+    disabled: props.mode === 'edit' && original !== null && o.value !== original && o.value !== 3,
+  }))
+})
+
 // —— watch ——
 /** 打开抽屉时先重置（防数据串台），再按模式拉取详情 */
 watch(
@@ -94,6 +104,7 @@ watch(
     Object.assign(form, emptyForm())
     detailCreatedAt.value = null
     detailUpdatedAt.value = null
+    originalType.value = null
     if (props.mode !== 'create' && props.editId) {
       void loadPartner(props.editId)
     }
@@ -108,6 +119,7 @@ async function loadPartner(id: string): Promise<void> {
     const detail = await getPartner(id)
     form.name = detail.name
     form.type = detail.type
+    originalType.value = detail.type
     form.contact = detail.contact ?? ''
     form.phone = detail.phone ?? ''
     form.address = detail.address ?? ''
@@ -204,6 +216,7 @@ async function onSubmit(): Promise<void> {
         <a-form-item
           label="单位类型"
           field="type"
+          :extra="mode === 'edit' ? '类型只允许放宽（改为「两者」），不允许收窄' : undefined"
         >
           <a-radio-group
             v-model="form.type"
