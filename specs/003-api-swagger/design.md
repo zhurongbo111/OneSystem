@@ -61,6 +61,7 @@ builder.Services.AddSwaggerGen(options =>
 - `UsersController.Me` 动作追加 `[ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UserDto>))]` 与 `[ProducesResponseType(401)]`。
 - 说明：本项目全站 HTTP 200 + 业务码约定，401 响应在 Swagger 中仅为**语义标注**；401 的说明文案（"实际为 HTTP 200 + `code: 40100`"）写在动作 XML 注释（summary）中随文档展示——Swashbuckle 6.x 无公开的单状态码响应描述特性，MVC 的 `ProducesResponseType` 也无 `Description` 成员。
 - `HealthController`、`AuthController` 补充 `[ProducesResponseType(200, ...)]` 明确 body 类型（`ApiResponse<string>` / `ApiResponse<LoginResponse>`）。
+- 文件下载类动作（`027-erp-export` 导出）：`[ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]` 标注，Swagger 中该动作 200 响应类型即 `FileResult`；成功响应体为二进制流而非 `ApiResponse<T>`（契约例外见 `specs/027-erp-export/design.md` §0.1），失败仍为统一响应 JSON。
 
 ### 2.4 XML 注释
 

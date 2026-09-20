@@ -20,6 +20,7 @@ updated: 2026-09-16
 - 工具条分两行，整体与表格同在一个无描边 `a-card` 内，紧贴表格：
   - 筛选行：`a-row`（`wrap`）+ `a-col` 栅格排多列，窄屏自动换行为多行；末列放「搜索」（primary，`<IconSearch />`）+「重置」（`<IconRestore />`）按钮，图标走 `#icon` 插槽（重置用 `IconRestore`（恢复初始态语义），不复用已归属「刷新」的 `IconRefresh`）；行底用边框线与操作行分隔。
   - 操作行：紧贴表格，左右分组（`justify-content: space-between`）；**主操作（新增 / 开单）统一靠左**，其余操作（数据操作 导出、批量删除 / 视图操作 列设置、刷新）靠右且与主操作同一行，组间用竖 `a-divider` 分隔；按钮统一 `size="small"`；无主操作的只读页（库存、登录日志）整行右对齐即可。页面头不放任何创建按钮（采购 / 销售开单入口同样在操作行左组）。
+  - 注记（`027-erp-export`）：业务列表「数据操作」组的**导出**为**后端生成 xlsx**（图标 `IconDownload`、状态 `exporting`、导出当前筛选全量、位置同本组既有约定）；本规格 `ListShowcaseView` 的 **CSV 导出为示例页演示能力**，两者并存不合并（示例页不接后端导出）。
 - 表格配置：`row-key` 必设；分页 `showTotal` + `showPageSize`（`pageSizeOptions: [10, 20, 50]`）；枚举字段（角色 / 状态等）用 `a-tag` 着色展示；操作列放表格末列，`a-button type="text"`，呈现细则见 `specs/011-action-column/design.md` §0。
 - 列宽策略：每列都设 `width`，不设无宽度弹性列（唯一无宽度列会吸收全部剩余空间，宽屏下被撑到 400px+）；长文本列固定 `width` + `ellipsis: true, tooltip: true`；表格设 `:scroll="{ x: tableScrollX }"`（`tableScrollX` = 各列 `width` 之和）——总和小于容器时剩余空间按列宽比例分摊，窄屏横向滚动。操作列宽度按 `specs/011-action-column/design.md` §0 的列宽参考取值。
 
