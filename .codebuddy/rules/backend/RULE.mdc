@@ -63,8 +63,10 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 - **中介分发（强制）**：Controller 只注入 `Abstractions/IMediator`，用 `await _mediator.Send(request)` 触发用例，禁止直接依赖或 `new` 具体 Handler。分发实现 `Mediation/Mediator`（自研简化 MediatR）：按请求运行时类型经 DI 解析已注册的 `IRequestHandler<TRequest,TResponse>` 并调用 `HandleAsync`。
 - **格式校验全局统一（强制）**：由 `Mediator` 在分发前统一执行——`Send` 内按请求运行时类型解析已注册的 `IValidator<TRequest>` 并 `ValidateAsync`，失败抛 `BusinessException(ErrorCode.Validation, 首条错误信息)`，未注册校验器的请求（如空请求用例）自动跳过。Handler 不注入 / 不执行校验器，Controller 不做参数校验。
+- **ASP.NET Core 默认校验只保留绑定层（强制）**：`Program` 必须 `ConfigureApiBehaviorOptions(o => o.SuppressModelStateInvalidFilter = true)` 关闭 `[ApiController]` 自动 400（RFC problem-details 违反 `AGENTS.md` §4.1，前端表现为「网络异常」）；同时必须全局注册 `Middleware/ModelStateValidationFilter`——关闭后动作方法仍会带非法模型执行（`[FromBody]` 请求对象为 null），由该过滤器在动作执行前抛 `BusinessException(ErrorCode.Validation, "参数错误")` 短路，原始错误只入日志（含字段与 traceId）不回传。**判据**：任何请求格式错误（反序列化失败、类型不匹配、路由 / Query 参数绑定失败）必须返回统一响应 `40000`，禁止出现 problem-details；禁止为承接绑定校验而在 Controller 或 Handler 内加 `ModelState` / DataAnnotations 检查。
 - **路由约定（强制）**：统一 `/api/<资源复数>`（`AGENTS.md` §4.4）；动作用 HTTP 动词 + 资源 / 子资源路径（如 `PUT /api/users/{id}/status`），用例名不进路径，不在路径中暴露实现细节。
 - **分页入参（强制）**：`page` ≥ 1、`pageSize` 默认 20、上限 100（`AGENTS.md` §4.3）；Validator 用 `InclusiveBetween` 等表达边界，越界由全局校验统一返回 `40000`。
+- **路由参数不得从请求体绑定（强制）**：`[FromBody]` 直接绑定用例 Request 时（如 `Update<X>Request` 兼作中介请求），取自路由的 `Id` 必须是**可缺省**成员。标 `required` 分两层后果：① **System.Text.Json**（.NET 7+ 按 `RequiredMemberAttribute` 校验，与 ASP.NET Core 无关）在请求体缺 `id` 时抛 `JsonException`——脱离 Web 单纯 `JsonSerializer.Deserialize` 同样失败；② **ASP.NET Core** 的 `SystemTextJsonInputFormatter` 捕获该异常并转为 ModelState 错误（**不冒泡**，故 `GlobalExceptionMiddleware` 拿不到、无统一响应），再由 `[ApiController]` 自动注册的 ModelState 过滤器短路返回 RFC problem-details 400，前端表现为「网络异常」，动作方法根本不执行。Controller 以路由值覆盖 `Id`，并保留 Validator 的 `NotEmpty` 兜底。
 
 ### 4.3 DTO 与读模型
 
