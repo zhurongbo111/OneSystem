@@ -8,8 +8,8 @@ namespace App.Core.Features.SalesOrders.UpdateSalesOrder;
 /// </summary>
 public sealed class UpdateSalesOrderRequest : IRequest<SalesOrderDetailDto>
 {
-    /// <summary>订单 id（取自路由参数）</summary>
-    public required Guid Id { get; init; }
+    /// <summary>订单 id（取自路由参数；请求体不含，缺失时反序列化为空值，控制器以路由 id 覆盖）</summary>
+    public Guid Id { get; init; }
 
     /// <summary>客户 id</summary>
     public required Guid PartnerId { get; init; }
