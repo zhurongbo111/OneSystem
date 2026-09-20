@@ -300,6 +300,43 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  // 单据打印视图（specs/027-erp-export §0.3）：顶层路由，不进 AppLayout（无侧边栏 / 工具条），不进侧边菜单
+  {
+    path: '/print/purchases/:id',
+    name: 'purchasePrint',
+    component: () => import('@/views/PurchaseManagement/PurchasePrintView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/print/sales/:id',
+    name: 'salePrint',
+    component: () => import('@/views/SalesManagement/SalePrintView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/print/purchase-returns/:id',
+    name: 'purchaseReturnPrint',
+    component: () => import('@/views/PurchaseReturnManagement/PurchaseReturnPrintView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/print/sales-returns/:id',
+    name: 'saleReturnPrint',
+    component: () => import('@/views/SalesReturnManagement/SalesReturnPrintView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/print/settlements/:id',
+    name: 'settlementPrint',
+    component: () => import('@/views/SettlementManagement/SettlementPrintView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/print/stock-takes/:id',
+    name: 'stockTakePrint',
+    component: () => import('@/views/StockTakeManagement/StockTakePrintView.vue'),
+    meta: { requiresAuth: true },
+  },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',

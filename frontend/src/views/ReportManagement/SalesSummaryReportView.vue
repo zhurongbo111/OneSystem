@@ -3,12 +3,12 @@ import { computed, onMounted, ref } from 'vue'
 
 import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
-import { getSalesSummary, toReportRangeUtc } from '@/api/report'
+import { exportSalesSummary, getSalesSummary, toReportRangeUtc } from '@/api/report'
 import type { SalesSummaryItem, SalesSummaryTotal, SummaryGroupBy } from '@/api/report'
 import { toDateInput } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
+import { IconDownload, IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
 
 // —— constants ——
 function defaultRange(): string[] {
@@ -26,6 +26,8 @@ let fetchSeq = 0
 
 // —— reactive state ——
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 const items = ref<SalesSummaryItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -154,6 +156,27 @@ function onRefresh(): void {
   void fetchList()
 }
 
+/** 导出当前已应用筛选的全量销售汇总（含合计行）；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    const { start, end } = toReportRangeUtc(appliedRange.value[0], appliedRange.value[1])
+    await exportSalesSummary({
+      start,
+      end,
+      partnerId: appliedPartnerId.value,
+      groupBy: appliedGroupBy.value,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 function onPageChange(current: number): void {
   page.value = current
   void fetchList()
@@ -237,7 +260,19 @@ function formatMoney(value: number): string {
           </a-col>
         </a-row>
 
+        <!-- 操作行：导出 + 刷新 -->
         <div class="toolbar-actions">
+          <a-button
+            size="small"
+            :loading="exporting"
+            :disabled="exporting"
+            @click="onExport"
+          >
+            <template #icon>
+              <IconDownload />
+            </template>
+            导出
+          </a-button>
           <a-button
             size="small"
             :loading="loading"

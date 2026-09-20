@@ -2,13 +2,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+import { exportStockMovements } from '@/api/export'
 import { getProductPickList } from '@/api/product'
 import type { ProductPickItem } from '@/api/product'
 import { getStockMovements, toUtcRange } from '@/api/stockMovement'
 import type { StockMovementListItem, StockMovementType } from '@/api/stockMovement'
 import { formatDateTime } from '@/utils/datetime'
+import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
+import { IconDownload, IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
 
 const route = useRoute()
 
@@ -41,6 +43,8 @@ let fetchSeq = 0
 
 // —— reactive state ——
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 const items = ref<StockMovementListItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -171,6 +175,28 @@ function onRefresh(): void {
   void fetchList()
 }
 
+/** 导出当前已应用筛选的全量库存流水；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    const { start, end } = toUtcRange(appliedRange.value[0], appliedRange.value[1])
+    await exportStockMovements({
+      keyword: appliedKeyword.value.trim() || undefined,
+      productId: appliedProductId.value,
+      type: appliedType.value,
+      start,
+      end,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 function onPageChange(current: number): void {
   page.value = current
   void fetchList()
@@ -264,6 +290,21 @@ function onPageSizeChange(size: number): void {
         </a-row>
 
         <div class="toolbar-actions">
+          <a-button
+            size="small"
+            :loading="exporting"
+            :disabled="exporting"
+            @click="onExport"
+          >
+            <template #icon>
+              <IconDownload />
+            </template>
+            导出
+          </a-button>
+          <a-divider
+            direction="vertical"
+            class="toolbar-actions__divider"
+          />
           <a-button
             size="small"
             :loading="loading"
@@ -381,6 +422,10 @@ function onPageSizeChange(size: number): void {
   justify-content: flex-end;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.toolbar-actions__divider {
+  margin: 0;
 }
 
 .table-card {

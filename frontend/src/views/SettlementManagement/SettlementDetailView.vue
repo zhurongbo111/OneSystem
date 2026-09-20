@@ -8,6 +8,7 @@ import { getUser } from '@/api/user'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
+import { IconPrinter } from '@tabler/icons-vue'
 
 // —— constants ——
 /** 方式文案 */
@@ -87,6 +88,11 @@ function goBack(): void {
   void router.push({ name: 'settlements' })
 }
 
+/** 打开打印视图（specs/027-erp-export §4.3：详情页头部打印入口） */
+function onPrint(): void {
+  void router.push({ name: 'settlementPrint', params: { id: id.value } })
+}
+
 /** 作废：回退被核销单据已结算金额，仅改状态不删数据 */
 async function onVoid(): Promise<void> {
   if (voidingId.value || !detail.value) return
@@ -129,7 +135,19 @@ async function onVoid(): Promise<void> {
         class="detail-header"
         title="收付款详情"
         @back="goBack"
-      />
+      >
+        <template #extra>
+          <a-button
+            size="small"
+            @click="onPrint"
+          >
+            <template #icon>
+              <IconPrinter />
+            </template>
+            打印
+          </a-button>
+        </template>
+      </a-page-header>
 
       <a-card :bordered="false">
         <a-descriptions

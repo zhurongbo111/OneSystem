@@ -250,6 +250,24 @@ test.describe('收付款与往来对账（集成）', () => {
     await expect(page.locator('.arco-table tbody tr').first()).toContainText(orderNo)
     await expect(page.getByText('¥ 8.00', { exact: true }).first()).toBeVisible()
 
+    // 打印视图（specs/027-erp-export）：详情页头部「打印」入口 → 收付款单版式含收付方向与核销明细
+    const receiptNo = (await page.locator('.detail-desc').getByText(/^RC\d{12}$/).first().innerText()).trim()
+    await page.getByRole('button', { name: '打印', exact: true }).click()
+    await expect(page).toHaveURL(/\/print\/settlements\//)
+    await expect(page.locator('.arco-layout-sider')).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '收付款单' })).toBeVisible()
+    const printPage = page.locator('.print-page')
+    await expect(printPage.getByText(receiptNo)).toBeVisible()
+    await expect(printPage.getByText(customer)).toBeVisible()
+    // 收付方向（收款 / 付款）为必显字段
+    await expect(printPage.getByText('类型：')).toBeVisible()
+    await expect(printPage.getByText('收款', { exact: true })).toBeVisible()
+    await expect(page.locator('.print-table tbody tr')).toHaveCount(1)
+    await expect(page.locator('.print-table tbody tr').first()).toContainText(orderNo)
+    // 「返回」回到详情页
+    await page.getByRole('button', { name: '返回' }).click()
+    await expect(page).toHaveURL(/\/settlements\/detail\//)
+
     // 销售列表：部分结算（未结 12.00）
     const partialRow = await findSalesRow(page, orderNo)
     await expect(partialRow.getByText('部分结算（未结 12.00）', { exact: true })).toBeVisible()

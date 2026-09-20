@@ -2,10 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { exportStockTakes } from '@/api/export'
 import { getStockTakes, toDateRange, type StockTakeListItem, type StockTakeType } from '@/api/stockTake'
 import { formatDateTime } from '@/utils/datetime'
+import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconListDetails, IconPlus, IconRefresh, IconRestore, IconSearch, IconSettings } from '@tabler/icons-vue'
+import { IconDownload, IconListDetails, IconPlus, IconPrinter, IconRefresh, IconRestore, IconSearch, IconSettings } from '@tabler/icons-vue'
 
 // —— constants ——
 const typeOptions: { label: string; value: StockTakeType }[] = [
@@ -26,6 +28,8 @@ let fetchSeq = 0
 const router = useRouter()
 
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 const items = ref<StockTakeListItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -101,7 +105,8 @@ const columns = computed<TableColumnData[]>(() => {
   if (visibleColumns.value.includes('createdAt')) {
     cols.push({ title: '创建时间', slotName: 'createdAt', width: 172 })
   }
-  cols.push({ title: '操作', slotName: 'action', width: 90, bodyCellClass: 'action-cell' })
+  // 操作列：2 个操作 ≤ 3 平铺（详情 / 打印），宽度按 specs/011-action-column §0 取值 150
+  cols.push({ title: '操作', slotName: 'action', width: 150, bodyCellClass: 'action-cell' })
   return cols
 })
 
@@ -203,6 +208,33 @@ function onDetail(row: Record<string, unknown>): void {
   const id = row.id as string
   void router.push({ name: 'stockTakeDetail', params: { id } })
 }
+
+/** 导出当前已应用筛选的全量库存盘点单（单据 + 明细两个工作表）；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    const { start, end } = appliedRange.value ? toDateRange(appliedRange.value[0], appliedRange.value[1]) : {}
+    await exportStockTakes({
+      keyword: appliedKeyword.value.trim() || undefined,
+      type: appliedType.value,
+      start,
+      end,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
+/** 打印单据：同步路由跳转（瞬时动作不置 loading） */
+function onPrint(row: Record<string, unknown>): void {
+  const id = row.id as string
+  void router.push({ name: 'stockTakePrint', params: { id } })
+}
 </script>
 
 <template>
@@ -292,6 +324,21 @@ function onDetail(row: Record<string, unknown>): void {
             </a-button>
           </div>
           <div class="toolbar-actions__right">
+            <a-button
+              size="small"
+              :loading="exporting"
+              :disabled="exporting"
+              @click="onExport"
+            >
+              <template #icon>
+                <IconDownload />
+              </template>
+              导出
+            </a-button>
+            <a-divider
+              direction="vertical"
+              class="toolbar-actions__divider"
+            />
             <a-dropdown trigger="click">
               <a-button size="small">
                 <template #icon>
@@ -362,7 +409,7 @@ function onDetail(row: Record<string, unknown>): void {
         <template #createdAt="{ record }">
           {{ formatDateTime(createdAt(record)) }}
         </template>
-        <!-- 操作列：仅 1 个只读「详情」 -->
+        <!-- 操作列（specs/011-action-column §0）：2 个操作平铺 详情/打印 -->
         <template #action="{ record }">
           <a-space
             class="row-actions"
@@ -377,6 +424,16 @@ function onDetail(row: Record<string, unknown>): void {
                 <IconListDetails />
               </template>
               详情
+            </a-button>
+            <a-button
+              type="text"
+              size="small"
+              @click="onPrint(record)"
+            >
+              <template #icon>
+                <IconPrinter />
+              </template>
+              打印
             </a-button>
           </a-space>
         </template>
@@ -444,6 +501,10 @@ function onDetail(row: Record<string, unknown>): void {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.toolbar-actions__divider {
+  margin: 0;
 }
 
 .table-card {

@@ -4,10 +4,11 @@ import { useRouter } from 'vue-router'
 
 import { getCategories } from '@/api/product'
 import type { Category } from '@/api/product'
-import { getStockBalance } from '@/api/report'
+import { exportStockBalance, getStockBalance } from '@/api/report'
 import type { StockBalanceItem, StockBalanceSummary } from '@/api/report'
+import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
-import { IconListDetails, IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
+import { IconDownload, IconListDetails, IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
 
 const router = useRouter()
 
@@ -16,6 +17,8 @@ let fetchSeq = 0
 
 // —— reactive state ——
 const loading = ref(false)
+/** 导出（erp-export）：与查询 loading 分开，防重入 */
+const exporting = ref(false)
 const items = ref<StockBalanceItem[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -122,6 +125,24 @@ function onRefresh(): void {
   void fetchList()
 }
 
+/** 导出当前已应用筛选的全量库存余额表（含合计行）；失败提示由请求层统一处理 */
+async function onExport(): Promise<void> {
+  exporting.value = true
+  try {
+    await exportStockBalance({
+      keyword: appliedKeyword.value.trim() || undefined,
+      categoryId: appliedCategoryId.value,
+    })
+    if (total.value === 0) {
+      Message.info('已导出空数据模板')
+    }
+  } catch {
+    // 错误提示已由请求层统一处理
+  } finally {
+    exporting.value = false
+  }
+}
+
 function onPageChange(current: number): void {
   page.value = current
   void fetchList()
@@ -204,7 +225,19 @@ function onShowDetail(record: StockBalanceItem): void {
           </a-col>
         </a-row>
 
+        <!-- 操作行：导出 + 刷新 -->
         <div class="toolbar-actions">
+          <a-button
+            size="small"
+            :loading="exporting"
+            :disabled="exporting"
+            @click="onExport"
+          >
+            <template #icon>
+              <IconDownload />
+            </template>
+            导出
+          </a-button>
           <a-button
             size="small"
             :loading="loading"
