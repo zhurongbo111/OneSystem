@@ -35,7 +35,10 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
 // ========== 服务注册 ==========
 builder.Services.AddCore();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddControllers();
+// 关闭 [ApiController] 自动 400（RFC problem-details，破坏统一响应契约），改由 ModelStateValidationFilter 抛 BusinessException，
+// 经 GlobalExceptionMiddleware 返回统一响应；业务校验仍由 Mediator 统一执行 FluentValidation，不在此重复
+builder.Services.AddControllers(options => options.Filters.Add<ModelStateValidationFilter>())
+    .ConfigureApiBehaviorOptions(options => options.SuppressModelStateInvalidFilter = true);
 builder.Services.AddEndpointsApiExplorer();
 
 // ASP.NET Core 默认 JWT 认证：校验参数与签发共用 JwtOptions，FallbackPolicy 默认要求登录（白名单接口用 [AllowAnonymous] 标注）
