@@ -85,7 +85,7 @@ updated: 2026-09-17
 - [ ] 7.3 `specs/005-app-layout/design.md` 加注记：菜单项 `permission` 与过滤规则
 - [ ] 7.4 `specs/012`–`027` 各 `design.md` 加注记：动作权限点（指针到 `028` §0.2）
 - [ ] 7.5 `.codebuddy/CONTEXT.md` §2（Roles Feature / 仓储 / 权限常量 / 错误码）、§3（RoleManagement 域、403 页、api 文件）、§6 同步
-- [ ] 7.6 `specs/ROADMAP.md` 状态列更新（`028` → 已实现）；§4.5「`028` 之前登录即可见」注记为已落地
+- [ ] 7.6 `specs/ROADMAP.md` 状态列更新（`028` → 已实现）；§6.5「`028` 之前登录即可见」注记为已落地
 
 ## 完成定义
 

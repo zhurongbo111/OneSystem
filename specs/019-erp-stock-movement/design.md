@@ -30,7 +30,7 @@ updated: 2026-09-18
 | `TransferOutVoid = 13` | 调拨转出作废 | 增加 | `volcano` | `+N`（绿字） |
 | `TransferInVoid = 14` | 调拨转入作废 | 减少 | `magenta` | `-N`（红字） |
 
-> 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加；7 / 8 由 `specs/021-erp-purchase-return/` 追加；9 / 10 由 `specs/022-erp-sale-return/` 追加；11–14 由 `specs/031-erp-transfer/` 追加（各自落地时同步启用；前端类型下拉以本表为准）。
+> 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加；7 / 8 由 `specs/021-erp-purchase-return/` 追加；9 / 10 由 `specs/022-erp-sale-return/` 追加；11–14 由 `specs/039-erp-transfer/` 追加（各自落地时同步启用；前端类型下拉以本表为准）。
 > **演进（erp-report）**：进销存报表按变动类型将流水归类「期间入 / 期间出」的归类口径见 `specs/025-erp-report/design.md` §0.1（`StockTakeAdjust` 按符号双向拆分、两侧各计一次；`Transfer*` 11–14 落地时在 §0.1 续行）。
 
 - 变动量列展示**带符号整数**（`+N` / `-N`），入库 / 回增绿字、出库 / 回冲红字；e2e 断言该文本。
@@ -228,7 +228,7 @@ src/
 | 流水页独立页面而非抽屉 | 多条件筛选 + 跨商品查询 + 分页 | 抽屉只适合单商品窄表；单商品下钻用路由 query 预置筛选，复用同一页面 |
 | 库存查询页新增「流水」入口 | 操作列 1 个只读按钮 | 修订 `014` 决策；库存写入仍只由单据 / 盘点驱动，不开放手工改库存 |
 | 错误码不新增 | 写入复用既有单据业务码 | 流水追加无独立失败分支；避免为「无错误」凑码 |
-| 无 RBAC | 登录即可见「库存流水」菜单 | 同既有功能（权限统一由 `028-erp-rbac` 接入，见 `specs/ROADMAP.md` §4.5） |
+| 无 RBAC | 登录即可见「库存流水」菜单 | 同既有功能（权限统一由 `028-erp-rbac` 接入，见 `specs/ROADMAP.md` §6.5） |
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
 
