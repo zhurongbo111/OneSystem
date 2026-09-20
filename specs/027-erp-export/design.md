@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-20
 ---
 
 # 设计规格：列表导出 Excel 与单据打印（erp-export）
@@ -35,8 +35,8 @@ updated: 2026-09-17
 | 往来单位列表 | `GET /api/partners/export` | `Partners/ExportPartners` | 1 张 |
 | 库存查询 | `GET /api/inventory/export` | `Inventory/ExportInventory` | 1 张 |
 | 库存流水 | `GET /api/stock-movements/export` | `StockMovements/ExportStockMovements` | 1 张 |
-| 采购入库 | `GET /api/purchase-orders/export` | `Purchases/ExportPurchaseOrders` | 2 张（单据 + 明细） |
-| 销售出库 | `GET /api/sales-orders/export` | `Sales/ExportSalesOrders` | 2 张 |
+| 采购入库 | `GET /api/purchase-receipts/export` | `PurchaseReceipts/ExportPurchaseReceipts` | 2 张（单据 + 明细） |
+| 销售出库 | `GET /api/sales-shipments/export` | `SalesShipments/ExportSalesShipments` | 2 张 |
 | 采购退货 | `GET /api/purchase-returns/export` | `PurchaseReturns/ExportPurchaseReturns` | 2 张 |
 | 销售退货 | `GET /api/sales-returns/export` | `SalesReturns/ExportSalesReturns` | 2 张 |
 | 收付款单 | `GET /api/settlements/export` | `Settlements/ExportSettlements` | 2 张（单据 + 核销明细） |
@@ -48,9 +48,18 @@ updated: 2026-09-17
 | 成本与毛利 | `GET /api/reports/cost-profit/export` | `Reports/ExportCostProfit` | 1 张（含合计行） |
 
 - **导出参数 = 该列表 / 报表的既有筛选参数**（忽略 `page` / `pageSize`，后端按 `page = 1, pageSize = 上限` 取数）；单据类明细工作表首列固定为所属单号。
+- **路由与用例名修正（对齐 `024-erp-order-flow` 落地的重命名，2026-09-20）**：本表起草早于 `024` 的表 / 接口重命名，原「采购入库 `purchase-orders` / `Purchases`」「销售出库 `sales-orders` / `Sales`」已失效；实现以现状域为准——采购入库 = `api/purchase-receipts` + `Features/PurchaseReceipts/ExportPurchaseReceipts`，销售出库 = `api/sales-shipments` + `Features/SalesShipments/ExportSalesShipments`（列表列定义与筛选参数同样取对应域 `design.md` §4.4）。
 - **导出上限**：单次导出最多 `ExportFieldConstraints.MaxRows = 50000` 行（每个工作表独立计数），超限返回 `40000`（message 提示缩小筛选范围）。
 - **分类管理不做导出**：单级字典（`017`），页面内已可直接维护，无交付价值（不做）。
 - 排序与列表一致（各域既定排序）；作废单据 / 行**照常导出**（含状态列），便于对账核对。
+- **枚举 / 比率 / 标记列的导出口径（2026-09-20 实现期收敛，唯一事实源）**：
+  - 枚举列统一输出**中文文案**（`App.Core/Exports/ExportLabels`），与页面一致：商品 / 往来状态「启用 / 停用」、往来类型「供应商 / 客户 / 两者」、单据状态「正常 / 已作废」、变动类型取 `019` §0 十项文案、盘点类型「期初建账 / 库存盘点」、收付款「收款 / 付款」与方式「现金 / 银行转账 / 其他」、核销单据类型「采购入库单 / 销售出库单 / 采购退货单 / 销售退货单」。
+  - 单据「结算状态」与列表同口径：`未结算` / `部分结算（未结 X.00）` / `已结算`（由 `SettlementStateCalculator` 推导）。
+  - 比率列输出为**百分比文本**（保留 2 位，如 `25.00%`）：库存余额表「库存占比」= `QuantityRatio × 100`；成本毛利表「毛利率」= `GrossProfitRate × 100`，其值为 `null` 时输出**空单元格**。
+  - 标记列按页面文案：库存余额表「成本异常」→ `成本异常` / `-`；成本毛利表「成本完整性」→ `成本不完整` / `-`。
+  - **合计行只对可加总列求和**（数量 / 件数 / 金额），比率、均价与标记列留空；首列固定为 `合计`。
+  - **汇总类报表「单位」列始终输出且不留空**：xlsx 保持固定列集便于二次处理；**商品维度输出商品单位；「往来单位 / 客户」维度聚合的是多种商品、无单一单位，一律输出占位符 `-`**（合计行同为 `-`），空值占位统一走 `ExportLabels.OrDash`，不允许出现无从辨识的空白单元格。页面行为按 `025` §4.4 不变（该维度不显示单位列）。
+- **明细批量取数**：单据类导出的明细一律用仓储的 `GetItemsBy...IdsAsync` 一次取回后按单据分组，**禁止逐单查询**（N+1）；商品编码 / 创建人显示名同理走批量方法。
 
 ### 0.3 打印范围与版式
 
@@ -63,7 +72,12 @@ updated: 2026-09-17
 | 收付款单 | `print/settlements/:id` | `SettlementManagement/SettlementPrintView.vue` |
 | 库存盘点单 | `print/stock-takes/:id` | `StockTakeManagement/StockTakePrintView.vue` |
 
-- 版式（自上而下）：单据标题（如「采购入库单」）→ 单据头（往来单位 / 单据日期 / 单号 / 备注）→ 明细表（序号 / 商品编码 / 商品名称 / 单位 / 数量 / 单价 / 小计）→ 合计（数量合计 + 金额合计，收付款为核销明细与总额）→ 页脚（打印时间 + 操作人 + 页码）。
+- 版式（自上而下）：单据标题（如「采购入库单」）→ 单据头 → 明细表 → 合计 → 页脚（打印时间 + 操作人 + 页码）。
+- **单据头 / 明细 / 合计的字段按单据类型（2026-09-20 实现期收敛，唯一事实源）**：
+  - 单品单据（采购入库 / 销售出库 / 采购退货 / 销售退货）：单据头 = 往来单位 / 单据日期 / 单号 / 备注；明细 = 序号 / 商品名称 / 单位 / 数量 / 单价 / 小计；合计 = 数量合计 + 金额合计。
+  - 收付款单：单据头 = 往来单位 / **类型（收款 / 付款）** / 收付日期 / 单号 / 方式 / 备注（不标方向无法辨识收付语义，故类型为必显字段）；明细 = 序号 / 核销单号 / 单据日期 / 单据金额 / 本次核销金额；合计 = 核销总额。
+  - 库存盘点单：单据头 = 类型（期初建账 / 库存盘点） / 单据日期 / 单号 / 备注（该单据**无往来单位**，以类型占该位）；明细 = 序号 / 商品编码 / 商品名称 / 单位 / 账面数量 / 实盘数量 / 差异；合计 = 账面数量合计 + 实盘数量合计（无金额列）。
+- **打印明细列以实现为准（2026-09-20）**：四类商品明细（入库 / 出库 / 采购退货 / 销售退货）的**详情接口只返回商品名称快照、不含商品编码**，故打印视图明细列不含「商品编码」（不为凑此列新增接口或联查，导出 xlsx 的明细表仍含编码，取 `IProductRepository.GetCodesByIdsAsync`）；盘点明细自带商品编码、收付款为核销明细，各按其详情接口字段展示。
 - 交互：页面顶部一条**非打印**工具条（`print-toolbar`，`@media print` 隐藏）含「打印」（`window.print()`）与「返回」（`router.back()`）；打印时间取**打印当刻**（`utils/datetime.ts` 格式化）。
 - 数据源：复用该域既有详情接口（`getXxxById`），不新增接口；id 不存在 → `a-result status="404"`。
 - 不进侧边菜单、不注册 `MENU_ROUTE_MAP`（`meta: { requiresAuth: true }`，无布局包裹）。

@@ -48,7 +48,7 @@ updated: 2026-09-16
 | 删除 | `IconTrash` | 更多（收纳触发） | `IconDotsVertical` |
 | 启用（恢复） | `IconPlayerPlay` | 禁用 / 停用 | `IconPower` |
 | 作废（单据作废回冲） | `IconBan` | 结算切换：标记已结算 | `IconCircleCheck` |
-| | | 结算切换：改回未结算 | `IconArrowBackUp` |
+| 打印 | `IconPrinter` | 结算切换：改回未结算 | `IconArrowBackUp` |
 
 - 表外操作选 Tabler 语义最近图标，且同一图标全项目只对应一个操作。
 

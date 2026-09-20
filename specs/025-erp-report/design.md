@@ -195,7 +195,7 @@ src/
 **进销存报表 `InventoryFlowReportView.vue`**（参照 `specs/006-list-showcase/design.md` §0）：
 
 - 筛选行：期间范围（`a-range-picker`，必填，默认本月）、商品下拉（`getProductPickList`，可空）、分类下拉（`getCategories`，可空）、「只看有变动」（`a-checkbox`）、搜索 / 重置。
-- 操作行：导出（`027` 交付前 `:disabled` 并提示「导出功能开发中」）、刷新、列设置。
+- 操作行：导出（`027-erp-export` 交付后启用：`IconDownload` + `exporting`，导出当前筛选全量的 xlsx 且含与页面一致的合计行；交付前的 `:disabled` 占位已移除）、刷新、列设置。
 - 表格列（每列设 `width`）：序号、商品编码、商品名称、分类、单位、**期初数量**、**期间入**（绿字）、**期间出**（红字）、**期末数量**（粗体）；`row-key` 用 `productId`；服务端分页；`showTotal` + `showPageSize`（`pageSizeOptions` 同 §0 约定）。
 - 合计区：表格上方一行统计（`a-statistic` 或描述行）：期初合计 / 入合计 / 出合计 / 期末合计（取 `summary`，为全量筛选结果口径，标注「全量」）。
 

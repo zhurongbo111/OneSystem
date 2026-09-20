@@ -223,7 +223,7 @@ src/
 **成本与毛利报表 `CostProfitReportView.vue`**（参照 `specs/006-list-showcase/design.md` §0）：
 
 - 筛选行：期间范围（必填，默认本月）、商品下拉、分类下拉、分组维度（`a-radio-group`：单据 / 商品 / 往来单位）、搜索 / 重置。
-- 操作行：**「重算成本」**（`a-button`，`IconCalculator` + `a-popconfirm`「重算将按流水顺序重新计算全部成本，期间不要开单，确认继续？」+ `recalculating` loading）、导出（`027` 交付前 `:disabled`）、刷新、列设置。
+- 操作行：**「重算成本」**（`a-button`，`IconCalculator` + `a-popconfirm`「重算将按流水顺序重新计算全部成本，期间不要开单，确认继续？」+ `recalculating` loading）、导出（`027-erp-export` 交付后启用：`IconDownload` + `exporting`，导出当前筛选全量且含合计行；交付前的 `:disabled` 占位已移除）、刷新、列设置。
 - 表格列：序号、分组名称、销售数量、销售收入、销售成本、**毛利**（负数红字）、毛利率、成本完整性（`HasMissingCost` → `a-tag warning`「成本不完整」，否则 `-`）；合计行（`summary`，全量口径）。
 - 重算成功后展示结果提示（`Message.success('重算完成：流水 N 条，缺价 M 条')`），缺价条数 > 0 时改用 `Message.warning` 并提示「请补充期初成本或执行盘点调整」。
 
