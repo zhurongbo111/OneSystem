@@ -16,14 +16,14 @@ backend/
 ├── App.sln / .editorconfig
 ├── src/
 │   ├── App.Api/             # Program.cs；Authentication/、Controllers/、Http/、Middleware/、Swagger/、appsettings*.json、nlog.config
-│   ├── App.Core/            # DependencyInjection.cs（AddCore）；Abstractions/、Auth/、Entities/、Errors/、Mediation/、Features/
-│   └── App.Infrastructure/  # DependencyInjection.cs（AddInfrastructure）、AppDbContext.cs、Migrations/、Persistence/、Repositories/
+│   ├── App.Core/            # DependencyInjection.cs（AddCore）；Abstractions/、Auth/、Entities/、Errors/、Exports/、Mediation/、Features/
+│   └── App.Infrastructure/  # DependencyInjection.cs（AddInfrastructure）、AppDbContext.cs、Migrations/、Persistence/、Repositories/、Exports/
 └── tests/App.Tests/         # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport
 ```
 
 **命名规律**（据此定位，不逐一列举）：
 
-- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem` / `SettlementCandidateItem` / `ReconciliationItem` / `InventoryFlowItem` / `StockBalanceItem` / `PurchaseSummaryItem` / `SalesSummaryItem` 及对应 `*Total` 合计模型）。
+- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`、`IExcelExporter`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem` / `SettlementCandidateItem` / `ReconciliationItem` / `InventoryFlowItem` / `StockBalanceItem` / `PurchaseSummaryItem` / `SalesSummaryItem` 及对应 `*Total` 合计模型）。
 - `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）/ `OrderFlowStatus`（024，订单流转状态：待收货 / 部分收货 / 已完成 / 已关闭 / 已作废）。
 - 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）。
 - `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
@@ -31,6 +31,8 @@ backend/
 - **共享出参与映射**：各功能在 `Features/<Feature>/` 下放跨用例共享 DTO 与 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
 - **当前用户与审计**：id 解析入口 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
 - **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）、`App.Core/SettlementStateCalculator.cs`（单据结算状态 / 未结金额推导，四类单据 DTO 映射共用）。
+- **导出能力（erp-export）**：`App.Core/Exports/`（`ExcelWorkbookModel` / `ExcelSheetModel` / `ExcelColumnModel` / `ExcelValueType` / `ExportFieldConstraints`（`MaxRows = 50000`）/ `ExportDomainNames` / `ExportFileNames` / `ExportGuards` / `ExportLabels` / `ExportResultDto`）+ `Abstractions/IExcelExporter.cs`（实现 `App.Infrastructure/Exports/ClosedXmlExcelExporter.cs`，包依赖 `ClosedXML`，注册于 `AddInfrastructure`）；各域导出用例为 `Features/<Feature>/Export<X>`，端点为各域 Controller 追加的 `GET .../export`（契约例外：成功返回二进制流，见 `specs/027-erp-export/design.md` §0.1）。
+- **导出用批量查询**：`IUserRepository.GetDisplayNamesByIdsAsync`（创建人显示名）、`IProductRepository.GetCodesByIdsAsync`（单据明细商品编码）、六类单据仓储的 `GetItemsBy...IdsAsync`（按单据 id 集合一次取明细，避免逐单 N+1）。
 
 **已实现的 Features**（`App.Core/Features/`，每用例四件套）：
 
@@ -81,10 +83,10 @@ frontend/
 ├── e2e/        # 每功能域一个 <域名>.spec.ts（kebab-case）+ helpers/（菜单点击 / 表格搜索 / 重试点击 / 登录 loginAs / 消息断言 expectMessage，判据见前端规则 §10.1）+ global-setup.ts（冷启动预热，见前端规则 §10）
 └── src/
     ├── main.ts / App.vue / env.d.ts
-    ├── api/         # request.ts（统一解包 / 40100 处置）+ 按业务域拆分 <entity>.ts
+    ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流）+ 按业务域拆分 <entity>.ts + export.ts（10 个列表导出）
     ├── components/  # AppLayout.vue（侧边菜单：「示例页面」「进销存」两组，子菜单默认折叠、仅当前分组自动展开；`025` 落地后改为多顶级分组，目标结构见 `specs/025-erp-report/design.md` §0.2）
     ├── composables/ # useOrderStore.ts（演示用）
-    ├── router/ stores/ utils/   # index.ts（路由懒加载）/ auth.ts（Pinia）/ datetime.ts / settlement.ts（结算状态文案与颜色）
+    ├── router/ stores/ utils/   # index.ts（路由懒加载；另含 6 条顶层 `print/...` 打印路由，不进 AppLayout）/ auth.ts（Pinia）/ datetime.ts / settlement.ts（结算状态文案与颜色）
     └── views/       # 按功能域分目录（域内文件平铺，不套子目录）
 ```
 
@@ -99,13 +101,13 @@ frontend/
 - `InventoryManagement/` — InventoryView（只读；操作列含「流水」下钻到 StockMovementManagement）
 - `StockMovementManagement/` — StockMovementsView（只读；API 在 `api/stockMovement.ts`）
 - `PurchaseOrderManagement/` — PurchaseOrdersView + PurchaseOrderFormPage + PurchaseOrderDetailView（采购订单；API 在 `api/purchaseOrder.ts`）
-- `PurchaseManagement/` — PurchasesView + PurchaseFormPage + PurchaseDetailView（采购入库；开单页可关联采购订单）
-- `PurchaseReturnManagement/` — PurchaseReturnsView + PurchaseReturnFormPage + PurchaseReturnDetailView（API 在 `api/purchaseReturn.ts`）
-- `SalesReturnManagement/` — SalesReturnsView + SalesReturnFormPage + SalesReturnDetailView（API 在 `api/saleReturn.ts`）
+- `PurchaseManagement/` — PurchasesView + PurchaseFormPage + PurchaseDetailView + PurchasePrintView（采购入库；开单页可关联采购订单；打印视图在顶层 `print/purchases/:id` 路由）
+- `PurchaseReturnManagement/` — PurchaseReturnsView + PurchaseReturnFormPage + PurchaseReturnDetailView + PurchaseReturnPrintView（API 在 `api/purchaseReturn.ts`；打印视图在顶层 `print/purchase-returns/:id` 路由）
+- `SalesReturnManagement/` — SalesReturnsView + SalesReturnFormPage + SalesReturnDetailView + SalesReturnPrintView（API 在 `api/saleReturn.ts`；打印视图在顶层 `print/sales-returns/:id` 路由）
 - `SalesOrderManagement/` — SalesOrdersView + SalesOrderFormPage + SalesOrderDetailView（销售订单；API 在 `api/saleOrder.ts`）
-- `SalesManagement/` — SalesView + SaleFormPage + SaleDetailView（销售出库；开单页可关联销售订单）
-- `StockTakeManagement/` — StockTakesView + StockTakeFormPage + StockTakeDetailView（API 在 `api/stockTake.ts`）
-- `SettlementManagement/` — SettlementsView + SettlementFormPage + SettlementDetailView + ReconciliationView（收付款 + 往来对账；API 在 `api/settlement.ts`）
+- `SalesManagement/` — SalesView + SaleFormPage + SaleDetailView + SalePrintView（销售出库；开单页可关联销售订单；打印视图在顶层 `print/sales/:id` 路由）
+- `StockTakeManagement/` — StockTakesView + StockTakeFormPage + StockTakeDetailView + StockTakePrintView（API 在 `api/stockTake.ts`；打印视图在顶层 `print/stock-takes/:id` 路由）
+- `SettlementManagement/` — SettlementsView + SettlementFormPage + SettlementDetailView + ReconciliationView + SettlementPrintView（收付款 + 往来对账；API 在 `api/settlement.ts`；打印视图在顶层 `print/settlements/:id` 路由）
 - `ReportManagement/` — InventoryFlowReportView + StockBalanceReportView + PurchaseSummaryReportView + SalesSummaryReportView + **CostProfitReportView（成本与毛利，`026`）**（进销存报表 / 库存余额表 / 采购汇总 / 销售汇总 / 成本毛利；库存余额表与流水页含成本列；报表 API 在 `api/report.ts`，成本重算在 `api/cost.ts`）
 - 无功能域归属的独立页平铺在 `views/` 根：`LoginView.vue` / `HomeView.vue`（菜单归属见 `components/AppLayout.vue`）。
 
@@ -148,8 +150,8 @@ frontend/
 - 工程 / 脚手架：`001-project-scaffold`、`003-api-swagger`
 - 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
 - 业务：`009-user-management`
-- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`、`025-erp-report`、`026-erp-cost`
-- ERP 扩展路线（**规格已起草、均未实现**）：批次三 `027-erp-export`、`028-erp-rbac`、`029-erp-audit-log`；批次四 `030-erp-multi-warehouse`、`031-erp-transfer`、`032-erp-batch-expiry`、`033-erp-partner-price`、`034-erp-invoice`；批次五 `035-erp-stock-alert`、`036-erp-approval`。待确认的裁剪 / 契约决策见 `specs/ROADMAP.md` §4.8
+- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`、`025-erp-report`、`026-erp-cost`、`027-erp-export`
+- ERP 扩展路线（**规格已起草、均未实现**）：批次三 `028-erp-rbac`、`029-erp-audit-log`；批次四 `030-erp-multi-warehouse`、`031-erp-transfer`、`032-erp-batch-expiry`、`033-erp-partner-price`、`034-erp-invoice`；批次五 `035-erp-stock-alert`、`036-erp-approval`。待确认的裁剪 / 契约决策见 `specs/ROADMAP.md` §4.8
 
 `specs/ROADMAP.md` 是 ERP 功能组的**路线索引**（单文件，非 spec 目录、无三件套）：记录批次、序号、依赖与状态，并写明跨功能前置决策（多仓 / 结算 / 权限等）。接续 ERP 功能前先读它，再进具体规格。
 
