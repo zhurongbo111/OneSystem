@@ -1,6 +1,9 @@
+using App.Api.Http;
+
 using App.Core.Abstractions;
 using App.Core.Features.Partners;
 using App.Core.Features.Partners.CreatePartner;
+using App.Core.Features.Partners.ExportPartners;
 using App.Core.Features.Partners.GetPartnerById;
 using App.Core.Features.Partners.GetPartners;
 using App.Core.Features.Partners.UpdatePartner;
@@ -89,5 +92,16 @@ public class PartnersController : ControllerBase
     {
         var command = new UpdatePartnerStatusRequest { Id = id, Status = request.Status };
         return ApiResponseFactory.Ok(await _mediator.Send(command, cancellationToken));
+    }
+
+    /// <summary>
+    /// 导出往来单位列表（Excel；取当前筛选全量，成功返回二进制文件流，契约例外见 specs/027-erp-export/design.md §0.1）
+    /// </summary>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] ExportPartnersRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
     }
 }

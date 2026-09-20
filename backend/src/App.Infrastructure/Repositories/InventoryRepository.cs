@@ -154,6 +154,8 @@ public sealed class InventoryRepository : IInventoryRepository
                 StockQuantity = x.StockQuantity,
                 SafetyStock = x.Product.SafetyStock,
                 UpdatedAt = x.UpdatedAt,
+                CreatedAt = x.Product.CreatedAt,
+                CreatedBy = x.Product.CreatedBy,
             })
             .ToListAsync(cancellationToken);
 

@@ -45,4 +45,7 @@ public sealed record ProductListItem
 
     /// <summary>更新时间</summary>
     public required DateTimeOffset UpdatedAt { get; init; }
+
+    /// <summary>创建人 id（erp-export 导出「创建人」列用，经 IUserRepository 批量换显示名）</summary>
+    public required Guid? CreatedBy { get; init; }
 }

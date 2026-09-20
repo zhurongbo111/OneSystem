@@ -1,6 +1,8 @@
+using App.Api.Http;
 using App.Core.Abstractions;
 using App.Core.Features.StockTakes;
 using App.Core.Features.StockTakes.CreateStockTake;
+using App.Core.Features.StockTakes.ExportStockTakes;
 using App.Core.Features.StockTakes.GetStockTakeById;
 using App.Core.Features.StockTakes.GetStockTakePickProducts;
 using App.Core.Features.StockTakes.GetStockTakes;
@@ -40,6 +42,19 @@ public sealed class StockTakesController : ControllerBase
     [HttpGet]
     public async Task<ApiResponse<PagedResult<StockTakeListItemDto>>> GetPaged([FromQuery] GetStockTakesRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 导出盘点单 Excel（当前筛选全量，单据 + 明细两个工作表；成功返回文件流）
+    /// </summary>
+    /// <param name="request">导出请求（筛选参数与列表一致；Query 绑定）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] ExportStockTakesRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
 
     /// <summary>
     /// 盘点商品选择（启用商品 + 当前库存 + 是否已发生库存变动）。

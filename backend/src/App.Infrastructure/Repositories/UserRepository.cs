@@ -125,4 +125,20 @@ public sealed class UserRepository : IUserRepository
         user.LastLoginAt = lastLoginAt;
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesByIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        var rows = await _dbContext.Users.AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.DisplayName })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(x => x.Id, x => x.DisplayName);
+    }
 }

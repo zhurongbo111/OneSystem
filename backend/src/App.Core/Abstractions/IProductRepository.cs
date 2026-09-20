@@ -69,4 +69,12 @@ public interface IProductRepository
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 按商品 id 集合批量查询编码（erp-export 导出单据明细的商品编码列用，一次查询避免 N+1）；
+    /// 返回 id → 编码映射，缺失 id 不出现在结果中
+    /// </summary>
+    /// <param name="productIds">商品 id 集合（空集合返回空字典）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<IReadOnlyDictionary<Guid, string>> GetCodesByIdsAsync(IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default);
 }

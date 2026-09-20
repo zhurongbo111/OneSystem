@@ -99,6 +99,7 @@ public sealed class ProductRepository : IProductRepository
                 Status = x.Product.Status,
                 CreatedAt = x.Product.CreatedAt,
                 UpdatedAt = x.Product.UpdatedAt,
+                CreatedBy = x.Product.CreatedBy,
             })
             .ToListAsync(cancellationToken);
 
@@ -178,5 +179,21 @@ public sealed class ProductRepository : IProductRepository
             .ToListAsync(cancellationToken);
 
         return items;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, string>> GetCodesByIdsAsync(IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        if (productIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        var rows = await _dbContext.Products.AsNoTracking()
+            .Where(p => productIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.Code })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(x => x.Id, x => x.Code);
     }
 }

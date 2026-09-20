@@ -82,4 +82,12 @@ public interface IUserRepository
     /// <param name="lastLoginAt">最近登录时间</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task UpdateLastLoginAsync(Guid id, DateTimeOffset lastLoginAt, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 按用户 id 集合批量查询显示名（erp-export 导出的「创建人」列用，一次查询避免 N+1）；
+    /// 返回 id → 显示名映射，缺失 id 不出现在结果中
+    /// </summary>
+    /// <param name="userIds">用户 id 集合（空集合返回空字典）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesByIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default);
 }

@@ -165,4 +165,19 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
         return $"{pattern}{(count + 1):D4}";
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PurchaseReceiptItem>> GetItemsByOrderIdsAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken cancellationToken = default)
+    {
+        if (orderIds.Count == 0)
+        {
+            return Array.Empty<PurchaseReceiptItem>();
+        }
+
+        // 导出用批量取明细（一次查询避免逐单 N+1）；按明细 Id 升序即插入顺序
+        return await _dbContext.PurchaseReceiptItems.AsNoTracking()
+            .Where(i => orderIds.Contains(i.ReceiptId))
+            .OrderBy(i => i.Id)
+            .ToListAsync(cancellationToken);
+    }
+
 }

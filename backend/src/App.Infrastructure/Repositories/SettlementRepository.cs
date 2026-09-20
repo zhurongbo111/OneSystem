@@ -146,4 +146,19 @@ public sealed class SettlementRepository : ISettlementRepository
         var count = await _dbContext.Settlements.CountAsync(s => s.SettlementNo.StartsWith(pattern), cancellationToken);
         return $"{pattern}{(count + 1):D4}";
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<SettlementItem>> GetItemsBySettlementIdsAsync(IReadOnlyCollection<Guid> settlementIds, CancellationToken cancellationToken = default)
+    {
+        if (settlementIds.Count == 0)
+        {
+            return Array.Empty<SettlementItem>();
+        }
+
+        // 导出用批量取核销明细（一次查询避免逐单 N+1）；按明细 Id 升序即插入顺序
+        return await _dbContext.SettlementItems.AsNoTracking()
+            .Where(i => settlementIds.Contains(i.SettlementId))
+            .OrderBy(i => i.Id)
+            .ToListAsync(cancellationToken);
+    }
 }

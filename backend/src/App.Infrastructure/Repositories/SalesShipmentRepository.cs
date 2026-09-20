@@ -167,4 +167,19 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
         return $"{pattern}{(count + 1):D4}";
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<SalesShipmentItem>> GetItemsByOrderIdsAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken cancellationToken = default)
+    {
+        if (orderIds.Count == 0)
+        {
+            return Array.Empty<SalesShipmentItem>();
+        }
+
+        // 导出用批量取明细（一次查询避免逐单 N+1）；按明细 Id 升序即插入顺序
+        return await _dbContext.SalesShipmentItems.AsNoTracking()
+            .Where(i => orderIds.Contains(i.ShipmentId))
+            .OrderBy(i => i.Id)
+            .ToListAsync(cancellationToken);
+    }
+
 }

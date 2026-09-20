@@ -1,5 +1,8 @@
+using App.Api.Http;
+
 using App.Core.Abstractions;
 using App.Core.Features.Inventory;
+using App.Core.Features.Inventory.ExportInventory;
 using App.Core.Features.Inventory.GetInventory;
 using App.Core.Responses;
 
@@ -33,4 +36,15 @@ public class InventoryController : ControllerBase
     [HttpGet]
     public async Task<ApiResponse<PagedResult<InventoryItemDto>>> GetInventory([FromQuery] GetInventoryRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 导出库存查询列表（Excel；取当前筛选全量，成功返回二进制文件流，契约例外见 specs/027-erp-export/design.md §0.1）
+    /// </summary>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] ExportInventoryRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
 }

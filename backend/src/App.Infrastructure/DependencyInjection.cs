@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Infrastructure.Exports;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
 
@@ -34,6 +35,9 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Excel 导出器（erp-export）：无状态纯计算，注册为单例
+        services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
 
         // EF Core 仓储实现（首个业务功能起替换脚手架的内存实现）
         services.AddScoped<IUserRepository, UserRepository>();

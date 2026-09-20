@@ -1,6 +1,8 @@
-﻿using App.Core.Abstractions;
+﻿using App.Api.Http;
+using App.Core.Abstractions;
 using App.Core.Features.Products;
 using App.Core.Features.Products.CreateProduct;
+using App.Core.Features.Products.ExportProducts;
 using App.Core.Features.Products.GetProductById;
 using App.Core.Features.Products.GetProductPickList;
 using App.Core.Features.Products.GetProducts;
@@ -48,6 +50,21 @@ public class ProductsController : ControllerBase
     [HttpGet("pick")]
     public async Task<ApiResponse<IReadOnlyList<ProductPickDto>>> GetProductPickList(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetProductPickListRequest(), cancellationToken));
+
+    /// <summary>
+    /// 导出商品列表为 xlsx（erp-export）：沿用列表筛选，导出当前筛选全量（不受分页限制）。
+    /// 成功返回二进制文件流（契约例外，specs/027-erp-export/design.md §0.1）；参数非法 / 服务端异常仍返回统一响应 JSON。
+    /// 固定段 export 置于 {id:guid} 之前注册
+    /// </summary>
+    /// <param name="request">导出请求（Query 绑定，筛选参数同列表）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] ExportProductsRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
 
     /// <summary>
     /// 新增商品（同步初始化库存行 Quantity = 0，同一事务）
