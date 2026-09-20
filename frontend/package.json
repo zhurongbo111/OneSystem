@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "type-check": "vue-tsc -b",
     "lint": "eslint . --fix",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "e2e:run": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/e2e-run.ps1"
   },
   "dependencies": {
     "@arco-design/web-vue": "^2.56.3",

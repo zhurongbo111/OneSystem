@@ -17,6 +17,9 @@ dist-ssr
 test-results
 playwright-report
 
+# e2e 数据库名历史清单（由 scripts/e2e-run.ps1 维护）
+scripts/.e2e-db-history
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
