@@ -94,4 +94,7 @@ public static class ErrorCode
 
     /// <summary>成本重算正在进行，请稍后重试（erp-cost 功能业务码；内存锁并发拒绝）</summary>
     public const int CostRecalculationRunning = 40118;
+
+    /// <summary>往来单位类型不允许收窄（erp-partner 功能业务码；只可保持原类型或改为两者）</summary>
+    public const int PartnerTypeNarrowingNotAllowed = 40119;
 }

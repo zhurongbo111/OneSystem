@@ -127,4 +127,50 @@ public class UpdatePartnerRequestHandlerTests
             }));
         Assert.Equal(ErrorCode.NotFound, ex.Code);
     }
+
+    [Fact]
+    public async Task 编辑_类型收窄为另一单一类型_应拒绝()
+    {
+        var (_, handler, _, partner) = await CreateAsync(); // 原类型为供应商
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            handler.HandleAsync(new UpdatePartnerRequest
+            {
+                Id = partner.Id,
+                Type = PartnerType.Customer,
+            }));
+        Assert.Equal(ErrorCode.PartnerTypeNarrowingNotAllowed, ex.Code);
+    }
+
+    [Fact]
+    public async Task 编辑_两者改回单一类型_应拒绝()
+    {
+        var (context, handler, _, partner) = await CreateAsync();
+        partner.Type = PartnerType.Both;
+        await context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            handler.HandleAsync(new UpdatePartnerRequest
+            {
+                Id = partner.Id,
+                Type = PartnerType.Supplier,
+            }));
+        Assert.Equal(ErrorCode.PartnerTypeNarrowingNotAllowed, ex.Code);
+    }
+
+    [Fact]
+    public async Task 编辑_客户放宽为两者_应成功()
+    {
+        var (context, handler, _, partner) = await CreateAsync();
+        partner.Type = PartnerType.Customer;
+        await context.SaveChangesAsync();
+
+        var result = await handler.HandleAsync(new UpdatePartnerRequest
+        {
+            Id = partner.Id,
+            Type = PartnerType.Both,
+        });
+
+        Assert.Equal((int)PartnerType.Both, result.Type);
+    }
 }

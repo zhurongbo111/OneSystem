@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Entities;
 using App.Core.Errors;
 
 namespace App.Core.Features.Partners.UpdatePartner;
@@ -32,6 +33,12 @@ public sealed class UpdatePartnerRequestHandler : IRequestHandler<UpdatePartnerR
         if (partner is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "往来单位不存在");
+        }
+
+        // 类型只放宽不收窄：只允许保持原类型或改为两者，避免既有采购 / 销售单据因档案类型丢失而在编辑时校验失败
+        if (request.Type != partner.Type && request.Type != PartnerType.Both)
+        {
+            throw new BusinessException(ErrorCode.PartnerTypeNarrowingNotAllowed, "单位类型只允许放宽（改为两者），不允许收窄");
         }
 
         // 名称不可修改，保持原值不变
