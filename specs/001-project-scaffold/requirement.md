@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-16
+updated: 2026-09-20
 ---
 
 # 需求规格：项目脚手架（project-scaffold）
@@ -28,7 +28,7 @@ updated: 2026-09-16
 - F8 环境配置：dev / prod 通过 `ASPNETCORE_ENVIRONMENT` 区分；数据库连接串、JWT 密钥等敏感配置从环境变量读取。
 - F9 后端单元测试：统一响应、异常处理、登录用例 RequestHandler 的公共方法单测通过。
 - F10 前端项目骨架：Vite + Vue 3 + TS + Arco Design + Pinia + vue-router + Axios，目录结构符合前端规则第 2 节。
-- F11 前端接口层：`src/api/` 统一封装，拦截器解包 `{ code, message, data }`，`code !== 0` 时 `Message.error` 提示；请求自动附加 `Authorization: Bearer <token>`；收到 40100 清凭证并跳转登录页（防重复跳转）。
+- F11 前端接口层：`src/api/` 统一封装，拦截器解包 `{ code, message, data }`，`code !== 0` 时 `Message.error` 提示；请求自动附加 `Authorization: Bearer <token>`；收到 40100 清凭证与认证状态，并以 **SPA 路由跳转**进入登录页（防重复跳转、不整页刷新，保留回跳目标，重新登录后回到失效前所在页面）。
 - F12 前端页面：登录页（调用登录接口）、首页（展示当前登录用户，需登录态，未登录跳转登录页）。
 - F13 后端用例统一入口：用例由请求标记 `IRequest<TResponse>` 与处理器 `IRequestHandler<TRequest,TResponse>` 构成；Controller 只依赖自研中介 `IMediator`（`App.Core/Mediation` 实现，简化版 MediatR）经 `Send(Request)` 触发用例，不直接依赖具体 Handler（规范见后端规则 §4.2）。
 

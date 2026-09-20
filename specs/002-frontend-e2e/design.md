@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-20
 ---
 
 # 设计规格：frontend-e2e（前端集成测试自动化）
@@ -41,4 +41,36 @@ Playwright（`@playwright/test`，已在 `frontend` devDependencies）。
 ## 5. 与既有约定的关系
 
 - 与前端规则「不单写单元测试」无冲突：本方案是**集成测试的自动化**，直连真实后端，不打 mock。
-- 同步更新：`AGENTS.md` 第 6 节（测试策略总述）、`.codebuddy/rules/frontend/RULE.mdc` 第 8 节。
+- 同步更新：`AGENTS.md` 第 6 节（测试策略总述）、`.codebuddy/rules/frontend/RULE.mdc` §10（e2e 用例命名与运行细则）。
+
+## 6. 运行编排与数据隔离（`npm run e2e:run`）
+
+> 目标：每轮 e2e 使用全新数据库，跑完自动清理。用例本身自带数据且唯一命名，数据累积不影响正确性，但会让后续运行明显变慢、失败现场被历史数据污染。
+> 实现：`frontend/scripts/e2e-run.ps1`（Windows PowerShell），由 `frontend/package.json` 的 `e2e:run` 调用。
+
+### 6.1 依赖的后端既有能力（无需改后端代码）
+
+- **切库**：ASP.NET Core 配置优先级为 `appsettings.json → appsettings.{Env}.json → 环境变量 → 命令行`，故
+  `dotnet run --project src/App.Api -- --ConnectionStrings:Default="Host=...;Database=<库名>"` 可覆盖 `appsettings.Development.json` 的开发连接串。
+- **建库**：dev 下 `DatabaseInitializer` 执行 `MigrateAsync`，库不存在时 EF 自动 `CREATE DATABASE`，随后完成迁移与内置管理员种子（幂等）。
+- **删库**：`dotnet ef database drop --force`（需后端已停止，否则构建输出被占用）。
+
+### 6.2 库命名与残留清理
+
+- 库名 `app_e2e_<yyyyMMddHHmmss>`：每轮独立，互不干扰、可并行运行。
+- 历史清单 `frontend/scripts/.e2e-db-history`（每行一个库名，已加入 `.gitignore`）：每次运行开始时逐条删除清单中的库并清空清单；正常结束时删除本轮库且**不**入清单；`-KeepDatabase` 保留本轮库供排查，此时记入清单，由下次运行开始时清理。
+
+### 6.3 脚本流程与失败处理
+
+| # | 行为 | 失败处理 |
+|---|---|---|
+| 1 | 校验 5080 空闲 | 已被占用则立即报错退出——占用者连的是开发库，静默复用会让用例打在错误的数据集上 |
+| 2 | 清理历史残留库 | 单个库删除失败只告警，不中断 |
+| 3 | 以本轮库启动后端，轮询 `/health` 就绪 | 默认 120s 超时；超时则停进程并以非 0 退出 |
+| 4 | 检查 5173：未监听则以脚本启动前端 dev | 脚本启动的前端在结束时一并停止；已在运行的沿用 |
+| 5 | 运行 `npx playwright test --output=test-results/e2e-run` | 原样返回退出码 |
+| 6 | 停后端 / 停脚本启动的前端 → 删除本轮库 | 清理放在 `finally`，异常路径同样执行 |
+
+- **连接串来源**：解析 `backend/src/App.Api/appsettings.Development.json` 的 `ConnectionStrings:Default`，仅替换 `Database` 段——不在脚本内重复维护账号密码（`AGENTS.md` §7）。
+- **产物目录**：固定 `test-results/e2e-run`（已被 `.gitignore` 忽略），运行前清空，避免与手工运行互相覆盖。
+- **待办**：脚本为 Windows PowerShell 实现；若后续接入 Linux CI 需提供等价脚本（届时再评估）。
