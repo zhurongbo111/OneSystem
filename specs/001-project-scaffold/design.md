@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-16
+updated: 2026-09-20
 ---
 
 # 设计规格：项目脚手架（project-scaffold）
@@ -178,18 +178,20 @@ frontend/
 - **响应拦截器**：
   - `code === 0` → resolve 出 `data`（业务代码只拿数据本身）；
   - `code !== 0` → `Message.error(message)` 并 reject；
-  - `code === 40100` → 清除 localStorage 凭证，防重复跳转（标志位）后 `router.push('/login')`。
+  - `code === 40100` → 清除 localStorage 凭证 + 清空 Pinia 认证状态（`useAuthStore().logout()`），防重复跳转（标志位）后以 **SPA 路由跳转**（`router.replace({ name: 'login', query: { redirect: 当前 fullPath } })`）进入登录页；已在登录页时不跳转。
+  - **不整页刷新**：整页跳转会与进行中的导航抢跳（页面白屏、表单不渲染）、丢失应用内存状态；改由 SPA 跳转后，必须同时清空 Pinia 认证状态——否则守卫读到的 `isLoggedIn`（= `token`）仍为 true，会把 `/login` 重定向回首页，跳转失效。
+  - **依赖方向**：请求层不直接依赖 router / store（`stores/auth` 已依赖 `api/request`，直接反向依赖会成环），改为 `setUnauthorizedHandler(handler)` 注入处置回调，由路由层在模块初始化时注册。
 
 ### 3.4 状态与路由
 
-- `stores/auth.ts`（Pinia）：`token`、`user`；`login()` 调 `api/auth`，成功后写入并持久化 localStorage；`logout()` 清空并跳登录页。
+- `stores/auth.ts`（Pinia）：`token`、`user`；`login()` 调 `api/auth`，成功后写入并持久化 localStorage；`logout()` 清空 token / user 与 localStorage 凭证（**只清状态，不负责跳转**，跳转由调用方决定）。
 - 路由：`/login` → `LoginView`；`/` → `HomeView`（`meta: { requiresAuth: true }`）；`() => import(...)` 懒加载。
-- 全局前置守卫：未登录访问 `requiresAuth` 路由 → 重定向 `/login`。
+- 全局前置守卫：未登录访问 `requiresAuth` 路由 → 重定向 `/login`（携带 `redirect` 回跳目标）。
 
 ### 3.5 页面交互
 
-- **登录页**：Arco `a-form` 用户名/密码 + `a-button`；提交调 `login`，成功跳首页，失败由接口层统一提示。
-- **首页**：展示 `user.displayName` 与 `username`（`a-card`）；右上角"退出登录"按钮调 `logout`。
+- **登录页**：Arco `a-form` 用户名/密码 + `a-button`；提交调 `login`，成功后按 `route.query.redirect` 回跳（缺省 `/`），失败由接口层统一提示。
+- **首页**：展示 `user.displayName` 与 `username`（`a-card`）；退出登录入口在布局顶部栏的「用户菜单」下拉（`AppLayout.vue`），调 `logout()` 后跳登录页。
 
 ### 3.6 环境与联调
 

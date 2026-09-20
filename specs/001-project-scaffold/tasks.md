@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-16
+updated: 2026-09-20
 ---
 
 # 任务清单：项目脚手架（project-scaffold）
@@ -33,3 +33,12 @@ updated: 2026-09-16
 - [x] F5 实现 `src/views/LoginView.vue` 与 `src/views/HomeView.vue`，`main.ts` 接入 Arco / Pinia / Router
 - [x] F6 配置 `vite.config.ts`（dev proxy）与 `.env.development` / `.env.production`
 - [x] F7 `npm run build` 通过；与 dev 后端联调：登录 → 首页展示用户 → 退出跳登录页（agent-browser 真实浏览器全流程实测通过，含未登录守卫拦截）
+
+## 前端（40100 处置修正，2026-09-20）
+
+> 背景：实现漂移——§3.3 约定 `router.push('/login')`，实际却是 `window.location.href = '/login'`（整页刷新）。
+> 整页跳转与进行中的导航抢跳会造成页面白屏（e2e 中表现为登录表单不渲染、`fill` 等到用例超时），并丢失应用内存状态。
+
+- [x] F8 40100 统一处置改为 SPA 路由跳转：`request.ts` 移除整页跳转、新增注入式 `setUnauthorizedHandler`；`router/index.ts` 注入处置逻辑（清 Pinia 认证状态 → `router.replace` 登录页并带 `redirect`）——清认证状态与跳转的先后顺序不可颠倒，否则守卫会把 `/login` 重定向回首页
+- [x] F9 e2e 覆盖：`e2e/login.spec.ts` 新增「凭证失效 → 路由跳转登录页（未整页刷新）→ 重新登录回到原页面」用例
+- [x] F10 同步 `.codebuddy/rules/frontend/RULE.mdc` §8 / §10.1 的 40100 处置判据（请求层仅经注入回调跳转；登录 helper 的 about:blank 防御理由更新为「避免 40100 处置与测试导航交叉」）
