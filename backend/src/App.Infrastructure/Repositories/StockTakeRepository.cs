@@ -119,4 +119,19 @@ public sealed class StockTakeRepository : IStockTakeRepository
         var count = await _dbContext.StockTakes.CountAsync(t => t.TakeNo.StartsWith(pattern), cancellationToken);
         return $"{pattern}{(count + 1):D4}";
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<StockTakeItem>> GetItemsByTakeIdsAsync(IReadOnlyCollection<Guid> takeIds, CancellationToken cancellationToken = default)
+    {
+        if (takeIds.Count == 0)
+        {
+            return Array.Empty<StockTakeItem>();
+        }
+
+        // 导出用批量取明细（一次查询避免逐单 N+1）；按明细 Id 升序即插入顺序
+        return await _dbContext.StockTakeItems.AsNoTracking()
+            .Where(i => takeIds.Contains(i.StockTakeId))
+            .OrderBy(i => i.Id)
+            .ToListAsync(cancellationToken);
+    }
 }

@@ -1,5 +1,11 @@
+using App.Api.Http;
 using App.Core.Abstractions;
 using App.Core.Features.Reports;
+using App.Core.Features.Reports.ExportCostProfit;
+using App.Core.Features.Reports.ExportInventoryFlow;
+using App.Core.Features.Reports.ExportPurchaseSummary;
+using App.Core.Features.Reports.ExportSalesSummary;
+using App.Core.Features.Reports.ExportStockBalance;
 using App.Core.Features.Reports.GetCostProfitReport;
 using App.Core.Features.Reports.GetInventoryFlow;
 using App.Core.Features.Reports.GetPurchaseSummary;
@@ -90,4 +96,79 @@ public class ReportsController : ControllerBase
         [FromQuery] GetCostProfitReportRequest request,
         CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 进销存报表导出：期间 +（商品 / 分类 / 只看有变动）筛选，导出列 = 报表列定义，末行为全量口径合计
+    /// </summary>
+    /// <param name="request">导出请求（Query 绑定，筛选参数与报表查询一致）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("inventory-flow/export")]
+    public async Task<IActionResult> ExportInventoryFlow(
+        [FromQuery] ExportInventoryFlowRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
+
+    /// <summary>
+    /// 库存余额表导出：按分类聚合列集（含库存金额 / 均价 / 成本异常）产出 xlsx，末行为全量口径合计
+    /// </summary>
+    /// <param name="request">导出请求（Query 绑定，筛选参数与报表查询一致）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("stock-balance/export")]
+    public async Task<IActionResult> ExportStockBalance(
+        [FromQuery] ExportStockBalanceRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
+
+    /// <summary>
+    /// 采购汇总导出：按供应商 / 商品维度列集产出 xlsx，末行为全量口径合计（含净数量与净额）
+    /// </summary>
+    /// <param name="request">导出请求（Query 绑定，筛选参数与报表查询一致）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("purchase-summary/export")]
+    public async Task<IActionResult> ExportPurchaseSummary(
+        [FromQuery] ExportPurchaseSummaryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
+
+    /// <summary>
+    /// 销售汇总导出：按客户 / 商品维度列集产出 xlsx，末行为全量口径合计（含净数量与净额）
+    /// </summary>
+    /// <param name="request">导出请求（Query 绑定，筛选参数与报表查询一致）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("sales-summary/export")]
+    public async Task<IActionResult> ExportSalesSummary(
+        [FromQuery] ExportSalesSummaryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
+
+    /// <summary>
+    /// 成本与毛利报表导出：按单据 / 商品 / 往来单位维度列集（含毛利 / 毛利率 / 成本完整性）产出 xlsx，末行为全量口径合计
+    /// </summary>
+    /// <param name="request">导出请求（Query 绑定，筛选参数与报表查询一致）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("cost-profit/export")]
+    public async Task<IActionResult> ExportCostProfit(
+        [FromQuery] ExportCostProfitRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
 }

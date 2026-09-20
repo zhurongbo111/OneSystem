@@ -73,4 +73,11 @@ public interface ISalesShipmentRepository
     /// <param name="orderDate">业务日期（取 UTC 日期段）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<string> GenerateOrderNoAsync(string prefix, DateTimeOffset orderDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 按单据 id 集合批量查询明细行（erp-export 导出用，一次查询避免逐单 N+1），按明细 Id 升序（插入顺序）
+    /// </summary>
+    /// <param name="orderIds">销售单 id 集合（空集合返回空列表）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<IReadOnlyList<SalesShipmentItem>> GetItemsByOrderIdsAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken cancellationToken = default);
 }

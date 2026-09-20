@@ -29,4 +29,10 @@ public sealed record InventoryItem
 
     /// <summary>最近库存变动时间</summary>
     public DateTimeOffset? UpdatedAt { get; init; }
+
+    /// <summary>商品创建时间（erp-export 导出「创建时间」列用，联查 Products 带出）</summary>
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    /// <summary>商品创建人 id（erp-export 导出「创建人」列用，经 IUserRepository 批量换显示名）</summary>
+    public required Guid? CreatedBy { get; init; }
 }

@@ -156,4 +156,19 @@ public sealed class SalesReturnRepository : ISalesReturnRepository
         var count = await _dbContext.SalesReturns.CountAsync(r => r.ReturnNo.StartsWith(pattern), cancellationToken);
         return $"{pattern}{(count + 1):D4}";
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<SalesReturnItem>> GetItemsByReturnIdsAsync(IReadOnlyCollection<Guid> returnIds, CancellationToken cancellationToken = default)
+    {
+        if (returnIds.Count == 0)
+        {
+            return Array.Empty<SalesReturnItem>();
+        }
+
+        // 导出用批量取明细（一次查询避免逐单 N+1）；按明细 Id 升序即插入顺序
+        return await _dbContext.SalesReturnItems.AsNoTracking()
+            .Where(i => returnIds.Contains(i.ReturnId))
+            .OrderBy(i => i.Id)
+            .ToListAsync(cancellationToken);
+    }
 }

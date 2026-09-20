@@ -1,6 +1,8 @@
+using App.Api.Http;
 using App.Core.Abstractions;
 using App.Core.Features.Settlements;
 using App.Core.Features.Settlements.CreateSettlement;
+using App.Core.Features.Settlements.ExportSettlements;
 using App.Core.Features.Settlements.GetReconciliation;
 using App.Core.Features.Settlements.GetSettlementById;
 using App.Core.Features.Settlements.GetSettlements;
@@ -41,6 +43,19 @@ public sealed class SettlementsController : ControllerBase
     [HttpGet]
     public async Task<ApiResponse<PagedResult<SettlementListItemDto>>> GetPaged([FromQuery] GetSettlementsRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 导出收付款单 Excel（当前筛选全量，单据 + 核销明细两个工作表；成功返回文件流）
+    /// </summary>
+    /// <param name="request">导出请求（筛选参数与列表一致；Query 绑定）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] ExportSettlementsRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
 
     /// <summary>
     /// 新增收付款单（核销即生效：累加各被核销单据已结算金额）

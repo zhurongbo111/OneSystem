@@ -1,6 +1,8 @@
+using App.Api.Http;
 using App.Core.Abstractions;
 using App.Core.Features.SalesReturns;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
+using App.Core.Features.SalesReturns.ExportSalesReturns;
 using App.Core.Features.SalesReturns.GetSalesReturnById;
 using App.Core.Features.SalesReturns.GetSalesReturns;
 using App.Core.Features.SalesReturns.VoidSalesReturn;
@@ -40,6 +42,21 @@ public sealed class SalesReturnsController : ControllerBase
     [HttpGet]
     public async Task<ApiResponse<PagedResult<SalesReturnListItemDto>>> GetPaged([FromQuery] GetSalesReturnsRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 导出销售退货单为 xlsx（erp-export）：沿用列表筛选，导出当前筛选全量（不受分页限制），
+    /// 含「单据 + 明细」两个工作表。成功返回二进制文件流（契约例外，specs/027-erp-export/design.md §0.1）；
+    /// 参数非法 / 服务端异常仍返回统一响应 JSON。固定段 export 置于 {id:guid} 之前注册
+    /// </summary>
+    /// <param name="request">导出请求（Query 绑定，筛选参数同列表）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] ExportSalesReturnsRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
 
     /// <summary>
     /// 查询销售退货单详情（含明细行，快照字段原样返回）
