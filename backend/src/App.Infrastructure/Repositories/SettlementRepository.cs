@@ -138,7 +138,7 @@ public sealed class SettlementRepository : ISettlementRepository
     /// <inheritdoc />
     public async Task<string> GenerateSettlementNoAsync(SettlementType type, DateTimeOffset settlementDate, CancellationToken cancellationToken = default)
     {
-        // 前缀按类型区分（收款 RC / 付款 PY，见 specs/ROADMAP.md §4.7）；
+        // 前缀按类型区分（收款 RC / 付款 PY，见 specs/ROADMAP.md §6.7）；
         // 序号 = 当天同前缀已有单号数 + 1；唯一索引兜底并发冲突（Handler 重试）
         var prefix = type == SettlementType.Receipt ? "RC" : "PY";
         var dateSegment = settlementDate.UtcDateTime.ToString("yyyyMMdd");

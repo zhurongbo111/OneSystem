@@ -15,7 +15,7 @@ namespace App.Core.Features.SalesReturns.CreateSalesReturn;
 /// </summary>
 public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSalesReturnRequest, SalesReturnDetailDto>
 {
-    /// <summary>销售退货单单号前缀（采购退货单为 PR，见 design.md §1 与 specs/ROADMAP.md §4.7）</summary>
+    /// <summary>销售退货单单号前缀（采购退货单为 PR，见 design.md §1 与 specs/ROADMAP.md §6.7）</summary>
     private const string ReturnNoPrefix = "SR";
 
     /// <summary>单号冲突重试上限（含首次）</summary>

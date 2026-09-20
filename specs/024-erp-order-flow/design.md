@@ -64,7 +64,7 @@ updated: 2026-09-17
 | — | 新增 `PurchaseOrders` / `PurchaseOrderItems`（**订单**，前缀 `PO`） | 本规格新增 |
 | — | 新增 `SalesOrders` / `SalesOrderItems`（**订单**，前缀 `SO`） | 本规格新增 |
 
-- 单号前缀全域分配见 `specs/ROADMAP.md` §4.7。
+- 单号前缀全域分配见 `specs/ROADMAP.md` §6.7。
 - 列重命名：原主表 `OrderNo` → `ReceiptNo` / `ShipmentNo`（避免与订单号混淆）；明细 `OrderId` → `ReceiptId` / `ShipmentId`。
 
 ### 2.2 订单实体（采购 `PurchaseOrder` / 表 `PurchaseOrders`；销售同构）

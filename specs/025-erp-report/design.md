@@ -21,7 +21,7 @@ updated: 2026-09-18
 | 期间入 | `PurchaseInbound`(1) / `InitialStock`(5) / `PurchaseReturnVoid`(8) / `SalesReturnIn`(9) | 取正变动 |
 | 期间出 | `PurchaseVoid`(2) / `SalesOutbound`(3) / `PurchaseReturnOut`(7) / `SalesReturnVoid`(10) | 取负变动的绝对值 |
 | 期间入 / 出（双向） | `StockTakeAdjust`(6) | **按符号拆分**：`Quantity > 0` 计入期间入、`Quantity < 0` 的绝对值计入期间出，两侧各计一次，不得整条计入一侧 |
-| 期间入 / 出（后续类型） | `TransferOut`(11) / `TransferIn`(12) / `TransferOutVoid`(13) / `TransferInVoid`(14)（`031-erp-transfer` 追加） | 转出 / 转出作废按「出 / 入」，转入 / 转入作废按「入 / 出」；落地时在本表续行并同步实现 |
+| 期间入 / 出（后续类型） | `TransferOut`(11) / `TransferIn`(12) / `TransferOutVoid`(13) / `TransferInVoid`(14)（`039-erp-transfer` 追加） | 转出 / 转出作废按「出 / 入」，转入 / 转入作废按「入 / 出」；落地时在本表续行并同步实现 |
 | 期末 | 推导 | `期末 = 期初 + 期间入 − 期间出` |
 
 - **恒等式**：`期末 = 期初 + 期间入 − 期间出`；当 `end` 不早于当前时间时，`期末` 必等于 `Inventory.Quantity`（对账断言，单测守护）。
@@ -43,18 +43,18 @@ updated: 2026-09-18
 
 ### 0.2 菜单分组与归属（唯一事实源）
 
-> `024` 已预告「进销存」分组项数将超过 10 项需二次分组（`specs/024-erp-order-flow/requirement.md` §5）。本规格落地时**改为多个顶级分组**（不嵌套子菜单，规避 Arco 多级子菜单的 `openKeys` 复杂度），本表为 `023`–`036` 全部菜单归属的唯一来源；后续规格只在本表续行，不再各自发明分组。
+> `024` 已预告「进销存」分组项数将超过 10 项需二次分组（`specs/024-erp-order-flow/requirement.md` §5）。本规格落地时**改为多个顶级分组**（不嵌套子菜单，规避 Arco 多级子菜单的 `openKeys` 复杂度），本表为 `023`–`045` 全部菜单归属的唯一来源；后续规格只在本表续行，不再各自发明分组。
 
 | 顶级分组（key） | 子项（key） | 引入规格 |
 |---|---|---|
 | 示例页面（`showcase`） | 组件示例（`components`）/ 列表示例（`list`）/ 表单与详情示例（`form`） | `004` / `005` |
-| 基础档案（`basedata`） | 商品管理（`products`）/ 分类管理（`categories`）/ 往来单位（`partners`）/ 仓库管理（`warehouses`） | `012` / `017` / `013` / `030` |
+| 基础档案（`basedata`） | 商品管理（`products`）/ 分类管理（`categories`）/ 往来单位（`partners`）/ 仓库管理（`warehouses`） | `012` / `017` / `013` / `038` |
 | 采购（`purchase`） | 采购订单（`purchaseOrders`，`024`）/ 采购入库（`purchases`）/ 采购退货（`purchaseReturns`） | `015` / `021` / `024` |
 | 销售（`sale`） | 销售订单（`salesOrders`，`024`）/ 销售出库（`sales`）/ 销售退货（`salesReturns`） | `016` / `022` / `024` |
-| 库存（`stock`） | 库存查询（`inventory`）/ 库存流水（`stockMovements`）/ 库存盘点（`stockTakes`）/ 调拨单（`transfers`）/ 批次管理（`batches`） | `014` / `019` / `020` / `031` / `032` |
-| 资金（`fund`） | 收付款（`settlements`）/ 往来对账（`reconciliation`）/ 发票登记（`invoices`）/ 客户价格（`partnerPrices`） | `023` / `034` / `033` |
+| 库存（`stock`） | 库存查询（`inventory`）/ 库存流水（`stockMovements`）/ 库存盘点（`stockTakes`）/ 调拨单（`transfers`）/ 批次管理（`batches`） | `014` / `019` / `020` / `039` / `040` |
+| 资金（`fund`） | 收付款（`settlements`）/ 往来对账（`reconciliation`）/ 发票登记（`invoices`）/ 客户价格（`partnerPrices`） | `023` / `032` / `036` |
 | 报表（`report`） | 进销存报表（`inventoryFlowReport`）/ 库存余额表（`stockBalanceReport`）/ 采购汇总（`purchaseSummaryReport`）/ 销售汇总（`salesSummaryReport`）/ 成本与毛利（`costProfitReport`，`026`） | `025` / `026` |
-| 系统（`system`） | 用户管理（`users`）/ 登录日志（`loginLogs`）/ 角色权限（`roles`）/ 操作日志（`auditLogs`）/ 单据审批（`approvals`）/ 站内消息（`notifications`，`035` 落地后入口为**顶栏铃铛**、不进侧边菜单，见 `specs/035-erp-stock-alert/design.md` §4.3） | `009` / `028` / `029` / `036` / `035` |
+| 系统（`system`） | 用户管理（`users`）/ 登录日志（`loginLogs`）/ 角色权限（`roles`）/ 操作日志（`auditLogs`）/ 单据审批（`approvals`）/ 站内消息（`notifications`，`041` 落地后入口为**顶栏铃铛**、不进侧边菜单，见 `specs/041-erp-stock-alert/design.md` §4.3） | `009` / `028` / `029` / `042` / `041` |
 
 - 分组与子项均**默认折叠**，仅当前路由所属分组自动展开（`005` 既有交互不变，`watch(route.name, { immediate: true })` 只增不减）。
 - 分组顺序即上表顺序；子项顺序即行内顺序（「商品管理 → 分类管理 → …」）。

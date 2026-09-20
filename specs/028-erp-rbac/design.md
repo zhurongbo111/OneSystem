@@ -25,7 +25,7 @@ updated: 2026-09-17
 | 商品 | `products` | `view` / `create` / `update` / `status` / `export` | `/api/products*`、`/products` |
 | 分类 | `categories` | `view` / `create` / `update` / `delete` | `/api/categories*`、`/categories` |
 | 往来单位 | `partners` | `view` / `create` / `update` / `status` / `export` | `/api/partners*`、`/partners` |
-| 仓库（`030`） | `warehouses` | `view` / `create` / `update` / `status` | `/api/warehouses*`、`/warehouses` |
+| 仓库（`038`） | `warehouses` | `view` / `create` / `update` / `status` | `/api/warehouses*`、`/warehouses` |
 | 采购订单（`024`） | `purchaseOrders` | `view` / `create` / `update` / `void` / `close` | `/api/purchase-orders*`、`/purchase-orders` |
 | 采购入库 | `purchases` | `view` / `create` / `void` / `export` | `/api/purchase-orders*`（`024` 前）、`/purchases` |
 | 采购退货 | `purchaseReturns` | `view` / `create` / `void` / `settle` / `export` | `/api/purchase-returns*`、`/purchase-returns` |
@@ -35,20 +35,20 @@ updated: 2026-09-17
 | 库存查询 | `inventory` | `view` / `export` | `/api/inventory*`、`/inventory` |
 | 库存流水 | `stockMovements` | `view` / `export` | `/api/stock-movements*`、`/stock-movements` |
 | 库存盘点 | `stockTakes` | `view` / `create` / `export` | `/api/stock-takes*`、`/stock-takes` |
-| 调拨（`031`） | `transfers` | `view` / `create` / `void` / `export` | `/api/transfers*`、`/transfers` |
-| 批次（`032`） | `batches` | `view` / `create` / `update` | `/api/batches*`、`/batches` |
+| 调拨（`039`） | `transfers` | `view` / `create` / `void` / `export` | `/api/transfers*`、`/transfers` |
+| 批次（`040`） | `batches` | `view` / `create` / `update` | `/api/batches*`、`/batches` |
 | 收付款 | `settlements` | `view` / `create` / `void` / `export` | `/api/settlements*`、`/settlements` |
 | 往来对账 | `reconciliation` | `view` | `/api/reconciliation`、`/reconciliation` |
-| 发票（`034`） | `invoices` | `view` / `create` / `void` | `/api/invoices*`、`/invoices` |
-| 客户价格（`033`） | `partnerPrices` | `view` / `create` / `update` / `delete` | `/api/partner-prices*`、`/partner-prices` |
+| 发票（`032`） | `invoices` | `view` / `create` / `void` | `/api/invoices*`、`/invoices` |
+| 客户价格（`036`） | `partnerPrices` | `view` / `create` / `update` / `delete` | `/api/partner-prices*`、`/partner-prices` |
 | 报表 | `reports` | `view` / `export` | `/api/reports/*`、`/reports/*`（5 个报表页共用） |
 | 成本重算 | `costs` | `recalculate` | `/api/costs/recalculate`、成本报表页操作行 |
 | 用户管理 | `users` | `view` / `create` / `update` / `status` / `resetPassword` | `/api/users*`、`/users` |
 | 登录日志 | `loginLogs` | `view` | `/api/login-logs`、`/login-logs` |
 | 角色权限 | `roles` | `view` / `create` / `update` / `delete` | `/api/roles*`、`/roles` |
 | 操作日志（`029`） | `auditLogs` | `view` | `/api/audit-logs*`、`/audit-logs` |
-| 站内消息（`035`） | `notifications` | `view` | `/api/notifications*`、顶栏铃铛 |
-| 单据审批（`036`） | `approvals` | `view` / `approve` | `/api/approvals*`、审批页 |
+| 站内消息（`041`） | `notifications` | `view` | `/api/notifications*`、顶栏铃铛 |
+| 单据审批（`042`） | `approvals` | `view` / `approve` | `/api/approvals*`、审批页 |
 
 - 新增功能一律在本表续行；**未登记权限点的动作不得合并**（`tasks.md` 有集成测试遍历守卫）。
 - 权限点名称（中文，用于权限树展示）由后端清单接口返回（`design.md` §3.3），前端不硬编码。
@@ -287,7 +287,7 @@ src/
 | `SuperAdmin` 直接放行不逐点存储 | 解析时返回 `Permissions.All` | 新增权限点自动继承，无需回填内置角色；杜绝「新功能上线后管理员没权限」 |
 | `Staff` 权限可编辑、不可删除 | `IsBuiltin = true` | 保留一个「可预期的默认角色」；同时允许管理员按需收紧 |
 | 角色权限 / 用户角色全量替换 | 先删后插 | 语义简单、无差异计算；集合量小（≤ 200），性能无虞 |
-| 既有用户回填 `Staff` | 迁移 + 幂等种子 | 升级后老用户立即可用（符合 `ROADMAP` §4.5「先跑起来」的平滑要求） |
+| 既有用户回填 `Staff` | 迁移 + 幂等种子 | 升级后老用户立即可用（符合 `ROADMAP` §6.5「先跑起来」的平滑要求） |
 | 前端权限仅作体验 | 后端为唯一安全边界 | 前端集合可被篡改，不能作为安全依据；两者职责分离 |
 | 不做行级 / 数据范围权限 | 范围外 | 需要组织模型与查询层注入范围，属独立工程；本期先把「入口级」权限补齐 |
 | 打印复用 `.view` | 不设 `.print` | 打印是只读展示，单独设点会让权限树冗余；若后续需要「可看不可打」再拆分 |

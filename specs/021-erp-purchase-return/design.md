@@ -31,7 +31,7 @@ updated: 2026-09-18
 | 接口路由 | `/api/purchase-returns` | `/api/sales-returns` |
 | 前端目录 | `views/PurchaseReturnManagement/` | `views/SalesReturnManagement/` |
 
-> 单号前缀的全域分配见 `specs/ROADMAP.md` §4.7；本规格不自行定义其他域前缀。
+> 单号前缀的全域分配见 `specs/ROADMAP.md` §6.7；本规格不自行定义其他域前缀。
 
 ## 1. 总体设计
 
@@ -238,10 +238,10 @@ src/
 | 退货扣减用 `TryDecrementAsync` | 数据库条件更新 | 退回供应商的是实物，账上必须有货，与销售出库同一防超卖机制；不足报 `40103` |
 | 库存不足整单拒绝 | 任一行失败 → 回滚 | 与 `erp-sale` 一致：部分保存会留下半成品单据与不一致库存 |
 | 作废回冲无前置校验 | `IncrementAsync(+quantity)` | 与采购 / 销售作废对称，作废必须可执行 |
-| 退货单带结算状态位 | 复用 `OrderSettlementStatus` 0/1 | 退货冲减应付，需与后续收付款对齐；`023-erp-settlement` 升级为「已结算金额」时一并处理（见 `specs/ROADMAP.md` §4.3） |
+| 退货单带结算状态位 | 复用 `OrderSettlementStatus` 0/1 | 退货冲减应付，需与后续收付款对齐；`023-erp-settlement` 升级为「已结算金额」时一并处理（见 `specs/ROADMAP.md` §6.3） |
 | 流水类型每业务动作一个 | `PurchaseReturnOut` / `PurchaseReturnVoid` | 与既有「采购入库 / 采购作废 / 销售出库 / 销售作废」模式一致，流水页文案与方向清晰，不合并为通用「调整」 |
 | 不新建字段约束常量类 | 复用 `OrderFieldConstraints` + `ProductFieldConstraints` | 退货单是单据域的一种，长度与数量 / 单价规则完全同源（后端规则 §5.3） |
-| 单号前缀 `PR` | 与全域前缀分配对齐 | 见 `specs/ROADMAP.md` §4.7（避免与 `024` 的订单 / 出入库单前缀冲突） |
+| 单号前缀 `PR` | 与全域前缀分配对齐 | 见 `specs/ROADMAP.md` §6.7（避免与 `024` 的订单 / 出入库单前缀冲突） |
 | 不做退货原因字典 | 备注自由文本 | 字典属主数据治理，不阻塞退货闭环 |
 | 无 RBAC | 登录即可见「采购退货」菜单 | 同既有功能（权限统一由 `028-erp-rbac` 接入） |
 

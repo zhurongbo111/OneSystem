@@ -145,15 +145,15 @@ frontend/
 
 ## 6. 现有功能规格（specs/）
 
-`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = 创建顺序（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即创建时间正序**；**完整清单用目录列表获取**，功能名指代不含序号。分类如下：
+`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。分类如下：
 
 - 工程 / 脚手架：`001-project-scaffold`、`003-api-swagger`
 - 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
 - 业务：`009-user-management`
 - ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`、`025-erp-report`、`026-erp-cost`、`027-erp-export`
-- ERP 扩展路线（**规格已起草、均未实现**）：批次三 `028-erp-rbac`、`029-erp-audit-log`；批次四 `030-erp-multi-warehouse`、`031-erp-transfer`、`032-erp-batch-expiry`、`033-erp-partner-price`、`034-erp-invoice`；批次五 `035-erp-stock-alert`、`036-erp-approval`。待确认的裁剪 / 契约决策见 `specs/ROADMAP.md` §4.8
+- ERP 全域路线（`ROADMAP` 已升级为**内核 + 外围**）：**已起草未实现** `028-erp-rbac`、`029-erp-audit-log`、`030-erp-org-employee`、`031-erp-finance-master`、`032-erp-invoice`、`033-erp-general-ledger`、`034-erp-cash`、`035-erp-uom`、`036-erp-partner-price`、`037-erp-quotation`、`038-erp-multi-warehouse`、`039-erp-transfer`、`040-erp-batch-expiry`、`041-erp-stock-alert`、`042-erp-approval`、`043-erp-crm-presale`、`044-erp-hcm-payroll`、`045-erp-crm-service`（**均已起草，无待起草模块**）；阶段划分（P1–P6）见 `specs/ROADMAP.md` §4.2；范围与边界（HCM / CRM 并入主线，WMS / SRM 独立立项；**纯贸易不做生产制造 / MES / PLM**）见该文件 §1。
 
-`specs/ROADMAP.md` 是 ERP 功能组的**路线索引**（单文件，非 spec 目录、无三件套）：记录批次、序号、依赖与状态，并写明跨功能前置决策（多仓 / 结算 / 权限等）。接续 ERP 功能前先读它，再进具体规格。
+`specs/ROADMAP.md` 是 ERP **全域**（内核 + 外围系统）的**路线索引**（单文件，非 spec 目录、无三件套）：记录模块边界（§1）、模块地图（§2）、覆盖矩阵（§3）、阶段路线 P1–P6（§4.2），并写明跨功能前置决策（多仓 / 结算 / 权限 / 组织等）。接续 ERP 功能前先读它，再进具体规格。
 
 **交互约定「改动类型 → 规格 §0 正文」对照表**（前端规则 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 只留判据，正文在下列 §0；**新增交互约定只更新本表，不改规则**）：
 
