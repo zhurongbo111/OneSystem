@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-16
+updated: 2026-09-20
 ---
 
 # 任务清单：往来单位（erp-partner）
@@ -72,3 +72,14 @@ updated: 2026-09-16
 
 - [x] 4.1 规格三件套最终一致性复查（代码与 design 表结构 / 错误码 / 路由逐条对照）
 > 提交 / 合并不列入待办：由用户主动发起指示（用户约定 2026-09-13）。
+
+## 五、变更（2026-09-20）：往来单位类型只放宽不收窄
+
+> 需求 / 设计见 `requirement.md` F4、`design.md` §3.2 / §3.4 / §4.4 / §5 / §6。
+
+- [x] 5.1 后端：`ErrorCode` 追加 `40119 PartnerTypeNarrowingNotAllowed`
+- [x] 5.2 后端：`UpdatePartnerRequestHandler` 增加「类型只放宽不收窄」拦截（保持原类型或 `Both`，否则 `40119`）
+- [x] 5.3 后端：`UpdatePartnerRequestHandlerTests` 补收窄拒绝 / 放宽通过用例
+- [x] 5.4 前端：`PartnerFormDrawer.vue` 编辑态按原类型禁用会收窄的类型项并给出说明
+- [x] 5.5 E2E：`partner-management.spec.ts` 补「编辑供应商时客户项不可选、可放宽为两者」
+- [x] 5.6 验证：`dotnet test`（531 通过）与 `npm run e2e:run`（121 通过）通过
