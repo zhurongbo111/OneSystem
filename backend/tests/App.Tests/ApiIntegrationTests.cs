@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -11,6 +12,8 @@ using App.Core.Features.Users.UpdateUser;
 using App.Core.Features.Users.UpdateUserStatus;
 using App.Core.Responses;
 using App.Infrastructure;
+
+using ClosedXML.Excel;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -408,6 +411,40 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
             $"/api/login-logs?startTime={today.AddDays(1):yyyy-MM-ddTHH:mm:ss.fffZ}&endTime={today:yyyy-MM-ddTHH:mm:ss.fffZ}",
             _jsonOptions);
 
+        Assert.Equal(40000, result!.Code);
+    }
+
+    [Fact]
+    public async Task 导出商品_成功_返回xlsx文件流()
+    {
+        await LoginAsAdminAsync();
+
+        var response = await _client.GetAsync("/api/products/export");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // 契约例外：成功返回 xlsx 二进制流（非统一响应 JSON）
+        Assert.Equal(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            response.Content.Headers.ContentType!.MediaType);
+        Assert.Contains("xlsx", response.Content.Headers.ContentDisposition!.FileNameStar ?? string.Empty, StringComparison.Ordinal);
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.NotEmpty(bytes);
+
+        using var workbook = new XLWorkbook(new MemoryStream(bytes));
+        Assert.NotNull(workbook.Worksheet("商品"));
+    }
+
+    [Fact]
+    public async Task 导出商品_分页参数越界_返回统一响应JSON()
+    {
+        await LoginAsAdminAsync();
+
+        var result = await _client.GetFromJsonAsync<ApiResponse<JsonElement>>(
+            "/api/products/export?pageSize=1000",
+            _jsonOptions);
+
+        // 错误回退：参数非法时仍返回统一响应 JSON（前端按 Content-Type 区分）
         Assert.Equal(40000, result!.Code);
     }
 }

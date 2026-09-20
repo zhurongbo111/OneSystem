@@ -96,6 +96,16 @@ internal sealed class FakeStockTakeRepository : IStockTakeRepository
         return Task.FromResult((Take: (StockTake?)take, Items: (IReadOnlyList<StockTakeItem>)takeItems));
     }
 
+    /// <summary>批量取明细（erp-export 导出用）：与真实仓储同口径，按明细 Id 升序</summary>
+    public Task<IReadOnlyList<StockTakeItem>> GetItemsByTakeIdsAsync(IReadOnlyCollection<Guid> takeIds, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<StockTakeItem> items = Items
+            .Where(i => takeIds.Contains(i.StockTakeId))
+            .OrderBy(i => i.Id)
+            .ToList();
+        return Task.FromResult(items);
+    }
+
     /// <inheritdoc />
     public Task<string> GenerateTakeNoAsync(DateTimeOffset takeDate, CancellationToken cancellationToken = default)
     {
@@ -146,4 +156,9 @@ internal sealed class FakeProductRepository : IProductRepository
     /// <inheritdoc />
     public Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<ProductPickItem>>(Picks.ToList());
+
+    /// <summary>批量取商品编码（erp-export 导出用）：与真实仓储同口径，缺失 id 不出现在结果中</summary>
+    public Task<IReadOnlyDictionary<Guid, string>> GetCodesByIdsAsync(IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyDictionary<Guid, string>>(
+            ById.Where(kv => productIds.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value.Code));
 }

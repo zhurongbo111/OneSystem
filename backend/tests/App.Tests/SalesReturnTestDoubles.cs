@@ -54,6 +54,18 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
         return Task.FromResult((Return: (SalesReturn?)salesReturn, Items: items));
     }
 
+    /// <summary>批量取明细（erp-export 导出用）：与真实仓储同口径，按明细 Id 升序</summary>
+    public Task<IReadOnlyList<SalesReturnItem>> GetItemsByReturnIdsAsync(IReadOnlyCollection<Guid> returnIds, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("GetItemsByReturnIds");
+        IReadOnlyList<SalesReturnItem> items = _items
+            .Where(kv => returnIds.Contains(kv.Key))
+            .SelectMany(kv => kv.Value)
+            .OrderBy(i => i.Id)
+            .ToList();
+        return Task.FromResult(items);
+    }
+
     public Task AddAsync(SalesReturn salesReturn, IReadOnlyList<SalesReturnItem> items, CancellationToken cancellationToken = default)
     {
         _calls?.Add("Add");
