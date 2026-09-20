@@ -143,7 +143,7 @@ frontend/
 
 - token 存储、携带与 40100 处置的全局约定见 `AGENTS.md` §4.6；本处为实现细节：
   - 请求拦截器：从 `localStorage` 读取 token，附加 `Authorization: Bearer <token>`。
-  - 响应拦截器：收到 `code: 40100` 时清除 `localStorage` 凭证并跳转登录页（防重复跳转）。
+  - 响应拦截器：收到 `code: 40100` 时清除 `localStorage` 凭证，并经**路由层注入的处置回调**跳转登录页（`router.replace` + `redirect` 回跳目标，**不整页刷新**，防重复跳转）；跳转前必须清空 Pinia 认证状态，否则守卫读到的 `isLoggedIn` 仍为真，会把 `/login` 重定向回首页。请求层不得直接依赖 router / store（`stores/auth` 已依赖 `api/request`，反向依赖成环），统一用 `setUnauthorizedHandler` 注入处置逻辑。
 
 ## 9. 环境与联调
 
@@ -157,6 +157,7 @@ frontend/
 - 用例与配置：`frontend/e2e/*.spec.ts` + `playwright.config.ts`。
 - 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名 kebab-case 且与 `specs/<序号>-<feature>/`、路由同域（§4.1）；**新增一律按此命名**。例外仅限本约定落地前已存在的文件，清单见 `.codebuddy/CONTEXT.md` §3，**不得新增例外**。
 - 运行：需先起后端 dev（5080）与前端 dev（5173），再跑 `npm run test:e2e`；命令与端口见 `.codebuddy/CONTEXT.md` §4（不在本文件重复）。冷启动预热由 `e2e/global-setup.ts` 自动完成（先登录一次），无需手工预热。
+- **数据隔离（推荐）**：跑全量时用 `npm run e2e:run`——一条命令完成「清理历史残留库 → 起后端（连本轮 `app_e2e_<时间戳>` 库）→ 跑用例 → 停后端 → 删库」，每轮数据全新、跑完零残留（编排与失败处理见 `specs/002-frontend-e2e/design.md` §6）。改单个用例调试时仍可用手工流程（自行起服务 + `npm run test:e2e`），此时数据落在开发库上。
 
 ### 10.1 e2e 稳定性（强制）
 
@@ -164,4 +165,9 @@ frontend/
 - **重试判据必须取用例自身的期望**：判据可以是命中行 / 空状态（`.arco-empty`）/ 精确行数 / URL / 表头列等，**不可一律写成「命中关键字」**——空结果用例、按分类聚合（行内不含商品编码）的报表页，该判据与用例语义相反、必然失败。行数类判据用 `clickUntilCount`，URL 等无法用可见性表达的判据给 `clickUntil` 传断言块。
 - **断言必须落在可见结果上**：筛选类用例除校验请求参数外，必须断言过滤**确实生效**（行数 / 内容符合筛选条件），否则「点击被吞、筛选未应用」会被静默漏过。
 - **下拉选项的等待 / 点击须限定可见**：Arco Select 选中后旧弹层 DOM 会残留且处于隐藏态，`page.locator('.arco-select-option').first()` 会命中隐藏的旧浮层（表现为 `toBeVisible` 始终 hidden、或 click 卡在 actionability），须用 `.arco-select-option:visible` 限定当前浮层。
+- **消息断言统一走 helper**：Arco Message 同文案在展示期内（默认 3s）连续弹出会堆叠（旧节点未销毁），`page.getByText('xx已创建')` 会命中多个元素并触发 strict mode violation（表现为「连续创建两个同类实体」的用例偶发失败）。一律用 `e2e/helpers/message.ts` 的 `expectMessage(page, text)` / `messageLocator(page, text)`，**不要**手写 `getByText` 消息断言，`clickUntil` 的判据 locator 同样适用。
+- **登录统一走 `loginAs`（`e2e/helpers/auth.ts`）**，两条硬性约束：
+  - 清凭证必须限定在「导航目标是 `/login`」时执行。init script 对该 page 的**每次完整导航**都会跑，无条件清 token 会让「登录后用 `page.goto('/xxx')` 直达页面」的用例被路由守卫重定向回登录页（表现为菜单 / 页面内容缺失）。
+  - 清凭证前先离开业务页（`about:blank`）。init script 会立即在当前页面执行一次，业务页在途请求会因无 token 返回 40100，触发 40100 统一处置（跳登录页，见 §8），与随后的 `goto('/login')` 相互干扰、导航交叉（表现为登录表单不渲染、`fill` 等到用例超时）；先离开业务页可避免。
+  - 登录前等登录表单可见，未渲染则重新导航重试，不在空白页上直接 `fill`。
 - 用例失败时先排查上述时序问题，再怀疑业务实现；排查依据以 `test-results/<用例名>/error-context.md`（失败时由 Playwright 生成，含页面实际内容）为准，不靠猜测。
