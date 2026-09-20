@@ -406,7 +406,7 @@ async function onSubmit(): Promise<void> {
           <template #product="{ record }">
             <a-select
               v-if="!isLinked"
-              :value="(record as SalesFormLine).productId"
+              :model-value="(record as SalesFormLine).productId"
               :options="productOptions"
               placeholder="请选择商品"
               allow-search
