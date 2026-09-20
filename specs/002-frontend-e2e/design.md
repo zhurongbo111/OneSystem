@@ -64,7 +64,7 @@ Playwright（`@playwright/test`，已在 `frontend` devDependencies）。
 
 | # | 行为 | 失败处理 |
 |---|---|---|
-| 1 | 校验 5080 空闲（`Get-NetTCPConnection` 与 `netstat` 双通道检测） | 已占用则报出占用进程 PID 并以退出码 2 结束——占用者连的是开发库，静默复用会让用例打在错误的数据集上 |
+| 1 | 清理遗留进程：双通道检测 5080 / 5173，命令行匹配本项目（`App.Api` / `vite`）即强停并等端口释放 | 占用者是别的程序则**不动它**，报出 PID 后以退出码 2 结束（避免误杀无关服务）；`-ReuseFrontend` 可保留已运行的前端 dev |
 | 2 | 清理历史残留库 | 删除失败的库保留在清单中，下次运行继续尝试 |
 | 3 | 以本轮库启动后端，轮询 `/health` 就绪 | 同时监视启动进程是否提前退出：端口被占时 `dotnet run` 会立刻退出，只看健康检查会命中"别人的后端"；超时或提前退出均以退出码 2 结束 |
 | 4 | 检查 5173：未监听则以脚本启动前端 dev | 脚本启动的前端在结束时一并停止；已在运行的沿用 |
@@ -73,6 +73,7 @@ Playwright（`@playwright/test`，已在 `frontend` devDependencies）。
 
 **退出码约定**：`0` 用例全通过、`1` 有失败用例、`2` 脚本级错误（端口被占用 / 后端未就绪 / 启动进程提前退出）。
 
+- **每轮从干净起点开始**：脚本自身负责拉起前后端，故开始时会强停本项目的遗留后端（它连的是开发库）与前端 dev（陈旧 dev server 会让用例跑在旧代码上、产生假失败）；只停命令行能识别为本项目的进程，占用同一端口的其它程序一律不碰。
 - **连接串来源**：解析 `backend/src/App.Api/appsettings.Development.json` 的 `ConnectionStrings:Default`，仅替换 `Database` 段——不在脚本内重复维护账号密码（`AGENTS.md` §7）。
 - **产物目录**：固定 `test-results/e2e-run`（已被 `.gitignore` 忽略），运行前清空，避免与手工运行互相覆盖。
 - **待办**：脚本为 Windows PowerShell 实现；若后续接入 Linux CI 需提供等价脚本（届时再评估）。
