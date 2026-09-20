@@ -148,6 +148,36 @@ test.describe('往来单位（集成）', () => {
     await expect(updatedRow.getByText('李四')).toBeVisible()
   })
 
+  test('编辑供应商时类型不可收窄为客户，可放宽为两者', async ({ page }) => {
+    const name = uniquePartnerName()
+    await goPartners(page)
+    await createPartner(page, name, '供应商')
+    const row = await openPartnerRow(page, name)
+
+    await row.getByRole('button', { name: '编辑' }).click()
+    await expect(drawerTitle(page, '编辑往来单位')).toBeVisible()
+    const drawer = page.locator('.arco-drawer')
+    const radioGroup = drawer.locator('.arco-radio-group')
+    // 编辑态提示只放宽不收窄
+    await expect(drawer.getByText('类型只允许放宽（改为「两者」），不允许收窄')).toBeVisible()
+
+    // 供应商：客户项禁用（会收窄），供应商 / 两者可选
+    await expect(
+      radioGroup.locator('.arco-radio', { hasText: '客户' }).locator('input[type="radio"]'),
+    ).toBeDisabled()
+    await expect(
+      radioGroup.locator('.arco-radio', { hasText: '两者' }).locator('input[type="radio"]'),
+    ).toBeEnabled()
+
+    // 放宽为两者可保存
+    await radioGroup.getByText('两者', { exact: true }).click()
+    await drawer.getByRole('button', { name: '提交' }).click()
+    await expectMessage(page, '往来单位已更新')
+
+    const updatedRow = await openPartnerRow(page, name)
+    await expect(updatedRow.getByText('两者', { exact: true })).toBeVisible()
+  })
+
   test('详情抽屉展示字段与审计时间', async ({ page }) => {
     const name = uniquePartnerName()
     await goPartners(page)
