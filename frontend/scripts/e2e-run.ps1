@@ -14,6 +14,9 @@
 .PARAMETER SkipResidualCleanup
   跳过历史残留库清理（仅在排查脚本自身问题时使用）。
 
+.PARAMETER ReuseFrontend
+  复用已在运行的前端 dev（默认会先停掉并重新拉起：陈旧的 dev server 会让用例跑在旧代码上，产生假失败）。
+
 .PARAMETER BackendTimeoutSeconds
   等待后端就绪的超时秒数，默认 120。
 
@@ -25,6 +28,7 @@
 param(
     [switch]$KeepDatabase,
     [switch]$SkipResidualCleanup,
+    [switch]$ReuseFrontend,
     [int]$BackendTimeoutSeconds = 120,
     [string]$DbPrefix = 'app_e2e_'
 )
@@ -70,6 +74,51 @@ function Get-PortListenerProcessId {
 function Test-PortInUse {
     param([int]$Port)
     return ((Get-PortListenerProcessId -Port $Port).Count -gt 0)
+}
+
+# 等待端口释放
+function Wait-PortReleased {
+    param([int]$Port, [int]$TimeoutSeconds = 15)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (-not (Test-PortInUse -Port $Port)) { return $true }
+        Start-Sleep -Seconds 1
+    }
+    return -not (Test-PortInUse -Port $Port)
+}
+
+# 清理占用端口的遗留进程，返回是否已清理干净。
+# 只停「命令行匹配预期」的进程（本项目后端 / 前端 dev）；占用者是别的程序时不动它，
+# 由调用方报错——避免把恰好用同一端口的无关服务杀掉。
+function Clear-PortOccupant {
+    param([int]$Port, [string]$ExpectPattern, [string]$Description, [switch]$Skip)
+    if ($Skip -or -not (Test-PortInUse -Port $Port)) { return $true }
+
+    $targets = @()
+    foreach ($procId in @(Get-PortListenerProcessId -Port $Port)) {
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$procId" -ErrorAction SilentlyContinue
+        if (-not $proc) { continue }
+        $cmd = [string]$proc.CommandLine
+        if ($cmd -match $ExpectPattern) {
+            $targets += $procId
+        } else {
+            Write-Warning "端口 $Port 被非本项目进程占用（PID $procId / $($proc.Name)）：$cmd"
+            return $false
+        }
+    }
+
+    foreach ($procId in $targets) {
+        Write-Host "    清理占用端口 $Port 的$Description（PID $procId）" -ForegroundColor Yellow
+        & taskkill /PID $procId /T /F 2>&1 | Out-Null
+    }
+    # 遗留的 dotnet run 宿主：子进程被停后它可能仍在（不监听端口，但会拖住构建输出）
+    Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like '*run --project src/App.Api*' } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
+    if (Wait-PortReleased -Port $Port) { return $true }
+    Write-Warning "端口 $Port 在 15 秒内未释放"
+    return $false
 }
 
 # 读取开发连接串：凭据只在 appsettings.Development.json 维护一处，脚本不重复维护
@@ -153,6 +202,20 @@ function Stop-StartedBackend {
     Write-Warning "端口 $Port 在 15 秒内未释放，删库可能失败"
 }
 
+# 停止本次脚本启动的前端 dev：npm.cmd 只是包装，必须杀进程树，否则 vite 会成为孤儿继续占着 5173
+function Stop-StartedFrontend {
+    param($LauncherProcess)
+    if ($LauncherProcess -and -not $LauncherProcess.HasExited) {
+        & taskkill /PID $LauncherProcess.Id /T /F 2>&1 | Out-Null
+    }
+    # 兜底：仅停本次脚本开始后启动的 vite（避免误停手工启动的前端）
+    Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue | Where-Object {
+        $_.CommandLine -like '*vite*' -and $_.CreationDate -ge $startedAt
+    } | ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
+
 $exitCode = 1
 $launcher = $null
 $frontendLauncher = $null
@@ -164,10 +227,14 @@ $connection = New-ConnectionString -BaseConnection $baseConnection -Database $da
 Write-Step "本轮数据库：$database"
 
 try {
-    # 1. 5080 必须空闲：占用者连的是开发库，静默复用会让用例打在错误的数据集上
-    if (Test-PortInUse -Port $backendPort) {
-        $holders = (Get-PortListenerProcessId -Port $backendPort) -join ', '
-        throw "端口 $backendPort 已被占用（PID: $holders）。请先停止手工启动的后端（它连接的是开发库），再运行 e2e:run。"
+    # 1. 清理遗留进程：e2e:run 自己拉起前后端，从干净起点开始。
+    #    后端必须换成本轮库（遗留的开发后端连的是开发库）；前端一并重启，避免陈旧 dev server 让用例跑在旧代码上。
+    Write-Step '清理占用端口的遗留进程'
+    if (-not (Clear-PortOccupant -Port $backendPort -ExpectPattern 'App\.Api' -Description '后端')) {
+        throw "端口 $backendPort 被非本项目进程占用，为避免误杀未做清理；请手工处理后重试。"
+    }
+    if (-not (Clear-PortOccupant -Port $frontendPort -ExpectPattern 'vite' -Description '前端 dev' -Skip:$ReuseFrontend)) {
+        throw "端口 $frontendPort 被非本项目进程占用，为避免误杀未做清理；请手工处理后重试。"
     }
 
     # 2. 清理历史残留库（含 -KeepDatabase 保留的库与上一轮删除失败的库）
@@ -232,9 +299,7 @@ try {
     if ($backendStarted) {
         Write-Step '清理现场'
         Stop-StartedBackend -LauncherProcess $launcher -Port $backendPort
-        if ($frontendLauncher -and -not $frontendLauncher.HasExited) {
-            Stop-Process -Id $frontendLauncher.Id -Force -ErrorAction SilentlyContinue
-        }
+        Stop-StartedFrontend -LauncherProcess $frontendLauncher
 
         if ($KeepDatabase) {
             Write-Warning "已保留数据库 $database（下次运行 e2e:run 时自动清理）"
