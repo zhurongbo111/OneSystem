@@ -285,6 +285,39 @@ test.describe('采购订单（集成）', () => {
     expect(body.message).toContain('未收')
   })
 
+  test('编辑待收货订单：明细回填商品名 / 数量，改数量后提交成功', async ({ page }) => {
+    const code = uniqueProductCode('ord_e')
+    const productName = `编辑商品${Date.now() % 100000}`
+    const supplier = uniquePartnerName()
+
+    await goPartners(page)
+    await createSupplier(page, supplier)
+    await goProducts(page)
+    await createProduct(page, code, productName)
+
+    await goPurchaseOrders(page)
+    const orderNo = await createPurchaseOrder(page, supplier, code, 10)
+
+    await goPurchaseOrders(page)
+    const row = await findOrderRow(page, orderNo)
+    await row.getByRole('button', { name: '编辑' }).click()
+    await expect(page).toHaveURL(/\/purchase-orders\/edit\//)
+
+    // 回填：明细行商品下拉显示原商品名，数量沿用原值
+    const rows = dataRows(page)
+    await expect(rows).toHaveCount(1)
+    await expect(rows.nth(0).locator('.arco-select')).toContainText(productName)
+    const qty = rows.nth(0).locator('.arco-input-number').nth(0).locator('input')
+    await expect(qty).toHaveValue('10')
+
+    // 改数量后提交（订单 id 由路由传入，请求体不含 id）
+    await qty.fill('12')
+    await qty.blur()
+    await page.getByRole('button', { name: '提交', exact: true }).click()
+    await expectMessage(page, '采购订单已保存')
+    await expect(page).toHaveURL(/\/purchase-orders\/detail\//)
+  })
+
   test('部分收货后：不可编辑 / 不可作废（按钮消失），可关闭', async ({ page }) => {
     const code = uniqueProductCode('ord_c')
     const supplier = uniquePartnerName()

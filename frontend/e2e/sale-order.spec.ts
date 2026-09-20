@@ -239,4 +239,37 @@ test.describe('销售订单（集成）', () => {
     await page.getByPlaceholder('搜索单号 / 客户').fill(customer)
     await searchAndWaitHit(page, orderNo)
   })
+
+  test('编辑待发货订单：明细回填商品名 / 数量，改数量后提交成功', async ({ page }) => {
+    const code = uniqueProductCode('sord_e')
+    const productName = `销售编辑商品${Date.now() % 100000}`
+    const customer = uniquePartnerName()
+
+    await goPartners(page)
+    await createPartner(page, customer, '客户')
+    await goProducts(page)
+    await createProduct(page, code, productName)
+
+    await goSalesOrders(page)
+    const orderNo = await createSalesOrder(page, customer, code, 10)
+
+    await goSalesOrders(page)
+    const row = await findOrderRow(page, orderNo)
+    await row.getByRole('button', { name: '编辑' }).click()
+    await expect(page).toHaveURL(/\/sales-orders\/edit\//)
+
+    // 回填：明细行商品下拉显示原商品名，数量沿用原值
+    const rows = dataRows(page)
+    await expect(rows).toHaveCount(1)
+    await expect(rows.nth(0).locator('.arco-select')).toContainText(productName)
+    const qty = rows.nth(0).locator('.arco-input-number').nth(0).locator('input')
+    await expect(qty).toHaveValue('10')
+
+    // 改数量后提交（订单 id 由路由传入，请求体不含 id）
+    await qty.fill('12')
+    await qty.blur()
+    await page.getByRole('button', { name: '提交', exact: true }).click()
+    await expectMessage(page, '销售订单已保存')
+    await expect(page).toHaveURL(/\/sales-orders\/detail\//)
+  })
 })
