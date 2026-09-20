@@ -48,6 +48,18 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
         return Task.FromResult((Order: (PurchaseReceipt?)order, Items: items));
     }
 
+    /// <summary>批量取明细（erp-export 导出用）：与真实仓储同口径，按明细 Id 升序</summary>
+    public Task<IReadOnlyList<PurchaseReceiptItem>> GetItemsByOrderIdsAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("GetItemsByOrderIds");
+        IReadOnlyList<PurchaseReceiptItem> items = _items
+            .Where(kv => orderIds.Contains(kv.Key))
+            .SelectMany(kv => kv.Value)
+            .OrderBy(i => i.Id)
+            .ToList();
+        return Task.FromResult(items);
+    }
+
     public Task AddAsync(PurchaseReceipt order, IReadOnlyList<PurchaseReceiptItem> items, CancellationToken cancellationToken = default)
     {
         _calls?.Add("Add");

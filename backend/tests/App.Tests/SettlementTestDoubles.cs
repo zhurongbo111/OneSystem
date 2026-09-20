@@ -57,6 +57,18 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
         return Task.FromResult((Settlement: (Settlement?)settlement, Items: items));
     }
 
+    /// <summary>批量取核销明细（erp-export 导出用）：与真实仓储同口径，按明细 Id 升序</summary>
+    public Task<IReadOnlyList<SettlementItem>> GetItemsBySettlementIdsAsync(IReadOnlyCollection<Guid> settlementIds, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("GetItemsBySettlementIds");
+        IReadOnlyList<SettlementItem> items = _items
+            .Where(kv => settlementIds.Contains(kv.Key))
+            .SelectMany(kv => kv.Value)
+            .OrderBy(i => i.Id)
+            .ToList();
+        return Task.FromResult(items);
+    }
+
     public Task AddAsync(Settlement settlement, IReadOnlyList<SettlementItem> items, CancellationToken cancellationToken = default)
     {
         _calls?.Add("Add");
