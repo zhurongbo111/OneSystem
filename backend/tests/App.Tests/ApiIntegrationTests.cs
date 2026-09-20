@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 
 using App.Core.Features.Auth.Login;
@@ -143,6 +144,29 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
     {
         var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest { Username = "", Password = "" });
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<JsonElement>>(_jsonOptions);
+
+        Assert.Equal(40000, result!.Code);
+    }
+
+    [Fact]
+    public async Task 登录_请求体类型不匹配_返回统一响应40000()
+    {
+        // username 传数字：JSON 反序列化失败 → 由 ModelStateValidationFilter 收敛为 40000，而非 ASP.NET Core 默认 problem-details
+        var response = await _client.PostAsync(
+            "/api/auth/login",
+            new StringContent("{\"username\":123,\"password\":\"admin123\"}", Encoding.UTF8, "application/json"));
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<JsonElement>>(_jsonOptions);
+
+        Assert.Equal(40000, result!.Code);
+        Assert.Equal("参数错误", result.Message);
+    }
+
+    [Fact]
+    public async Task 登录日志_page参数非数字_返回统一响应40000()
+    {
+        await LoginAsAdminAsync();
+
+        var result = await _client.GetFromJsonAsync<ApiResponse<JsonElement>>("/api/login-logs?page=abc", _jsonOptions);
 
         Assert.Equal(40000, result!.Code);
     }
