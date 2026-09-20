@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
@@ -13,11 +15,7 @@ function uniqueUsername(): string {
 }
 
 async function login(page: Page, username = CREDENTIALS.username, password = CREDENTIALS.password): Promise<void> {
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(username)
-  await page.getByPlaceholder('请输入密码').fill(password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, username, password)
 }
 
 /** 登录并经侧边菜单进入用户管理页 */
@@ -63,7 +61,7 @@ async function createUser(page: Page, username: string, displayName: string): Pr
   await page.getByPlaceholder('请输入显示名').fill(displayName)
   await page.getByPlaceholder('6-32 位密码').fill('initPass123')
   await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('用户已创建')).toBeVisible()
+  await expectMessage(page, '用户已创建')
   await expect(page.getByText('新增用户')).toHaveCount(0)
 }
 
@@ -138,7 +136,7 @@ test.describe('用户管理（集成）', () => {
     // 详情回填完成前字段是禁用的，fill 会自动等到可用，避免输入被回填覆盖
     await displayNameInput.fill('E2E 编辑后')
     await page.getByRole('button', { name: '提交' }).click()
-    await expect(page.getByText('用户已更新')).toBeVisible()
+    await expectMessage(page, '用户已更新')
 
     await searchByUsername(page, username)
     await expect(dataRows(page).first()).toContainText('E2E 编辑后')
@@ -163,7 +161,7 @@ test.describe('用户管理（集成）', () => {
 
     await displayNameInput.fill('E2E 慢详情改')
     await page.getByRole('button', { name: '提交' }).click()
-    await expect(page.getByText('用户已更新')).toBeVisible()
+    await expectMessage(page, '用户已更新')
 
     await searchByUsername(page, username)
     await expect(dataRows(page).first()).toContainText('E2E 慢详情改')
@@ -206,7 +204,7 @@ test.describe('用户管理（集成）', () => {
     await expect(page.getByPlaceholder('请输入 6-32 位新密码')).toBeVisible()
     await page.getByPlaceholder('请输入 6-32 位新密码').fill(newPassword)
     await page.getByRole('button', { name: /确\s*定/ }).click()
-    await expect(page.getByText('密码已重置')).toBeVisible()
+    await expectMessage(page, '密码已重置')
 
     // 退出后以新密码登录成功
     await page.getByRole('button', { name: '用户菜单' }).click()

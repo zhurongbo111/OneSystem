@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
 
 /** dev 测试账号（来自项目 seed 数据） */
@@ -9,11 +10,7 @@ const CREDENTIALS = { username: 'admin', password: 'admin123' }
 const TOTAL = 25
 
 async function login(page: Page): Promise<void> {
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(CREDENTIALS.username)
-  await page.getByPlaceholder('请输入密码').fill(CREDENTIALS.password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, CREDENTIALS.username, CREDENTIALS.password)
 }
 
 /** 进入列表示例页 */

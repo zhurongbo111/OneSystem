@@ -1,7 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { clickUntil } from './helpers/action'
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 import { searchAndWaitHit } from './helpers/table-search'
 
 /**
@@ -15,8 +17,6 @@ import { searchAndWaitHit } from './helpers/table-search'
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
-/** 凭证 localStorage key（与 src/api/request.ts 保持一致） */
-const TOKEN_KEY = 'app:token'
 /** 商品分类弹窗内分类名输入框 placeholder（与 ProductFormDrawer 分类弹窗一致） */
 const CATEGORY_PLACEHOLDER = '输入新分类名称（1-20 字符）'
 
@@ -36,12 +36,7 @@ function todayLocal(): string {
 }
 
 async function login(page: Page): Promise<void> {
-  await page.addInitScript((key) => window.localStorage.removeItem(key), TOKEN_KEY)
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(CREDENTIALS.username)
-  await page.getByPlaceholder('请输入密码').fill(CREDENTIALS.password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, CREDENTIALS.username, CREDENTIALS.password)
 }
 
 /** 经侧边菜单（进销存分组）进入库存盘点页 */
@@ -103,13 +98,13 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   await expect(catInput).toBeVisible()
   await catInput.fill(`盘点测试分类${Date.now().toString(36)}`)
   await page.locator('.arco-drawer').getByRole('button', { name: '保存' }).click()
-  await expect(page.getByText('分类已创建').last()).toBeVisible()
+  await expectMessage(page, '分类已创建')
   // 金额 / 安全库存均为 a-input-number：第 0 / 1 个是采购 / 销售价
   const numberInputs = page.locator('.arco-drawer .arco-input-number input')
   await numberInputs.nth(0).fill('10.00')
   await numberInputs.nth(1).fill('20.00')
   await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('商品已创建').last()).toBeVisible()
+  await expectMessage(page, '商品已创建')
 }
 
 /**
@@ -364,7 +359,7 @@ test.describe('期初建账与库存盘点（集成）', () => {
     await inputs.nth(1).fill('10')
     await inputs.nth(1).blur()
     await page.getByRole('button', { name: '提交', exact: true }).click()
-    await expect(page.getByText('盘点单已生效')).toBeVisible()
+    await expectMessage(page, '盘点单已生效')
     await expect(page).toHaveURL(/\/stock-takes\/detail\//)
   })
 })
