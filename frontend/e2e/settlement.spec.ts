@@ -1,7 +1,9 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
 import { clickUntil } from './helpers/action'
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 import { searchAndWaitHit } from './helpers/table-search'
 
 /** dev 后端地址（API 直连，不经前端 dev server） */
@@ -10,8 +12,6 @@ const BACKEND = 'http://localhost:5080'
 const BACKEND_HEALTH = `${BACKEND}/health`
 /** dev 测试账号（来自项目 seed 数据） */
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
-/** 凭证 localStorage key（与 src/api/request.ts 保持一致） */
-const TOKEN_KEY = 'app:token'
 /** 商品分类弹窗内分类名输入框 placeholder（与 ProductFormDrawer 分类弹窗一致） */
 const CATEGORY_PLACEHOLDER = '输入新分类名称（1-20 字符）'
 
@@ -31,12 +31,7 @@ function uniqueCategoryName(): string {
 }
 
 async function login(page: Page): Promise<void> {
-  await page.addInitScript((key) => window.localStorage.removeItem(key), TOKEN_KEY)
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(CREDENTIALS.username)
-  await page.getByPlaceholder('请输入密码').fill(CREDENTIALS.password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, CREDENTIALS.username, CREDENTIALS.password)
 }
 
 /** 经侧边菜单进入收付款列表页 */
@@ -111,7 +106,7 @@ async function createPartner(page: Page, name: string, typeLabel: '客户' | '�
   await drawer.getByPlaceholder('1-50 字符，创建后不可修改').fill(name)
   await drawer.locator('.arco-radio-group').getByText(typeLabel, { exact: true }).click()
   await drawer.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('往来单位已创建')).toBeVisible()
+  await expectMessage(page, '往来单位已创建')
   await expect(drawerTitle(page, '新增往来单位')).toHaveCount(0)
 }
 
@@ -127,12 +122,12 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   await expect(catInput).toBeVisible()
   await catInput.fill(uniqueCategoryName())
   await page.locator('.arco-drawer').getByRole('button', { name: '保存' }).click()
-  await expect(page.locator('.arco-message-content', { hasText: '分类已创建' }).last()).toBeVisible()
+  await expectMessage(page, '分类已创建')
   const numberInputs = page.locator('.arco-drawer .arco-input-number input')
   await numberInputs.nth(0).fill('10.00')
   await numberInputs.nth(1).fill('20.00')
   await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('商品已创建')).toBeVisible()
+  await expectMessage(page, '商品已创建')
   await expect(drawerTitle(page, '新增商品')).toHaveCount(0)
 }
 
@@ -152,7 +147,7 @@ async function seedStockByPurchase(page: Page, supplierName: string, productCode
   await qty0.blur()
 
   await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('采购单已创建')).toBeVisible()
+  await expectMessage(page, '采购单已创建')
   await expect(page).toHaveURL(/\/purchases\/detail\//)
 }
 
@@ -178,7 +173,7 @@ async function createSingleLineSalesShipment(
   await qty0.blur()
 
   await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('销售单已创建')).toBeVisible()
+  await expectMessage(page, '销售单已创建')
   await expect(page).toHaveURL(/\/sales\/detail\//)
   await expect(page.getByText('¥ 20.00', { exact: true }).first()).toBeVisible()
   return (await page.locator('.detail-desc').getByText(/^GI\d{12}$/).first().innerText()).trim()
@@ -249,7 +244,7 @@ test.describe('收付款与往来对账（集成）', () => {
     await expect(page.getByRole('radio', { name: '收款' })).toBeChecked()
     await expect(dataRows(page).first()).toContainText(orderNo)
     await createReceipt(page, '8.00')
-    await expect(page.getByText('收付款单已创建')).toBeVisible()
+    await expectMessage(page, '收付款单已创建')
     await expect(page).toHaveURL(/\/settlements\/detail\//)
     // 详情：核销明细快照 + 总额 8.00（限定 arco-table 内，避免命中 descriptions 行）
     await expect(page.locator('.arco-table tbody tr').first()).toContainText(orderNo)
@@ -295,7 +290,7 @@ test.describe('收付款与往来对账（集成）', () => {
       .locator('.arco-trigger-popup', { hasText: '确认作废该收付款单？' })
       .getByRole('button', { name: /确\s*定/ })
       .click()
-    await expect(page.getByText('已作废，单据已结算金额已回退')).toBeVisible()
+    await expectMessage(page, '已作废，单据已结算金额已回退')
 
     // 作废 8.00 后：已结回到 12.00 → 未结 8.00（20 − 12）
     const revertedRow = await findSalesRow(page, orderNo)

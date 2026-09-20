@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 
 /** dev 测试账号（来自项目 seed 数据） */
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
@@ -9,11 +11,7 @@ const CREDENTIALS = { username: 'admin', password: 'admin123' }
 const TOTAL = 12
 
 async function login(page: Page): Promise<void> {
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(CREDENTIALS.username)
-  await page.getByPlaceholder('请输入密码').fill(CREDENTIALS.password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, CREDENTIALS.username, CREDENTIALS.password)
 }
 
 /** 进入统一列表页（/form） */
@@ -66,7 +64,7 @@ test.describe('表单与详情示例：统一列表 + 抽屉/页面双形态（�
     await page.locator('.arco-picker-cell-today').click()
     await drawer.getByRole('button', { name: '提交' }).click()
     await expect(drawer).toBeHidden()
-    await expect(page.getByText('订单已创建')).toBeVisible()
+    await expectMessage(page, '订单已创建')
     // 新行插入首行（upsert unshift），客户名可见，总数 +1
     await expect(dataRows(page).first().getByText('测试客户E2E')).toBeVisible()
     await expect(totalText(page)).toHaveText(`共 ${TOTAL + 1} 条`)
@@ -90,7 +88,7 @@ test.describe('表单与详情示例：统一列表 + 抽屉/页面双形态（�
     await drawer.getByRole('spinbutton').fill('666')
     await drawer.getByRole('button', { name: '提交' }).click()
     await expect(drawer).toBeHidden()
-    await expect(page.getByText('订单已更新')).toBeVisible()
+    await expectMessage(page, '订单已更新')
     // 列表首行金额列（索引 4）更新为 ¥ 666.00
     await expect(dataRows(page).first().locator('td').nth(4)).toHaveText('¥ 666.00')
   })

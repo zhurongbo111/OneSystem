@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
 
 /** dev 后端健康检查地址 */
@@ -8,11 +9,7 @@ const BACKEND_HEALTH = 'http://localhost:5080/health'
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
 
 async function login(page: Page): Promise<void> {
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(CREDENTIALS.username)
-  await page.getByPlaceholder('请输入密码').fill(CREDENTIALS.password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, CREDENTIALS.username, CREDENTIALS.password)
 }
 
 /** 登录并经侧边菜单进入登录日志页 */

@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
@@ -13,11 +15,7 @@ function uniquePartnerName(): string {
 }
 
 async function login(page: Page, username = CREDENTIALS.username, password = CREDENTIALS.password): Promise<void> {
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(username)
-  await page.getByPlaceholder('请输入密码').fill(password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, username, password)
 }
 
 /** 登录并经侧边菜单（进销存分组）进入往来单位页 */
@@ -62,7 +60,7 @@ async function createPartner(
     await drawer.getByPlaceholder('选填，11 位手机号').fill(opts.phone)
   }
   await drawer.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('往来单位已创建')).toBeVisible()
+  await expectMessage(page, '往来单位已创建')
   await expect(drawerTitle(page, '新增往来单位')).toHaveCount(0)
 }
 
@@ -143,7 +141,7 @@ test.describe('往来单位（集成）', () => {
     await drawer.locator('.arco-radio-group').getByText('两者', { exact: true }).click()
     await drawer.getByPlaceholder('选填，≤ 20 字符').fill('李四')
     await drawer.getByRole('button', { name: '提交' }).click()
-    await expect(page.getByText('往来单位已更新')).toBeVisible()
+    await expectMessage(page, '往来单位已更新')
 
     const updatedRow = await openPartnerRow(page, name)
     await expect(updatedRow.getByText('两者', { exact: true })).toBeVisible()

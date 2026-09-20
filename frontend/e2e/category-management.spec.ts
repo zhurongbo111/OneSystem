@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
@@ -22,11 +24,7 @@ function uniqueCode(): string {
 }
 
 async function login(page: Page, username = CREDENTIALS.username, password = CREDENTIALS.password): Promise<void> {
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(username)
-  await page.getByPlaceholder('请输入密码').fill(password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, username, password)
 }
 
 /** 登录并经侧边菜单（进销存分组）进入分类管理页（含等待首屏列表加载完成） */
@@ -99,7 +97,7 @@ async function createProduct(page: Page, code: string, name: string, categoryNam
   await expect(catInput).toBeVisible()
   await catInput.fill(categoryName)
   await page.locator('.arco-drawer').getByRole('button', { name: '保存' }).click()
-  await expect(page.getByText('分类已创建').first()).toBeVisible()
+  await expectMessage(page, '分类已创建')
   const priceInputs = page.locator('.arco-drawer .arco-input-number input')
   await priceInputs.nth(0).fill('10.50')
   await priceInputs.nth(1).fill('20.00')
@@ -179,7 +177,7 @@ test.describe('分类管理（集成）', () => {
     // 改为新名称 → 成功
     await nameInput.fill(rename)
     await page.locator('.arco-drawer').getByRole('button', { name: '提交' }).click()
-    await expect(page.getByText('分类已更新').first()).toBeVisible()
+    await expectMessage(page, '分类已更新')
     await searchByKeyword(page, rename)
     await expect(dataRows(page).first()).toContainText(rename)
   })

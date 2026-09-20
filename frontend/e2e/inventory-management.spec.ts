@@ -1,15 +1,15 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { clickUntil } from './helpers/action'
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 import { searchAndWaitHit } from './helpers/table-search'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
-/** 凭证 localStorage key（与 src/api/request.ts 保持一致） */
-const TOKEN_KEY = 'app:token'
 /** 商品分类弹窗内分类名输入框 placeholder（与 ProductFormDrawer 分类弹窗一致） */
 const CATEGORY_PLACEHOLDER = '输入新分类名称（1-20 字符）'
 
@@ -24,13 +24,7 @@ function uniqueCategoryName(): string {
 }
 
 async function login(page: Page): Promise<void> {
-  // 防御：先清除可能残留的 token，避免已登录守卫把 /login 重定向回首页（表单不渲染）
-  await page.addInitScript((key) => window.localStorage.removeItem(key), TOKEN_KEY)
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(CREDENTIALS.username)
-  await page.getByPlaceholder('请输入密码').fill(CREDENTIALS.password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, CREDENTIALS.username, CREDENTIALS.password)
 }
 
 /** 经侧边菜单（进销存分组）进入库存查询页 */
@@ -87,7 +81,7 @@ async function createProduct(page: Page, code: string, name: string, safetyStock
     await numberInputs.nth(2).fill(String(safetyStock))
   }
   await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('商品已创建')).toBeVisible()
+  await expectMessage(page, '商品已创建')
   await expect(productDrawerTitle(page, '新增商品')).toHaveCount(0)
 }
 

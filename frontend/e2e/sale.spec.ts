@@ -1,14 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
+import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
+import { expectMessage } from './helpers/message'
 import { searchAndWaitHit } from './helpers/table-search'
 
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = 'http://localhost:5080/health'
 /** dev 测试账号（来自项目 seed 数据） */
 const CREDENTIALS = { username: 'admin', password: 'admin123' }
-/** 凭证 localStorage key（与 src/api/request.ts 保持一致） */
-const TOKEN_KEY = 'app:token'
 /** 商品分类弹窗内分类名输入框 placeholder（与 ProductFormDrawer 分类弹窗一致） */
 const CATEGORY_PLACEHOLDER = '输入新分类名称（1-20 字符）'
 
@@ -28,12 +28,7 @@ function uniquePartnerName(): string {
 }
 
 async function login(page: Page): Promise<void> {
-  await page.addInitScript((key) => window.localStorage.removeItem(key), TOKEN_KEY)
-  await page.goto('/login')
-  await page.getByPlaceholder('请输入用户名').fill(CREDENTIALS.username)
-  await page.getByPlaceholder('请输入密码').fill(CREDENTIALS.password)
-  await page.getByRole('button', { name: '登录' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  await loginAs(page, CREDENTIALS.username, CREDENTIALS.password)
 }
 
 /** 经侧边菜单（进销存分组）进入销售出库页 */
@@ -129,7 +124,7 @@ async function createPartner(page: Page, name: string, typeLabel: '客户' | '�
   await drawer.getByPlaceholder('1-50 字符，创建后不可修改').fill(name)
   await drawer.locator('.arco-radio-group').getByText(typeLabel, { exact: true }).click()
   await drawer.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('往来单位已创建')).toBeVisible()
+  await expectMessage(page, '往来单位已创建')
   await expect(drawerTitle(page, '新增往来单位')).toHaveCount(0)
 }
 
@@ -146,14 +141,13 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   await expect(catInput).toBeVisible()
   await catInput.fill(uniqueCategoryName())
   await page.locator('.arco-drawer').getByRole('button', { name: '保存' }).click()
-  // 页面内可能残留上一条提示（同一 page 实例连续多次 goto），取最新一条
-  await expect(page.locator('.arco-message-content', { hasText: '分类已创建' }).last()).toBeVisible()
+  await expectMessage(page, '分类已创建')
   // 金额 / 安全库存均为 a-input-number：第 0 / 1 个是采购 / 销售价
   const numberInputs = page.locator('.arco-drawer .arco-input-number input')
   await numberInputs.nth(0).fill('10.00')
   await numberInputs.nth(1).fill('20.00')
   await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('商品已创建')).toBeVisible()
+  await expectMessage(page, '商品已创建')
   await expect(drawerTitle(page, '新增商品')).toHaveCount(0)
 }
 
@@ -181,7 +175,7 @@ async function createPurchaseReceiptToSeedStock(
   await qty0.blur()
 
   await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('采购单已创建')).toBeVisible()
+  await expectMessage(page, '采购单已创建')
   await expect(page).toHaveURL(/\/purchases\/detail\//)
   const orderNo = (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
   return orderNo
@@ -230,7 +224,7 @@ async function createSalesShipment(
 
   // 提交
   await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('销售单已创建')).toBeVisible()
+  await expectMessage(page, '销售单已创建')
   await expect(page).toHaveURL(/\/sales\/detail\//)
 
   // 详情页断言：总额 55.00（后端重算 2×20 + 1×15）
@@ -340,7 +334,7 @@ test.describe('销售出库（集成）', () => {
     await dataRows(page).first().getByRole('button', { name: '作废' }).click()
     await expect(page.getByText('确认作废该销售单？')).toBeVisible()
     await confirmPopconfirm(page, '确认作废该销售单？')
-    await expect(page.getByText('已作废，库存已回冲')).toBeVisible()
+    await expectMessage(page, '已作废，库存已回冲')
 
     // 单据状态「已作废」且操作（作废 / 收付款）消失
     const rowVoided = dataRows(page).first()
@@ -439,7 +433,7 @@ async function createPurchaseReceiptToSeedStock2(
   await qty0.blur()
 
   await page.getByRole('button', { name: '提交', exact: true }).click()
-  await expect(page.getByText('采购单已创建')).toBeVisible()
+  await expectMessage(page, '采购单已创建')
   await expect(page).toHaveURL(/\/purchases\/detail\//)
   const orderNo = (await page.locator('.detail-desc').getByText(/^GR\d{12}$/).first().innerText()).trim()
   return orderNo
