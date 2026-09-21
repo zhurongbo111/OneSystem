@@ -65,7 +65,7 @@ updated: 2026-09-20
 
 ### 3.1 往来单位
 
-- [x] 3.1.1 `e2e/partner-management.spec.ts`：登录 → 建供应商 / 客户（重名 40102 提示）→ 类型筛选 → 停用后按 `status=1` 查询不含该单位
+- [x] 3.1.1 `e2e/partner.spec.ts`：登录 → 建供应商 / 客户（重名 40102 提示）→ 类型筛选 → 停用后按 `status=1` 查询不含该单位
 - [x] 3.1.2 `npm run test:e2e` 全绿（含既有用例回归，68 passed）
 
 ## 四、交付
@@ -81,5 +81,5 @@ updated: 2026-09-20
 - [x] 5.2 后端：`UpdatePartnerRequestHandler` 增加「类型只放宽不收窄」拦截（保持原类型或 `Both`，否则 `40119`）
 - [x] 5.3 后端：`UpdatePartnerRequestHandlerTests` 补收窄拒绝 / 放宽通过用例
 - [x] 5.4 前端：`PartnerFormDrawer.vue` 编辑态按原类型禁用会收窄的类型项并给出说明
-- [x] 5.5 E2E：`partner-management.spec.ts` 补「编辑供应商时客户项不可选、可放宽为两者」
+- [x] 5.5 E2E：`partner.spec.ts` 补「编辑供应商时客户项不可选、可放宽为两者」
 - [x] 5.6 验证：`dotnet test`（531 通过）与 `npm run e2e:run`（121 通过）通过

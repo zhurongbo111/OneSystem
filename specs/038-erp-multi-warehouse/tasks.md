@@ -80,7 +80,7 @@ updated: 2026-09-17
 - [ ] 7.2 同文件：两仓各自采购入库 → 库存查询按仓显示不同数量；再开启「全部仓」显示两行
 - [ ] 7.3 同文件：从指定仓销售出库 → 该仓扣减、另一仓不变；该仓不足时提交被拒（提示含仓名）
 - [ ] 7.4 同文件：流水页按仓筛选；盘点选仓后账面与差异正确；安全库存 Modal 保存成功
-- [ ] 7.5 既有各域 spec 回归：开单页新增仓库下拉（默认已预选），断言不破坏既有链路；`inventory-management.spec.ts` / `stock-movement.spec.ts` / `report.spec.ts` 适配仓库筛选与列
+- [ ] 7.5 既有各域 spec 回归：开单页新增仓库下拉（默认已预选），断言不破坏既有链路；`inventory.spec.ts` / `stock-movement.spec.ts` / `report.spec.ts` 适配仓库筛选与列
 - [ ] 7.6 `cd frontend && npm run test:e2e` 全量通过
 
 ## 八、规格与上下文联动

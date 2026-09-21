@@ -20,8 +20,8 @@ updated: 2026-09-16
 
 ## e2e 覆盖
 
-- [x] 8. `e2e/user-management.spec.ts`：搜索 / 刷新按钮 loading 出现并恢复
-- [x] 9. `e2e/user-management.spec.ts`：行内禁用按钮 loading 出现并恢复
+- [x] 8. `e2e/user.spec.ts`：搜索 / 刷新按钮 loading 出现并恢复
+- [x] 9. `e2e/user.spec.ts`：行内禁用按钮 loading 出现并恢复
 - [x] 10. `e2e/login-log.spec.ts`：搜索按钮 loading 出现并恢复
 
 ## 验证

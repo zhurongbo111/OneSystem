@@ -82,7 +82,7 @@ updated: 2026-09-17
 - [ ] 7.2 同文件：销售出库选批次 1 → 仅批次 1 减少；流水含批次号
 - [ ] 7.3 同文件：选过期批次出库被拒（`40128` 提示可见）；按批次商品未选批次被拒（`40127`）
 - [ ] 7.4 同文件：批次列表近效期 / 过期标签与「仅看近效期 / 过期」筛选；就地新建批次（入库时）成功并被选中
-- [ ] 7.5 既有各域 spec 回归（非批次商品下批次列为 `-`，链路不变）；`inventory-management.spec.ts` / `stock-take.spec.ts` / `transfer.spec.ts` 适配
+- [ ] 7.5 既有各域 spec 回归（非批次商品下批次列为 `-`，链路不变）；`inventory.spec.ts` / `stock-take.spec.ts` / `transfer.spec.ts` 适配
 - [ ] 7.6 `cd frontend && npm run test:e2e` 全量通过
 
 ## 八、规格与上下文联动

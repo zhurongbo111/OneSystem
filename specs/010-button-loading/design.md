@@ -116,9 +116,9 @@ async function delayApi(page: Page, pattern: RegExp, ms: number): Promise<void> 
 
 | 文件 | 用例 | 断言 |
 |---|---|---|
-| `user-management.spec.ts` | 点击「搜索」后按钮进入 loading，请求完成后恢复 | 延迟 `GET /api/users?*` → 点击后 `搜索` 按钮有 `arco-btn-loading`，随后消失（按钮可点） |
-| `user-management.spec.ts` | 点击「刷新」后按钮进入 loading，请求完成后恢复 | 同上，断言 `刷新` 按钮 |
-| `user-management.spec.ts` | 行内「禁用」确认后该行按钮进入 loading | 延迟 `PUT /api/users/{id}/status` → 确认后该行 `禁用` 按钮有 `arco-btn-loading`，完成后消失 |
+| `user.spec.ts` | 点击「搜索」后按钮进入 loading，请求完成后恢复 | 延迟 `GET /api/users?*` → 点击后 `搜索` 按钮有 `arco-btn-loading`，随后消失（按钮可点） |
+| `user.spec.ts` | 点击「刷新」后按钮进入 loading，请求完成后恢复 | 同上，断言 `刷新` 按钮 |
+| `user.spec.ts` | 行内「禁用」确认后该行按钮进入 loading | 延迟 `PUT /api/users/{id}/status` → 确认后该行 `禁用` 按钮有 `arco-btn-loading`，完成后消失 |
 | `login-log.spec.ts` | 点击「搜索」后按钮进入 loading，请求完成后恢复 | 延迟 `GET /api/login-logs?*` → 断言 `搜索` 按钮 loading 出现后消失 |
 
 断言方式：Arco `a-button` 的 `loading` 会渲染 `arco-btn-loading` class 与加载图标，用 `expect(btn).toHaveClass(/arco-btn-loading/)` / `not.toHaveClass(...)` 判定。

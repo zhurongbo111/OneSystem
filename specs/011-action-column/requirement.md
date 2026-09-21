@@ -50,4 +50,4 @@ updated: 2026-09-16
 3. `UsersView.vue` 操作列：平铺「编辑」（`IconEdit`）「详情」（`IconEye`）「禁用」（warning + `IconPower`，已禁用行显示「启用」+ `IconPlayerPlay`），「更多」下拉内含「重置密码」（`IconLock`）；既有编辑 / 详情 / 启停 / 重置密码功能行为不变。
 4. 危险操作（删除 / 禁用）保持 `a-popconfirm` 二次确认，确认后行为与改动前一致。
 5. 行内写操作 loading（`togglingId` 等）行为不变，收纳进下拉的写操作同样受行内 loading 约束（互斥、只转被点行）。
-6. `npm run build`、`npm run lint` 通过；`npm run test:e2e` 中 `list-showcase.spec.ts`、`user-management.spec.ts` 全绿。
+6. `npm run build`、`npm run lint` 通过；`npm run test:e2e` 中 `list-showcase.spec.ts`、`user.spec.ts` 全绿。
