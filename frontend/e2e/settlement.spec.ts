@@ -404,4 +404,69 @@ test.describe('收付款与往来对账（集成）', () => {
     expect(exceededBody.code).toBe(40112)
     expect(exceededBody.message).toContain('未结金额')
   })
+
+  test('已核销单据禁止作废：作废被拒 → 作废收付款单回退 → 再作废成功', async ({ page }) => {
+    const code = uniqueProductCode('stl_void')
+    const customer = uniquePartnerName()
+    const supplier = uniquePartnerName()
+
+    await goPartners(page)
+    await createPartner(page, customer, '客户')
+    await createPartner(page, supplier, '供应商')
+    await goProducts(page)
+    await createProduct(page, code, `禁作废商品${Date.now() % 100000}`)
+
+    await goPurchases(page)
+    await seedStockByPurchase(page, supplier, code)
+    await goSales(page)
+    const orderNo = await createSingleLineSalesShipment(page, customer, code)
+
+    // 部分收款 8.00（总额 20.00）→ 单据「部分结算（未结 12.00）」
+    const salesRow = await findSalesRow(page, orderNo)
+    await salesRow.getByRole('button', { name: '收付款' }).click()
+    await expect(page).toHaveURL(/\/settlements\/new/)
+    await expect(dataRows(page).first()).toContainText(orderNo)
+    await createReceipt(page, '8.00')
+    await expectMessage(page, '收付款单已创建')
+    await expect(page).toHaveURL(/\/settlements\/detail\//)
+
+    // 已核销 → 作废单据被拒（后端 40120），单据保持正常
+    const settledRow = await findSalesRow(page, orderNo)
+    await expect(settledRow.getByText('部分结算（未结 12.00）', { exact: true })).toBeVisible()
+    await settledRow.getByRole('button', { name: '作废' }).click()
+    await expect(page.getByText('确认作废该销售单？')).toBeVisible()
+    await page
+      .locator('.arco-trigger-popup', { hasText: '确认作废该销售单？' })
+      .getByRole('button', { name: /确\s*定/ })
+      .click()
+    await expectMessage(page, '已被收付款单核销')
+
+    const stillRow = await findSalesRow(page, orderNo)
+    await expect(stillRow.getByText('部分结算（未结 12.00）', { exact: true })).toBeVisible()
+    await expect(stillRow.getByRole('button', { name: '作废' })).toBeVisible()
+
+    // 作废该收款单回退金额 → 单据回到未结算 → 再作废成功
+    await goSettlements(page)
+    await page.getByPlaceholder('搜索单号 / 往来单位').fill(customer)
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: '8.00' }).first())
+    const receiptRow = dataRows(page).filter({ hasText: '8.00' }).first()
+    await receiptRow.getByRole('button', { name: '作废' }).click()
+    await expect(page.getByText('确认作废该收付款单？')).toBeVisible()
+    await page
+      .locator('.arco-trigger-popup', { hasText: '确认作废该收付款单？' })
+      .getByRole('button', { name: /确\s*定/ })
+      .click()
+    await expectMessage(page, '已作废，单据已结算金额已回退')
+
+    const revertedRow = await findSalesRow(page, orderNo)
+    await expect(revertedRow.getByText('未结算', { exact: true })).toBeVisible()
+    await revertedRow.getByRole('button', { name: '作废' }).click()
+    await expect(page.getByText('确认作废该销售单？')).toBeVisible()
+    await page
+      .locator('.arco-trigger-popup', { hasText: '确认作废该销售单？' })
+      .getByRole('button', { name: /确\s*定/ })
+      .click()
+    await expectMessage(page, '已作废，库存已回冲')
+    await expect(dataRows(page).first().getByText('已作废', { exact: true })).toBeVisible()
+  })
 })
