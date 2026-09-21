@@ -42,41 +42,13 @@ updated: 2026-09-16
 
 ### 2.1 `views/LoginLogManagement/LoginLogsView.vue`
 
-无行为改动，仅模板补绑定（`loading` 已存在且已按序号仲裁）：
-
-```vue
-<a-button type="primary" :loading="loading" @click="onSearch">搜索</a-button>
-<a-button :loading="loading" @click="onReset">重置</a-button>
-<a-button size="small" :loading="loading" @click="onRefresh">刷新</a-button>
-```
+无行为改动，仅模板补绑定（`loading` 已存在且已按序号仲裁）：「搜索」（primary）/「重置」/「刷新」（`size="small"`）三个按钮统一加 `:loading="loading"`。
 
 ### 2.2 `views/UserManagement/UsersView.vue`
 
 （1）查询类按钮同上，共用既有 `loading`。
 
-（2）行内启停新增 `togglingId`：
-
-```ts
-// —— reactive state ——
-const togglingId = ref<string | undefined>(undefined)
-
-// —— methods ——
-/** 启用 / 禁用 */
-async function onToggleStatus(row: UserListItem): Promise<void> {
-  if (togglingId.value) return
-  const next: UserStatus = row.status === 1 ? 0 : 1
-  togglingId.value = row.id
-  try {
-    await updateUserStatus(row.id, next)
-    Message.success(next === 1 ? '已启用' : '已禁用')
-    void fetchList()
-  } catch {
-    // 错误提示已由请求层统一处理
-  } finally {
-    togglingId.value = undefined
-  }
-}
-```
+（2）行内启停新增 `togglingId`：state 为 `ref<string | undefined>`；`onToggleStatus(row)` 顺序为 ① `if (togglingId.value) return` 防重入 → ② `togglingId.value = row.id`（仅该行 loading）→ ③ `await updateUserStatus(row.id, next)` + `Message.success('已启用' / '已禁用')` + `void fetchList()` → ④ `finally` 复位 `togglingId.value = undefined`；失败提示由请求层统一处理，`catch` 不重复提示。
 
 模板中行内按钮（在 `a-popconfirm` 内）绑定：`:loading="togglingId === (record as UserListItem).id"`。
 
@@ -100,15 +72,7 @@ async function onToggleStatus(row: UserListItem): Promise<void> {
 
 解决方式：用 `page.route` 拦截目标接口并**延迟后 `route.continue()`**——请求仍发往真实 dev 后端、响应内容不变，只改变时序。这不构成 `AGENTS.md` §6 所禁止的"打 mock"（不替换响应体），属于测试时序控制。
 
-```ts
-/** 延迟指定 URL 的响应转发（不改响应内容，仅用于稳定捕获 loading 态） */
-async function delayApi(page: Page, pattern: RegExp, ms: number): Promise<void> {
-  await page.route(pattern, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, ms))
-    await route.continue()
-  })
-}
-```
+实现：在 `user.spec.ts` / `login-log.spec.ts` 内定义 `delayApi(page, pattern, ms)` —— `page.route(pattern, …)` 内先 `setTimeout(ms)` 再 `route.continue()`（只改时序、不改响应体）。
 
 > 注意：前端 dev 走 Vite proxy（`/api` → `http://localhost:5080`），Playwright 在浏览器侧拦截，因此按 `5173` 上的 URL 匹配即可（如 `/\/api\/users\?/`）。
 

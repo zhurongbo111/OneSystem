@@ -52,14 +52,7 @@ updated: 2026-09-16
 
 - 表外操作选 Tabler 语义最近图标，且同一图标全项目只对应一个操作。
 
-**密度**：Arco 文本按钮默认 `padding: 0 15px`，操作列内过宽。操作列按钮（含纯图标「更多」触发按钮）统一 `padding: 0 8px`，列表页 scoped 样式实现（`a-space` 加 `class="row-actions"`）：
-
-```css
-.row-actions :deep(.arco-btn-text),
-.row-actions :deep(.arco-btn-only-icon) {
-  padding: 0 8px;
-}
-```
+**密度**：Arco 文本按钮默认 `padding: 0 15px`，操作列内过宽。操作列按钮（含纯图标「更多」触发按钮）统一 `padding: 0 8px`，由列表页 scoped 样式作用于 `a-space.row-actions` 下的 `.arco-btn-text` / `.arco-btn-only-icon`。
 
 **其他**：操作列固定显示，不参与「列设置」勾选；行内写操作 loading 按 `specs/010-button-loading/design.md` §0（`xxingId`），收纳进「更多」的写操作在确认入口同样按 `xxingId` 互斥（`a-doption :disabled`）。
 

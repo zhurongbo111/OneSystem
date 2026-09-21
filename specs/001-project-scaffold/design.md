@@ -41,16 +41,7 @@ updated: 2026-09-20
 
 ### 2.2 统一响应（App.Core/Responses）
 
-```csharp
-public class ApiResponse { int Code; string Message; }             // code=0, message="success"
-public class ApiResponse<T> : ApiResponse { T? Data; }
-public static class ApiResponseExtensions
-{
-    public static ApiResponse<T> Ok<T>(T data);
-    public static ApiResponse<T> Fail<T>(int code, string message);
-    public static ApiResponse Fail(int code, string message);
-}
-```
+类型 `ApiResponse`（`Code` / `Message`）、`ApiResponse<T>`（`Data`）；工厂 `ApiResponseExtensions.Ok<T>` / `Fail<T>` / `Fail`（`code = 0` 成功）。见 `backend/src/App.Core/Responses/`。
 
 - Controller 直接 `return Ok(data)` / `Fail(code, msg)`；所有接口（含健康检查、认证）统一该结构。
 - HTTP 状态码恒为 200，业务状态由 `code` 表达（与 AGENTS.md 4.1 一致）。

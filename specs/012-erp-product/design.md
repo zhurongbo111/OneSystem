@@ -27,7 +27,7 @@ updated: 2026-09-16
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §5.2）。
+> 时间字段按后端规则 §5.2（`DateTimeOffset` → `timestamptz`）。
 > 状态枚举统一 `Enabled = 1 / Disabled = 0` 小整数，PG `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/Category.cs` 与表 `Categories`
@@ -200,7 +200,7 @@ updated: 2026-09-16
 
 ### 3.6 Swagger
 
-- **不分组**（用户已确认）：维持现有单文档 Swagger，本规格新增接口按现有方式正常出现在文档中，不使用 `ApiExplorerSettings.Group` 分组。
+- **不分组**（唯一来源见 `specs/003-api-swagger/design.md`）：新增接口按现有方式出现在单文档 Swagger 中。
 
 ## 4. 前端设计
 
@@ -216,14 +216,14 @@ src/
         └── ProductFormDrawer.vue # 新增/编辑抽屉
 ```
 
-> **演进（erp-category）**：分类维护弹窗 `CategoryManagerModal.vue` 已升级为独立页面 `CategoriesView.vue`（路由 `categories`），商品抽屉「新建分类」改为就地行内输入；本目录结构为原始设计记录，现行为准见 `specs/017-erp-category/`。
+> **演进（erp-category）**：分类维护已迁出为独立页面 `CategoryManagement/`（见 `specs/017-erp-category/`），商品抽屉的「新建分类」改为就地行内输入；分类维护唯一入口为侧边菜单「进销存 → 分类管理」。
 
-- 商品字段 ≤ 8，新增 / 编辑用**抽屉**（`a-drawer`，`unmount-on-close`，底部自定义操作栏）；分类维护用**弹窗**（轻交互，列表 + 行内新增 / 编辑）。
+- 商品字段 ≤ 8，新增 / 编辑用**抽屉**（`a-drawer`，`unmount-on-close`，底部自定义操作栏）；分类维护不在本域（见 `specs/017-erp-category/`）。
 - 商品详情：列表操作列「详情」复用 `ProductFormDrawer` 的查看态（disabled）；字段虽多但复用表单组件展示，不另设独立详情页（与 `user-management` 的详情抽屉惯例一致，design 记录该决策）。
 
 ### 4.2 接口层
 
-- `src/api/product.ts`：TS 类型与后端 DTO（camelCase）一一对应；函数经 `src/api/request.ts` 统一封装（解包 `data`、40100 处理）。
+- `src/api/product.ts`：TS 类型与后端 DTO（camelCase）一一对应；请求统一经 `src/api/request.ts`（约定见前端规则 §3）。
 - 金额字段类型：`number`（后端 `numeric(18,2)` JSON 序列化为数字）；展示统一 `toFixed(2)`。
 - 分类下拉数据源 `GET /api/categories`（全量，量小）；开单选择接口 `GET /api/products/pick` 本规格仅交付接口，由 erp-purchase / erp-sale 页面消费。
 
@@ -235,18 +235,18 @@ src/
 |---|---|---|
 | `products` | `products` | `ProductsView` |
 
-`AppLayout.vue` 侧边菜单**新建**「进销存」子菜单（`a-sub-menu`，key `erp`，图标 `IconStorage`，**默认展开**，交互同「示例页面」子菜单），本规格放入子项「商品管理」`products`；后续子规格（erp-partner / erp-purchase / erp-sale / erp-inventory-query）依次向该分组追加子项。
+`AppLayout.vue` 侧边菜单新增子项「商品管理」`products`。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2（`025` 已把原「进销存」单分组重构为多顶级分组）。
 
 ### 4.4 页面交互
 
 **商品列表 `ProductsView.vue`**（参照 `UsersView.vue`）：
 - 筛选行：关键词（编码 / 名称）+ 分类下拉（全部 / 各分类）+ 状态下拉 + 搜索 / 重置。
-- 操作行：新增（primary，抽屉）、刷新、列设置。（工具条曾提供「分类管理」跳转按钮，2026-09-15 移除：分类维护入口统一走侧边菜单「进销存 → 分类管理」，见 `specs/017-erp-category/`）
+- 操作行：新增（primary，抽屉）、刷新、列设置。
 - 表格列：序号、编码、名称、分类、单位、采购价、销售价、**库存**（低于安全阈值标红 + `a-tag warning`「低库存」）、安全库存、状态（`a-tag` 绿 / 红）、创建时间、操作列（≤3 平铺：编辑 / 停用或启用（popconfirm）/ 详情）。
 - 服务端分页，条件变化回第 1 页。
 
 **商品抽屉 `ProductFormDrawer.vue`**：
-- 新增：编码、名称、分类（下拉 + 「新建分类」按钮就地弹分类管理弹窗，选中新分类回填）、单位、采购价、销售价、安全库存、备注；编辑：同上去掉编码（只读展示）。
+- 新增：编码、名称、分类（下拉 + 「新建分类」就地行内输入，选中回填）、单位、采购价、销售价、安全库存、备注；编辑：同上去掉编码（只读展示）。
 - 金额 `a-input-number :min="0" :max="9999999.99" :precision="2"`；安全库存 `:min="0" :precision="0"`。
 - 打开时先 `Object.assign(form, emptyForm())` 重置（同用户抽屉约定，防数据串台）；提交 `submitting` + 防重入。
 

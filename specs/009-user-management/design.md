@@ -7,7 +7,7 @@ updated: 2026-09-17
 
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 本功能是脚手架后**首个接入真实 PostgreSQL** 的功能，按后端规则 §4"每 API 一个用例"组织。
-> **演进（erp-report）**：「用户管理」「登录日志」两个菜单项已从侧边栏顶级项归入「系统」分组（分组规划见 `specs/025-erp-report/design.md` §0.2）；路由与页面不变。
+> **演进（erp-report）**：「用户管理」「登录日志」已归入侧边菜单「系统」分组，分组结构唯一来源见 `specs/025-erp-report/design.md` §0.2；路由与页面不变。
 
 ## 1. 总体设计
 
@@ -37,7 +37,7 @@ updated: 2026-09-17
 
 ### 2.1 实体 `App.Core/Entities/User.cs`（改造）
 
-> 时间字段统一用 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），避免 `DateTime.Kind` 在序列化与跨层传递中丢失造成时区歧义；Npgsql 仍映射 `timestamptz`，表结构不变（见 §5）。
+> 时间字段统一用 `DateTimeOffset`（按后端规则 §5.2），避免 `DateTime.Kind` 在序列化与跨层传递中丢失造成时区歧义；Npgsql 仍映射 `timestamptz`，表结构不变（见 §5）。
 
 | 字段 | C# 类型 | 说明 |
 |---|---|---|
@@ -54,11 +54,7 @@ updated: 2026-09-17
 | `CreatedBy` | `Guid?` | 创建人用户 id（操作者为系统种子时为空） |
 | `UpdatedBy` | `Guid?` | 更新人用户 id |
 
-新增 `App.Core/Entities/UserStatus.cs`：
-
-```csharp
-public enum UserStatus { Disabled = 0, Enabled = 1 }
-```
+新增 `App.Core/Entities/UserStatus.cs`：`UserStatus { Disabled = 0, Enabled = 1 }`。
 
 ### 2.2 表结构 `Users`（PostgreSQL）
 
@@ -320,7 +316,7 @@ src/
   - `/users` → `UsersView`（name `users`）。
   - `/users/detail/:id` → `UserDetailView`（name `userDetail`）。
   - `/login-logs` → `LoginLogsView`（name `loginLogs`）。
-- 侧边菜单新增「用户管理」（key `users`，图标 `IconUser`）与「登录日志」（key `loginLogs`，图标 `IconHistory`）；用户新增/编辑为抽屉，不开独立路由。
+- 侧边菜单「系统」分组下新增「用户管理」（key `users`，图标 `IconUser`）与「登录日志」（key `loginLogs`，图标 `IconHistory`）；用户新增/编辑为抽屉，不开独立路由。
 
 ### 4.4 页面交互
 
@@ -375,4 +371,4 @@ src/
 - **`Program`**：新增 `Scoped<IClientInfo, ClientInfoAccessor>` 注册。
 - **删除** `InMemoryUserRepository`，修改 `AddInfrastructure` 注册。
 - **`ErrorCode`**：追加 5 个业务码（40002–40006）；登录日志不新增码。
-- **前端布局**：`AppLayout.vue` 侧边菜单新增「用户管理」「登录日志」；`/login-logs` 纳入登录守卫。
+- **前端布局**：`AppLayout.vue` 侧边菜单「系统」分组新增「用户管理」「登录日志」；`/login-logs` 纳入登录守卫。

@@ -37,27 +37,28 @@ updated: 2026-09-21
 - [x] 3.4 Validator 边界：`start < end`、366 天上限、`pageSize` 100/101、`keyword` 50/51
 - [x] 3.5 **对账一致性**：期初 + 采购 + 销售 + 盘点链路的 `期末 == Inventory.Quantity`（以真实 `ReportQueryRepository` + InMemory 验证口径，另附盘点双向拆分 / 半开区间 / 期初不漂移用例）
 - [x] 3.6 扩展 `FieldValidationConsistencyTests`（`MaxRangeDays` 同源；`keyword` 对齐 `ProductFieldConstraints.KeywordMaxLength`）
-- [x] 3.7 `cd backend && dotnet build` / `dotnet test` 通过（既有用例全部回归）—— 487 通过 / 0 失败
+- [x] 3.7 `cd backend && dotnet build` / `dotnet test` 通过（既有用例全部回归）
 
 ## 四、前端
 
 - [x] 4.1 `src/api/report.ts`（`ReportPage<T>` + 4 个查询函数 + 类型）
 - [x] 4.2 `InventoryFlowReportView.vue`（筛选 + 表格 + 合计区 + 列设置 + 服务端分页）
-- [x] 4.3 `StockBalanceReportView.vue`（分类聚合 + 占比 + 「查看明细」跳库存查询并预置 `categoryId`）
+- [x] 4.3 `StockBalanceReportView.vue`（分类聚合 + 占比 + 「查看明细」跳库存查询并预置 `categoryId`）；占比传给 `a-progress` 的是 0–1 比例（该组件 `percent` 本身即 0–1），显示文本用 `#text` 插槽固定 `xx.xx%`，与导出侧同口径
 - [x] 4.4 `PurchaseSummaryReportView.vue`（期间 + 供应商 + 分组维度切换 + 净额列 + 合计行）
 - [x] 4.5 `SalesSummaryReportView.vue`（同采购，客户维度）
 - [x] 4.6 `src/router/index.ts` 新增 4 条路由（`reports/*`，懒加载 + `requiresAuth`）
 - [x] 4.7 `src/components/AppLayout.vue` 按 design §0.2 总表重构菜单为多顶级分组（含迁移既有子项、`MENU_ROUTE_MAP` 同步）
 - [x] 4.8 `frontend/e2e/helpers/menu.ts` 的「菜单项 → 分组」映射同步为新分组名
-- [x] 4.9 `cd frontend && npm run type-check` / `npm run lint` / `npm run build` 全绿
+- [x] 4.9 `.codebuddy/rules/frontend/RULE.mdc` §4.8 后新增「比例类 props 语义」判据（`a-progress.percent` 为 0–1，不再二次 ×100）
+- [x] 4.10 `cd frontend && npm run type-check` / `npm run lint` / `npm run build` 全绿
 
 ## 五、E2E（Playwright）
 
 - [x] 5.1 新增 `e2e/report.spec.ts`：进销存报表（期间筛选 → 期初 / 入 / 出 / 期末四列展示、合计区可见）
-- [x] 5.2 同文件：库存余额表分类聚合行 + 「查看明细」跳库存查询并预置分类
+- [x] 5.2 同文件：库存余额表分类聚合行 + 「查看明细」跳库存查询并预置分类；先期初建账造非零库存，再断言占比文本恰为 `100.00%`（占比为 0 时该缺陷不可见）
 - [x] 5.3 同文件：采购 / 销售汇总（分组维度切换 → 净额列可见）
 - [x] 5.4 同文件：菜单分组调整后各分组可达（「报表」「库存」「资金」等分组展开与选中联动）
-- [x] 5.5 `cd frontend && npm run test:e2e` 全量通过（含既有各域 spec 在菜单分组调整后的回归）—— 110 通过 / 0 失败
+- [x] 5.5 `cd frontend && npm run test:e2e` 全量通过（含既有各域 spec 在菜单分组调整后的回归）
 
 ## 六、规格与上下文联动
 
@@ -67,16 +68,6 @@ updated: 2026-09-21
 - [x] 6.4 `specs/019-erp-stock-movement/design.md` §0 加注记：报表按变动类型归类入 / 出（口径在 `025` §0.1）
 - [x] 6.5 `.codebuddy/CONTEXT.md` §2（Reports Feature / 只读仓储 / 读模型）、§3（ReportManagement 域、api 文件）、§6（规格清单分类）同步
 - [x] 6.6 `specs/ROADMAP.md` 状态列更新（`025` → 已实现）
-
-## 七、缺陷修复（库存占比显示）
-
-> 缺陷：库存余额表「库存占比」显示为 `9920%`（>100%）。根因 = 双重 ×100——后端出参已是 0–1 比例，页面又乘 100，而 `@arco-design/web-vue` 2.58 的 `a-progress.percent` 本身就是 0–1（组件内部再 ×100 既画条又生成文本）。
-
-- [x] 7.1 `StockBalanceReportView.vue`：`a-progress` 直接传 0–1 占比，文本改用 `#text` 插槽固定 `xx.xx%`（与导出侧同口径）
-- [x] 7.2 `e2e/report.spec.ts`：库存余额表用例先期初建账造非零库存，再断言占比文本恰为 `100.00%`（占比为 0 时该缺陷不可见）
-- [x] 7.3 `.codebuddy/rules/frontend/RULE.mdc` §4.8 后新增「比例类 props 语义」判据（`a-progress.percent` 为 0–1）
-- [x] 7.4 `cd frontend && npm run type-check` / `npm run lint` 全绿
-- [x] 7.5 `cd frontend && npm run e2e:run` 全量通过 —— 121 通过 / 0 失败
 
 ## 完成定义
 

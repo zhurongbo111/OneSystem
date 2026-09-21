@@ -102,19 +102,7 @@ src/views/ProductManagement/        # 商品域（不变）
 
 新增类型与函数：
 
-```ts
-/** 分类分页查询参数（对应后端 GetCategoriesPagedRequest） */
-export interface CategoryListQuery {
-  keyword?: string
-  page: number
-  pageSize: number
-}
-
-/** 分页查询分类（搜索 + 分页，创建时间正序） */
-export function getCategoriesPaged(query: CategoryListQuery): Promise<PagedResult<Category>> {
-  return get<PagedResult<Category>>('/categories/paged', { params: query })
-}
-```
+新增 `CategoryListQuery`（`keyword?: string` / `page: number` / `pageSize: number`，对应后端 `GetCategoriesPagedRequest`）与 `getCategoriesPaged(query)`（搜索 + 分页、创建时间正序；`GET /categories/paged` 经 `get<PagedResult<Category>>` 传 `params: query`）。
 
 `getCategories`（全量）保留，商品页 / 商品抽屉下拉继续用。
 
@@ -155,7 +143,7 @@ export function getCategoriesPaged(query: CategoryListQuery): Promise<PagedResul
 
 ### 5.3 路由与菜单（不变）
 
-`router/index.ts` 已有 `categories` 路由（懒加载 `CategoriesView`，`requiresAuth`）；`AppLayout.vue`「进销存」子菜单已有「分类管理」（`key=categories`，`IconTags`，「商品管理」之后），`ERP_ROUTE_NAMES` 含 `categories`。本节不重复改动。
+`router/index.ts` 已有 `categories` 路由（懒加载 `CategoriesView`，`requiresAuth`）；`AppLayout.vue`「基础档案」分组已有「分类管理」（`key=categories`，`IconTags`，「商品管理」之后）。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2；本节不重复改动。
 
 ## 6. e2e 设计（Playwright）
 

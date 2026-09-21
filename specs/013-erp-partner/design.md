@@ -27,7 +27,7 @@ updated: 2026-09-20
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §5.2）。
+> 时间字段按后端规则 §5.2（`DateTimeOffset` → `timestamptz`）。
 > 状态枚举统一 `Enabled = 1 / Disabled = 0` 小整数，PG `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/Partner.cs` 与表 `Partners`（供应商 / 客户合并）
@@ -130,7 +130,7 @@ updated: 2026-09-20
 
 ### 3.6 Swagger
 
-- **不分组**（用户已确认）：维持现有单文档 Swagger，本规格新增接口按现有方式正常出现在文档中，不使用 `ApiExplorerSettings.Group`。
+- **不分组**（唯一来源见 `specs/003-api-swagger/design.md`）：新增接口按现有方式出现在单文档 Swagger 中。
 
 ## 4. 前端设计
 
@@ -151,7 +151,7 @@ src/
 
 ### 4.2 接口层
 
-- `src/api/partner.ts`：TS 类型与后端 DTO（camelCase）一一对应；函数经 `src/api/request.ts` 统一封装（解包 `data`、40100 处理）。
+- `src/api/partner.ts`：TS 类型与后端 DTO（camelCase）一一对应；请求统一经 `src/api/request.ts`（约定见前端规则 §3）。
 - 开单下拉数据源：erp-purchase / erp-sale 页面复用本模块导出的 `getPartners`（传 `status=1` + `type` 筛选），本规格仅交付接口层与类型。
 
 ### 4.3 路由与菜单
@@ -162,7 +162,7 @@ src/
 |---|---|---|
 | `partners` | `partners` | `PartnersView` |
 
-`AppLayout.vue` 侧边菜单「进销存」分组追加子项「往来单位」`partners`（分组由 erp-product 创建；若 erp-partner 先交付则本规格同时创建分组，key `erp`、图标 `IconStorage`、默认展开）。
+`AppLayout.vue` 侧边菜单「基础档案」分组下提供子项「往来单位」`partners`。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2。
 
 ### 4.4 页面交互
 

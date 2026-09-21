@@ -48,7 +48,7 @@ updated: 2026-09-21
 
 | 指标 | 口径 |
 |---|---|
-| 销售收入 | 未作废 `SalesOrders.TotalAmount` 之和 − 未作废 `SalesReturns.TotalAmount` 之和（与 `025` §0.1 销售净额同源） |
+| 销售收入 | 未作废 `SalesShipments.TotalAmount` 之和 − 未作废 `SalesReturns.TotalAmount` 之和（与 `025` §0.1 销售净额同源） |
 | 销售成本 | 上述单据对应流水的 `TotalCost` 之和（出库为负、退货入库为正，天然冲减） |
 | 毛利 | `销售收入 − 销售成本` |
 | 毛利率 | `销售收入 = 0` 时为 `null`（前端显示 `-`）；否则 `毛利 / 销售收入`（按 4 位计算、展示 2 位百分比） |
@@ -166,10 +166,10 @@ updated: 2026-09-21
 
 | 用例 | 追加动作（在既有 `IncrementAsync` / `TryDecrementAsync` 之后） |
 |---|---|
-| `Purchases/CreatePurchaseOrder` | 每行 `ApplyInboundCostAsync(productId, qty, 单据明细 UnitPrice)`；流水写 `UnitCost = 单价` / `TotalCost = Round(qty × 单价)` |
-| `Purchases/VoidPurchaseOrder` | 每行 `GetMovementUnitCostAsync(单据 id, productId, PurchaseInbound)` 取原单价 → `ApplyOutboundCostAsync(productId, Round(qty × 原单价))`；流水写原单价与负金额（查不到 → 缺价，按 0 并计缺价） |
-| `Sales/CreateSalesOrder` | 每行先 `GetAverageCostAsync` 取均价 → `ApplyOutboundCostAsync(productId, Round(qty × 均价))`；流水写均价与负金额 |
-| `Sales/VoidSalesOrder` | 每行取原出库流水单价 → `ApplyInboundCostAsync(productId, qty, 原单价)`；流水写正金额 |
+| `PurchaseReceipts/CreatePurchaseReceipt` | 每行 `ApplyInboundCostAsync(productId, qty, 单据明细 UnitPrice)`；流水写 `UnitCost = 单价` / `TotalCost = Round(qty × 单价)` |
+| `PurchaseReceipts/VoidPurchaseReceipt` | 每行 `GetMovementUnitCostAsync(单据 id, productId, PurchaseInbound)` 取原单价 → `ApplyOutboundCostAsync(productId, Round(qty × 原单价))`；流水写原单价与负金额（查不到 → 缺价，按 0 并计缺价） |
+| `SalesShipments/CreateSalesShipment` | 每行先 `GetAverageCostAsync` 取均价 → `ApplyOutboundCostAsync(productId, Round(qty × 均价))`；流水写均价与负金额 |
+| `SalesShipments/VoidSalesShipment` | 每行取原出库流水单价 → `ApplyInboundCostAsync(productId, qty, 原单价)`；流水写正金额 |
 | `StockTakes/CreateStockTake` | 期初（`InitialStock`）：`ApplyInboundCostAsync(productId, qty, 录入 UnitCost)`；盘点（`StockTakeAdjust`）：按当前均价（`GetAverageCostAsync`），盘盈 `ApplyInboundCostAsync`、盘亏 `ApplyOutboundCostAsync` |
 | `PurchaseReturns/CreatePurchaseReturn` | 每行按当前均价 → `ApplyOutboundCostAsync`；流水写均价与负金额 |
 | `PurchaseReturns/VoidPurchaseReturn` | 每行取原出库流水单价 → `ApplyInboundCostAsync` |

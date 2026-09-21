@@ -32,10 +32,10 @@ updated: 2026-09-21
 
 | 指标 | 口径 |
 |---|---|
-| 采购入库单数 / 数量 / 金额 | 未作废（`Status = Normal`）的 `PurchaseOrders` + 明细；金额取 `TotalAmount`，数量取 Σ 明细 `Quantity` |
+| 采购入库单数 / 数量 / 金额 | 未作废（`Status = Normal`）的 `PurchaseReceipts` + 明细；金额取 `TotalAmount`，数量取 Σ 明细 `Quantity` |
 | 采购退货数量 / 金额 | 未作废的 `PurchaseReturns`（`021`） |
 | 采购净额 | `Σ 入库金额 − Σ 退货金额`（净数量同理） |
-| 销售出库 / 销售退货 / 销售净额 | 同上，替换为 `SalesOrders`（`016`）与 `SalesReturns`（`022`），往来维度为客户 |
+| 销售出库 / 销售退货 / 销售净额 | 同上，替换为 `SalesShipments`（`016`）与 `SalesReturns`（`022`），往来维度为客户 |
 | 作废单据 | **全部不计入**（作废即视为业务未发生，与库存回冲一致） |
 | 分组维度 | 往来单位（默认）或商品；商品维度下往来列不展示 |
 
@@ -64,7 +64,7 @@ updated: 2026-09-21
 - 分组与子项均**默认折叠**，仅当前路由所属分组自动展开（`005` 既有交互不变，`watch(route.name, { immediate: true })` 只增不减）。
 - 分组顺序即上表顺序；子项顺序即行内顺序（「商品管理 → 分类管理 → …」）。
 - `MENU_ROUTE_MAP`（详情页 → 父菜单项）随之更新；`e2e/helpers/menu.ts` 的「菜单项 → 分组」映射以本表为准。
-- 本表落地属 `005-app-layout` 的布局约定演进（菜单结构由「示例页面 + 进销存」两组改为多组），`005` / `009` 的 `design.md` 需留「演进（erp-report）」注记（见 `tasks.md` §联动）。
+- 本表落地时，`005-app-layout` / `009-user-management` 的 `design.md` 正文同步改写为最终态（菜单结构由「示例页面 + 进销存」两组改为多组），并各留一行演进指针。
 
 ## 1. 总体设计
 
@@ -74,8 +74,8 @@ updated: 2026-09-21
     → App.Core/Features/Reports/<Action>/*RequestHandler
       → IReportQueryRepository（新增，只读跨表聚合）
         → PostgreSQL（StockMovements / Inventory / Products / Categories
-                        / PurchaseOrders(+Items) / PurchaseReturns(+Items)
-                        / SalesOrders(+Items) / SalesReturns(+Items)）
+                        / PurchaseReceipts(+Items) / PurchaseReturns(+Items)
+                        / SalesShipments(+Items) / SalesReturns(+Items)）
 ```
 
 核心原则：

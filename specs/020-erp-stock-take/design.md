@@ -32,7 +32,7 @@ updated: 2026-09-18
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §5.2）。
+> 时间字段按后端规则 §5.2（`DateTimeOffset` → `timestamptz`）。
 > 枚举统一小整数，PG `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/StockTake.cs` 与表 `StockTakes`
@@ -65,6 +65,7 @@ updated: 2026-09-18
 | `BookQuantity` | `int` | `integer` | NOT NULL，≥ 0 | 账面数量（提交时后端读取） |
 | `ActualQuantity` | `int` | `integer` | NOT NULL，≥ 0 | 实盘数量（前端录入） |
 | `Difference` | `int` | `integer` | NOT NULL | 差异 = `ActualQuantity − BookQuantity`（后端计算，可负） |
+| `UnitCost` | `decimal` | `numeric(18,4)` | NOT NULL，默认 0 | 成本单价（期初建账必填；库存盘点固定 0） |
 
 - 明细不软删除、不可改（一步式）；同一单据内**不允许重复商品**（Validator 拦重复 `productId`）。
 - 实体配置：`Persistence/Configurations/StockTakeConfiguration.cs`、`StockTakeItemConfiguration.cs`；`AppDbContext` 新增 2 个 `DbSet`。
@@ -78,6 +79,7 @@ updated: 2026-09-18
 | `IStockMovementRepository` | **追加** `Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(IReadOnlyList<Guid> productIds, ...)`（期初建账限制校验，批量） |
 | `StockMovementType` | **追加** `InitialStock = 5`、`StockTakeAdjust = 6`（PG `smallint`，追加枚举值不涉及迁移） |
 | `StockMovement.SourceId` / `SourceNo` | 指向盘点单 id 与 `TakeNo`（期初建账同样填写，便于从流水回溯凭证） |
+| 成本结转 | 期初建账按录入单价结转（`Inventory.AverageCost` 设为该单价、`CostAmount` = 实盘 × 单价）；库存盘点按当前均价（盘盈入 / 盘亏出）。口径见 `specs/026-erp-cost/design.md` §3 |
 
 ### 2.4 字段约束单一来源（`App.Core/Entities/StockTakeFieldConstraints.cs`）
 
@@ -151,7 +153,7 @@ updated: 2026-09-18
 
 | 请求 | 规则 |
 |---|---|
-| `CreateStockTakeRequest` | `type` ∈ {0, 1}；`takeDate` 必填；`items` 必填非空、1–100 行（`ItemsMaxCount`）、**`productId` 不重复**；每行 `productId` 必填、`actualQuantity` 0–999999（`ActualQuantityMinValue` / `ActualQuantityMaxValue`）；`remark` ≤ 200 |
+| `CreateStockTakeRequest` | `type` ∈ {0, 1}；`takeDate` 必填；`items` 必填非空、1–100 行（`ItemsMaxCount`）、**`productId` 不重复**；每行 `productId` 必填、`actualQuantity` 0–999999（`ActualQuantityMinValue` / `ActualQuantityMaxValue`）、`unitCost` 期初建账必填（0–`ProductFieldConstraints.PriceMaxValue`）、库存盘点模式**禁止传入**（Validator 拦截）；`remark` ≤ 200 |
 | `GetStockTakesRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 20（`KeywordMaxLength`）；`type` 可空合法值；`start` / `end` 可空，闭区间 `start <= end` |
 
 - 存在性 / 停用 / 期初限制 / 差异计算等业务约束一律在 Handler（后端规则 §4.1）。
@@ -180,7 +182,7 @@ src/
 
 ### 4.2 接口层
 
-- `src/api/stockTake.ts`：类型与后端 DTO（camelCase）一一对应；`getStockTakes` / `getStockTakeById` / `createStockTake` / `getStockTakePickProducts`；经 `src/api/request.ts` 统一封装（解包 `data`、40100 处置）。
+- `src/api/stockTake.ts`：类型与后端 DTO（camelCase）一一对应；`getStockTakes` / `getStockTakeById` / `createStockTake` / `getStockTakePickProducts`；请求统一经 `src/api/request.ts`（约定见前端规则 §3）。
 - 日期范围参数转 UTC ISO（同既有约定）；日期字段展示统一 `utils/datetime.ts`。
 
 ### 4.3 路由与菜单
@@ -193,7 +195,7 @@ src/
 | `stock-takes/new` | `stockTakeNew` | `StockTakeFormPage` |
 | `stock-takes/detail/:id` | `stockTakeDetail` | `StockTakeDetailView` |
 
-`AppLayout.vue` 侧边菜单「进销存」分组追加子项「库存盘点」`stockTakes`；`MENU_ROUTE_MAP` 增加 `stockTakeDetail: 'stockTakes'`。
+`AppLayout.vue` 侧边菜单「库存」分组下提供子项「库存盘点」`stockTakes`；`MENU_ROUTE_MAP` 增加 `stockTakeDetail: 'stockTakes'`。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2。
 
 ### 4.4 页面交互
 
@@ -206,7 +208,7 @@ src/
 **新建页 `StockTakeFormPage.vue`**（底部操作栏 提交 / 取消）：
 
 - 表头：类型（`a-radio-group`：库存盘点 / 期初建账，默认「库存盘点」）、盘点日期（`a-date-picker`，默认当天）、备注。
-- 明细区：`a-table` 可编辑行——商品下拉（`getStockTakePickProducts`，显示「编码 名称（账面 x）」；**期初建账模式下 `hasMovements` 的商品禁用并标注「已建账」**）、账面数量（只读，带出）、实盘数量 `a-input-number :min="0" :precision="0"`、差异（computed = 实盘 − 账面，正绿负红）、行删除；「添加行」按钮。
+- 明细区：`a-table` 可编辑行——商品下拉（`getStockTakePickProducts`，显示「编码 名称（账面 x）」；**期初建账模式下 `hasMovements` 的商品禁用并标注「已建账」**）、账面数量（只读，带出）、实盘数量 `a-input-number :min="0" :precision="0"`、差异（computed = 实盘 − 账面，正绿负红）、**成本单价（仅期初建账模式列，必填，`a-input-number :precision="4"`）**、行删除；「添加行」按钮；期初建账模式下底部展示**期初金额** computed（= Σ 实盘 × 单位成本）。模式切换时清空成本列。
 - 期初建账模式提示文案：仅可选未发生库存变动的商品（已建账 / 有单据业务的商品请用库存盘点调整）。
 - 提交成功 → `Message.success` + 跳详情页；失败 → 统一错误提示，页面停留。
 
@@ -255,9 +257,4 @@ src/
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`StockTakeItem` EF `HasMaxLength`（32 / 50 / 10）== 商品域常量；`TakeNo` 20 == `OrderFieldConstraints.OrderNoMaxLength`；`actualQuantity` 0 通过 / 999999 通过 / 1000000 拒绝；items 100 行通过 / 101 行拒绝；`keyword` 20 通过 / 21 拒绝。
 - **对账一致性**：期初 + 盘点调整后，`Σ 流水变动量 == Inventory.Quantity`（行为型假实现累计断言）。
 
-## 7. 演进（erp-cost，`026`）
 
-- 期初建账新增**成本单价**（必填）：`StockTakeItem` 追加 `UnitCost`（`numeric(18,4)`）；`CreateStockTakeRequest` 期初模式 `unitCost` 必填（区间同源 `ProductFieldConstraints.PriceMaxValue`），盘点模式禁止传入（Validator 拦截）。
-- 成本结转：期初按录入单价结转（`Inventory.AverageCost` 设为该单价、`CostAmount` = 实盘 × 单价）；盘点按当前均价（盘盈入 / 盘亏出）。
-- 前端 `StockTakeFormPage.vue` 期初模式明细区新增「成本单价」列 + 期初金额 computed（= 实盘 × 单位成本）；模式切换清空成本列。
-- 成本口径以 `specs/026-erp-cost/design.md` §3 为准。

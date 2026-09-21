@@ -40,28 +40,10 @@ updated: 2026-09-16
 
 ## 2. 数据模型
 
-```ts
-/** 订单明细行（子表格） */
-interface OrderItemRow {
-  key: string
-  productName: string
-  quantity: number
-}
+数据模型（`useOrderStore` 的 TS 类型，字段清单如下；实现见 `src/composables/useOrderStore.ts`）：
 
-interface OrderRow {
-  id: string
-  orderNo: string        // 订单号（演示：新增时自动生成）
-  customer: string       // 客户
-  product: string        // 商品
-  amount: number         // 金额
-  status: 'pending' | 'paid' | 'shipped' | 'cancelled'
-  createdAt: string      // ISO 日期（表单用 a-date-picker）
-  remark: string
-  createdBy: string      // 仅详情页展示的只读字段（表单无此字段，体现"详情比表单多字段"）
-  updatedAt: string      // 仅详情页展示的只读字段
-  items: OrderItemRow[]  // 商品明细（每行 1~2 条）
-}
-```
+- `OrderRow`：`id` / `orderNo`（演示：新增时自动生成）/ `customer` / `product` / `amount` / `status`（`pending | paid | shipped | cancelled`）/ `createdAt`（ISO 日期，表单用 `a-date-picker`）/ `remark` / `createdBy`（仅详情页只读，表单无此字段，体现「详情比表单多字段」）/ `updatedAt`（仅详情页只读）/ `items`。
+- `OrderItemRow`（子表格）：`key` / `productName` / `quantity`；每张单 1~2 条。
 
 - 状态选项：`pending 待支付 / paid 已支付 / shipped 已发货 / cancelled 已取消`。
 - 状态 Tag 着色：pending `orange`、paid `arcoblue`、shipped `green`、cancelled `gray`。

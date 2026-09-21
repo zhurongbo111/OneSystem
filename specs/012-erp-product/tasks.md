@@ -7,6 +7,7 @@ updated: 2026-09-16
 
 > 依据 `specs/012-erp-product/design.md` 拆分；按顺序实现，完成后勾选。
 > 后端：`cd backend`；前端：`cd frontend`。分支：`feature/erp-inventory`（用户确认在当前分支开发）。
+> 提交 / 合并不列入待办：由用户主动发起指示（2026-09-13 用户约定）。
 
 ## 一、后端
 
@@ -55,34 +56,28 @@ updated: 2026-09-16
 
 ### 2.2 商品管理
 
-- [x] 2.2.1 `CategoryManagerModal.vue`（列表 + 行内新增 / 编辑 + 删除 popconfirm；提交 / 删除 loading）
-- [x] 2.2.2 `ProductFormDrawer.vue`（打开重置；分类下拉 + 新建分类联动；金额 input-number 约束；编辑态 Code 只读）
-- [x] 2.2.3 `ProductsView.vue`（筛选行 + 表格含库存列低库存标红 + 状态列 + 操作列（编辑 / 启停 popconfirm / 详情（复用 `ProductFormDrawer` 查看态））+ 服务端分页 + 列设置）
+- [x] 2.2.1 `ProductFormDrawer.vue`（打开重置；分类下拉 + 就地行内新建分类；金额 input-number 约束；编辑态 Code 只读）
+- [x] 2.2.2 `ProductsView.vue`（筛选行 + 表格含库存列低库存标红 + 状态列 + 操作列（编辑 / 启停 popconfirm / 详情（复用 `ProductFormDrawer` 查看态））+ 服务端分页 + 列设置）
+- [x] 2.2.3 分类维护迁出为独立页面（`CategoryManagement/`，见 `specs/017-erp-category/`）：移除商品页工具条「分类管理」按钮、删除 `CategoryManagerModal.vue` 与对应 e2e 用例，入口统一走侧边菜单
 
 ### 2.3 路由与菜单
 
 - [x] 2.3.1 `router/index.ts` 新增 `products` 路由
-- [x] 2.3.2 `AppLayout.vue` 新增「进销存」子菜单（key `erp`，图标 `IconStorage`，默认展开）+ 子项「商品管理」
+- [x] 2.3.2 `AppLayout.vue` 新增「进销存」子菜单（key `erp`，图标 `IconStorage`，默认展开）+ 子项「商品管理」；分类管理子项见 `specs/017-erp-category/`
 
 ### 2.4 前端质量
 
 - [x] 2.4.1 `npm run lint` 0 error；`npm run build` 成功
-- [x] 2.4.2 联调走查：建分类 → 建商品 → 列表库存 0 → 重名编码提示 → 编辑 / 启停 / 分类删除拦截 — **由 `e2e/product.spec.ts` 自动化覆盖**（9 用例，含重名编码 40101、启停、分类增删改拦截）。
+- [x] 2.4.2 联调走查：建分类 → 建商品 → 列表库存 0 → 重名编码提示 → 编辑 / 启停 / 分类删除拦截 — **由 `e2e/product.spec.ts` 自动化覆盖**（含重名编码 40101、启停、分类增删改拦截）
 
 ## 三、E2E（Playwright）
 
 ### 3.1 商品管理
 
-- [x] 3.1.1 `e2e/product.spec.ts`（命名调整）：登录 → 建分类 → 建商品（编码 / 价格 / 安全库存）→ 列表展示库存 0 → 重名编码 40101 提示 → 编辑 / 详情 / 启停 / 空态与重置 / 分类增删改 / 查询 loading
-- [x] 3.1.2 `npm run test:e2e` 全绿（59 用例，含既有用例回归）
+- [x] 3.1.1 `e2e/product.spec.ts`：登录 → 建分类 → 建商品（编码 / 价格 / 安全库存）→ 列表展示库存 0 → 重名编码 40101 提示 → 编辑 / 详情 / 启停 / 空态与重置 / 分类增删改 / 查询 loading
+- [x] 3.1.2 `npm run test:e2e` 全绿（含既有用例回归）
 
 ## 四、交付
 
 - [x] 4.1 规格三件套最终一致性复查（代码与 design 表结构 / 错误码 / 路由逐条对照；Swagger 分组与分支按用户确认修订）
-- [x] 4.2 前端 lint / build / e2e（59 用例）与后端 dotnet test（131 用例）全绿，临时文件与 dev 服务已清理
-
-> 提交 / 合并不列入待办：由用户主动发起指示（2026-09-13 用户约定）。
-
-## 五、后续变更
-
-- [x] 5.1 移除商品管理页工具条「分类管理」按钮（入口统一走侧边菜单），删除对应 e2e 用例，重新验证 lint/build/e2e
+- [x] 4.2 前端 lint / build / e2e 与后端 `dotnet test` 全绿，临时文件与 dev 服务已清理

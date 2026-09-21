@@ -8,11 +8,7 @@ updated: 2026-09-21
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > **本规格继承 `specs/021-erp-purchase-return/design.md` §0「退货单域共用约定」**：`SalesReturns` / `SalesReturnItems` 与 `PurchaseReturns` / `PurchaseReturnItems` 结构完全同构，实现时照抄 `erp-purchase-return` 模板并按 §1 替换规则做差异替换；共用枚举、常量、仓储方法结构、校验结构、页面结构**均不重复定义**。本规格只定义销售特化差异。
 > 变动类型的文案与颜色见 `specs/019-erp-stock-movement/design.md` §0（唯一事实源），本文件不重复该表。
->
-> **演进（erp-settlement）**：结算已由 `SettlementStatus`（0/1 状态位）升级为 `SettledAmount`（已结算金额）+ 推导状态（未结 / 部分 / 结清）；手工切换端点 `PUT /api/sales-returns/{id}/settlement` 与按钮已移除，结算变化一律由收付款单核销驱动；列表筛选参数 `settlement`（0/1）改为 `settlementState`（0/1/2），列表 / 详情出参 `settlementStatus` 改为 `settledAmount` / `unsettledAmount` / `settlementState`。销售退货单的核销方向为**付款**（我们退客户钱）。现行为准见 `specs/023-erp-settlement/`。
-> **演进（erp-settlement，已核销禁作废）**：退货单被核销（`SettledAmount > 0`）后**禁止作废**（`40120`，须先作废对应付款单回退金额）；作废用例在既有「已作废 `40104`」校验后追加该校验，判据见 `specs/023-erp-settlement/design.md` §0 / §3.6。
-> **演进（erp-settlement，核销取数只查主表）**：`ISalesReturnRepository.GetDetailAsync` 增 `bool includeItems = true`——`false` 时只查主表、不发明细查询，`Items` 恒为空集合（调用方不得消费）；收付款核销校验取被核销单据只用主表字段，故传 `false`。判据见 `specs/023-erp-settlement/design.md` §3.1.1。
-> **演进（erp-order-flow）**：本规格消费的销售出库单表已随 `specs/024-erp-order-flow/` 重命名——`SalesOrders` → `SalesShipments`（主表单号列 `OrderNo` → `ShipmentNo`、明细外键 `OrderId` → `ShipmentId`），接口路径 `/api/sales-orders` → `/api/sales-shipments`，单号前缀 `SO` → `GI`。销售退货单自身（`SalesReturns` / 前缀 `SR`）与用例语义不变。
+> **演进（`023-erp-settlement` / `024-erp-order-flow` / `026-erp-cost`）**：退货单结算已金额化（`SettledAmount` + 推导状态，手工切换端点移除，已核销禁作废，核销取数只查主表）；其消费的销售出库单表已重命名（`SalesOrders` → `SalesShipments`，路径 `/api/sales-shipments`，前缀 `GI`）；流水写入同时回填成本列。**本正文已按现行为准**，决策与判据见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6、`specs/024-erp-order-flow/design.md` §3 与 `specs/026-erp-cost/design.md` §3。
 
 ## 1. 相对 erp-purchase-return 的替换规则
 
@@ -25,6 +21,7 @@ updated: 2026-09-21
 | 库存操作（保存） | 每行 `TryDecrementAsync(quantity)`，失败 `40103` | 每行 `IncrementAsync(+quantity)`（**无上限校验**） |
 | 库存操作（作废） | 每行 `IncrementAsync(+quantity)` | 每行 `IncrementAsync(-quantity)`（**允许冲负**） |
 | 流水类型 | `PurchaseReturnOut` / `PurchaseReturnVoid` | `SalesReturnIn` / `SalesReturnVoid` |
+| 结算语义 | `SettledAmount` + 推导状态；核销方向为**收款** | 同左；核销方向为**付款**（我们退客户钱） |
 | 错误码 | 无新增（`40103` 参与） | **无新增**，且 `40103` 不参与（退货入库无库存约束） |
 | 用例目录 | `Features/PurchaseReturns/<Action>` | `Features/SalesReturns/<Action>` |
 | 接口路由 | `/api/purchase-returns` | `/api/sales-returns` |
@@ -39,7 +36,7 @@ updated: 2026-09-21
     → App.Core/Features/SalesReturns/<Action>/*RequestHandler
       → ISalesReturnRepository（单据 + 明细）+ IPartnerRepository / IProductRepository（校验）
         + IInventoryRepository.IncrementAsync（原子回增）
-        + IStockMovementRepository.AppendAsync（写流水）
+        + IStockMovementRepository.AppendAsync（写流水，含成本列）
         + IUnitOfWork（同一事务）
         → PostgreSQL（SalesReturns / SalesReturnItems / Inventory / StockMovements）
 ```
@@ -55,19 +52,19 @@ updated: 2026-09-21
 
 ### 3.1 数据模型
 
-- `SalesReturn` / `SalesReturnItem` 实体字段、列类型与约束**完全同 `021` design §2.1 / §2.2**（`ReturnNo` 唯一索引；`PartnerName` 为**客户**名称快照；明细 `ReturnId` 索引；快照字段；`Subtotal` / `TotalAmount` 后端计算）。
-- 实体文件：`App.Core/Entities/SalesReturn.cs`、`SalesReturnItem.cs`；枚举 `OrderStatus` / `OrderSettlementStatus` **复用**（不新建）。
+- `SalesReturn` / `SalesReturnItem` 实体字段、列类型与约束**完全同 `021` design §2.1 / §2.2**（`ReturnNo` 唯一索引；`PartnerName` 为**客户**名称快照；`ReturnDate`；明细 `ReturnId` 索引；快照字段；`SettledAmount`；`Subtotal` / `TotalAmount` 后端计算）。
+- 实体文件：`App.Core/Entities/SalesReturn.cs`、`SalesReturnItem.cs`；枚举 `OrderStatus` **复用**（不新建；`OrderSettlementStatus` 已随 `023` 删除，结算状态由 `SettlementState` 推导）。
 - 实体配置：`Persistence/Configurations/SalesReturnConfiguration.cs`、`SalesReturnItemConfiguration.cs`；`AppDbContext` 新增 2 个 `DbSet`。
-- 迁移：`dotnet ef migrations add AddErpSaleReturn -p src/App.Infrastructure -s src/App.Api`（增量迁移）。
+- 迁移：`AddErpSaleReturn`（建表）+ `AddErpSettlement`（`023`：`SettlementStatus` → `SettledAmount` 并回填历史数据）。
 - 字段约束：**不新建常量**，引用 `OrderFieldConstraints`（`ReturnNo` 20 / `Keyword` 20 / `Remark` 200 / `ItemsMaxCount` 100）与 `ProductFieldConstraints`（quantity / unitPrice 边界）。
 
 ### 3.2 错误码
 
-> **无新增错误码**。`40103 InsufficientStock` **不参与**本规格（退货回增库存无上限约束）；其余复用 `40104` / `40107` / `40108` / `40109` / `40110` / `40400` / `40000`。
+> **无新增错误码**。`40103 InsufficientStock` **不参与**本规格（退货回增库存无上限约束）；其余复用 `40104` / `40107` / `40108` / `40109` / `40110` / `40120 OrderSettledCannotVoid`（`023` 定义，本规格作废校验消费）/ `40400` / `40000`。
 
 ### 3.3 仓储接口（新增，`App.Core/Abstractions/`）
 
-`ISalesReturnRepository`：方法签名与 `IPurchaseReturnRepository` **完全同构**（`GetPagedAsync` / `GetDetailAsync` / `AddAsync` / `UpdateSettlementAsync` / `UpdateStatusAsync` / `GenerateReturnNoAsync`），仅实体类型不同、默认单号前缀 `SR`（前缀参数化，照抄实现）。
+`ISalesReturnRepository`：方法签名与 `IPurchaseReturnRepository` **完全同构**（`GetPagedAsync`（含 `SettlementState? settlementState` 筛选）/ `GetDetailAsync`（含 `bool includeItems = true`）/ `AddAsync` / `AddSettledAmountAsync` / `UpdateStatusAsync` / `GenerateReturnNoAsync` / `GetItemsByReturnIdsAsync`），仅实体类型不同、单号前缀 `SR`（前缀参数化，照抄实现）。
 
 ### 3.4 用例与接口（每 API 一个用例，均经 `IMediator.Send`）
 
@@ -76,8 +73,9 @@ updated: 2026-09-21
 | `/api/sales-returns` | GET | `SalesReturns/GetSalesReturns` | `PagedResult<SalesReturnListItemDto>` | 40000 |
 | `/api/sales-returns` | POST | `SalesReturns/CreateSalesReturn` | `SalesReturnDetailDto` | 40000 / 40107 / 40108 / 40109 / 40110 / 40400 |
 | `/api/sales-returns/{id:guid}` | GET | `SalesReturns/GetSalesReturnById` | `SalesReturnDetailDto` | 40400 |
-| `/api/sales-returns/{id:guid}/void` | PUT | `SalesReturns/VoidSalesReturn` | `SalesReturnDetailDto` | 40104 / 40400 |
-| `/api/sales-returns/{id:guid}/settlement` | PUT | `SalesReturns/UpdateSalesReturnSettlement` | `SalesReturnDetailDto` | 40000 / 40104 / 40400 |
+| `/api/sales-returns/{id:guid}/void` | PUT | `SalesReturns/VoidSalesReturn` | `SalesReturnDetailDto` | 40104 / 40120 / 40400 |
+
+> 手工结算端点 `PUT .../settlement`（`UpdateSalesReturnSettlement`）已随 `023` **移除**。
 
 ### 3.5 关键用例流程（Handler）
 
@@ -92,18 +90,17 @@ updated: 2026-09-21
 
 **VoidSalesReturn**：
 
-1. `GetDetailAsync` 取单：不存在 → `40400`；`Status = Voided` → `40104`。
+1. `GetDetailAsync` 取单：不存在 → `40400`；`Status = Voided` → `40104`；`SettledAmount > 0` → `40120`（**不开事务、不动库存与流水**，须先作废对应付款单，`023` §3.6）。
 2. `IUnitOfWork`：`BeginTransactionAsync` → 逐行 `IncrementAsync(productId, -quantity)`（回冲，**允许冲负**）+ 逐行 `AppendAsync` 流水（`SalesReturnVoid`，`Quantity = -quantity`）→ `UpdateStatusAsync(id, Voided)` + 审计 → `CommitAsync`。
 
-**UpdateSalesReturnSettlement / GetSalesReturns / GetSalesReturnById**：同 `021` 对应 Handler（客户维度筛选 / 映射 / 快照透传）。
+**GetSalesReturns / GetSalesReturnById**：同 `021` 对应 Handler（客户维度筛选 / 映射 / 快照透传；含 `settledAmount` / `unsettledAmount` / `settlementState` 推导）。
 
 ### 3.6 校验规则（FluentValidation，仅格式层，引用 §3.1 常量）
 
 | 请求 | 规则 |
 |---|---|
-| `CreateSalesReturnRequest` | `customerId` 必填；`returnDate` 必填；`items` 必填非空、1–100 行；每行 `productId` 必填、`quantity` 1–999999、`unitPrice` 0–9999999.99；`remark` ≤ 200 |
-| `GetSalesReturnsRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 20；`customerId` / `settlement` 可空合法值；`start` / `end` 可空且 `start <= end` |
-| `UpdateSalesReturnSettlementRequest` | `settlementStatus` ∈ {0, 1} |
+| `CreateSalesReturnRequest` | `partnerId`（客户）必填；`returnDate` 必填；`items` 必填非空、1–100 行；每行 `productId` 必填、`quantity` 1–999999、`unitPrice` 0–9999999.99；`remark` ≤ 200 |
+| `GetSalesReturnsRequest` | `keyword` ≤ 20；`partnerId` 可空；`settlementState` ∈ {0,1,2}；闭区间 `start <= end`；分页取值按 `AGENTS.md` §4.3（不重复列出） |
 
 ### 3.7 流水接入（消费 `erp-stock-movement` 的仓储）
 
@@ -112,9 +109,11 @@ updated: 2026-09-21
 | 开退货单 | `SalesReturnIn` | `+quantity`（每行一条） | 退货单 `Id` / `ReturnNo` |
 | 作废退货单 | `SalesReturnVoid` | `-quantity`（每行一条） | 退货单 `Id` / `ReturnNo` |
 
+- **成本列一并回填**（`026`）：写入流水时填 `UnitCost` / `TotalCost`——销售退货按原销售成本入、作废回冲按原流水单价还原；成本缺失兜底按 0 计入且不阻断，判据见 `specs/026-erp-cost/design.md` §3。退货单页面不展示成本。
+
 ### 3.8 Swagger
 
-- **不分组**（同既有约定）：5 个新增接口按现有方式出现在单文档 Swagger 中。
+- **不分组**（唯一来源见 `specs/003-api-swagger/design.md`）：新增接口按现有方式出现在单文档 Swagger 中；已移除的结算端点同步消失。
 
 ## 4. 前端设计
 
@@ -128,14 +127,14 @@ src/
     └── SalesReturnManagement/
         ├── SalesReturnsView.vue       # 退货单列表页
         ├── SalesReturnFormPage.vue    # 开退货单独立页（/sales-returns/new）
-        └── SalesReturnDetailView.vue  # 详情页（含作废 + 结算）
+        └── SalesReturnDetailView.vue  # 详情页（含作废 + 收付款明细）
 ```
 
 - 页面结构与 `PurchaseReturnManagement/` 完全同构（照抄模板，客户 / 销售价 / 无库存预警三处差异）。
 
 ### 4.2 接口层
 
-- `src/api/saleReturn.ts`：TS 类型与后端 DTO（camelCase）一一对应；封装 / 金额 / 日期范围约定同 `021`。
+- `src/api/saleReturn.ts`：TS 类型与后端 DTO（camelCase）一一对应；封装 / 金额 / 日期范围约定同 `021`；列表行类型含 `settledAmount` / `unsettledAmount` / `settlementState`。
 - 客户下拉数据源：`src/api/partner.ts` 的 `getPartners`（`status=1`，取 `Type in (2,3)`）；商品下拉数据源：`src/api/product.ts` 的 `getProductPickList`。
 
 ### 4.3 路由与菜单
@@ -148,12 +147,12 @@ src/
 | `sales-returns/new` | `saleReturnNew` | `SalesReturnFormPage` |
 | `sales-returns/detail/:id` | `saleReturnDetail` | `SalesReturnDetailView` |
 
-`AppLayout.vue` 侧边菜单「进销存」分组追加子项「销售退货」`salesReturns`；`MENU_ROUTE_MAP` 增加 `saleReturnDetail: 'salesReturns'`。
+`AppLayout.vue` 侧边菜单追加子项「销售退货」`salesReturns`；`MENU_ROUTE_MAP` 增加 `saleReturnDetail: 'salesReturns'`。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2。
 
 ### 4.4 页面交互（与 `PurchaseReturnManagement/` 同构处省略，仅列差异）
 
 - 开单页：表头客户下拉；明细区单价默认带出商品销售价；**不做库存预警**（退货回增库存，无上限）；小计与总金额 computed 展示。
-- 列表 / 详情：往来列与筛选为**客户**；其余（结算状态、作废行置灰、操作列顺序、404 空态）同 `021`。
+- 列表 / 详情：往来列与筛选为**客户**；其余（结算状态标签文案与颜色取 `specs/023-erp-settlement/design.md` §0、作废行置灰、操作列顺序、收付款明细区块、404 空态）同 `021`；「收付款 / 去收付款」与「作废」判据取 `src/utils/settlement.ts`（`023` §4.4）。
 
 ### 4.5 按钮 loading（遵循 `specs/010-button-loading/design.md` §0）
 
@@ -162,11 +161,11 @@ src/
 | 列表查询 | `loading` | 搜索 / 翻页 + 表格 |
 | 开单页提交 | `submitting` | 提交按钮 |
 | 单据作废（列表 / 详情） | `voidingId` | popconfirm 确认按钮 |
-| 结算切换（列表 / 详情） | `settlingId` | popconfirm 确认按钮 |
+| 详情「收付款明细」 | `loading` | 区块内容区 |
 
 ## 5. 关键技术决策与取舍
 
-> 独立单据而非作废原销售单、不关联原单、明细快照、金额后端重算、单号后端生成、不新建字段约束常量、不做原因字典、无 RBAC 等决策**同 `specs/021-erp-purchase-return/design.md` §5**（退货域共用约定），此处仅列销售特有决策：
+> 独立单据而非作废原销售单、不关联原单、明细快照、金额后端重算、单号后端生成、不新建字段约束常量、不做原因字典、无 RBAC 等决策**同 `specs/021-erp-purchase-return/design.md` §5**（退货域共用约定）；结算金额化与已核销禁作废取舍见 `023` §5。此处仅列销售特有决策：
 
 | 决策 | 选择 | 理由 / 取舍 |
 |---|---|---|
@@ -180,15 +179,10 @@ src/
 > Mock 仓储接口；`TestCurrentUser` 同既有约定；时间用固定 `DateTimeOffset` 入参或注入时钟，不读 `DateTime.Now`。
 
 - **CreateSalesReturn**：
-  - 成功：断言单号前缀 `SR` + `returnDate`、明细快照、`Subtotal` / `TotalAmount` 后端重算（前端传值被忽略）、每行 `IncrementAsync(+quantity)` 与流水（`SalesReturnIn`，正方向、来源本单）、`Commit` 被调用。
+  - 成功：断言单号前缀 `SR` + `returnDate`、明细快照、`Subtotal` / `TotalAmount` 后端重算（前端传值被忽略）、每行 `IncrementAsync(+quantity)` 与流水（`SalesReturnIn`，正方向、来源本单、含成本列）、`Commit` 被调用。
   - 异常：明细空 `40110`；客户不存在 `40400` / 停用 `40108` / 纯供应商 `40109`；商品不存在 `40400` / 停用 `40107`；失败路径**不写流水**、不写库存。
   - 事务：`Commit` 抛异常 → `RollbackAsync` 被调用。
-- **VoidSalesReturn**：成功（断言每行 `IncrementAsync(-quantity)` + 流水 `SalesReturnVoid` 负方向 + `UpdateStatusAsync(Voided)`）；已作废 → `40104`；不存在 → `40400`。
-- **UpdateSalesReturnSettlement / GetSalesReturns / GetSalesReturnById**：同 `021` 对应用例（客户维度筛选传参 / 分页映射 / 明细快照 / 不存在 `40400`）。
+- **VoidSalesReturn**：成功（断言每行 `IncrementAsync(-quantity)` + 流水 `SalesReturnVoid` 负方向 + `UpdateStatusAsync(Voided)`）；已作废 → `40104`；不存在 → `40400`；已核销（`SettledAmount > 0`）→ `40120` 且未开事务 / 未回冲 / 不写流水 / 状态不变。
+- **GetSalesReturns / GetSalesReturnById**：同 `021` 对应用例（客户维度筛选传参（含 `settlementState`）/ 分页映射 / 结算金额与状态推导 / 明细快照 / 不存在 `40400`）；核销校验取数传 `includeItems: false`（主表查 1 次 / 明细查 0 次）。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`SalesReturns.ReturnNo` `HasMaxLength` 20 == `OrderFieldConstraints.OrderNoMaxLength`；同一字段在采购退货 / 销售退货 Validator 中边界一致（quantity / unitPrice / items / keyword）。
 - **对账一致性**：销售出库 → 退货 → 退货作废链路后 `Σ 流水变动量 == Inventory.Quantity`。
-
-## 7. 演进（erp-cost，`026`）
-
-- 退货 / 作废回冲写入流水时一并回填**成本列**：`StockMovement.UnitCost` / `TotalCost`（销售退货按原销售成本入、作废回冲按原流水单价还原；成本缺失兜底按 0），详见 `specs/026-erp-cost/design.md` §3。
-- 前端退货单页面不改成本展示。
