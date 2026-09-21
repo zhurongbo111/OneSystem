@@ -84,7 +84,7 @@ frontend/
 └── src/
     ├── main.ts / App.vue / env.d.ts
     ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流）+ 按业务域拆分 <entity>.ts + export.ts（10 个列表导出）
-    ├── components/  # AppLayout.vue（侧边菜单：「示例页面」「进销存」两组，子菜单默认折叠、仅当前分组自动展开；`025` 落地后改为多顶级分组，目标结构见 `specs/025-erp-report/design.md` §0.2）
+    ├── components/  # AppLayout.vue（侧边菜单：「示例页面」「进销存」两组，子菜单默认折叠、仅当前分组自动展开；`025` 落地后改为多顶级分组，目标结构见 `specs/025-erp-report/design.md` §0.2）、SettlementRecords.vue（四类单据详情「收付款明细」只读反查，`023`）
     ├── composables/ # useOrderStore.ts（演示用）
     ├── router/ stores/ utils/   # index.ts（路由懒加载；另含 6 条顶层 `print/...` 打印路由，不进 AppLayout）/ auth.ts（Pinia）/ datetime.ts / settlement.ts（结算状态文案与颜色）
     └── views/       # 按功能域分目录（域内文件平铺，不套子目录）

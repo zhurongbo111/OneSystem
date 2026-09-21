@@ -3,9 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getSettlement, voidSettlement } from '@/api/settlement'
-import type { SettlementDetail, SettlementItem, SettlementMethod, SettlementOrderType } from '@/api/settlement'
+import type { SettlementDetail, SettlementItem, SettlementMethod } from '@/api/settlement'
 import { getUser } from '@/api/user'
 import { formatDateTime } from '@/utils/datetime'
+import { settlementOrderTypeLabel, settlementOrderTypeRouteName } from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { IconPrinter } from '@tabler/icons-vue'
@@ -14,19 +15,11 @@ import { IconPrinter } from '@tabler/icons-vue'
 /** 方式文案 */
 const METHOD_LABELS: Record<SettlementMethod, string> = { 0: '现金', 1: '银行转账', 2: '其他' }
 
-/** 被核销单据类型文案 */
-const ORDER_TYPE_LABELS: Record<SettlementOrderType, string> = {
-  0: '采购入库单',
-  1: '销售出库单',
-  2: '采购退货单',
-  3: '销售退货单',
-}
-
-/** 核销明细表格列（只读，快照字段原样展示） */
+/** 核销明细表格列（只读，快照字段原样展示；单号为超链接 → 被核销单据详情） */
 const itemColumns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '单据类型', slotName: 'orderType', width: 130 },
-  { title: '单号', dataIndex: 'orderNo', width: 170 },
+  { title: '单号', slotName: 'orderNo', width: 180 },
   { title: '单据日期', slotName: 'orderDate', width: 120 },
   { title: '单据总额', slotName: 'orderTotalAmount', width: 130, align: 'right' },
   { title: '本次核销金额', slotName: 'amount', width: 140, align: 'right' },
@@ -91,6 +84,18 @@ function goBack(): void {
 /** 打开打印视图（specs/027-erp-export §4.3：详情页头部打印入口） */
 function onPrint(): void {
   void router.push({ name: 'settlementPrint', params: { id: id.value } })
+}
+
+/** 被核销单据详情路径（单号超链接 href；未知单据类型返回空串） */
+function orderHref(item: SettlementItem): string {
+  const routeName = settlementOrderTypeRouteName(item.orderType)
+  return routeName ? router.resolve({ name: routeName, params: { id: item.orderId } }).href : ''
+}
+
+/** 打开被核销单据详情（同步路由跳转不置 loading） */
+function onOrderDetail(item: SettlementItem): void {
+  const routeName = settlementOrderTypeRouteName(item.orderType)
+  if (routeName) void router.push({ name: routeName, params: { id: item.orderId } })
 }
 
 /** 作废：回退被核销单据已结算金额，仅改状态不删数据 */
@@ -204,7 +209,15 @@ async function onVoid(): Promise<void> {
             {{ rowIndex + 1 }}
           </template>
           <template #orderType="{ record }">
-            {{ ORDER_TYPE_LABELS[(record as SettlementItem).orderType] }}
+            {{ settlementOrderTypeLabel((record as SettlementItem).orderType) }}
+          </template>
+          <template #orderNo="{ record }">
+            <a-link
+              :href="orderHref(record as SettlementItem)"
+              @click.prevent="onOrderDetail(record as SettlementItem)"
+            >
+              {{ (record as SettlementItem).orderNo }}
+            </a-link>
           </template>
           <template #orderDate="{ record }">
             {{ formatDateTime((record as SettlementItem).orderDate).slice(0, 10) }}

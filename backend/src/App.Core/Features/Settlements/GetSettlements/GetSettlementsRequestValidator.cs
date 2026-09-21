@@ -28,6 +28,16 @@ public sealed class GetSettlementsRequestValidator : AbstractValidator<GetSettle
             .Must(m => m is null or SettlementMethod.Cash or SettlementMethod.BankTransfer or SettlementMethod.Other)
             .WithMessage("收付款方式取值非法");
 
+        RuleFor(x => x.OrderType)
+            .Must(t => t is null or SettlementOrderType.PurchaseInbound or SettlementOrderType.SalesOutbound
+                or SettlementOrderType.PurchaseReturn or SettlementOrderType.SalesReturn)
+            .WithMessage("被核销单据类型取值非法");
+
+        // 按单据反查条件成对出现：orderType 与 orderId 同空或同非空
+        RuleFor(x => new { x.OrderType, x.OrderId })
+            .Must(v => (v.OrderType is null) == (v.OrderId is null))
+            .WithMessage("orderType 与 orderId 必须同时提供");
+
         // 日期范围闭区间：两者都传时 start <= end（跨字段校验用匿名类型组合）
         RuleFor(x => new { x.Start, x.End })
             .Must(v => v.Start is null || v.End is null || v.End >= v.Start)

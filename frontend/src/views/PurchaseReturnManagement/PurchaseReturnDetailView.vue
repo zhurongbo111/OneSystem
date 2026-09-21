@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getPurchaseReturn, voidPurchaseReturn } from '@/api/purchaseReturn'
 import type { PurchaseReturnDetail, PurchaseReturnItem } from '@/api/purchaseReturn'
 import { getUser } from '@/api/user'
+import SettlementRecords from '@/components/SettlementRecords.vue'
 import { formatDateTime } from '@/utils/datetime'
 import { settlementStateColor, settlementStateLabel } from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
@@ -208,6 +209,14 @@ function onGoSettlement(): void {
             ¥ {{ (record as PurchaseReturnItem).subtotal.toFixed(2) }}
           </template>
         </a-table>
+
+        <a-divider orientation="left">
+          收付款明细
+        </a-divider>
+        <SettlementRecords
+          :order-type="2"
+          :order-id="id"
+        />
       </a-card>
 
       <!-- 底部操作：仅正常单显示（作废后操作消失） -->

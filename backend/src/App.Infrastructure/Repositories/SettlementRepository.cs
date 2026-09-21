@@ -32,6 +32,8 @@ public sealed class SettlementRepository : ISettlementRepository
         SettlementMethod? method,
         DateTimeOffset? start,
         DateTimeOffset? end,
+        SettlementOrderType? orderType,
+        Guid? orderId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -73,6 +75,16 @@ public sealed class SettlementRepository : ISettlementRepository
         {
             var e = end.Value;
             query = query.Where(x => x.SettlementDate <= e);
+        }
+
+        // 按被核销单据反查（单据详情「收付款明细」）：仅保留命中了该单据核销明细的收付款单；
+        // orderType 与 orderId 由 Validator 保证成对传入（SettlementItems.OrderId 有索引）
+        if (orderId is not null && orderType is not null)
+        {
+            var oid = orderId.Value;
+            var otype = orderType.Value;
+            query = query.Where(s => _dbContext.SettlementItems.Any(i =>
+                i.SettlementId == s.Id && i.OrderId == oid && i.OrderType == otype));
         }
 
         var total = await query.CountAsync(cancellationToken);

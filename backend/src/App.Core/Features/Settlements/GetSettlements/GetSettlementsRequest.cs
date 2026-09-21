@@ -32,4 +32,10 @@ public sealed class GetSettlementsRequest : IRequest<PagedResult<SettlementListI
 
     /// <summary>结束业务日期（含），可空（前端传本地当天 23:59:59 的 UTC ISO 串）</summary>
     public DateTimeOffset? End { get; init; }
+
+    /// <summary>被核销单据类型（0 采购入库 / 1 销售出库 / 2 采购退货 / 3 销售退货），可空；与 <see cref="OrderId"/> 成对传入，用于按单据反查</summary>
+    public SettlementOrderType? OrderType { get; init; }
+
+    /// <summary>被核销单据 id，可空；与 <see cref="OrderType"/> 成对传入，用于按单据反查</summary>
+    public Guid? OrderId { get; init; }
 }

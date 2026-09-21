@@ -104,6 +104,76 @@ public class SettlementQueryHandlerTests
     }
 
     [Fact]
+    public async Task 按被核销单据反查_应透传条件并附本次核销金额()
+    {
+        var calls = new List<string>();
+        var repository = new FakeSettlementRepository(calls);
+        var orderId = Guid.NewGuid();
+        var matched = NewSettlement(totalAmount: 300m);
+        var other = NewSettlement(totalAmount: 100m);
+        repository.PagedItems = new[] { matched, other };
+        repository.PagedTotal = 2;
+        repository.Seed(matched, new[]
+        {
+            new SettlementItem
+            {
+                Id = Guid.NewGuid(),
+                SettlementId = matched.Id,
+                OrderType = SettlementOrderType.SalesOutbound,
+                OrderId = orderId,
+                OrderNo = "GI202512200001",
+                OrderDate = OrderDate,
+                OrderTotalAmount = 1000m,
+                Amount = 300m,
+            },
+        });
+        repository.Seed(other, new[]
+        {
+            new SettlementItem
+            {
+                Id = Guid.NewGuid(),
+                SettlementId = other.Id,
+                OrderType = SettlementOrderType.SalesOutbound,
+                OrderId = Guid.NewGuid(), // 核销的是别的单据
+                OrderNo = "GI202512200002",
+                OrderDate = OrderDate,
+                OrderTotalAmount = 100m,
+                Amount = 100m,
+            },
+        });
+
+        var result = await new GetSettlementsRequestHandler(repository).HandleAsync(new GetSettlementsRequest
+        {
+            OrderType = SettlementOrderType.SalesOutbound,
+            OrderId = orderId,
+        });
+
+        // 反查条件原样透传 + 批量取核销明细
+        var query = Assert.Single(repository.PagedQueries);
+        Assert.Equal(SettlementOrderType.SalesOutbound, query.OrderType);
+        Assert.Equal(orderId, query.OrderId);
+        Assert.Contains("GetItemsBySettlementIds", calls);
+
+        // 命中该单据的收付款单附本次核销金额；未命中该单据的为 null
+        Assert.Equal(300m, result.Items.Single(r => r.Id == matched.Id.ToString()).OrderAmount);
+        Assert.Null(result.Items.Single(r => r.Id == other.Id.ToString()).OrderAmount);
+    }
+
+    [Fact]
+    public async Task 查询收付款单列表_未按单据反查_OrderAmount为空且不查询核销明细()
+    {
+        var calls = new List<string>();
+        var repository = new FakeSettlementRepository(calls);
+        repository.PagedItems = new[] { NewSettlement() };
+        repository.PagedTotal = 1;
+
+        var result = await new GetSettlementsRequestHandler(repository).HandleAsync(new GetSettlementsRequest());
+
+        Assert.Null(Assert.Single(result.Items).OrderAmount);
+        Assert.DoesNotContain("GetItemsBySettlementIds", calls);
+    }
+
+    [Fact]
     public async Task 查询收付款单详情_存在_应返回核销明细快照()
     {
         var repository = new FakeSettlementRepository();
