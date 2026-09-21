@@ -256,7 +256,7 @@ src/
 | `purchase-orders/detail/:id` | `purchaseOrderDetail` | `PurchaseOrderDetailView` |
 | `sales-orders` / `sales-orders/new` / `sales-orders/edit/:id` / `sales-orders/detail/:id` | 同构 | `SalesOrderManagement/` |
 
-- `AppLayout.vue`「进销存」分组追加子项「采购订单」`purchaseOrders` 与「销售订单」`salesOrders`；`MENU_ROUTE_MAP` 增加 `purchaseOrderEdit` / `purchaseOrderDetail` / `saleOrderEdit` / `saleOrderDetail` 归入各自父菜单。
+- `AppLayout.vue`「采购」/「销售」分组下分别提供子项「采购订单」`purchaseOrders` 与「销售订单」`salesOrders`；`MENU_ROUTE_MAP` 增加 `purchaseOrderEdit` / `purchaseOrderDetail` / `saleOrderEdit` / `saleOrderDetail` 归入各自父菜单。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2。
 - 既有「销售开单」菜单文案改为「销售出库」（与「采购入库」对称）。
 - 菜单项数量增长后的分组升级见范围外（`specs/024-erp-order-flow/requirement.md` §5）。
 

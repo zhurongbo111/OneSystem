@@ -48,7 +48,10 @@ updated: 2026-09-20
 - [x] 3.4 新增只读用例：`GetPurchaseOrderPicks`（候选订单：`Pending` / `Partial`，按供应商）与 `GetPurchaseOrderLines`（订单明细 + 未收数量）；销售侧同构；Controller 固定段路由置于 `{id:guid}` 之前
 - [x] 3.5 出入库单列表 / 详情出参与筛选新增 `orderId` / `orderNo`
 - [x] 3.6 单元测试：关联成功（累计量 + 状态三态）/ 超量 `40115` / 状态不允许 `40116` / 供应商不一致 `40117` / 明细不属于订单 `40400` / 作废回退与 `Closed` 不回退 / 不关联订单路径不调用订单仓储
-- [x] 3.7 `cd backend && dotnet build` / `dotnet test` 全绿（含阶段 A 回归）
+- [x] 3.7 `IPurchaseReceiptRepository` / `ISalesShipmentRepository` 的 `GetPagedAsync` 返回 `(单据 Order, int TotalQuantity)`（本页单据明细数量一次 `GroupBy` 聚合）
+- [x] 3.8 入库单 / 出库单列表行与详情出参新增 `totalQuantity`（列表取仓储聚合值、详情 Mapper 内按明细求和）；`GetPurchaseReceipts` / `GetSalesShipments` Handler 与两个导出 Handler 适配
+- [x] 3.9 单元测试：列表 Handler 聚合数量透传断言（`GetPurchaseReceiptsRequestHandlerTests` / `GetSalesShipmentsRequestHandlerTests`）；受影响的既有假实现与导出用例适配
+- [x] 3.10 `cd backend && dotnet build` / `dotnet test` 全绿（含阶段 A 回归）
 
 ## 四、阶段 D：前端
 
@@ -62,7 +65,9 @@ updated: 2026-09-20
 - [x] 4.8 订单号展示：入库 / 出库单列表与详情新增订单号列 / 描述项
 - [x] 4.9 `src/router/index.ts` 新增订单 8 条路由（`purchase-orders` / `new` / `edit/:id` / `detail/:id` 与销售同构）
 - [x] 4.10 `src/components/AppLayout.vue` 追加「采购订单」「销售订单」菜单项 + `MENU_ROUTE_MAP` 映射
-- [x] 4.11 `cd frontend && npm run type-check` / `npm run lint` / `npm run build` 全绿
+- [x] 4.11 `api/purchase.ts` / `api/sale.ts` 列表行类型新增 `totalQuantity`；订单详情的关联入库单 / 出库单列表新增「数量合计」列，**单号改为 `a-link` 超链接**直达详情（`/purchases/detail/:id` / `/sales/detail/:id`），不设「操作」列与「详情」按钮
+- [x] 4.12 入库 / 出库单详情「关联订单」改为 `a-link` 超链接（→ 采购 / 销售订单详情，无关联时显示 `—`）
+- [x] 4.13 `cd frontend && npm run type-check` / `npm run lint` / `npm run build` 全绿
 
 ## 五、阶段 E：E2E（Playwright）
 
@@ -71,11 +76,13 @@ updated: 2026-09-20
 - [x] 5.3 同文件：入库单作废 → 订单状态与未收数量回退
 - [x] 5.4 新增 `e2e/sale-order.spec.ts`：同构链路（待发货 / 部分发货 / 已完成）
 - [x] 5.5 改造既有 `purchase.spec.ts` / `sale.spec.ts`：新增「不关联订单直接入库」回归用例；文案与路由适配
-- [x] 5.6 `cd frontend && npm run test:e2e` 全量通过
+- [x] 5.6 `purchase-order.spec.ts` / `sale-order.spec.ts` 补「关联单据数量合计正确 + 单号超链接跳转」
+- [x] 5.7 订单 ↔ 单据详情之间的「单号 / 关联订单」超链接跳转与回跳断言
+- [x] 5.8 `cd frontend && npm run test:e2e` 全量通过
 
 ## 六、阶段 F：规格与上下文联动
 
-- [x] 6.1 `specs/015-erp-purchase` / `016-erp-sale` `design.md` 加「演进（erp-order-flow）」注记：表 / 接口路径 / 单号前缀重命名，新增 `OrderId` 关联，明细 `OrderId` → `ReceiptId` / `ShipmentId`
+- [x] 6.1 `specs/015-erp-purchase` / `016-erp-sale` `design.md` 加「演进（erp-order-flow）」注记：表 / 接口路径 / 单号前缀重命名，新增 `OrderId` 关联，明细 `OrderId` → `ReceiptId` / `ShipmentId`，列表返回形状新增 `totalQuantity`
 - [x] 6.2 `specs/021` / `022` / `023` `design.md` 同步重命名后的表名与接口路径（其消费的单据表已改名）
 - [x] 6.3 `specs/003-api-swagger` 端点清单与断言同步（该规格只断言 `login` / `me` / `health` 三个基础端点，未枚举业务端点，核对后无需改动）
 - [x] 6.4 `.codebuddy/CONTEXT.md` §2（Feature / 仓储重命名与新域）、§3（新前端域目录与 api 文件）、§6（规格清单）同步
@@ -85,17 +92,3 @@ updated: 2026-09-20
 
 - 上述任务全部勾选，且 `AGENTS.md` §6 强制测试门槛通过（后端 `dotnet test` + 前端 `npm run test:e2e` 全绿）。
 - 阶段 A 结束时必须满足「行为零变化」：不含订单功能的前提下，既有功能测试全绿。
-
-## 七、变更（2026-09-20）：关联出入库单展示数量合计 + 详情入口
-
-> 需求 / 设计见 `requirement.md` F5 / 验收标准 7，`design.md` §3.1 / §4。
-
-- [x] 7.1 后端：`IPurchaseReceiptRepository` / `ISalesShipmentRepository` 的 `GetPagedAsync` 返回 `(单据 Order, int TotalQuantity)`（本页单据明细数量一次 `GroupBy` 聚合）
-- [x] 7.2 后端：入库单 / 出库单列表行与详情出参新增 `totalQuantity`（列表取仓储聚合值、详情 Mapper 内按明细求和）；`GetPurchaseReceipts` / `GetSalesShipments` Handler 与两个导出 Handler 适配
-- [x] 7.3 后端测试：列表 Handler 聚合数量透传断言（`GetPurchaseReceiptsRequestHandlerTests` / `GetSalesShipmentsRequestHandlerTests`）；受影响的既有假实现与导出用例适配
-- [x] 7.4 前端：`api/purchase.ts` / `api/sale.ts` 列表行类型新增 `totalQuantity`；订单详情的关联入库单 / 出库单列表新增「数量合计」列，**单号改为 `a-link` 超链接**直达详情（`/purchases/detail/:id` / `/sales/detail/:id`），不设「操作」列与「详情」按钮
-- [x] 7.5 E2E：`purchase-order.spec.ts` / `sale-order.spec.ts` 补「关联单据数量合计正确 + 单号超链接跳转」
-- [x] 7.6 `specs/015-erp-purchase` / `016-erp-sale` `design.md` 演进注记补 `totalQuantity` 与列表返回形状变化
-- [x] 7.7 验证：`dotnet test`（535 通过）与 `npm run e2e:run`（121 通过）通过
-- [x] 7.8 前端：入库 / 出库单详情「关联订单」改为 `a-link` 超链接（→ 采购 / 销售订单详情，无关联时显示 `—`）
-- [x] 7.9 E2E：订单 ↔ 单据详情之间的「单号 / 关联订单」超链接跳转与回跳断言

@@ -23,10 +23,10 @@ updated: 2026-09-16
 
 ## 验收标准
 
-- [ ] 规格 `design.md` §0 含分区规范（11 区顺序 + 模板 ref 命名 + composable 顺序）。
-- [ ] `npm run lint` 通过；**import 顺序**（vue 生态 → 第三方 → `@/` 内部）由 `perfectionist/sort-imports` 强制，乱序会报错。
-- [ ] `npm run type-check` 通过。
-- [ ] 全部 `.vue` 与 `composables/` 文件的 script 块符合分区顺序并带分区注释。
-- [ ] `npm run test:e2e` 全量通过（行为不变，纯结构调整）。
+1. 规格 `design.md` §0 含分区规范（11 区顺序 + 模板 ref 命名 + composable 顺序）。
+2. `npm run lint` 通过；**import 顺序**（vue 生态 → 第三方 → `@/` 内部）由 `perfectionist/sort-imports` 强制，乱序会报错。
+3. `npm run type-check` 通过。
+4. 全部 `.vue` 与 `composables/` 文件的 script 块符合分区顺序并带分区注释。
+5. `npm run test:e2e` 全量通过（行为不变，纯结构调整）。
 
 > **lint 能力边界**（见 design.md §6）：perfectionist v4 无针对 `<script setup>` 顶层声明分区（ref/computed/watch/methods 顺序）与模板 ref 命名的规则，这两项由规则文档 + code review 把关；lint 强制的是 import 排序。

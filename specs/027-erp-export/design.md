@@ -138,16 +138,7 @@ updated: 2026-09-20
 
 - 接口清单见 §0.2（15 个导出端点，均为各域 Controller 追加的 `GET .../export`）。
 - 各导出用例的 `Request` **复用该域既有列表 / 报表 Request**（含其 Validator）；Handler 负责：调仓储取全量（`page = 1`、`pageSize = MaxRows + 1` 用于超限判定）→ 超 `MaxRows` 抛 `40000` → 映射表格模型 → `IExcelExporter.Build` → 返回 `ExportResultDto { FileName, Content(byte[]) }`（Controller 把 `Content` 写为文件流响应）。
-- Controller 动作形态（各域一致）：
-
-```csharp
-[HttpGet("export")]
-public async Task<IActionResult> Export([FromQuery] GetProductsRequest request, CancellationToken ct)
-{
-    var result = await _mediator.Send(request, ct);   // ExportProductsRequest : GetProductsRequest 语义等价
-    return File(result.Content, ExcelContentType, result.FileName);
-}
-```
+- Controller 动作形态（各域一致）：`[HttpGet("export")]` + `Export([FromQuery] <本域列表 Request>, CancellationToken)`——`Send(request, ct)` 后 `File(result.Content, ExcelContentType, result.FileName)`。
 
 - **用例命名与归属**：`Features/<域>/Export<X>`（如 `Products/ExportProducts`），Request 为该域列表 Request 的派生或同构类型（`ExportProductsRequest`，继承 / 复制列表筛选字段并忽略分页），Validator 复用列表校验规则 + 上限规则。
 

@@ -36,13 +36,13 @@ updated: 2026-09-16
 
 ## 验收标准
 
-- [ ] 规格 `design.md` §0 含「按钮交互反馈」约定（操作级绑定 + 命名表 + 实现要求 + e2e 门槛）。
-- [ ] `LoginLogsView.vue` 的搜索 / 重置 / 刷新按钮点击后进入 loading，请求结束后恢复可点。
-- [ ] `UsersView.vue` 的搜索 / 重置 / 刷新按钮点击后进入 loading，请求结束后恢复可点。
-- [ ] `UsersView.vue` 的启用 / 禁用按钮点击确认后，**仅该行**按钮进入 loading；操作进行中重复确认不再发出请求。
-- [ ] 查询类操作不因 loading 丢弃新点击（保留 `fetchSeq` 请求序号仲裁，行为不变）。
-- [ ] `npm run lint` 通过。
-- [ ] `npm run type-check` 通过。
-- [ ] `npm run test:e2e` 全量通过（含新增 loading 用例）。
+1. 规格 `design.md` §0 含「按钮交互反馈」约定（操作级绑定 + 命名表 + 实现要求 + e2e 门槛）。
+2. `LoginLogsView.vue` 的搜索 / 重置 / 刷新按钮点击后进入 loading，请求结束后恢复可点。
+3. `UsersView.vue` 的搜索 / 重置 / 刷新按钮点击后进入 loading，请求结束后恢复可点。
+4. `UsersView.vue` 的启用 / 禁用按钮点击确认后，**仅该行**按钮进入 loading；操作进行中重复确认不再发出请求。
+5. 查询类操作不因 loading 丢弃新点击（保留 `fetchSeq` 请求序号仲裁，行为不变）。
+6. `npm run lint` 通过。
+7. `npm run type-check` 通过。
+8. `npm run test:e2e` 全量通过（含新增 loading 用例）。
 
 > 本规格不涉及后端代码改动（后端仅补充规则文档，见 `specs/009-user-management/design.md` §2.2 既有约定）。

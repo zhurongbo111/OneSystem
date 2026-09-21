@@ -8,7 +8,7 @@ updated: 2026-09-17
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照。
 > 本规格消费 erp-product 建立的 `Inventory` / `Products` / `Categories` 表与 `IInventoryRepository`，**不引入新表 / 新实体 / 新迁移**。
-> **演进（erp-report）**：库存的「分类汇总视图」（库存余额表：按分类聚合 + 占比 + 低库存 / 零库存计数）由 `specs/025-erp-report/` 提供，本页仍是「逐商品明细操作视图」；报表「查看明细」下钻本页时经 `query.categoryId` 预置分类筛选。现行为准见 `specs/025-erp-report/`。
+> 库存的「分类汇总视图」（库存余额表：按分类聚合 + 占比 + 低库存 / 零库存计数）由 `specs/025-erp-report/` 提供，本页仍是「逐商品明细操作视图」；报表「查看明细」下钻本页时经 `query.categoryId` 预置分类筛选。
 
 ## 1. 总体设计
 
@@ -73,7 +73,7 @@ updated: 2026-09-17
 
 ### 3.6 Swagger
 
-- **不分组**（用户已确认）：维持现有单文档 Swagger，`GET /api/inventory` 按现有方式正常出现在文档中，不使用 `ApiExplorerSettings.Group`。
+- **不分组**（唯一来源见 `specs/003-api-swagger/design.md`）：`GET /api/inventory` 按现有方式出现在单文档 Swagger 中。
 
 ## 4. 前端设计
 
@@ -90,7 +90,7 @@ src/
 
 ### 4.2 接口层
 
-- `src/api/inventory.ts`：TS 类型与后端 DTO（camelCase）一一对应；函数经 `src/api/request.ts` 统一封装（解包 `data`、40100 处理）。
+- `src/api/inventory.ts`：TS 类型与后端 DTO（camelCase）一一对应；请求统一经 `src/api/request.ts`（约定见前端规则 §3）。
 - 分类下拉数据源复用 `src/api/product.ts` 的 `getCategories`（全量，量小）。
 
 ### 4.3 路由与菜单
@@ -101,16 +101,15 @@ src/
 |---|---|---|
 | `inventory` | `inventory` | `InventoryView` |
 
-`AppLayout.vue` 侧边菜单「进销存」分组追加子项「库存查询」`inventory`（分组与既有子项由 erp-product 等创建）。
+`AppLayout.vue` 侧边菜单追加子项「库存查询」`inventory`。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2。
 
 ### 4.4 页面交互
 
 **库存查询 `InventoryView.vue`**（只读，参照 `UsersView.vue` 列表结构）：
 - 筛选行：关键词（编码 / 名称）+ 分类下拉 + 搜索 / 重置。
-- 表格列：序号、编码、名称、分类、单位、**当前库存**（低于阈值标红 + `a-tag warning`「低于安全库存」）、安全阈值、最近变动时间；按编码升序（后端排序）；服务端分页；**操作列无**（纯只读）。
+- 表格列：序号、编码、名称、分类、单位、**当前库存**（低于阈值标红 + `a-tag warning`「低于安全库存」）、安全阈值、最近变动时间；按编码升序（后端排序）；服务端分页。
+- 操作列：1 个只读「流水」按钮（`type="text" size="small"` + Tabler `IconListDetails`）→ `router.push({ name: 'stockMovements', query: { productId: row.productId } })`。**不提供写操作**（库存写入只由单据 / 盘点驱动），该入口仅为只读下钻。
 - 库存为 0 且阈值 > 0 的行同样标红提醒（缺货可见）。
-
-> **演进（erp-stock-movement）**：操作列从无 → 新增 1 个只读「流水」按钮（Tabler `IconListDetails`）→ 库存流水页（路由 `stock-movements`）并带 `productId` 预置筛选。库存写入仍只由单据 / 盘点驱动，新增入口仅为只读下钻，不开放手工改库存；现行为准见 `specs/019-erp-stock-movement/` §4.4。
 
 ### 4.5 按钮 loading（遵循前端规则 §4.6）
 
@@ -126,9 +125,7 @@ src/
 | 仅展示启用商品 | 联查过滤 `Status = Enabled` | 停用商品已从业务流移除，库存视图不暴露，减少干扰；库存行仍保留（单据回冲需要） |
 | 低库存判定在 Handler | `safetyStock > 0 && stockQuantity < safetyStock` | 与 erp-product 商品列表逻辑一致（同源同规则，防分叉）；阈值为 0 不提醒 |
 | 编码升序固定排序 | 后端 `ORDER BY Code` | 库存盘点习惯按编码定位，不允许前端自定义排序（MVP 最简） |
-| 纯只读无操作列 | 不提供行内操作 | 库存写入统一由单据驱动，杜绝手工改库存绕过单据审计 |
-
-> 演进注记：`erp-stock-movement`（`specs/019-erp-stock-movement/`）已为库存页新增只读「流水」下钻入口，本行决策修订为「无写操作、允许只读下钻」，其余不变。
+| 无写操作、允许只读下钻 | 不提供写操作；操作列仅 1 个只读「流水」入口 | 库存写入统一由单据驱动，杜绝手工改库存绕过单据审计；只读下钻不违反该原则（`019` 提供流水页） |
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
 

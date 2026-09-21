@@ -31,7 +31,7 @@ updated: 2026-09-18
 | `TransferInVoid = 14` | 调拨转入作废 | 减少 | `magenta` | `-N`（红字） |
 
 > 取值 5 / 6 由 `specs/020-erp-stock-take/` 追加；7 / 8 由 `specs/021-erp-purchase-return/` 追加；9 / 10 由 `specs/022-erp-sale-return/` 追加；11–14 由 `specs/039-erp-transfer/` 追加（各自落地时同步启用；前端类型下拉以本表为准）。
-> **演进（erp-report）**：进销存报表按变动类型将流水归类「期间入 / 期间出」的归类口径见 `specs/025-erp-report/design.md` §0.1（`StockTakeAdjust` 按符号双向拆分、两侧各计一次；`Transfer*` 11–14 落地时在 §0.1 续行）。
+> 进销存报表按变动类型将流水归类「期间入 / 期间出」的归类口径见 `specs/025-erp-report/design.md` §0.1（`StockTakeAdjust` 按符号双向拆分、两侧各计一次；`Transfer*` 11–14 落地时在 §0.1 续行）。
 
 - 变动量列展示**带符号整数**（`+N` / `-N`），入库 / 回增绿字、出库 / 回冲红字；e2e 断言该文本。
 - 空值渲染：来源单号为空显示 `-`（后续盘点 / 期初场景），操作人为空显示 `-`（系统操作）。
@@ -61,7 +61,7 @@ updated: 2026-09-18
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset`（实体 / DTO / 仓储签名 / 请求入参），Npgsql 映射 `timestamptz`（后端规则 §5.2）。
+> 时间字段按后端规则 §5.2（`DateTimeOffset` → `timestamptz`）。
 > 枚举统一小整数，PG `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/StockMovement.cs` 与表 `StockMovements`
@@ -72,6 +72,8 @@ updated: 2026-09-18
 | `ProductId` | `Guid` | `uuid` | NOT NULL，FK → `Products(Id)` | 变动商品 |
 | `MovementType` | `StockMovementType` | `smallint` | NOT NULL | 变动类型（§2.2） |
 | `Quantity` | `int` | `integer` | NOT NULL，**≠ 0** | 变动量（带符号：入库 / 回增为正，出库 / 回冲为负） |
+| `UnitCost` | `decimal` | `numeric(18,4)` | NOT NULL，默认 0 | 成本单价（由各写入路径回填，历史由 `Costs/RecalculateCosts` 重算写回） |
+| `TotalCost` | `decimal` | `numeric(18,4)` | NOT NULL，默认 0 | 成本金额（口径见 `specs/026-erp-cost/design.md` §0） |
 | `SourceId` | `Guid?` | `uuid` | NULL | 来源单据 id |
 | `SourceNo` | `string?` | `varchar(20)` | NULL | 来源单据号（单号是不可变标识，存值使列表免 join） |
 | `Remark` | `string?` | `varchar(200)` | NULL | 备注（本期无写入来源，预留展示位） |
@@ -81,6 +83,7 @@ updated: 2026-09-18
 - **纯追加表**：无 `UpdatedAt` / `UpdatedBy`、无软删除、无更新与删除接口。
 - 索引：`(ProductId, CreatedAt)`（按商品下钻流水）、`CreatedAt`（全局列表排序）、`SourceNo`（按单号查询）。
 - 外键不级联删除；商品停用不影响历史流水。
+- 读模型 `StockMovementItem`（`App.Core/Abstractions/`）同步携带 `UnitCost` / `TotalCost`，供列表与导出消费。
 
 ### 2.2 枚举 `App.Core/Entities/StockMovementType.cs`
 
@@ -179,7 +182,7 @@ src/
 
 ### 4.2 接口层
 
-- `src/api/stockMovement.ts`：`getStockMovements(query)` + TS 类型（`StockMovementListItem` / `StockMovementQuery`），与后端 DTO（camelCase）一一对应；经 `src/api/request.ts` 统一封装（解包 `data`、40100 处置）。
+- `src/api/stockMovement.ts`：`getStockMovements(query)` + TS 类型（`StockMovementListItem` / `StockMovementQuery`），与后端 DTO（camelCase）一一对应；请求统一经 `src/api/request.ts`（约定见前端规则 §3）。
 - 日期范围参数：`a-range-picker` 选值 → 接口层转本地当天 `00:00:00` / `23:59:59` 的 UTC ISO 串（同登录日志 / 采购列表约定）。
 - 商品下拉数据源复用 `src/api/product.ts` 的 `getProductPickList`（全量，量小）。
 
@@ -191,14 +194,14 @@ src/
 |---|---|---|
 | `stock-movements` | `stockMovements` | `StockMovementsView` |
 
-`AppLayout.vue` 侧边菜单「进销存」分组追加子项「库存流水」`stockMovements`；无详情页，`MENU_ROUTE_MAP` 不新增映射。
+`AppLayout.vue` 侧边菜单「库存」分组下提供子项「库存流水」`stockMovements`；无详情页，`MENU_ROUTE_MAP` 不新增映射。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2。
 
 ### 4.4 页面交互
 
 **库存流水 `StockMovementsView.vue`**（只读列表，参照 `specs/006-list-showcase/design.md` §0）：
 
 - 筛选行：单号关键词 + 商品下拉 + 变动类型下拉（取 §0 文案）+ 时间范围 + 搜索 / 重置。
-- 表格列（每列设 `width`）：序号、变动时间、商品编码、商品名称、变动类型（`a-tag` 按 §0 颜色）、变动量（§0 符号与颜色）、来源单号（空显示 `-`）、操作人（空显示 `-`）、备注（`ellipsis` + `tooltip`）。
+- 表格列（每列设 `width`）：序号、变动时间、商品编码、商品名称、变动类型（`a-tag` 按 §0 颜色）、变动量（§0 符号与颜色）、成本单价、成本金额、来源单号（空显示 `-`）、操作人（空显示 `-`）、备注（`ellipsis` + `tooltip`）。
 - 排序固定 `CreatedAt DESC`（后端），服务端分页；无操作列（流水不可改）。
 - 路由 query 带 `productId` 时：以该商品初始化筛选并直接查询一次（供库存页下钻）；筛选行正常展示该商品，用户可清除。
 
@@ -242,8 +245,4 @@ src/
 - **对账一致性**：以行为型假实现累计 `AppendAsync` 的 `Quantity`，断言 `Σ 变动量 == Inventory.Quantity`（覆盖采购入库 → 作废、销售出库 → 作废四条链路的正负抵消）。
 - **字段约束一致性**（扩展 `FieldValidationConsistencyTests`）：`SourceNo` EF `HasMaxLength` 20 == `OrderFieldConstraints.OrderNoMaxLength`；`GetStockMovementsRequest` 的 `keyword` 20 通过 / 21 拒绝，且与 `SourceNo` 列长一致（后端规则 §5.3 第 ③ 条）。
 
-## 7. 演进（erp-cost，`026`）
 
-- 流水追加**成本列**：`StockMovement` 实体新增 `UnitCost` / `TotalCost`（`numeric(18,4)`，默认 0）；读模型 `StockMovementItem` 同步追加 `UnitCost` / `TotalCost`，前端 `StockMovementsView.vue` 表格追加「成本单价 / 成本金额」列。
-- 成本单价来源：各写入路径按对应成本口径回填（采购入库按单据明细单价加权、销售出库按变动前均价、退货与作废回冲按原流水单价还原），详见 `specs/026-erp-cost/design.md` §0 / §3；历史流水由 `Costs/RecalculateCosts` 统一重算写回。
-- 本文件 §0 变动类型表的成本列不重复定义，以 `026` 写入路径口径为准。

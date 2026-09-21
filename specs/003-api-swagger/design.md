@@ -28,30 +28,9 @@ updated: 2026-09-09
 
 ### 2.2 SwaggerGen 配置
 
-```csharp
-var apiXmlFile = $"{typeof(Program).Assembly.GetName().Name}.xml";
-var coreXmlFile = $"{typeof(LoginRequest).Assembly.GetName().Name}.xml";
-builder.Services.AddSwaggerGen(options =>
-{
-    // 引入 Controller 动作与 Request/Response 模型的 XML 注释（两个文件，见 §2.4）
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, apiXmlFile));
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, coreXmlFile));
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "App API", Version = "v1" });
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "粘贴登录接口签发的 JWT（不带 Bearer 前缀亦可）",
-    });
-    // 不使用文档级 AddSecurityRequirement（其经 IDocumentFilter 写入文档顶层 security，作用于全部 operation，
-    // 无法区分匿名接口；且 M.O.S 序列化会跳过空列表，operation 级无法以 security: [] 覆盖文档级）
-    // 改为 Filter 按 [AllowAnonymous] 白名单语义逐 operation 标注（见 SwaggerSecurityOperationFilter）
-    options.OperationFilter<SwaggerSecurityOperationFilter>();
-});
-```
+`AddSwaggerGen` 四项配置：① `IncludeXmlComments` 依次加载 `App.Api.xml`（Controller 动作）与 `App.Core.xml`（Request / Response 模型），路径 `Path.Combine(AppContext.BaseDirectory, …)`（见 §2.4）；② `SwaggerDoc("v1", OpenApiInfo { Title = "App API", Version = "v1" })`；③ `AddSecurityDefinition("Bearer", …)`——`Name = Authorization`、`Type = Http`、`Scheme = bearer`、`BearerFormat = JWT`、`In = Header`，说明文案「粘贴登录接口签发的 JWT（不带 Bearer 前缀亦可）」；④ `OperationFilter<SwaggerSecurityOperationFilter>()`（安全标注策略见下）。
+
+**不使用文档级 `AddSecurityRequirement`**：它经 `IDocumentFilter` 写入文档顶层 `security`、作用于全部 operation、无法区分匿名接口，且序列化会跳过空列表、operation 级无法以 `security: []` 覆盖；改为 Filter 按 operation 逐条标注（`SwaggerSecurityOperationFilter`）。
 
 - **security 标注策略（operation 级，替代文档级全局）**：`App.Api/Swagger/SwaggerSecurityOperationFilter`（实现 `Swashbuckle.AspNetCore.SwaggerGen.IOperationFilter`）检测动作方法或其控制器类型上的 `AllowAnonymousAttribute`——命中（登录、健康检查）则不加 security（UI 不显示锁图标），其余接口（含仅靠 `FallbackPolicy` 默认要求登录的）显式添加 operation 级 Bearer security（UI 显示锁图标）。与认证管道白名单共用同一 `[AllowAnonymous]` 特性标注，文档与真实认证语义严格一致，后续新接口无需额外维护文档层白名单。
 - `OpenApiInfo.Title = "App API"`；版本号 `v1` 写死（脚手架期无多版本需求，不引入版本配置节）。

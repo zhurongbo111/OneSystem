@@ -8,7 +8,7 @@ updated: 2026-09-21
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase`（单据域模板）为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > **本规格改造既有单据的结算语义**：`015` / `016` / `021` / `022` 的 `SettlementStatus` 与手工切换接口在本规格落地时一并替换（等价于 `specs/ROADMAP.md` §6.3 预留的迁移路径），各规格需留演进注记。
-> **演进（erp-order-flow）**：本规格核销的两类单据已随 `specs/024-erp-order-flow/` 重命名——`PurchaseOrders` → `PurchaseReceipts`、`SalesOrders` → `SalesShipments`（主表单号列 `OrderNo` → `ReceiptNo` / `ShipmentNo`），接口路径 `/api/purchase-orders` → `/api/purchase-receipts`、`/api/sales-orders` → `/api/sales-shipments`；跨仓储累加的目标仓储随之改名（`IPurchaseReceiptRepository` / `ISalesShipmentRepository`）。`SettlementOrderType`（`PurchaseInbound` / `SalesOutbound`）取值与结算 / 核销语义不变。
+> **演进（`024-erp-order-flow`）**：本规格核销的两类单据表 / 路由 / 单号前缀已重命名（`PurchaseOrders` → `PurchaseReceipts`、`SalesOrders` → `SalesShipments`），跨仓储累加的目标仓储随之改名（`IPurchaseReceiptRepository` / `ISalesShipmentRepository`）；`SettlementOrderType` 取值与结算 / 核销语义不变。**本正文已按现行为准**，重命名细节见 `specs/024-erp-order-flow/design.md` §3。
 
 ## 0. 结算口径约定（唯一事实源）
 
@@ -33,7 +33,7 @@ updated: 2026-09-21
   → SettlementsController
     → App.Core/Features/Settlements/<Action>/*RequestHandler
       → ISettlementRepository（收付款单 + 核销明细）
-        + IPurchaseOrderRepository / ISalesOrderRepository / IPurchaseReturnRepository / ISalesReturnRepository（`AddSettledAmountAsync` 原子累加）
+        + IPurchaseReceiptRepository / ISalesShipmentRepository / IPurchaseReturnRepository / ISalesReturnRepository（`AddSettledAmountAsync` 原子累加）
         + ISettlementQueryRepository（未结单据候选 / 往来台账，跨四表只读）
         + IUnitOfWork（同一事务）
         → PostgreSQL（Settlements / SettlementItems / 四张单据表）
@@ -53,7 +53,7 @@ updated: 2026-09-21
 
 ## 2. 数据模型
 
-> 时间字段统一 `DateTimeOffset` → `timestamptz`（后端规则 §5.2）；枚举统一小整数 → `smallint`。
+> 时间字段按后端规则 §5.2（`DateTimeOffset` → `timestamptz`）；枚举统一小整数 → `smallint`。
 
 ### 2.1 实体 `App.Core/Entities/Settlement.cs` 与表 `Settlements`
 
@@ -94,7 +94,7 @@ updated: 2026-09-21
 
 | 项 | 变化 |
 |---|---|
-| 列 | 四张单据表（`PurchaseOrders` / `SalesOrders` / `PurchaseReturns` / `SalesReturns`）移除 `SettlementStatus`（`smallint`）→ 新增 `SettledAmount`（`numeric(18,2)`，NOT NULL，默认 `0`） |
+| 列 | 四张单据表（`PurchaseReceipts` / `SalesShipments` / `PurchaseReturns` / `SalesReturns`）移除 `SettlementStatus`（`smallint`）→ 新增 `SettledAmount`（`numeric(18,2)`，NOT NULL，默认 `0`） |
 | 实体 | `PurchaseOrder` / `SalesOrder` / `PurchaseReturn` / `SalesReturn` 同字段替换（`OrderSettlementStatus` 枚举**废弃删除**，由 `SettlementState`（DTO 推导值）取代） |
 | 仓储 | 四类单据仓储**追加** `Task AddSettledAmountAsync(Guid id, decimal delta, ...)`（原子累加，EF Core `ExecuteUpdateAsync`，无裸 SQL）；**移除** `UpdateSettlementAsync` |
 | 接口 | **移除** `PUT /api/purchase-orders/{id}/settlement`、`PUT /api/sales-orders/{id}/settlement`、`PUT /api/purchase-returns/{id}/settlement`、`PUT /api/sales-returns/{id}/settlement` 四个端点与对应用例（`UpdateXxxSettlement`） |
@@ -165,7 +165,7 @@ updated: 2026-09-21
 - **不新增仓储方法 / 不新增接口**：核销校验与详情用例共用同一取数入口，仅以参数区分取数范围（仓储方法数不增长）。
 - **默认值取 `true`**：既有调用点的语义与行为不变（明细仍可取），只有「只用主表字段」的核销校验显式传 `false`。
 - **参数置于 `CancellationToken` 之前**（`CancellationToken` 保持末位）：既有位置调用 `GetDetailAsync(id, cancellationToken)` 会编译失败，须改为 `GetDetailAsync(id, cancellationToken: cancellationToken)`——机械改动、由编译器强制，不会漏改。
-- **改造范围**：仅本规格用到的四类单据仓储（采购入库 / 销售出库 / 采购退货 / 销售退货）。`ISettlementRepository` / `IStockTakeRepository` / `ISalesOrderRepository` / `IPurchaseOrderRepository` 的同名方法**不加**该参数（未被核销校验使用，避免全仓铺开；订单域 `Void` / `Update` / `Close` 中丢弃明细的调用点本次同样不改）。
+- **改造范围**：仅本规格用到的四类单据仓储（采购入库 / 销售出库 / 采购退货 / 销售退货）。`ISettlementRepository` / `IStockTakeRepository` / `ISalesShipmentRepository` / `IPurchaseReceiptRepository` 的同名方法**不加**该参数（未被核销校验使用，避免全仓铺开；订单域 `Void` / `Update` / `Close` 中丢弃明细的调用点本次同样不改）。
 - **调用点清单（共 20 处，编译期可见）**：
 
 | 用例 | 处数 | 改法 |
@@ -279,7 +279,7 @@ src/
 | `settlements/detail/:id` | `settlementDetail` | `SettlementDetailView` |
 | `reconciliation` | `reconciliation` | `ReconciliationView` |
 
-`AppLayout.vue`「进销存」分组追加子项「收付款」`settlements` 与「往来对账」`reconciliation`；`MENU_ROUTE_MAP` 增加 `settlementDetail: 'settlements'`。
+`AppLayout.vue`「资金」分组下提供子项「收付款」`settlements` 与「往来对账」`reconciliation`；`MENU_ROUTE_MAP` 增加 `settlementDetail: 'settlements'`。**菜单分组结构唯一来源**见 `specs/025-erp-report/design.md` §0.2。
 
 ### 4.4 页面交互
 
