@@ -68,6 +68,36 @@ async function createProduct(page: Page, code: string, name: string): Promise<vo
   await expectMessage(page, '商品已创建')
 }
 
+/** 经侧边菜单进入库存盘点页 */
+async function goStockTakes(page: Page): Promise<void> {
+  await login(page)
+  await clickMenuItem(page, '库存盘点')
+  await expect(page).toHaveURL(/\/stock-takes$/)
+}
+
+/** 期初建账给商品设非零库存（占比断言需要分母非 0，否则显示缺陷不可见） */
+async function createInitialStockTake(page: Page, code: string, quantity: number): Promise<void> {
+  await page.getByRole('button', { name: '新建盘点' }).click()
+  await expect(page).toHaveURL(/\/stock-takes\/new$/)
+  await page.locator('.arco-radio-group').getByText('期初建账', { exact: true }).click()
+
+  // 商品下拉（表单页仅此一个 a-select）：选中后旧弹层 DOM 残留，选项按可见限定
+  const productSelect = page.locator('.arco-select')
+  await productSelect.click()
+  await productSelect.locator('input').fill(code)
+  await page.locator('.arco-select-option:visible', { hasText: code }).first().click()
+  await expect(productSelect).toContainText(code.slice(0, 12))
+
+  // 实盘数量 + 成本单价（期初建账成本单价必填，erp-cost）
+  const inputs = page.locator('.arco-input-number input')
+  await inputs.nth(0).fill(String(quantity))
+  await inputs.nth(0).blur()
+  await inputs.nth(1).fill('10')
+  await inputs.nth(1).blur()
+  await clickUntil(page, '提交', page.getByText('盘点单已生效'))
+  await expect(page).toHaveURL(/\/stock-takes\/detail\//)
+}
+
 test.describe('进销存报表（集成）', () => {
   test.beforeAll(async ({ request }) => {
     try {
@@ -92,19 +122,25 @@ test.describe('进销存报表（集成）', () => {
     await expect(page.getByText('全量口径')).toBeVisible()
   })
 
-  test('库存余额表：分类聚合展示，查看明细下钻库存查询并预置分类', async ({ page }) => {
+  test('库存余额表：分类聚合展示（占比百分比），查看明细下钻库存查询并预置分类', async ({ page }) => {
     const code = uniqueProductCode('rpt')
     await goProducts(page)
     await createProduct(page, code, `报表商品${Date.now() % 100000}`)
+    // 先给该商品期初库存：占比分母为 0 时占比恒为 0，进度条显示缺陷会被静默漏过
+    await goStockTakes(page)
+    await createInitialStockTake(page, code, 100)
 
     await goReport(page, '库存余额表', /\/reports\/stock-balance$/)
     await expect(page.locator('th', { hasText: '库存占比' })).toBeVisible()
     await expect(page.locator('th', { hasText: '低库存商品数' })).toBeVisible()
 
-    // 按商品关键词搜到其唯一分类行，占比列以进度条展示
+    // 按商品关键词搜到其唯一分类行，占比列以进度条展示且文本为百分比
     await page.getByPlaceholder('搜索商品编码或名称').fill(code)
     await clickUntilCount(page, '搜索', dataRows(page), 1)
-    await expect(dataRows(page).first().locator('.arco-progress')).toBeVisible()
+    const ratioCell = dataRows(page).first().locator('.arco-progress')
+    await expect(ratioCell).toBeVisible()
+    // 筛选命中唯一分类（100 / 100）→ 100.00%；回归：曾因重复乘 100 显示为 10000%
+    await expect(ratioCell.locator('.arco-progress-line-text')).toHaveText('100.00%')
 
     // 查看明细 → 库存查询页预置分类筛选
     await dataRows(page).first().getByRole('button', { name: '查看明细' }).click()
