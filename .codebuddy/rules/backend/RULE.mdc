@@ -16,7 +16,7 @@ enabled: true
 ## 2. 编码约定
 
 > **C# 的格式与代码风格以 `backend/.editorconfig` 为唯一事实源**（缩进 4 空格 / CRLF / 大括号与换行、`using` 排序与分组、命名规则、IDE / CA severity）；本文件不重复其条目，调整风格只改 `.editorconfig`。
-> 生效范围：`CA*`（代码质量）随 `dotnet build` 生效；`IDE*`（代码风格）**当前未随构建强制**（未开启 `EnforceCodeStyleInBuild`），以 IDE 提示 + code review 为准；`Migrations/*.cs` 标记 `generated_code`，不参与分析。
+> 生效范围：`CA*`（代码质量）与 `IDE*`（代码风格）**均随 `dotnet build` 生效**——`src/App.Api` / `src/App.Core` / `src/App.Infrastructure` 三个工程已设 `<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>`，违反 `.editorconfig` 的 IDE 规则即编译失败（新增代码前可先 `dotnet format style` 批量修，命名规则 `IDE1006` 只能手工改）。`IDE0005`（未使用 using）依赖 `GenerateDocumentationFile`，三个 src 工程均已开启。`tests/App.Tests` **不开启**该开关（测试代码仍以 IDE 提示 + code review 为准，避免测试夹具惯用的 PascalCase 常量被强制改名）。`Migrations/*.cs` 标记 `generated_code`，不参与分析。
 
 本规则只写 `.editorconfig` 无法表达的工程约定：
 
