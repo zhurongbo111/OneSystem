@@ -71,7 +71,8 @@ public interface ISettlementRepository
     Task<string> GenerateSettlementNoAsync(SettlementType type, DateTimeOffset settlementDate, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 按单据 id 集合批量查询核销明细行（erp-export 导出用，一次查询避免逐单 N+1），按明细 Id 升序（插入顺序）
+    /// 按单据 id 集合批量查询核销明细行（列表「单据类型」列聚合与 erp-export 导出共用，一次查询避免逐单 N+1），
+    /// 按明细 Id 升序（插入顺序）
     /// </summary>
     /// <param name="settlementIds">收付款单 id 集合（空集合返回空列表）</param>
     /// <param name="cancellationToken">取消令牌</param>

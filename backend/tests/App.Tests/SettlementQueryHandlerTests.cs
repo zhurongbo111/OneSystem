@@ -41,6 +41,19 @@ public class SettlementQueryHandlerTests
         };
     }
 
+    private static SettlementItem NewItem(Guid settlementId, SettlementOrderType orderType, decimal amount)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            SettlementId = settlementId,
+            OrderType = orderType,
+            OrderId = Guid.NewGuid(),
+            OrderNo = "GI202512200001",
+            OrderDate = OrderDate,
+            OrderTotalAmount = 1000m,
+            Amount = amount,
+        };
+
     [Fact]
     public async Task 查询收付款单列表_应透传筛选入参并按分页映射()
     {
@@ -49,6 +62,12 @@ public class SettlementQueryHandlerTests
         repository.PagedItems = new[] { settlement };
         repository.PagedTotal = 5;
         settlement.Remark = "备注一";
+        // 混合核销两类单据：列表「单据类型」列按明细去重升序派生
+        repository.Seed(settlement, new[]
+        {
+            NewItem(settlement.Id, SettlementOrderType.PurchaseReturn, 100m),
+            NewItem(settlement.Id, SettlementOrderType.SalesOutbound, 300m),
+        });
         var handler = new GetSettlementsRequestHandler(repository);
 
         var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -87,6 +106,10 @@ public class SettlementQueryHandlerTests
         Assert.Equal(400m, row.TotalAmount);
         Assert.Equal((int)SettlementMethod.BankTransfer, row.Method);
         Assert.Equal((int)OrderStatus.Normal, row.Status);
+        // 「单据类型」列：按核销明细去重升序派生（销售出库 1 + 采购退货 2）
+        Assert.Equal(
+            new[] { (int)SettlementOrderType.SalesOutbound, (int)SettlementOrderType.PurchaseReturn },
+            row.OrderTypes);
     }
 
     [Fact]
@@ -160,7 +183,7 @@ public class SettlementQueryHandlerTests
     }
 
     [Fact]
-    public async Task 查询收付款单列表_未按单据反查_OrderAmount为空且不查询核销明细()
+    public async Task 查询收付款单列表_未按单据反查_OrderAmount为空且单据类型为空集合()
     {
         var calls = new List<string>();
         var repository = new FakeSettlementRepository(calls);
@@ -169,8 +192,11 @@ public class SettlementQueryHandlerTests
 
         var result = await new GetSettlementsRequestHandler(repository).HandleAsync(new GetSettlementsRequest());
 
-        Assert.Null(Assert.Single(result.Items).OrderAmount);
-        Assert.DoesNotContain("GetItemsBySettlementIds", calls);
+        var row = Assert.Single(result.Items);
+        Assert.Null(row.OrderAmount);
+        Assert.Empty(row.OrderTypes);
+        // 未指定被核销单据：仍需批量取本页明细以聚合「单据类型」列（只查一次，不是逐单 N+1）
+        Assert.Contains("GetItemsBySettlementIds", calls);
     }
 
     [Fact]
