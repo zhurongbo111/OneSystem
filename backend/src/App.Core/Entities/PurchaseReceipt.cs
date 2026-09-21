@@ -10,7 +10,7 @@ public sealed class PurchaseReceipt
     /// <summary>采购单 ID</summary>
     public Guid Id { get; set; }
 
-    /// <summary>单号，唯一，后端生成（PO + yyyyMMdd + 4 位序号，如 PO202609110001）</summary>
+    /// <summary>单号，唯一，后端生成（GR + yyyyMMdd + 4 位序号，如 GR202609110001）</summary>
     public string ReceiptNo { get; set; } = string.Empty;
 
     /// <summary>供应商 ID（外键 → Partners(Id)）</summary>
