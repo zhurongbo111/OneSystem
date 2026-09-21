@@ -28,6 +28,7 @@ internal static class SalesShipmentsDtoMapper
             Remark = order.Remark,
             CreatedBy = order.CreatedBy?.ToString(),
             CreatedAt = order.CreatedAt,
+            TotalQuantity = items.Sum(i => i.Quantity),
             Items = items.Select(i => new SalesShipmentItemDto
             {
                 Id = i.Id.ToString(),
@@ -42,9 +43,11 @@ internal static class SalesShipmentsDtoMapper
         };
 
     /// <summary>
-    /// 主表实体转列表 DTO
+    /// 主表实体 + 数量合计转列表 DTO（数量合计由仓储按明细聚合）
     /// </summary>
-    public static SalesShipmentListItemDto ToSalesShipmentListItemDto(SalesShipment order)
+    /// <param name="order">出库单实体</param>
+    /// <param name="totalQuantity">数量合计（= Σ 明细数量）</param>
+    public static SalesShipmentListItemDto ToSalesShipmentListItemDto(SalesShipment order, int totalQuantity)
         => new()
         {
             Id = order.Id.ToString(),
@@ -60,6 +63,7 @@ internal static class SalesShipmentsDtoMapper
             SettlementState = (int)SettlementStateCalculator.Derive(order.TotalAmount, order.SettledAmount),
             Status = (int)order.Status,
             CreatedAt = order.CreatedAt,
+            TotalQuantity = totalQuantity,
         };
 
     /// <summary>

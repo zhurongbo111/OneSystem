@@ -102,6 +102,18 @@ function onGoSettlement(): void {
   if (!detail.value) return
   void router.push({ name: 'settlementNew', query: { type: '0', partnerId: detail.value.partnerId } })
 }
+
+/** 关联销售订单详情路径（超链接 href；无关联订单返回空串） */
+function orderHref(): string {
+  const orderId = detail.value?.orderId
+  return orderId ? router.resolve({ name: 'salesOrderDetail', params: { id: orderId } }).href : ''
+}
+
+/** 打开关联销售订单详情（同步路由跳转不置 loading） */
+function onOrderDetail(): void {
+  const orderId = detail.value?.orderId
+  if (orderId) void router.push({ name: 'salesOrderDetail', params: { id: orderId } })
+}
 </script>
 
 <template>
@@ -153,7 +165,14 @@ function onGoSettlement(): void {
             {{ detail.shipmentNo }}
           </a-descriptions-item>
           <a-descriptions-item label="关联订单">
-            {{ detail.orderNo || '—' }}
+            <a-link
+              v-if="detail.orderNo"
+              :href="orderHref()"
+              @click.prevent="onOrderDetail()"
+            >
+              {{ detail.orderNo }}
+            </a-link>
+            <span v-else>—</span>
           </a-descriptions-item>
           <a-descriptions-item label="客户">
             {{ detail.partnerName }}

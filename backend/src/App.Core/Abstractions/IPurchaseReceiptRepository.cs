@@ -10,7 +10,8 @@ namespace App.Core.Abstractions;
 public interface IPurchaseReceiptRepository
 {
     /// <summary>
-    /// 分页查询采购单：单号 / 往来名称关键词 + 供应商 + 日期闭区间 + 结算状态筛选，创建时间倒序；含作废单据
+    /// 分页查询采购单：单号 / 往来名称关键词 + 供应商 + 日期闭区间 + 结算状态筛选，创建时间倒序；含作废单据。
+    /// 每行附带该单据的数量合计（明细数量之和，本页一次聚合），供订单详情「关联入库单」跟单展示
     /// </summary>
     /// <param name="keyword">单号 / 供应商名称关键词，可空</param>
     /// <param name="partnerId">供应商 id，可空</param>
@@ -21,7 +22,7 @@ public interface IPurchaseReceiptRepository
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<(IReadOnlyList<PurchaseReceipt> Items, int Total)> GetPagedAsync(
+    Task<(IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         Guid? orderId,

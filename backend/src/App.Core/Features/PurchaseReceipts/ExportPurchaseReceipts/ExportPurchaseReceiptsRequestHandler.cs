@@ -37,7 +37,7 @@ public sealed class ExportPurchaseReceiptsRequestHandler : IRequestHandler<Expor
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<ExportResultDto> HandleAsync(ExportPurchaseReceiptsRequest request, CancellationToken cancellationToken = default)
     {
-        var (orders, _) = await _purchaseReceiptRepository.GetPagedAsync(
+        var (rows, _) = await _purchaseReceiptRepository.GetPagedAsync(
             request.Keyword,
             request.PartnerId,
             request.OrderId,
@@ -47,6 +47,8 @@ public sealed class ExportPurchaseReceiptsRequestHandler : IRequestHandler<Expor
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);
+        // 导出不需要数量合计，只取主表实体
+        var orders = rows.Select(x => x.Order).ToList();
         ExportGuards.EnsureWithinRowLimit(orders.Count);
 
         // 明细一次批量取回（避免逐单查询 N+1），再按单据 id 分组

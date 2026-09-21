@@ -218,7 +218,11 @@ test.describe('采购订单（集成）', () => {
     await expect(page.getByText('未收总数')).toBeVisible()
 
     // 部分入库 60
-    await receiveFromOrder(page, 60)
+    const firstReceiptNo = await receiveFromOrder(page, 60)
+
+    // 入库单详情「关联订单」为超链接 → 可跳回订单详情
+    await page.locator('.detail-desc').getByRole('link', { name: orderNo }).click()
+    await expect(page).toHaveURL(/\/purchase-orders\/detail\//)
 
     // 订单列表：部分收货 + 未收 40
     await goPurchaseOrders(page)
@@ -226,17 +230,30 @@ test.describe('采购订单（集成）', () => {
     await expect(row.getByText('部分收货', { exact: true })).toBeVisible()
     await expect(unfulfilledOf(row)).toHaveText('40')
 
-    // 订单详情：关联入库单可见 + 明细已收 60 / 未收 40
+    // 订单详情：关联入库单可见 + 数量合计 60 + 明细已收 60 / 未收 40
     await row.getByRole('button', { name: '详情' }).click()
     await expect(page).toHaveURL(/\/purchase-orders\/detail\//)
     await expect(page.getByText(/^GR\d{12}$/).first()).toBeVisible()
+    const partialReceiptRow = page.locator('tbody tr').filter({ hasText: firstReceiptNo }).first()
+    await expect(partialReceiptRow.locator('td').nth(2)).toHaveText('60')
 
     // 再入库剩余 40 → 已完成
-    await receiveFromOrder(page, 40)
+    const secondReceiptNo = await receiveFromOrder(page, 40)
     await goPurchaseOrders(page)
     const row2 = await findOrderRow(page, orderNo)
     await expect(row2.getByText('已完成', { exact: true })).toBeVisible()
     await expect(unfulfilledOf(row2)).toHaveText('0')
+
+    // 关联入库单：两张单的数量合计（60 / 40）+ 单号超链接跳入库单详情
+    await row2.getByRole('button', { name: '详情' }).click()
+    await expect(page).toHaveURL(/\/purchase-orders\/detail\//)
+    const linkedFirst = page.locator('tbody tr').filter({ hasText: firstReceiptNo }).first()
+    const linkedSecond = page.locator('tbody tr').filter({ hasText: secondReceiptNo }).first()
+    await expect(linkedFirst.locator('td').nth(2)).toHaveText('60')
+    await expect(linkedSecond.locator('td').nth(2)).toHaveText('40')
+    await linkedFirst.getByRole('link', { name: firstReceiptNo }).click()
+    await expect(page).toHaveURL(/\/purchases\/detail\//)
+    await expect(page.locator('.detail-desc').getByText(firstReceiptNo)).toBeVisible()
   })
 
   test('关联入库数量超过未收量 → 后端拒绝（40115）', async ({ page, request }) => {

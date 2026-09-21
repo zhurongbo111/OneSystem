@@ -24,10 +24,11 @@ const itemColumns: TableColumnData[] = [
   { title: '小计', slotName: 'subtotal', width: 120, align: 'right' },
 ]
 
-/** 关联出库单列表列（按 orderId 查出库单，跟单用） */
+/** 关联出库单列表列（按 orderId 查出库单，跟单用；单号为超链接 → 出库单详情） */
 const shipmentColumns: TableColumnData[] = [
-  { title: '单号', dataIndex: 'shipmentNo', width: 160 },
+  { title: '单号', slotName: 'shipmentNo', width: 180 },
   { title: '单据日期', slotName: 'orderDate', width: 120 },
+  { title: '数量合计', slotName: 'totalQuantity', width: 100, align: 'right' },
   { title: '状态', slotName: 'status', width: 100, align: 'center' },
 ]
 
@@ -86,6 +87,16 @@ function onEdit(): void {
 /** 去出库：跳转销售出库开单页并预置关联订单（同步路由跳转不置 loading） */
 function onShip(): void {
   void router.push({ name: 'salesNew', query: { orderId: route.params.id as string } })
+}
+
+/** 关联出库单详情路径（单号超链接 href；实际跳转走 router.push，避免整页刷新） */
+function shipmentHref(record: SalesShipmentListItem): string {
+  return router.resolve({ name: 'salesDetail', params: { id: record.id } }).href
+}
+
+/** 查看关联出库单详情：逐商品数量在出库单详情查看（同步路由跳转不置 loading） */
+function onShipmentDetail(record: SalesShipmentListItem): void {
+  void router.push({ name: 'salesDetail', params: { id: record.id } })
 }
 
 async function onClose(): Promise<void> {
@@ -243,8 +254,19 @@ function confirmVoid(): void {
           :data="shipments"
           :pagination="false"
         >
+          <template #shipmentNo="{ record }">
+            <a-link
+              :href="shipmentHref(record as SalesShipmentListItem)"
+              @click.prevent="onShipmentDetail(record as SalesShipmentListItem)"
+            >
+              {{ (record as SalesShipmentListItem).shipmentNo }}
+            </a-link>
+          </template>
           <template #orderDate="{ record }">
             {{ formatDateTime((record as SalesShipmentListItem).orderDate).slice(0, 10) }}
+          </template>
+          <template #totalQuantity="{ record }">
+            {{ (record as SalesShipmentListItem).totalQuantity }}
           </template>
           <template #status="{ record }">
             <a-tag :color="(record as SalesShipmentListItem).status === 1 ? 'green' : 'red'">

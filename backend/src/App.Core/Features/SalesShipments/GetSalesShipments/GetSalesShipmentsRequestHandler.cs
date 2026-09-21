@@ -31,7 +31,7 @@ public sealed class GetSalesShipmentsRequestHandler : IRequestHandler<GetSalesSh
 
         return new PagedResult<SalesShipmentListItemDto>
         {
-            Items = items.Select(SalesShipmentsDtoMapper.ToSalesShipmentListItemDto).ToList(),
+            Items = items.Select(x => SalesShipmentsDtoMapper.ToSalesShipmentListItemDto(x.Order, x.TotalQuantity)).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,

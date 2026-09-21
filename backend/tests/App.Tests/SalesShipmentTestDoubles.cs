@@ -29,12 +29,23 @@ internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
         _items[order.Id] = items.ToList();
     }
 
-    public Task<(IReadOnlyList<SalesShipment> Items, int Total)> GetPagedAsync(
+    /// <summary>已执行的分页查询入参</summary>
+    public List<(string? Keyword, Guid? PartnerId, Guid? OrderId, DateTimeOffset? Start, DateTimeOffset? End,
+        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = new();
+
+    /// <summary>分页查询返回的行（由用例预置）</summary>
+    public IReadOnlyList<(SalesShipment Order, int TotalQuantity)> PagedItems { get; set; }
+        = Array.Empty<(SalesShipment, int)>();
+
+    /// <summary>分页查询返回的总数（由用例预置）</summary>
+    public int PagedTotal { get; set; }
+
+    public Task<(IReadOnlyList<(SalesShipment Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, Guid? orderId, DateTimeOffset? start, DateTimeOffset? end,
         SettlementState? settlementState, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<SalesShipment> empty = Array.Empty<SalesShipment>();
-        return Task.FromResult((empty, 0));
+        PagedQueries.Add((keyword, partnerId, orderId, start, end, settlementState, page, pageSize));
+        return Task.FromResult((PagedItems, PagedTotal));
     }
 
     public Task<(SalesShipment? Order, IReadOnlyList<SalesShipmentItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)

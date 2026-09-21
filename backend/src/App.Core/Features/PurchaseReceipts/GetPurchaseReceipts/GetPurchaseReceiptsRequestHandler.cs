@@ -31,7 +31,7 @@ public sealed class GetPurchaseReceiptsRequestHandler : IRequestHandler<GetPurch
 
         return new PagedResult<PurchaseReceiptListItemDto>
         {
-            Items = items.Select(PurchaseReceiptsDtoMapper.ToPurchaseReceiptListItemDto).ToList(),
+            Items = items.Select(x => PurchaseReceiptsDtoMapper.ToPurchaseReceiptListItemDto(x.Order, x.TotalQuantity)).ToList(),
             Total = total,
             Page = request.Page,
             PageSize = request.PageSize,

@@ -27,7 +27,7 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<SalesShipment> Items, int Total)> GetPagedAsync(
+    public async Task<(IReadOnlyList<(SalesShipment Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         Guid? orderId,
@@ -91,7 +91,20 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return (items, total);
+        // 数量合计：本页单据的明细数量按单据聚合（单次查询，避免逐单往返；订单详情「关联出库单」跟单用）
+        var ids = items.Select(o => o.Id).ToList();
+        var quantities = await _dbContext.SalesShipmentItems.AsNoTracking()
+            .Where(i => ids.Contains(i.ShipmentId))
+            .GroupBy(i => i.ShipmentId)
+            .Select(g => new { ShipmentId = g.Key, Quantity = g.Sum(i => i.Quantity) })
+            .ToListAsync(cancellationToken);
+        var quantityMap = quantities.ToDictionary(x => x.ShipmentId, x => x.Quantity);
+
+        var rows = items
+            .Select(o => (Order: o, TotalQuantity: quantityMap.TryGetValue(o.Id, out var quantity) ? quantity : 0))
+            .ToList();
+
+        return (rows, total);
     }
 
     /// <inheritdoc />

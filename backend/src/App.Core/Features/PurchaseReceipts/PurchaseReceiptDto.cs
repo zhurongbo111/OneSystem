@@ -50,6 +50,9 @@ public sealed class PurchaseReceiptDetailDto
     /// <summary>创建时间</summary>
     public required DateTimeOffset CreatedAt { get; init; }
 
+    /// <summary>数量合计（= Σ 明细数量）</summary>
+    public required int TotalQuantity { get; init; }
+
     /// <summary>明细行（按插入顺序）</summary>
     public required IReadOnlyList<PurchaseReceiptItemDto> Items { get; init; }
 }
@@ -117,6 +120,9 @@ public sealed class PurchaseReceiptListItemDto
 
     /// <summary>结算状态（0 未结算 / 1 部分结算 / 2 已结算，推导值）</summary>
     public required int SettlementState { get; init; }
+
+    /// <summary>数量合计（= Σ 明细数量；订单详情「关联入库单」跟单展示）</summary>
+    public required int TotalQuantity { get; init; }
 
     /// <summary>单据状态（0 已作废 / 1 正常）</summary>
     public required int Status { get; init; }

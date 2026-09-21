@@ -21,6 +21,8 @@ export interface PurchaseReceiptListItem {
   settledAmount: number
   unsettledAmount: number
   settlementState: SettlementState
+  /** 数量合计（= Σ 明细数量；订单详情「关联入库单」跟单展示） */
+  totalQuantity: number
   status: OrderStatus
   createdAt: string
 }

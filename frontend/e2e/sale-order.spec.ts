@@ -158,8 +158,8 @@ async function createSalesOrder(page: Page, customerName: string, productCode: s
   return (await page.locator('.detail-desc').getByText(/^SO\d{12}$/).first().innerText()).trim()
 }
 
-/** 在销售订单详情页点「去出库」→ 带出订单明细（关联模式）→ 按给定数量提交 */
-async function shipFromOrder(page: Page, quantity: number): Promise<void> {
+/** 在销售订单详情页点「去出库」→ 带出订单明细（关联模式）→ 按给定数量提交，返回出库单号 */
+async function shipFromOrder(page: Page, quantity: number): Promise<string> {
   await page.getByRole('button', { name: '去出库' }).click()
   await expect(page).toHaveURL(/\/sales\/new\?orderId=/)
 
@@ -174,6 +174,7 @@ async function shipFromOrder(page: Page, quantity: number): Promise<void> {
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expectMessage(page, '销售单已创建')
   await expect(page).toHaveURL(/\/sales\/detail\//)
+  return (await page.locator('.detail-desc').getByText(/^GI\d{12}$/).first().innerText()).trim()
 }
 
 /** 销售订单列表按单号搜索并返回目标行 */
@@ -218,7 +219,11 @@ test.describe('销售订单（集成）', () => {
     await expect(page.getByText('待发货', { exact: true }).first()).toBeVisible()
 
     // 部分出库 4
-    await shipFromOrder(page, 4)
+    const firstShipmentNo = await shipFromOrder(page, 4)
+
+    // 出库单详情「关联订单」为超链接 → 可跳回订单详情
+    await page.locator('.detail-desc').getByRole('link', { name: orderNo }).click()
+    await expect(page).toHaveURL(/\/sales-orders\/detail\//)
 
     await goSalesOrders(page)
     const row = await findOrderRow(page, orderNo)
@@ -227,12 +232,23 @@ test.describe('销售订单（集成）', () => {
 
     // 出库剩余 6 → 已完成
     await row.getByRole('button', { name: '详情' }).click()
-    await shipFromOrder(page, 6)
+    const secondShipmentNo = await shipFromOrder(page, 6)
 
     await goSalesOrders(page)
     const row2 = await findOrderRow(page, orderNo)
     await expect(row2.getByText('已完成', { exact: true })).toBeVisible()
     await expect(unfulfilledOf(row2)).toHaveText('0')
+
+    // 关联出库单：数量合计（4 / 6）+ 单号超链接跳出库单详情
+    await row2.getByRole('button', { name: '详情' }).click()
+    await expect(page).toHaveURL(/\/sales-orders\/detail\//)
+    const linkedFirst = page.locator('tbody tr').filter({ hasText: firstShipmentNo }).first()
+    const linkedSecond = page.locator('tbody tr').filter({ hasText: secondShipmentNo }).first()
+    await expect(linkedFirst.locator('td').nth(2)).toHaveText('4')
+    await expect(linkedSecond.locator('td').nth(2)).toHaveText('6')
+    await linkedFirst.getByRole('link', { name: firstShipmentNo }).click()
+    await expect(page).toHaveURL(/\/sales\/detail\//)
+    await expect(page.locator('.detail-desc').getByText(firstShipmentNo)).toBeVisible()
 
     // 出库单列表可见关联订单号
     await goSales(page)

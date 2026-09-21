@@ -150,7 +150,7 @@ internal sealed class RecordingPurchaseReceiptRepository : IPurchaseReceiptRepos
     public int ItemsCallCount { get; private set; }
 
     /// <inheritdoc />
-    public Task<(IReadOnlyList<PurchaseReceipt> Items, int Total)> GetPagedAsync(
+    public Task<(IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         Guid? orderId,
@@ -162,7 +162,11 @@ internal sealed class RecordingPurchaseReceiptRepository : IPurchaseReceiptRepos
         CancellationToken cancellationToken = default)
     {
         LastPagedArgs = (page, pageSize);
-        return Task.FromResult((Orders, Orders.Count));
+        // 与真实仓储同口径：每行附带明细数量合计
+        IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> rows = Orders
+            .Select(o => (Order: o, TotalQuantity: Items.Where(i => i.ReceiptId == o.Id).Sum(i => i.Quantity)))
+            .ToList();
+        return Task.FromResult((rows, Orders.Count));
     }
 
     /// <inheritdoc />

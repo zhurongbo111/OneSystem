@@ -24,10 +24,11 @@ const itemColumns: TableColumnData[] = [
   { title: '小计', slotName: 'subtotal', width: 120, align: 'right' },
 ]
 
-/** 关联入库单列表列（按 orderId 查入库单，跟单用） */
+/** 关联入库单列表列（按 orderId 查入库单，跟单用；单号为超链接 → 入库单详情） */
 const receiptColumns: TableColumnData[] = [
-  { title: '单号', dataIndex: 'receiptNo', width: 160 },
+  { title: '单号', slotName: 'receiptNo', width: 180 },
   { title: '单据日期', slotName: 'orderDate', width: 120 },
+  { title: '数量合计', slotName: 'totalQuantity', width: 100, align: 'right' },
   { title: '状态', slotName: 'status', width: 100, align: 'center' },
 ]
 
@@ -88,6 +89,16 @@ function onEdit(): void {
 /** 去入库：跳转采购入库开单页并预置关联订单（同步路由跳转不置 loading） */
 function onReceive(): void {
   void router.push({ name: 'purchaseNew', query: { orderId: route.params.id as string } })
+}
+
+/** 关联入库单详情路径（单号超链接 href；实际跳转走 router.push，避免整页刷新） */
+function receiptHref(record: PurchaseReceiptListItem): string {
+  return router.resolve({ name: 'purchaseDetail', params: { id: record.id } }).href
+}
+
+/** 查看关联入库单详情：逐商品数量在入库单详情查看（同步路由跳转不置 loading） */
+function onReceiptDetail(record: PurchaseReceiptListItem): void {
+  void router.push({ name: 'purchaseDetail', params: { id: record.id } })
 }
 
 /** 关闭订单：剩余不再收货 */
@@ -247,8 +258,19 @@ function confirmVoid(): void {
           :data="receipts"
           :pagination="false"
         >
+          <template #receiptNo="{ record }">
+            <a-link
+              :href="receiptHref(record as PurchaseReceiptListItem)"
+              @click.prevent="onReceiptDetail(record as PurchaseReceiptListItem)"
+            >
+              {{ (record as PurchaseReceiptListItem).receiptNo }}
+            </a-link>
+          </template>
           <template #orderDate="{ record }">
             {{ formatDateTime((record as PurchaseReceiptListItem).orderDate).slice(0, 10) }}
+          </template>
+          <template #totalQuantity="{ record }">
+            {{ (record as PurchaseReceiptListItem).totalQuantity }}
           </template>
           <template #status="{ record }">
             <a-tag :color="(record as PurchaseReceiptListItem).status === 1 ? 'green' : 'red'">
