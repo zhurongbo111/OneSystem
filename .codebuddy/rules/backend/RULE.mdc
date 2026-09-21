@@ -11,9 +11,7 @@ enabled: true
 
 ## 1. 技术栈
 
-- .NET 8 + ASP.NET Core Web API
-- EF Core（Npgsql 提供程序）+ PostgreSQL
-- FluentValidation（格式校验，规则与用例同目录）
+.NET 8 + ASP.NET Core Web API + EF Core（Npgsql / PostgreSQL）+ FluentValidation（校验器与用例同目录）。
 
 ## 2. 编码约定
 
@@ -28,17 +26,13 @@ enabled: true
 
 ## 3. 项目结构
 
-`backend/` 分 `src/App.Api`（Web 层：Controller / 中间件 / 认证 / 全局异常 / 统一响应）、`src/App.Core`（业务核心：Features 用例、Abstractions、Entities、Errors、Mediation）、`src/App.Infrastructure`（数据访问：DbContext / 仓储实现 / UnitOfWork）与 `tests/App.Tests`（xUnit）；目录与文件完整清单以 `.codebuddy/CONTEXT.md` §2 为准（本文件不重复，避免两处维护漂移）。
+`backend/` 分 `src/App.Api` / `src/App.Core` / `src/App.Infrastructure` 与 `tests/App.Tests`（xUnit）；目录、文件位置与端内参照实现见 `.codebuddy/CONTEXT.md` §2（本文件不重复，避免两处维护漂移）。
 
 - 依赖方向单向（禁止反向依赖）：`App.Api → App.Core`、`App.Api → App.Infrastructure`、`App.Infrastructure → App.Core`。
 
 ### 3.1 实现前最小读取集（强制）
 
-> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；本节只列**后端侧**的端内固定集合，同样**禁止为"了解项目"做全仓探索或目录级遍历**。
-
-1. **脚手架基准范例（首次进入后端开发读一次，之后按需回看）**：四件套 → `Features/Auth/Login/`；空请求用例形态 → `Features/Users/GetCurrentUser/`；分发与全局校验 → `Core/Mediation/Mediator.cs`；本次要改的 Controller → `App.Api/Controllers/<X>Controller.cs`（完整清单见 `.codebuddy/CONTEXT.md` §2「基准参照」）。
-2. **本功能要碰的既有代码**：按 `.codebuddy/CONTEXT.md` §2「改动面 → 必读 / 必改文件」对照表选读（改字段 / 改列索引 / 新增查询 / 测试支撑等），**不预先全读**；组织新用例照同 `Feature` 目录下已有的 `<Action>/` 一比一进行。
-3. **禁止**：遍历 `Features/` 全部用例目录；读与本功能无关的 Feature；为"了解架构"通读 `Migrations/`（改表结构时只看最近 1~2 个迁移的命名与写法）。
+> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；**端内参照实现（四件套 / 无参用例 / 分发与全局校验）与「改动面 → 必读 / 必改文件」对照表见 `.codebuddy/CONTEXT.md` §2**。禁止为"了解项目"做全仓探索或目录级遍历、禁止读与本功能无关的 Feature、禁止为"了解架构"通读 `Migrations/`（改表结构只看最近 1~2 个迁移的命名与写法）。
 
 ## 4. 分层架构（每 API 一个用例）
 
@@ -48,14 +42,11 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ### 4.1 用例结构
 
-**一个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下的一组文件**（`<Action>` 为用例名，如 `Login`、`CreateUser`），命名空间 `App.Core.Features.<Feature>.<Action>`，四件套：
+**一个 API 对应 `App.Core/Features/<Feature>/<Action>/` 下的一组文件**（`<Action>` 为用例名，如 `Login`），命名空间 `App.Core.Features.<Feature>.<Action>`，四件套：`<Action>Request.cs`（入参，与前端参数 camelCase 一一对应；属性 `init`、字符串默认 `string.Empty`，实现 `IRequest<TResponse>` 声明响应类型）/ `<Action>RequestValidator.cs`（FluentValidation 格式校验：必填 / 长度 / 格式 / 枚举 / 范围，长度区间正则按 §5.3 取常量，**禁止访问仓储 / 查库**——存在性、唯一性、状态流转等约束放 Handler）/ `<Action>RequestHandler.cs`（业务逻辑 + 查库约束 + 事务，**本用例唯一编排点**，实现 `IRequestHandler<TRequest, TResponse>`，构造只注入本用例所需依赖）/ `<Action>Response.cs`（出参，即 `data` 模型；跨用例复用者放 `Features/<Feature>/` 下，不放进用例目录）。
 
-- **`<Action>Request.cs`**：入参模型，与前端请求参数 camelCase 一一对应；属性用 `init`，字符串默认 `string.Empty`；实现标记接口 `IRequest<TResponse>`（声明响应类型，供中介分发确定类型）。
-- **`<Action>RequestValidator.cs`**：基于 FluentValidation 的格式校验（必填 / 长度 / 格式 / 枚举 / 范围），**禁止访问仓储 / 查库**——存在性、唯一性、状态流转等约束放 Handler；长度 / 区间 / 正则按 §5.3 取字段约束常量，禁止硬编码。
-- **`<Action>RequestHandler.cs`**：业务逻辑 + 查库约束 + 事务，**本用例唯一编排点**；实现 `IRequestHandler<TRequest, TResponse>`（唯一公共方法 `Task<TResponse> HandleAsync(TRequest, CancellationToken)`），构造只注入本用例所需依赖。**不设 Service 层**：禁止新增参与业务编排的 `*Service`、不得引入聚合型 Handler，通用无状态技术组件按职责命名（如 `Auth/TokenService`）。`Request → 实体`、`实体 → Response` 映射在此完成，禁止暴露实体到 API；业务失败统一抛 `BusinessException`，错误码用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2），功能专属业务码先在功能 `design.md` 定义。
-- **`<Action>Response.cs`**：出参模型（即 `data` 的模型）；跨用例复用的出参模型放 `Features/<Feature>/` 下，不放进用例目录。
-
-基准范例：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（空 `Request` 占位 + 复用共享出参 `UserDto`，不定义 Validator，纯内存用例同步计算后 `return Task.FromResult(result)`）；新增功能一比一照此组织。单测可直接测 Handler，也可经 `IMediator` 验证分发。
+- **Handler 判据（强制）**：`Request → 实体`、`实体 → Response` 映射在 Handler 内完成，禁止暴露实体到 API；业务失败统一抛 `BusinessException`，错误码用 `Errors/ErrorCode` 常量（全局码见 `AGENTS.md` §4.2），功能专属业务码先在功能 `design.md` 定义。**不设 Service 层**：禁止新增参与业务编排的 `*Service`、不得引入聚合型 Handler，通用无状态技术组件按职责命名（如 `Auth/TokenService`）。
+- **不接触 HTTP / 当前用户（强制）**：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；当前用户经 `Abstractions/ICurrentUser` 获取（实现由 `App.Api` 基于 ClaimsPrincipal 提供），id 解析统一用 `ICurrentUserExtensions.UserId()`，禁止内联 `Guid.TryParse`；审计字段（CreatedBy / UpdatedBy）由 Handler 随实体 / `operatorId` 参数传入，仓储不感知当前用户。
+- 基准范例 `Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（空 `Request` 占位 + 复用共享出参，不定义 Validator），新增功能一比一照此组织；单测可直接测 Handler，也可经 `IMediator` 验证分发。
 
 **用例不接触 HTTP / 当前用户（强制）**：禁止在 Core 注入 `HttpContext` / 使用 `ControllerBase`；当前用户经 `Abstractions/ICurrentUser` 获取（实现由 `App.Api` 基于 ClaimsPrincipal 提供），id 解析统一用 `ICurrentUserExtensions.UserId()`，禁止内联 `Guid.TryParse`；审计字段（CreatedBy / UpdatedBy）由 Handler 随实体 / `operatorId` 参数传入，仓储不感知当前用户。
 
@@ -66,7 +57,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - **ASP.NET Core 默认校验只保留绑定层（强制）**：`Program` 必须 `ConfigureApiBehaviorOptions(o => o.SuppressModelStateInvalidFilter = true)` 关闭 `[ApiController]` 自动 400（RFC problem-details 违反 `AGENTS.md` §4.1，前端表现为「网络异常」）；同时必须全局注册 `Middleware/ModelStateValidationFilter`——关闭后动作方法仍会带非法模型执行（`[FromBody]` 请求对象为 null），由该过滤器在动作执行前抛 `BusinessException(ErrorCode.Validation, "参数错误")` 短路，原始错误只入日志（含字段与 traceId）不回传。**判据**：任何请求格式错误（反序列化失败、类型不匹配、路由 / Query 参数绑定失败）必须返回统一响应 `40000`，禁止出现 problem-details；禁止为承接绑定校验而在 Controller 或 Handler 内加 `ModelState` / DataAnnotations 检查。
 - **路由约定（强制）**：统一 `/api/<资源复数>`（`AGENTS.md` §4.4）；动作用 HTTP 动词 + 资源 / 子资源路径（如 `PUT /api/users/{id}/status`），用例名不进路径，不在路径中暴露实现细节。
 - **分页入参（强制）**：`page` ≥ 1、`pageSize` 默认 20、上限 100（`AGENTS.md` §4.3）；Validator 用 `InclusiveBetween` 等表达边界，越界由全局校验统一返回 `40000`。
-- **路由参数不得从请求体绑定（强制）**：`[FromBody]` 直接绑定用例 Request 时（如 `Update<X>Request` 兼作中介请求），取自路由的 `Id` 必须是**可缺省**成员。标 `required` 分两层后果：① **System.Text.Json**（.NET 7+ 按 `RequiredMemberAttribute` 校验，与 ASP.NET Core 无关）在请求体缺 `id` 时抛 `JsonException`——脱离 Web 单纯 `JsonSerializer.Deserialize` 同样失败；② **ASP.NET Core** 的 `SystemTextJsonInputFormatter` 捕获该异常并转为 ModelState 错误（**不冒泡**，故 `GlobalExceptionMiddleware` 拿不到、无统一响应），再由 `[ApiController]` 自动注册的 ModelState 过滤器短路返回 RFC problem-details 400，前端表现为「网络异常」，动作方法根本不执行。Controller 以路由值覆盖 `Id`，并保留 Validator 的 `NotEmpty` 兜底。
+- **路由参数不得从请求体绑定（强制）**：`[FromBody]` 直接绑定用例 Request 时（如 `Update<X>Request` 兼作中介请求），取自路由的 `Id` 必须是**可缺省**成员。标 `required` 后请求体缺 `id` 会被 `[ApiController]` 的 ModelState 过滤器短路成 RFC problem-details 400（前端表现为「网络异常」，动作方法不执行、全局异常中间件拿不到）。Controller 以路由值覆盖 `Id`，并保留 Validator 的 `NotEmpty` 兜底。
 
 ### 4.3 DTO 与读模型
 
@@ -86,7 +77,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ### 4.5 依赖注入注册
 
-- `App.Core/DependencyInjection.AddCore` 显式注册无状态技术组件、`IMediator → Mediator`（一次）、各用例的接口映射（`AddScoped<IRequestHandler<TRequest, TResponse>, <Action>RequestHandler>()`）与 `IValidator<Request>`；`App.Infrastructure/DependencyInjection.AddInfrastructure` 注册 `IUnitOfWork` 与仓储实现（Scoped）。新增用例必须同步注册，禁止反射隐式扫描（`Send` 时按请求类型解析单个已注册实现不算扫描），禁止在 Controller 手动 `new` 依赖。
+- `App.Core/DependencyInjection.AddCore` 显式注册无状态技术组件、`IMediator → Mediator`（一次）、各用例的 `IRequestHandler<TRequest, TResponse>` 与 `IValidator<Request>` 接口映射；`App.Infrastructure/DependencyInjection.AddInfrastructure` 注册 `IUnitOfWork` 与仓储实现。**新增用例必须同步注册**；禁止反射隐式扫描（`Send` 时按请求类型解析单个已注册实现不算扫描），禁止在 Controller 手动 `new` 依赖。
 
 ## 5. 数据库规范（PostgreSQL + EF Core）
 
@@ -98,7 +89,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ### 5.2 时间字段一律 `DateTimeOffset`（强制）
 
-- **实体 / DTO（Request / Response）/ 仓储方法签名**中的所有时间字段统一用 `DateTimeOffset`（可空用 `DateTimeOffset?`），**禁止 `DateTime`**：`DateTime.Kind` 在 JSON 序列化与跨层传递中会丢失，导致 UTC 与本地时间混用；`DateTimeOffset` 自带偏移量，语义明确。
+- **实体 / DTO（Request / Response）/ 仓储方法签名**中的所有时间字段统一用 `DateTimeOffset`（可空用 `DateTimeOffset?`），**禁止 `DateTime`**（`DateTime.Kind` 在 JSON 序列化与跨层传递中会丢失，导致 UTC 与本地时间混用）。
 - 取当前时间统一 `DateTimeOffset.UtcNow`；禁止 `DateTime.Now`，禁止直接调用 `DateTime.UtcNow`（确需 `DateTime` 值时用 `.UtcDateTime` 转换，不让裸 `DateTime` 进入业务层）。
 - Npgsql 将其映射为 `timestamptz`，库内按 UTC 存储，接口出入参保留偏移量；类型改造若不影响 DDL，允许生成 Up/Down 为空的迁移，不要为"迁移有内容"去改列类型。
 - 时间范围筛选入参为 `DateTimeOffset`（前端传 UTC ISO 串），偏移量显式，后端**不做时区推断 / 不做 UTC 归一化**；闭区间比较直接依赖 `timestamptz` 语义。
@@ -123,8 +114,8 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ## 7. 日志与可观测性
 
-- 日志集成 NLog 并对接默认 `ILogger<T>`（Microsoft.Extensions.Logging）；业务代码只注入使用 `ILogger<T>`，禁止直接调用 NLog。配置放 `App.Api`，输出控制台 + 滚动文件，布局含 traceId（要求见 `AGENTS.md` §5）。
-- 日志级别：**dev / prod 均 Info 起**（prod 同样保留业务日志），框架日志（`Microsoft.*` / `System.*`）单独以 Warn 起压噪（见 `nlog.config`）——不靠整体降到 Warning 减少噪音，否则会连带丢弃 Info 级业务日志。
+- 日志集成 NLog 并对接默认 `ILogger<T>`；业务代码只注入 `ILogger<T>`，禁止直接调用 NLog。配置放 `App.Api`，输出控制台 + 滚动文件，布局含 traceId（要求见 `AGENTS.md` §5）。
+- 日志级别：**dev / prod 均 Info 起**，框架日志（`Microsoft.*` / `System.*`）单独以 Warn 起压噪（见 `nlog.config`）——不靠整体降级减少噪音，否则会连带丢弃 Info 级业务日志。
 - 可观测性集成 OpenTelemetry（Tracing + Metrics）：在 `App.Api` 引入 SDK，自动埋点 ASP.NET Core 与 EF Core；导出目标按环境配置（dev 可不导出，prod 导出至 collector）。
 
 ## 8. 环境配置

@@ -12,32 +12,15 @@ enabled: true
 
 ## 1. 技术栈
 
-- Vue 3 + TypeScript（`<script setup lang="ts">` 组合式 API，禁止 Options API）
-- Arco Design Vue（UI 组件库）
-- Vite（构建）、Pinia（状态）、vue-router（路由）、Axios（HTTP）
+Vue 3 + TypeScript（`<script setup lang="ts">` 组合式 API，**禁止 Options API**）+ Arco Design Vue + Vite + Pinia + vue-router + Axios。
 
 ## 2. 目录结构
 
-```
-frontend/
-├── index.html / vite.config.ts / package.json / eslint.config.js
-├── playwright.config.ts   # e2e 配置（不自动拉起服务，见 §10 与 AGENTS.md §6）
-├── e2e/                   # Playwright e2e 用例（*.spec.ts + helpers/）
-└── src/                   # api/ assets/ components/ composables/ router/ stores/ utils/ views/
-```
-
-- 目录职责：`api/` 接口请求层（统一解包、类型定义）、`components/` 跨功能域复用组件、`composables/` 组合式函数、`utils/` 无副作用纯函数（按主题一个文件，如 `datetime.ts`）、`views/` 页面级组件（按功能域分目录，见 §4.1）。
-- 目录与文件完整清单以 `.codebuddy/CONTEXT.md` §3 为准（本文件不重复，避免两处维护漂移）。
+目录职责与文件位置见 `.codebuddy/CONTEXT.md` §3（本文件不重复，避免两处维护漂移）；`api/` 为接口请求层（统一解包、类型定义），`utils/` 只放无副作用纯函数（按主题一个文件）；`playwright.config.ts` **不自动拉起服务**（见 §10 与 `AGENTS.md` §6）。
 
 ### 2.1 实现前最小读取集（强制）
 
-> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；本节只列**前端侧**的端内固定集合，同样**禁止为"了解项目"做目录级遍历或全仓搜索**。
-
-1. **只读本次要改动的功能域目录**（`views/<Domain>/`），不读其他域；同域既有同类文件即参照：列表页 → `<Entities>View.vue`，表单 → 同域 `*FormDrawer.vue` / `*FormPage.vue`，详情 → `*DetailView.vue`。
-2. **跨域通用参照（按需读，不预读）**：参照实现与关键文件位置见 `.codebuddy/CONTEXT.md` §3「基准参照」；接口层写法读 `api/request.ts`（统一解包与 40100 处置）+ 本次要用的 `api/<entity>.ts`；仅新增页面 / 菜单项时才读 `router/index.ts`、`components/AppLayout.vue`。
-3. **对应规格（按改动类型选读，不全部读）**：本规则的 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 均为判据 + 指针，正文在各规格 §0；**「改动类型 → 规格 §0」对照表见 `.codebuddy/CONTEXT.md` §6**（新增交互约定只更新该表，本规则不动）。
-4. **e2e**：只读同域 `e2e/<域>.spec.ts`，必要时读 `e2e/helpers/`；不通读全部用例。
-5. **禁止**：遍历 `views/` / `components/` 全目录；读与本功能无关的功能域文件；为"参考风格"通读 `src/` 全量文件。
+> 通用四项（`CONTEXT.md` / 规格 / 本规则 / 本次目标文件）见 `AGENTS.md` §2.4；**端内参照实现见 `.codebuddy/CONTEXT.md` §3「基准参照」，「改动类型 → 规格 §0」对照表见 §6**（本规则 §4.5 / §4.6 / §4.7 / §5 / §5.2 / §5.5 均为判据 + 指针，正文在各规格 §0）。只读本次要改动的功能域目录（`views/<Domain>/`）与同域 `e2e/<域>.spec.ts`，同域既有同类文件即参照（列表页 → `<Entities>View.vue`，表单 → `*FormDrawer.vue` / `*FormPage.vue`，详情 → `*DetailView.vue`）；禁止遍历 `views/` / `components/` 全目录、读无关功能域、为"参考风格"通读 `src/`。
 
 ## 3. 接口层
 
@@ -56,12 +39,9 @@ frontend/
 
 ### 4.1 页面命名与目录归属（强制）
 
-- `src/views/` 按**功能域**分目录，一个域一个 `<Domain>/`；域的划分须与后端 `Features/<Feature>`、路由前缀、侧边菜单项、e2e spec **四者对齐**。后端 / 规格已独立的域，前端不得挂在别的域目录下。
-- 「对齐」指**语义上是同一功能域**，不要求字面同名：目录用单数域名词、后端用复数资源名、路由用复数资源路径、e2e 用 kebab-case 域名，属正常对应。
-- 域目录内文件一律**平铺**，不再套 `components/` 子目录；被多个页面共用的私有组件同样平铺在该域目录内，只有跨功能域复用的通用组件才进 `src/components/`。
-- 命名单复数：列表页用**复数域名**，表单页与详情页用**单数实体名**，与 `src/api/<entity>.ts` 一致；集合概念名词（`Inventory`）保留单数。
-- 无功能域归属的独立页平铺在 `views/` 根；演示 / 示例页统一收进 `views/Showcase/`，不与业务页混层。
-- **现有域目录与各页面文件名（命名对照实例）见 `.codebuddy/CONTEXT.md` §3**。
+- `src/views/` 按**功能域**分目录，一个域一个 `<Domain>/`；域的划分须与后端 `Features/<Feature>`、路由前缀、侧边菜单项、e2e spec **四者对齐**——后端 / 规格已独立的域，前端不得挂在别的域目录下。「对齐」指**语义同域、不要求字面同名**（目录用单数域名词、后端用复数资源名、路由用复数资源路径、e2e 用 kebab-case 域名）。
+- 域目录内文件一律**平铺**、不套 `components/` 子目录：域内共享的私有组件同样平铺，只有跨功能域复用的通用组件才进 `src/components/`；演示 / 示例页统一收进 `views/Showcase/`，不与业务页混层；无功能域归属的独立页平铺在 `views/` 根。
+- 命名单复数（列表页用复数域名、表单 / 详情页用单数实体名，与 `src/api/<entity>.ts` 一致；集合概念名词如 `Inventory` 保留单数）与命名对照实例见 `.codebuddy/CONTEXT.md` §3。
 
 ### 4.5 组合式 API 分区书写规范（强制）
 
@@ -114,7 +94,6 @@ frontend/
 
 > **正文（页面布局、表格配置、列宽策略、交互模式）见 `specs/006-list-showcase/design.md` §0**；本节只留判据。参照实现：`src/views/Showcase/ListShowcaseView.vue`。
 
-- 所有表格类列表页以参照实现为准：新增列表页先复制其结构与交互模式，再替换业务字段。
 - 页面头**仅放标题**，不放任何创建按钮；操作按钮统一并入表格卡片上方的工具条（筛选行 + 操作行；主操作靠左，数据 / 视图操作靠右，组间竖 `a-divider`）。
 - 表格必设 `row-key`；分页用 `showTotal` + `showPageSize`（`pageSizeOptions` 取值见 §0）；枚举字段用 `a-tag` 着色展示。
 - **每列必设 `width`**（不留无宽度弹性列）；长文本列 `ellipsis` + `tooltip`；表格横向滚动按各列 `width` 求和，不写死。操作列宽度按 §5.2。
@@ -145,15 +124,11 @@ frontend/
 
 ## 6. 状态与路由
 
-- 状态管理使用 Pinia，按功能拆分 store（`stores/<feature>.ts`）。
-- 路由使用 `vue-router`，路由按功能拆分并在 `router/` 统一注册；路由命名与功能域一致。
-- 路由级代码分割使用 `() => import(...)` 懒加载。
+状态用 Pinia（按功能拆分 `stores/<feature>.ts`）、路由用 `vue-router`（在 `router/` 统一注册，命名与功能域一致）、路由级代码分割用 `() => import(...)` 懒加载；文件位置见 `.codebuddy/CONTEXT.md` §3。
 
 ## 7. 编码约定
 
-- 2 空格缩进；格式由 ESLint（`npm run lint`）统一约束，当前**不并行启用 Prettier**（依赖虽在清单中，但无配置与脚本；如要启用须同时补 `.prettierrc`、`format` 脚本与 `eslint-config-prettier`）。
-- 变量 / 函数 camelCase，类型 / 接口 / 组件 PascalCase，常量 UPPER_SNAKE_CASE。
-- 禁止 `any`；无法确定类型时使用 `unknown` 收窄。
+- 格式与命名由 ESLint（`npm run lint`）统一约束：2 空格缩进、变量 / 函数 camelCase、类型 / 接口 / 组件 PascalCase、常量 UPPER_SNAKE_CASE、禁 `any`（类型不确定用 `unknown` 收窄）；当前**不并行启用 Prettier**（无配置与脚本；启用须同时补 `.prettierrc`、`format` 脚本与 `eslint-config-prettier`）。
 - 异步逻辑用 `async/await`，必须处理失败分支（配合接口层统一错误提示）。
 - `utils/` 只放无副作用的纯函数（按主题一个文件，如 `datetime.ts`），不放组件状态、请求与业务编排。
 
@@ -173,9 +148,9 @@ frontend/
 
 - e2e 测试策略与强制门槛见 `AGENTS.md` §6；此处只列本仓库的运行细则。
 - 用例与配置：`frontend/e2e/*.spec.ts` + `playwright.config.ts`。
-- 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名 kebab-case 且与 `specs/<序号>-<feature>/`、路由同域（§4.1）；**新增一律按此命名**。例外仅限本约定落地前已存在的文件，清单见 `.codebuddy/CONTEXT.md` §3，**不得新增例外**。
-- 运行：需先起后端 dev（5080）与前端 dev（5173），再跑 `npm run test:e2e`；命令与端口见 `.codebuddy/CONTEXT.md` §4（不在本文件重复）。冷启动预热由 `e2e/global-setup.ts` 自动完成（先登录一次），无需手工预热。
-- **数据隔离（推荐）**：跑全量时用 `npm run e2e:run`——一条命令完成「清理历史残留库 → 起后端（连本轮 `app_e2e_<时间戳>` 库）→ 跑用例 → 停后端 → 删库」，每轮数据全新、跑完零残留（编排与失败处理见 `specs/002-frontend-e2e/design.md` §6）。改单个用例调试时仍可用手工流程（自行起服务 + `npm run test:e2e`），此时数据落在开发库上。
+- 命名：用例文件为 `e2e/<功能域>.spec.ts`，域名取**功能语义短名**、kebab-case，与 `specs/<序号>-<feature>/`、路由同域（§4.1）——**不抄 `views/` 目录名、不带 `-management` 后缀**（`PurchaseManagement/` → `purchase.spec.ts`，`InventoryManagement/` → `inventory.spec.ts`）；一个功能域可有多个文件（`purchase.spec.ts` + `purchase-order.spec.ts`）。既有文件已按此收敛，**新增一律按此命名，不得新增例外**。
+- 运行：需先起后端 dev（5080）与前端 dev（5173）再跑 `npm run test:e2e`（命令与端口见 `.codebuddy/CONTEXT.md` §4）；冷启动预热由 `e2e/global-setup.ts` 自动完成，无需手工预热。
+- **数据隔离（推荐）**：跑全量用 `npm run e2e:run`（自动完成「清残留库 → 起后端连本轮 `app_e2e_<时间戳>` 库 → 跑用例 → 停后端 → 删库」，每轮全新、零残留；编排见 `specs/002-frontend-e2e/design.md` §6）；调试单用例仍可手工起服务 + `npm run test:e2e`（此时数据落在开发库）。
 
 ### 10.1 e2e 稳定性（强制）
 
