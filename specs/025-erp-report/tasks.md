@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-21
 ---
 
 # 任务清单：进销存报表（erp-report）
@@ -67,6 +67,16 @@ updated: 2026-09-17
 - [x] 6.4 `specs/019-erp-stock-movement/design.md` §0 加注记：报表按变动类型归类入 / 出（口径在 `025` §0.1）
 - [x] 6.5 `.codebuddy/CONTEXT.md` §2（Reports Feature / 只读仓储 / 读模型）、§3（ReportManagement 域、api 文件）、§6（规格清单分类）同步
 - [x] 6.6 `specs/ROADMAP.md` 状态列更新（`025` → 已实现）
+
+## 七、缺陷修复（库存占比显示）
+
+> 缺陷：库存余额表「库存占比」显示为 `9920%`（>100%）。根因 = 双重 ×100——后端出参已是 0–1 比例，页面又乘 100，而 `@arco-design/web-vue` 2.58 的 `a-progress.percent` 本身就是 0–1（组件内部再 ×100 既画条又生成文本）。
+
+- [x] 7.1 `StockBalanceReportView.vue`：`a-progress` 直接传 0–1 占比，文本改用 `#text` 插槽固定 `xx.xx%`（与导出侧同口径）
+- [x] 7.2 `e2e/report.spec.ts`：库存余额表用例先期初建账造非零库存，再断言占比文本恰为 `100.00%`（占比为 0 时该缺陷不可见）
+- [x] 7.3 `.codebuddy/rules/frontend/RULE.mdc` §4.8 后新增「比例类 props 语义」判据（`a-progress.percent` 为 0–1）
+- [x] 7.4 `cd frontend && npm run type-check` / `npm run lint` 全绿
+- [x] 7.5 `cd frontend && npm run e2e:run` 全量通过 —— 121 通过 / 0 失败
 
 ## 完成定义
 
