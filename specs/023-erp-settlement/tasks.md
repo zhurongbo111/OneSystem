@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 任务清单：收付款与应收应付（erp-settlement）
@@ -93,3 +93,13 @@ updated: 2026-09-20
 - [x] 7.9 验证：`dotnet test`（540 通过）与 `npm run e2e:run`（121 通过）通过
 - [x] 7.10 前端：单据类型文案与详情路由收敛到 `utils/settlement.ts`（`settlementOrderTypeLabel` / `settlementOrderTypeRouteName`）；`SettlementRecords.vue`、`SettlementDetailView.vue`（核销明细）、`ReconciliationView.vue`（未结单据抽屉）的**单号改 `a-link` 超链接**并去掉「操作」列；`PurchaseDetailView` / `SaleDetailView` 的「关联订单」同样改超链接
 - [x] 7.11 E2E：`settlement.spec.ts` / `purchase-order.spec.ts` / `sale-order.spec.ts` 改为断言「单号链接存在 / 点击跳转」，并覆盖关联订单超链接回跳
+
+## 八、变更（2026-09-21）：已核销单据禁止作废
+
+> 需求 / 设计见 `requirement.md` 目标 6 / F7 / 验收标准 9，`design.md` §0 / §1 / §3.2 / §3.6 / §5 / §6。
+
+- [x] 8.1 后端：`App.Core/Errors/ErrorCode.cs` 追加 `40120 OrderSettledCannotVoid`
+- [x] 8.2 后端：四类单据作废用例（`VoidPurchaseReceipt` / `VoidSalesShipment` / `VoidPurchaseReturn` / `VoidSalesReturn`）在「已作废 `40104`」校验后追加「已核销 `40120`」校验（`SettledAmount > 0` 直接拒绝，不开事务）
+- [x] 8.3 后端测试：四类单据各补「已核销 → `40120` 且未开事务 / 未回冲 / 不写流水 / 状态不变」用例；`cd backend && dotnet build` / `dotnet test` 全绿（544 通过）
+- [x] 8.4 E2E：`settlement.spec.ts` 补「销售单收款后作废被拒（提示可见）→ 作废收款单回退 → 再作废成功」；`npm run test:e2e` 全量通过（122 通过）
+- [x] 8.5 规格联动：`specs/015` / `016` / `021` / `022` / `024` 的 `design.md` 加「演进（erp-settlement，已核销禁作废）」注记；`.codebuddy/CONTEXT.md` 错误码同步

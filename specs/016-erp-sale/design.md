@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 设计规格：销售出库（erp-sale）
@@ -10,6 +10,7 @@ updated: 2026-09-20
 > **本规格继承 erp-purchase design §0「单据域共用约定」**：`SalesOrders` / `SalesOrderItems` 与 `PurchaseOrders` / `PurchaseOrderItems` 结构完全同构，实现时照抄 erp-purchase 模板并按 §1 替换规则做三处差异替换；共用枚举（`OrderStatus` / `OrderSettlementStatus`）、常量（`OrderFieldConstraints` + `ProductFieldConstraints` 的 quantity / unitPrice 边界）、单号生成（`GenerateOrderNoAsync`，前缀参数化）、校验结构**均不重复定义**。本规格只定义销售特有差异。
 >
 > **演进（erp-settlement）**：结算已由 `SettlementStatus`（0/1 状态位）升级为 `SettledAmount`（已结算金额）+ 推导状态（未结 / 部分 / 结清）；手工切换端点 `PUT /api/sales-orders/{id}/settlement` 与按钮已移除，结算变化一律由收付款单核销驱动；列表筛选参数 `settlement`（0/1）改为 `settlementState`（0/1/2），列表 / 详情出参 `settlementStatus` 改为 `settledAmount` / `unsettledAmount` / `settlementState`。销售出库单的核销方向为**收款**（我们收客户钱）。现行为准见 `specs/023-erp-settlement/`。
+> **演进（erp-settlement，已核销禁作废）**：出库单被核销（`SettledAmount > 0`）后**禁止作废**（`40120`，须先作废对应收款单回退金额）；作废用例在既有「已作废 `40104`」校验后追加该校验，判据见 `specs/023-erp-settlement/design.md` §0 / §3.6。
 > **演进（erp-order-flow）**：本规格的单据域已随 `specs/024-erp-order-flow/` 重命名——表 / 实体 `SalesOrders` → `SalesShipments`（`SalesOrder` → `SalesShipment`）、主表单号列 `OrderNo` → `ShipmentNo`、明细外键 `OrderId` → `ShipmentId`；接口路径 `/api/sales-orders` → `/api/sales-shipments`；单号前缀 `SO` → `GI`（历史单号已在迁移内改写）。出库单新增可空 `OrderId` / `OrderNo` / `OrderItemId`，用于**可选关联销售订单**并回写订单明细累计已发。订单（前缀 `SO`）与订单端点见 `specs/024-erp-order-flow/`。
 > **演进（erp-order-flow，跟单数量）**：`ISalesShipmentRepository.GetPagedAsync` 返回 `(SalesShipment Order, int TotalQuantity)`（明细数量合计，`024` §3.1）；出库单列表 / 详情出参新增 `totalQuantity`（与采购侧同构）。
 
