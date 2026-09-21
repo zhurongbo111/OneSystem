@@ -131,3 +131,15 @@ updated: 2026-09-21
 - [x] 10.7 默认列调整：「创建时间」移出默认显示（保留列设置可选），与「收付日期」区分业务日期 / 审计时间；E2E 断言默认表头含「单据类型」、不含「创建时间」
 - [x] 10.8 「收付款 / 去收付款」入口显隐（需求 F5 / 设计 §4.4）：新增 `utils/settlement.ts` 的 `canStartSettlement`（单据正常且**未结算**）并接入四类单据**列表 + 详情共 8 处**；E2E 断言「已结算后入口消失 → 作废收付款单回退后入口恢复」及「已结算退货单详情无『去收付款』」
 - [x] 10.9 「作废」按钮前端提前拦截（需求 F7 / 设计 §4.4）：新增 `canVoidOrder`（正常且**未核销**）与 `VOID_SETTLED_HINT`，接入四类单据列表 + 详情共 8 处——已核销时 `disabled` + tooltip 提示处置顺序（后端 `40120` 为兜底）；E2E 把「点了确认才被拒」改为断言按钮 `disabled`，回退后作废链路保持
+
+## 十一、变更（2026-09-21）：核销取被核销单据只查主表（`includeItems` 参数）
+
+> 设计见 `design.md` §3.1.1 / §3.4 / §5 / §6。无功能性变更（接口、错误码、DTO 不变），属取数范围改造。
+> 决策：**不新增仓储方法与接口**——既有 `GetDetailAsync` 增 `bool includeItems = true`，核销校验传 `false`（§5 决策表）。
+
+- [x] 11.1 后端：`IPurchaseReceiptRepository` / `ISalesShipmentRepository` / `IPurchaseReturnRepository` / `ISalesReturnRepository` 的 `GetDetailAsync` 增 `bool includeItems = true`（置于 `CancellationToken` 之前）与 XML 文档注释（`false` 时 `Items` 恒为空集合、调用方不得消费）；EF 实现 `false` 时跳过明细查询（`AsNoTracking` 一次 `FirstOrDefaultAsync`）
+- [x] 11.2 后端：四类单据 16 处既有调用点补命名参数 `cancellationToken: cancellationToken`（`CreateXxx` / `GetXxxById` / `VoidXxx`，行为不变，编译期强制发现漏改）
+- [x] 11.3 后端：`CreateSettlementRequestHandler.LoadOrderAsync` 四个分支改传 `includeItems: false`
+- [x] 11.4 后端测试：四个 `*TestDoubles` 的 `GetDetailAsync` 支持 `includeItems`（`false` 时不返回明细 + `DetailQueries` 记录入参）；`CreateSettlement` 四种核销方向与多行核销用例断言「只取主表（`includeItems: false`）」；`RecordingPurchaseReceiptRepository`（erp-export）签名同步
+- [x] 11.5 验证：`cd backend && dotnet build` / `dotnet test`（544 通过）与 `cd frontend && npm run e2e:run`（123 通过，独立库跑完自动清理）全绿——核销落单链路属 e2e 覆盖范围，后端改动后仍跑全量回归
+- [x] 11.6 规格联动：`specs/015` / `016` / `021` / `022` 的 `design.md` 加「演进（erp-settlement，核销取数只查主表）」注记（跨规格接口变更，与本任务同批完成）；`.codebuddy/CONTEXT.md` 未列仓储方法签名，无需同步
