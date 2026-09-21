@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-17
+updated: 2026-09-20
 ---
 
 # 设计规格：销售出库（erp-sale）
@@ -11,6 +11,7 @@ updated: 2026-09-17
 >
 > **演进（erp-settlement）**：结算已由 `SettlementStatus`（0/1 状态位）升级为 `SettledAmount`（已结算金额）+ 推导状态（未结 / 部分 / 结清）；手工切换端点 `PUT /api/sales-orders/{id}/settlement` 与按钮已移除，结算变化一律由收付款单核销驱动；列表筛选参数 `settlement`（0/1）改为 `settlementState`（0/1/2），列表 / 详情出参 `settlementStatus` 改为 `settledAmount` / `unsettledAmount` / `settlementState`。销售出库单的核销方向为**收款**（我们收客户钱）。现行为准见 `specs/023-erp-settlement/`。
 > **演进（erp-order-flow）**：本规格的单据域已随 `specs/024-erp-order-flow/` 重命名——表 / 实体 `SalesOrders` → `SalesShipments`（`SalesOrder` → `SalesShipment`）、主表单号列 `OrderNo` → `ShipmentNo`、明细外键 `OrderId` → `ShipmentId`；接口路径 `/api/sales-orders` → `/api/sales-shipments`；单号前缀 `SO` → `GI`（历史单号已在迁移内改写）。出库单新增可空 `OrderId` / `OrderNo` / `OrderItemId`，用于**可选关联销售订单**并回写订单明细累计已发。订单（前缀 `SO`）与订单端点见 `specs/024-erp-order-flow/`。
+> **演进（erp-order-flow，跟单数量）**：`ISalesShipmentRepository.GetPagedAsync` 返回 `(SalesShipment Order, int TotalQuantity)`（明细数量合计，`024` §3.1）；出库单列表 / 详情出参新增 `totalQuantity`（与采购侧同构）。
 
 ## 1. 相对 erp-purchase 的替换规则
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-20
 ---
 
 # 任务清单：两段式单据（erp-order-flow）
@@ -85,3 +85,17 @@ updated: 2026-09-17
 
 - 上述任务全部勾选，且 `AGENTS.md` §6 强制测试门槛通过（后端 `dotnet test` + 前端 `npm run test:e2e` 全绿）。
 - 阶段 A 结束时必须满足「行为零变化」：不含订单功能的前提下，既有功能测试全绿。
+
+## 七、变更（2026-09-20）：关联出入库单展示数量合计 + 详情入口
+
+> 需求 / 设计见 `requirement.md` F5 / 验收标准 7，`design.md` §3.1 / §4。
+
+- [x] 7.1 后端：`IPurchaseReceiptRepository` / `ISalesShipmentRepository` 的 `GetPagedAsync` 返回 `(单据 Order, int TotalQuantity)`（本页单据明细数量一次 `GroupBy` 聚合）
+- [x] 7.2 后端：入库单 / 出库单列表行与详情出参新增 `totalQuantity`（列表取仓储聚合值、详情 Mapper 内按明细求和）；`GetPurchaseReceipts` / `GetSalesShipments` Handler 与两个导出 Handler 适配
+- [x] 7.3 后端测试：列表 Handler 聚合数量透传断言（`GetPurchaseReceiptsRequestHandlerTests` / `GetSalesShipmentsRequestHandlerTests`）；受影响的既有假实现与导出用例适配
+- [x] 7.4 前端：`api/purchase.ts` / `api/sale.ts` 列表行类型新增 `totalQuantity`；订单详情的关联入库单 / 出库单列表新增「数量合计」列，**单号改为 `a-link` 超链接**直达详情（`/purchases/detail/:id` / `/sales/detail/:id`），不设「操作」列与「详情」按钮
+- [x] 7.5 E2E：`purchase-order.spec.ts` / `sale-order.spec.ts` 补「关联单据数量合计正确 + 单号超链接跳转」
+- [x] 7.6 `specs/015-erp-purchase` / `016-erp-sale` `design.md` 演进注记补 `totalQuantity` 与列表返回形状变化
+- [x] 7.7 验证：`dotnet test`（535 通过）与 `npm run e2e:run`（121 通过）通过
+- [x] 7.8 前端：入库 / 出库单详情「关联订单」改为 `a-link` 超链接（→ 采购 / 销售订单详情，无关联时显示 `—`）
+- [x] 7.9 E2E：订单 ↔ 单据详情之间的「单号 / 关联订单」超链接跳转与回跳断言

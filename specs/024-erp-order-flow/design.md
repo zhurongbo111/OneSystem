@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-20
 ---
 
 # 设计规格：两段式单据（erp-order-flow）
@@ -135,9 +135,11 @@ updated: 2026-09-17
 | 接口 | 变更 |
 |---|---|
 | `IPurchaseOrderRepository` | **语义替换**（原为入库单仓储）：`GetPagedAsync`（keyword / partnerId / flowStatus / 日期范围；`CreatedAt DESC`）/ `GetDetailAsync` / `AddAsync` / `UpdateAsync`（明细全量替换）/ `UpdateFlowStatusAsync` / `GetLinesAsync(Guid orderId, ...)`（明细 + 未执行量，供开单页）/ `GetPicksAsync(Guid partnerId, ...)`（可关联订单候选：`Pending` / `Partial`）/ `AddFulfilledQuantityAsync(Guid orderItemId, int delta, ...)`（`ExecuteUpdateAsync` 原子累加，回退用负值）/ `GenerateOrderNoAsync` |
-| `IPurchaseReceiptRepository` | **由原 `IPurchaseOrderRepository` 重命名**：原方法保留（`GetPagedAsync` 增加 `Guid? orderId` 筛选），单号前缀 `GR` |
+| `IPurchaseReceiptRepository` | **由原 `IPurchaseOrderRepository` 重命名**：原方法保留（`GetPagedAsync` 增加 `Guid? orderId` 筛选），单号前缀 `GR`；`GetPagedAsync` 返回 `(PurchaseReceipt Order, int TotalQuantity)`——`TotalQuantity` 为该单据明细数量合计（本页单据一次 `GroupBy` 聚合，同 `IPurchaseOrderRepository.GetPagedAsync` 的 `UnfulfilledQuantity` 写法），供订单详情「关联入库单」展示 |
 | `ISalesOrderRepository` | 同采购订单（`SO`） |
-| `ISalesShipmentRepository` | 同采购入库（`GI`） |
+| `ISalesShipmentRepository` | 同采购入库（`GI`）；`GetPagedAsync` 同构返回 `(SalesShipment Order, int TotalQuantity)` |
+
+- 出入库单列表行 / 详情出参新增 `totalQuantity`（列表由仓储聚合返回、详情在 Mapper 内按明细求和），入库单与出库单两侧同构。
 
 - **跨仓储写**（出入库单 + 库存 + 流水 + 订单累计量与状态）必须用 `IUnitOfWork` 包成同一事务（后端规则 §4.4）。
 - 订单仓储的 `AddFulfilledQuantityAsync` 与出入库单仓储的写入同事务，保证「单已落库但订单累计量未更新」不会发生。
@@ -267,7 +269,9 @@ src/
 
 **订单新建 / 编辑 `PurchaseOrderFormPage.vue`**（独立页面）：供应商下拉 + 订单日期 + 预计到货（可空）+ 备注 + 明细子表格（商品 / 数量 / 单价 / 小计 / 行删除 / 添加行）+ 底部总额与提交；编辑时回填（明细深拷贝），`submitting` 防重入；提交成功跳详情。
 
-**订单详情 `PurchaseOrderDetailView.vue`**：`a-page-header` + `a-descriptions`（单号 / 供应商 / 订单日期 / 预计到货 / 总额 / 状态 / 备注 / 创建人 / 创建时间）+ 明细只读表格（商品 / 单位 / 订购数量 / 已收数量 / **未收数量** / 单价 / 小计）+ **关联入库单列表**（按 `orderId` 查入库单列表接口，列：单号 / 日期 / 状态）；底部操作：编辑 / 关闭 / 作废（显示条件同上）+ **「去入库」**（跳 `/purchases/new?orderId=xxx`，仅 `Pending` / `Partial` 显示）。
+**订单详情 `PurchaseOrderDetailView.vue`**：`a-page-header` + `a-descriptions`（单号 / 供应商 / 订单日期 / 预计到货 / 总额 / 状态 / 备注 / 创建人 / 创建时间）+ 明细只读表格（商品 / 单位 / 订购数量 / 已收数量 / **未收数量** / 单价 / 小计）+ **关联入库单列表**（按 `orderId` 查入库单列表接口，列：**单号（`a-link` 超链接 → `/purchases/detail/:id`）** / 日期 / **数量合计**（`totalQuantity`）/ 状态；**不设「操作」列与「详情」按钮**，单号本身即入口）；底部操作：编辑 / 关闭 / 作废（显示条件同上）+ **「去入库」**（跳 `/purchases/new?orderId=xxx`，仅 `Pending` / `Partial` 显示）。销售订单详情同构（列单号（超链接 → `/sales/detail/:id`）/ 日期 / 数量合计 / 状态）。
+
+**入库 / 出库单详情（`PurchaseDetailView.vue` / `SaleDetailView.vue`）**：`a-descriptions` 的「关联订单」为 `a-link` 超链接 → 采购 / 销售订单详情（无关联订单显示 `—`）；`href` 由 `router.resolve` 生成，点击 `@click.prevent` 后走 `router.push`（SPA 跳转、不整页刷新）；不关联订单的直通单据行为不变。
 
 **入库开单页 `PurchaseFormPage.vue`（改造）**：
 
