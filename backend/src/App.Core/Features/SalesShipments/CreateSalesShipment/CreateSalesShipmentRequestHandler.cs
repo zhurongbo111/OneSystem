@@ -263,7 +263,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                var (createdOrder, createdItems) = await _salesShipmentRepository.GetDetailAsync(order.Id, cancellationToken);
+                var (createdOrder, createdItems) = await _salesShipmentRepository.GetDetailAsync(order.Id, cancellationToken: cancellationToken);
                 if (createdOrder is null)
                 {
                     throw new BusinessException(ErrorCode.NotFound, "销售出库单创建后读取失败");

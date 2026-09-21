@@ -216,13 +216,14 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     }
 
     /// <summary>
-    /// 按被核销单据类型加载单据关键字段（核对往来 / 未结金额 / 快照用）
+    /// 按被核销单据类型加载单据关键字段（核对往来 / 未结金额 / 快照用）；
+    /// 只用主表字段，故传 <c>includeItems: false</c> 不查明细分片（见 erp-settlement design.md §3.1.1）
     /// </summary>
     private async Task<OrderInfo> LoadOrderAsync(SettlementOrderType orderType, Guid orderId, CancellationToken cancellationToken)
     {
         if (orderType == SettlementOrderType.PurchaseInbound)
         {
-            var (receipt, _) = await _purchaseReceiptRepository.GetDetailAsync(orderId, cancellationToken);
+            var (receipt, _) = await _purchaseReceiptRepository.GetDetailAsync(orderId, includeItems: false, cancellationToken);
             return receipt is null
                 ? OrderInfo.Missing
                 : new OrderInfo(true, receipt.ReceiptNo, receipt.OrderDate, receipt.TotalAmount, receipt.SettledAmount, receipt.PartnerId, receipt.Status == OrderStatus.Voided);
@@ -230,7 +231,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
 
         if (orderType == SettlementOrderType.SalesOutbound)
         {
-            var (shipment, _) = await _salesShipmentRepository.GetDetailAsync(orderId, cancellationToken);
+            var (shipment, _) = await _salesShipmentRepository.GetDetailAsync(orderId, includeItems: false, cancellationToken);
             return shipment is null
                 ? OrderInfo.Missing
                 : new OrderInfo(true, shipment.ShipmentNo, shipment.OrderDate, shipment.TotalAmount, shipment.SettledAmount, shipment.PartnerId, shipment.Status == OrderStatus.Voided);
@@ -238,13 +239,13 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
 
         if (orderType == SettlementOrderType.PurchaseReturn)
         {
-            var (purchaseReturn, _) = await _purchaseReturnRepository.GetDetailAsync(orderId, cancellationToken);
+            var (purchaseReturn, _) = await _purchaseReturnRepository.GetDetailAsync(orderId, includeItems: false, cancellationToken);
             return purchaseReturn is null
                 ? OrderInfo.Missing
                 : new OrderInfo(true, purchaseReturn.ReturnNo, purchaseReturn.ReturnDate, purchaseReturn.TotalAmount, purchaseReturn.SettledAmount, purchaseReturn.PartnerId, purchaseReturn.Status == OrderStatus.Voided);
         }
 
-        var (salesReturn, _) = await _salesReturnRepository.GetDetailAsync(orderId, cancellationToken);
+        var (salesReturn, _) = await _salesReturnRepository.GetDetailAsync(orderId, includeItems: false, cancellationToken);
         return salesReturn is null
             ? OrderInfo.Missing
             : new OrderInfo(true, salesReturn.ReturnNo, salesReturn.ReturnDate, salesReturn.TotalAmount, salesReturn.SettledAmount, salesReturn.PartnerId, salesReturn.Status == OrderStatus.Voided);

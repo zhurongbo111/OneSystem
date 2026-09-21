@@ -47,7 +47,7 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<SalesShipmentDetailDto> HandleAsync(VoidSalesShipmentRequest request, CancellationToken cancellationToken = default)
     {
-        var (order, items) = await _salesShipmentRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (order, items) = await _salesShipmentRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售出库单不存在");
@@ -146,7 +146,7 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
             throw;
         }
 
-        var (updatedOrder, updatedItems) = await _salesShipmentRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (updatedOrder, updatedItems) = await _salesShipmentRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (updatedOrder is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售出库单不存在");

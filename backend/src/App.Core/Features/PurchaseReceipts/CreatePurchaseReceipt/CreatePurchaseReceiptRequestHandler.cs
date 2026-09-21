@@ -243,7 +243,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                var (createdOrder, createdItems) = await _purchaseReceiptRepository.GetDetailAsync(order.Id, cancellationToken);
+                var (createdOrder, createdItems) = await _purchaseReceiptRepository.GetDetailAsync(order.Id, cancellationToken: cancellationToken);
                 if (createdOrder is null)
                 {
                     throw new BusinessException(ErrorCode.NotFound, "采购入库单创建后读取失败");

@@ -106,7 +106,7 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
     }
 
     /// <inheritdoc />
-    public async Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default)
     {
         var order = await _dbContext.PurchaseReceipts.AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
@@ -114,6 +114,12 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
         if (order is null)
         {
             return (null, Array.Empty<PurchaseReceiptItem>());
+        }
+
+        // 只取主表（核销校验等只用主表字段的场景）：不发起明细查询，Items 恒为空集合
+        if (!includeItems)
+        {
+            return (order, Array.Empty<PurchaseReceiptItem>());
         }
 
         // 明细行按插入顺序（明细 Id 为顺序 Guid，与 AddRange 顺序一致）

@@ -25,7 +25,7 @@ public sealed class GetSalesShipmentByIdRequestHandler : IRequestHandler<GetSale
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<SalesShipmentDetailDto> HandleAsync(GetSalesShipmentByIdRequest request, CancellationToken cancellationToken = default)
     {
-        var (order, items) = await _salesShipmentRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (order, items) = await _salesShipmentRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");

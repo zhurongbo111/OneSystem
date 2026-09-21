@@ -25,7 +25,7 @@ public sealed class GetPurchaseReturnByIdRequestHandler : IRequestHandler<GetPur
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<PurchaseReturnDetailDto> HandleAsync(GetPurchaseReturnByIdRequest request, CancellationToken cancellationToken = default)
     {
-        var (purchaseReturn, items) = await _purchaseReturnRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (purchaseReturn, items) = await _purchaseReturnRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (purchaseReturn is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购退货单不存在");
