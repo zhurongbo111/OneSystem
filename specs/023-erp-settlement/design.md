@@ -18,7 +18,9 @@ updated: 2026-09-21
 | 单据未结金额 | `UnsettledAmount = TotalAmount − SettledAmount`（推导，不落列） |
 | 结算状态（展示） | `SettlementState`：`0 = 未结算`（`SettledAmount ≤ 0`）、`1 = 部分结算`（`0 < SettledAmount < TotalAmount`）、`2 = 已结算`（`SettledAmount ≥ TotalAmount`）；**推导，不落列** |
 | 核销方向 | 收款单（`Receipt`）→ 核销销售出库单（`SalesOutbound`）/ 采购退货单（`PurchaseReturn`）；付款单（`Payment`）→ 核销采购入库单（`PurchaseInbound`）/ 销售退货单（`SalesReturn`） |
-| 往来余额 | 应收 = Σ 销售单总额 − Σ 销售退货总额 − Σ 已收；应付 = Σ 采购单总额 − Σ 采购退货总额 − Σ 已付 |
+| 往来单位类型 | 与收付款方向**无关**：核销单据的往来单位须与收付款单一致（`40113`），其档案类型由被核销单据决定（销售出库单 / 销售退货单 → 客户或两者；采购入库单 / 采购退货单 → 供应商或两者）。收款可对客户（销售回款）或供应商（收回退款），付款同理；**不按方向校验档案类型**（`40109` 不再由本用例触发） |
+| 业务类型（派生，不落列） | `Type` × `SettlementItem.OrderType`：收款 × 销售出库 = 销售回款；收款 × 采购退货 = 收回退款；付款 × 采购入库 = 采购付款；付款 × 销售退货 = 退出退款。主表**不新增**该列（可混合核销时单值无法表达，见 §5）；列表以**「单据类型」列**展示该单核销明细的类型集合（去重升序、多值「、」连接，见 §4.4） |
+| 往来余额 | 应收 = Σ 销售出库单未结 + Σ 采购退货单未结；应付 = Σ 采购入库单未结 + Σ 销售退货单未结（未结 = `TotalAmount − SettledAmount`，仅计未作废单据）。**按被核销单据未结金额归集，不引用收付款单类型**——`SettledAmount` 已由有效收付款单核销累加 / 作废回退，差额即余额，天然支持「收款挂供应商 / 付款挂客户」 |
 | 已核销单据作废 | `SettledAmount > 0` 的单据**禁止作废**（`40120`）：须先作废对应收付款单回退金额，方可作废（作废与核销互斥） |
 
 - 前端结算状态标签文案与颜色：`未结算`（`gray`）/ `部分结算（未结 x）`（`orange`）/ `已结算`（`green`）；全项目唯一来源，单据列表 / 详情与收付款页共用。
@@ -60,7 +62,7 @@ updated: 2026-09-21
 | `Id` | `Guid` | `uuid` | PK | |
 | `SettlementNo` | `string` | `varchar(20)` | NOT NULL，唯一索引 | 单号 `RC + yyyyMMdd + 4`（收款）/ `PY + yyyyMMdd + 4`（付款），后端按类型生成 |
 | `Type` | `SettlementType` | `smallint` | NOT NULL | 0=收款 1=付款 |
-| `PartnerId` | `Guid` | `uuid` | NOT NULL，FK → `Partners(Id)` | 客户（收款）/ 供应商（付款） |
+| `PartnerId` | `Guid` | `uuid` | NOT NULL，FK → `Partners(Id)` | 被核销单据的往来单位（收款可对客户或供应商，付款同理；不按方向限制档案类型） |
 | `PartnerName` | `string` | `varchar(50)` | NOT NULL | 往来名称**快照** |
 | `SettlementDate` | `DateTimeOffset` | `timestamptz` | NOT NULL | 业务日期（UTC 午夜） |
 | `TotalAmount` | `decimal` | `numeric(18,2)` | NOT NULL，> 0 | 总额 = Σ 核销金额（后端计算） |
@@ -133,11 +135,11 @@ updated: 2026-09-21
 | 方法 | 说明 |
 |---|---|
 | `Task<(IReadOnlyList<SettlementCandidateItem> Items, int Total)> GetUnsettledAsync(Guid partnerId, SettlementType type, int page, int pageSize, ...)` | 未结单据候选：按方向返回可核销单据（`UnsettledAmount > 0` 且未作废），四表查询后在内存合并分页（数据量为「某往来单位的未结单据」，量小） |
-| `Task<(IReadOnlyList<ReconciliationItem> Items, int Total)> GetReconciliationAsync(string? keyword, PartnerType? type, int page, int pageSize, ...)` | 往来台账：按往来单位聚合四表金额与未结单据数 |
+| `Task<(IReadOnlyList<ReconciliationItem> Items, int Total)> GetReconciliationAsync(string? keyword, PartnerType? type, int page, int pageSize, ...)` | 往来台账：按往来单位聚合四表**未结金额**（`TotalAmount − SettledAmount`，仅未作废）与未结单据数——应收 = 销售出库 + 采购退货，应付 = 采购入库 + 销售退货（口径见 §0）；**不查询 `Settlements` 表**，天然支持收款挂供应商 |
 
 - 读模型（`App.Core/Abstractions/`，`sealed record` + `required` + `init`）：
   - `SettlementCandidateItem`：`OrderType` / `OrderId` / `OrderNo` / `OrderDate` / `TotalAmount` / `SettledAmount` / `UnsettledAmount`；
-  - `ReconciliationItem`：`PartnerId` / `PartnerName` / `PartnerType` / `ReceivableAmount`（应收）/ `PayableAmount`（应付）/ `UnsettledOrderCount`。
+  - `ReconciliationItem`：`PartnerId` / `PartnerName` / `PartnerType` / `ReceivableAmount`（应收）/ `PayableAmount`（应付）/ `UnsettledOrderCount`（应收 / 应付口径见 §0）。
 - 四类单据仓储追加 `AddSettledAmountAsync(id, delta, ...)`（`ExecuteUpdateAsync`：`SettledAmount = SettledAmount + delta`）；**移除** `UpdateSettlementAsync`。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
@@ -169,7 +171,7 @@ updated: 2026-09-21
 **CreateSettlement**：
 
 1. 核销明细为空 → `40110`（Validator 已拦非空，Handler 双保险）。
-2. 取往来单位：不存在 → `40400`；停用 → `40108`；类型与方向不匹配（收款需 `Customer/Both`、付款需 `Supplier/Both`）→ `40109`。
+2. 取往来单位：不存在 → `40400`；停用 → `40108`。**不校验档案类型与方向**（收款可对客户或供应商，付款同理，`40109` 不再由本用例触发）；往来正确性由步骤 3 的「单据往来 == 收付款单往来 `40113`」+「方向与单据类型匹配 `40114`」保证。
 3. 逐行取被核销单据（按 `OrderType` 分派四类单据仓储 `GetDetailAsync`）：不存在 → `40400`；已作废 → `40104`；往来单位不一致 → `40113`；方向与单据类型不匹配 → `40114`；核销金额 > `TotalAmount − SettledAmount` → `40112`（message 含单号与未结金额）。
 4. 后端重算 `TotalAmount = Σ Amount`；`GenerateSettlementNoAsync(type, settlementDate)` 生成单号。
 5. `IUnitOfWork`：`BeginTransactionAsync` → `ISettlementRepository.AddAsync` → 逐行按其 `OrderType` 调用对应单据仓储 `AddSettledAmountAsync(orderId, +amount)` → `CommitAsync`。
@@ -181,9 +183,9 @@ updated: 2026-09-21
 
 **GetUnsettledOrders**：入参 `partnerId` + `type`（收 / 付）→ 由 `type` 推导可核销单据类型集合 → `ISettlementQueryRepository.GetUnsettledAsync` → 映射 DTO（含未结金额，供新建页默认按未结金额填充）。
 
-**GetReconciliation**：`ISettlementQueryRepository.GetReconciliationAsync(keyword, type, page, pageSize)` → 映射 DTO。
+**GetReconciliation**：`ISettlementQueryRepository.GetReconciliationAsync(keyword, type, page, pageSize)` → 映射 DTO。余额按四表未结金额归集（§0），不查询收付款单表。
 
-**GetSettlements / GetSettlementById**：同既有列表 / 详情模式（筛选 / 映射 / 快照透传）。
+**GetSettlements / GetSettlementById**：同既有列表 / 详情模式（筛选 / 映射 / 快照透传）。列表在映射前用既有 `GetItemsBySettlementIdsAsync` **一次批量取本页核销明细**（空页跳过，非逐单查询），聚合出每单 `OrderTypes`（去重升序，供「单据类型」列）；同一次结果兼作按单据反查的 `OrderAmount` 汇总。
 
 **GetSettlements（按被核销单据反查）**：`orderType` + `orderId` 成对传入时，仓储按核销明细过滤（命中该单据的收付款单，含已作废）；Handler 再用既有 `GetItemsBySettlementIdsAsync` 批量取本页收付款单的核销明细，挑出 `orderId`（及 `orderType`）匹配行的 `Amount` 之和，写入 `SettlementListItemDto.OrderAmount`（单据详情「收付款明细」的**本次核销金额**）；`orderId` 为空时不发起该次查询、`OrderAmount` 为 `null`（列表页口径不变）。
 
@@ -231,7 +233,7 @@ src/
 
 ### 4.2 接口层
 
-- `src/api/settlement.ts`：类型与后端 DTO 一一对应；`getSettlements` / `createSettlement` / `getSettlementById` / `voidSettlement` / `getUnsettledOrders` / `getReconciliation`。`SettlementQuery` 含可选 `orderType` / `orderId`（成对），`SettlementListItem` 含可选 `orderAmount`（按单据反查时的本次核销金额）。
+- `src/api/settlement.ts`：类型与后端 DTO 一一对应；`getSettlements` / `createSettlement` / `getSettlementById` / `voidSettlement` / `getUnsettledOrders` / `getReconciliation`。`SettlementQuery` 含可选 `orderType` / `orderId`（成对），`SettlementListItem` 含可选 `orderAmount`（按单据反查时的本次核销金额）与 `orderTypes`（列表「单据类型」列；详情页用 `items` 自派生）。
 - 单据侧 `api/purchase.ts` / `sale.ts` / `purchaseReturn.ts` / `saleReturn.ts`：移除 `updateXxxSettlement`，类型中 `settlementStatus` → `settledAmount` / `unsettledAmount` / `settlementState`。
 - 结算状态标签文案与颜色统一由 `src/utils/` 的常量映射（依据 §0 表）复用，不在各页面重复硬编码。
 
@@ -250,23 +252,27 @@ src/
 
 **新建收付款 `SettlementFormPage.vue`**（独立页面，含子表格）：
 
-- 表头：类型（`a-radio-group`：收款 / 付款）、往来单位（下拉：收款取客户、付款取供应商；选定后加载可核销单据）、收付日期、方式（下拉）、备注。
+- 表头：类型（`a-radio-group`：收款 / 付款）、往来单位（下拉取**全部启用往来**，不按类型过滤——收款需覆盖「收供应商退款」场景；placeholder 提示「选择与该方向存在未结单据的往来单位」；选定后按方向加载可核销单据）、收付日期、方式（下拉）、备注。
 - 明细区：可核销单据列表（`getUnsettledOrders`）——勾选 / 添加行后展示单号、单据日期、单据总额、已结金额、**未结金额**、本次核销金额（`a-input-number`，默认填入未结金额，`max` = 未结金额）；「全部结清」按钮（一键把所选行填为未结金额）。
 - 底部：总额（computed = Σ 核销金额）+ 提交（`submitting`）/ 取消；提交成功 → 跳详情页。
-- 切类型 / 切往来单位时清空已选明细（防串数据）。
+- 切类型 / 切往来单位时清空已选核销明细并重载候选（防串数据）；往来单位**不因切类型而清空**（下拉不再按类型过滤，同一往来在两个方向都可能有未结单据）。
 
-**收付款列表 `SettlementsView.vue`**：筛选行（单号关键词 + 类型 + 往来 + 方式 + 日期范围 + 搜索 / 重置）；表格列（序号、单号、类型 `a-tag`、往来单位、收付日期、总额、方式、状态、创建时间、操作列：详情 → 作废）；作废行置灰。
+**收付款列表 `SettlementsView.vue`**：筛选行（单号关键词 + 类型 + 往来 + 方式 + 日期范围 + 搜索 / 重置）；表格列（序号、单号、类型 `a-tag`、**单据类型**、往来单位、**收付日期**、总额、方式、状态、操作列：详情 / 打印 / 作废）；作废行置灰。
+
+- 「单据类型」与「创建时间」均为**列设置可选列**，但默认显隐不同：「单据类型」**默认显示**（置于「类型」之后，宽 160、`ellipsis + tooltip`）：取 `orderTypes` 经 `settlementOrderTypeLabel` 映射后以「、」连接（混合核销时为多值）。
+- 「创建时间」**默认不显示**（审计信息，需要时从列设置勾选）：列表主时间口径是**收付日期**（业务日期，可补录往日），创建时间仅在追溯"谁在何时录入"时使用；两者语义不同，均保留。
 
 **详情 `SettlementDetailView.vue`**：`a-page-header` + `a-descriptions` + 核销明细只读表格（单据类型 / 单号（`a-link` 超链接 → 被核销单据详情，按 `OrderType` 映射）/ 单据日期 / 单据总额 / 本次核销金额）+ 底部作废按钮；id 不存在 → `a-result status="404"`。
 
-**往来对账 `ReconciliationView.vue`**：筛选行（往来名称关键词 + 类型 + 搜索 / 重置）；表格列（序号、往来单位、类型、**应收余额**、**应付余额**、未结单据数、操作列「未结单据」）→ 点击打开抽屉（`getUnsettledOrders` 按该往来单位分别查应收 / 应付方向的未结单据，**单号为 `a-link` 超链接**直达对应单据详情，其余只读展示）。
+**往来对账 `ReconciliationView.vue`**：筛选行（往来名称关键词 + 类型 + 搜索 / 重置）；表格列（序号、往来单位、类型、**应收余额**、**应付余额**、未结单据数、操作列「未结单据」）→ 点击打开抽屉（`getUnsettledOrders` 按该往来单位分别查应收 / 应付方向的未结单据，**单号为 `a-link` 超链接**直达对应单据详情，其余只读展示）。**应收余额** = 该往来应收类单据未结合计（销售出库单 + 采购退货单，收款方向）；**应付余额** = 应付类未结合计（采购入库单 + 销售退货单，付款方向）——与抽屉两个区块口径一一对应（§0）。
 
 **单据侧改造（四类单据列表 / 详情）**：
 
 - 移除「标记已结算 / 改回未结算」按钮与 `settlingId` 状态。
 - 结算列 / 描述项改为：结算状态标签（§0 文案与颜色）+ 未结金额（`部分结算（未结 600.00）`）。
-- 操作列新增「收付款」按钮（Tabler `IconCash`）：按单据类型推导方向（销售单 / 采购退货 → 收款；采购单 / 销售退货 → 付款）→ 跳 `/settlements/new` 并预置类型与往来单位（路由 query）。
+- 操作列新增「收付款」按钮（Tabler `IconCash`）：按单据类型推导方向（销售单 / 采购退货 → 收款；采购单 / 销售退货 → 付款）→ 跳 `/settlements/new` 并预置类型与往来单位（路由 query）。**显隐判据（唯一来源：`src/utils/settlement.ts` 的 `canStartSettlement`）**：单据正常（`status = 1`）**且未结算**（`settlementState ≠ 2`）——已结算单据没有可核销金额，`GetUnsettledOrders` 只会返回空候选，故不显示入口（避免"点进去是空列表"的死路）；部分结算仍显示（可继续收 / 付未结部分）；作废单不显示。**详情页底部「去收付款」同判据**（`canStartSettlement(detail)`），四类单据列表与详情共 8 处一致。
 - 筛选行「结算状态」下拉取值改为 未结算 / 部分结算 / 已结算（映射 `settlementState` 0/1/2）。
+- **「作废」按钮判据（唯一来源：`src/utils/settlement.ts` 的 `canVoidOrder`）**：单据正常且 `settledAmount = 0` 才可作废；已核销（`settledAmount > 0`）时按钮 **`disabled` + tooltip**（文案 `VOID_SETTLED_HINT`：「已被收付款单核销，请先作废对应收付款单」）——**前端提前拦截**，避免"点了确认才被拒"；后端 `40120`（§3.6）仍是兜底。作废单不显示（原有）。
 - **详情新增「收付款明细」只读区块**（商品明细之下）：由**跨域共享组件** `components/SettlementRecords.vue` 承载（props：`orderType` + `orderId`），调 `getSettlements` 反查并展示 **单号（`a-link` 超链接 → `/settlements/detail/:id`）** / 收付方向 `a-tag`（收款绿 / 付款橙）/ 收付日期 / 本次核销金额（`orderAmount`）/ 状态（正常 / 已作废）——**不设「操作」列与「详情」按钮**，单号本身即入口；已作废行进灰（`row-voided` 同收付款列表口径）；查询 loading 用 `loading`。
 
 ### 4.5 按钮 loading（遵循 `specs/010-button-loading/design.md` §0）
@@ -286,6 +292,9 @@ src/
 | 结算从状态位升级为金额 | `SettledAmount` + 推导状态 | 状态位无法表达部分结算与追溯实际收付；`015` §5 已预留该升级路径 |
 | 移除手工结算切换 | 删除四个 settlement 端点与按钮 | 保留手工切换会绕过核销明细，导致单据金额与收付款单不一致；口径必须单一 |
 | 收付款单可核销四类单据 | 方向由 `Type` 决定 | 退货单同样涉及资金（退客户钱 / 收回退款），若排除会让退货单的结算语义与主单据分叉（`021` / `022` 已按 0/1 设计，本规格统一升级） |
+| 收款可对供应商（往来不由方向限制） | 移除 `CreateSettlement` 的「档案类型与方向匹配」校验（`40109`） | 采购退货的退款是「收供应商的钱」，按方向硬绑客户会让该场景无法录入（只能把供应商档案改成「两者」）；核销行已强制「单据往来 == 收付款单往来 `40113`」+「方向匹配 `40114`」，方向-类型校验属多余且自相矛盾（与 §0 核销方向表冲突） |
+| 不新增「业务类型」字段 | 业务类型由 `Type` + 明细 `OrderType` 派生 | 一张单可混合核销（「两者」往来的收款单可同时核销销售出库单与采购退货单），单值字段无法表达且与明细冗余；现有 `SettlementType`（资金方向）+ `SettlementItem.OrderType`（业务类别）已足够，避免两处维护与不一致 |
+| 对账余额按未结金额归集 | 应收 = Σ 销售出库未结 + Σ 采购退货未结；应付 = Σ 采购入库未结 + Σ 销售退货未结 | 原公式按收付款单 `Type` 拆分「已收 / 已付」，一旦收款挂供应商就会把钱冲错方向（退供应商的款算到应收）；用 `SettledAmount` 差额归集天然方向正确，且不再查询 `Settlements` 表，与「未结单据数」同源 |
 | 核销明细存单据快照 | `OrderNo` / `OrderDate` / `OrderTotalAmount` | 被核销单据分属四表，联查需 4 路 `UNION`；快照让详情单表可读（同单据明细快照原则） |
 | 不支持预收 / 预付 | 收付总额必须等于核销合计 | 挂账余额需要「未核销余额」台账与自动抵扣策略，属独立能力（范围外） |
 | 新增 `ISettlementQueryRepository` | 未结候选 + 往来台账跨四表只读 | 跨表的只读聚合不属于任何单一单据仓储；按「读模型 / 查询职责」独立成接口，写侧仍由各单据仓储负责 |
@@ -303,12 +312,12 @@ src/
 
 - **CreateSettlement**：
   - 成功（收款核销销售单）：断言单号前缀 `RC` + 日期、`TotalAmount` 后端重算（前端传值被忽略）、每行按其 `OrderType` 调用 `AddSettledAmountAsync(+amount)`、核销明细快照、`Commit`。
-  - 成功（付款核销采购单 / 采购退货核销 / 销售退货核销）：方向校验通过的各组合各一例。
-  - 异常：明细空 `40110`；往来不存在 `40400` / 停用 `40108` / 类型不匹配 `40109`；单据不存在 `40400` / 已作废 `40104` / 往来不一致 `40113` / 方向不匹配 `40114` / 超额 `40112`；失败路径**无任何金额累加**、`RollbackAsync` 断言。
+  - 成功（付款核销采购入库单 / **收款核销采购退货单（往来为纯 `Supplier`）** / 付款核销销售退货单）：方向与往来类型组合各一例；断言不再因档案类型返回 `40109`。
+  - 异常：明细空 `40110`；往来不存在 `40400` / 停用 `40108`；单据不存在 `40400` / 已作废 `40104` / 往来不一致 `40113` / 方向不匹配 `40114` / 超额 `40112`；失败路径**无任何金额累加**、`RollbackAsync` 断言。
 - **VoidSettlement**：成功（断言逐行 `AddSettledAmountAsync(−amount)` + `UpdateStatusAsync(Voided)`）；已作废 → `40104`；不存在 → `40400`。
-- **GetSettlements / GetSettlementById**：筛选传参组合、分页映射（含作废）、核销明细快照透传、不存在 `40400`；**按单据反查**：`orderType` + `orderId` 透传断言、`orderAmount` 取该单据核销金额之和（非该单据的明细不计入）、`orderId` 为空时不触发核销明细查询且 `OrderAmount` 为 `null`；仓储按 `orderType` + `orderId` 过滤（`SettlementRepositoryTests`）——命中单返回、未核销该单据的单被排除。
+- **GetSettlements / GetSettlementById**：筛选传参组合、分页映射（含作废）、核销明细快照透传、不存在 `40400`；**单据类型列**：按本页核销明细去重升序聚合 `OrderTypes`（混合核销为多值、无明细为空集合）、空页不查明细、未指定被核销单据时明细仍只批量查一次（非逐单 N+1）；**按单据反查**：`orderType` + `orderId` 透传断言、`orderAmount` 取该单据核销金额之和（非该单据的明细不计入）、`orderId` 为空时 `OrderAmount` 为 `null`；仓储按 `orderType` + `orderId` 过滤（`SettlementRepositoryTests`）——命中单返回、未核销该单据的单被排除。
 - **GetUnsettledOrders**：方向 → 单据类型集合映射正确（收款 → 销售单 + 采购退货单；付款 → 采购单 + 销售退货单）；仅返回未结且未作废（断言透传仓储过滤）。
-- **GetReconciliation**：按往来聚合的应收 / 应付计算正确（含退货冲减与已收 / 已付抵扣）、未结单据数正确、分页 `total`。
+- **GetReconciliation**：按未结金额归集的应收 / 应付计算正确（应收 = 销售出库未结 + 采购退货未结；应付 = 采购入库未结 + 销售退货未结；排除已作废单据）、未结单据数正确、分页 `total`；**收款挂供应商**用例：纯 `Supplier` 往来「采购入库 800 未结 + 采购退货 500 已收」→ 应收 0 / 应付 800（旧口径会把 500 算成负应收）。
 - **单据侧回归**（`015` / `016` / `021` / `022` 既有测试调整）：`SettlementState` 推导三态（0 / 部分 / 结清边界：`SettledAmount = 0`、`0 < x < TotalAmount`、`x = TotalAmount`、`x > TotalAmount` 视为结清）；列表 `settlementState` 筛选传参；`UpdateXxxSettlement` 用例与其测试**删除**。
 - **字段约束一致性**：`SettlementNo` EF `HasMaxLength` 20 == `OrderFieldConstraints.OrderNoMaxLength`；核销明细列长（20）与 `Amount` 精度（`numeric(18,2)`）与单据金额口径一致；`amount` 边界（`0.01` 通过 / `0` 拒绝 / 超 `PriceMaxValue` 拒绝）。
 - **已核销禁作废**（`VoidPurchaseReceipt` / `VoidSalesShipment` / `VoidPurchaseReturn` / `VoidSalesReturn` 各一例）：`SettledAmount > 0` → `40120`，message 含单号与已结金额，且**未开启事务、未回冲库存、不写流水、单据状态不变**；`SettledAmount = 0` 时作废行为不变（既有成功用例回归）。
