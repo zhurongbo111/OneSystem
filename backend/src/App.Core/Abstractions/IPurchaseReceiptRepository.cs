@@ -74,7 +74,7 @@ public interface IPurchaseReceiptRepository
     /// 生成单号：前缀 + yyyyMMdd + 4 位序号（当天同前缀已有单号数 + 1）；
     /// 并发兜底由单号唯一索引承担，冲突重试由 Handler 处理（见 design.md §3.6）
     /// </summary>
-    /// <param name="prefix">前缀（采购 PO / 销售 SO）</param>
+    /// <param name="prefix">前缀（采购入库 GR / 销售出库 GI）</param>
     /// <param name="orderDate">业务日期（取 UTC 日期段）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<string> GenerateOrderNoAsync(string prefix, DateTimeOffset orderDate, CancellationToken cancellationToken = default);
