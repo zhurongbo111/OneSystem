@@ -10,7 +10,8 @@ namespace App.Core.Abstractions;
 public interface ISalesShipmentRepository
 {
     /// <summary>
-    /// 分页查询销售单：单号 / 客户名称关键词 + 客户 + 日期闭区间 + 结算状态筛选，创建时间倒序；含作废单据
+    /// 分页查询销售单：单号 / 客户名称关键词 + 客户 + 日期闭区间 + 结算状态筛选，创建时间倒序；含作废单据。
+    /// 每行附带该单据的数量合计（明细数量之和，本页一次聚合），供订单详情「关联出库单」跟单展示
     /// </summary>
     /// <param name="keyword">单号 / 客户名称关键词，可空</param>
     /// <param name="partnerId">客户 id，可空</param>
@@ -21,7 +22,7 @@ public interface ISalesShipmentRepository
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<(IReadOnlyList<SalesShipment> Items, int Total)> GetPagedAsync(
+    Task<(IReadOnlyList<(SalesShipment Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         Guid? orderId,

@@ -29,12 +29,23 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
         _items[order.Id] = items.ToList();
     }
 
-    public Task<(IReadOnlyList<PurchaseReceipt> Items, int Total)> GetPagedAsync(
+    /// <summary>已执行的分页查询入参</summary>
+    public List<(string? Keyword, Guid? PartnerId, Guid? OrderId, DateTimeOffset? Start, DateTimeOffset? End,
+        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = new();
+
+    /// <summary>分页查询返回的行（由用例预置）</summary>
+    public IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> PagedItems { get; set; }
+        = Array.Empty<(PurchaseReceipt, int)>();
+
+    /// <summary>分页查询返回的总数（由用例预置）</summary>
+    public int PagedTotal { get; set; }
+
+    public Task<(IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, Guid? orderId, DateTimeOffset? start, DateTimeOffset? end,
         SettlementState? settlementState, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<PurchaseReceipt> empty = Array.Empty<PurchaseReceipt>();
-        return Task.FromResult((empty, 0));
+        PagedQueries.Add((keyword, partnerId, orderId, start, end, settlementState, page, pageSize));
+        return Task.FromResult((PagedItems, PagedTotal));
     }
 
     public Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)

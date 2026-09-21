@@ -25,7 +25,7 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<PurchaseReceipt> Items, int Total)> GetPagedAsync(
+    public async Task<(IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? partnerId,
         Guid? orderId,
@@ -89,7 +89,20 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return (items, total);
+        // 数量合计：本页单据的明细数量按单据聚合（单次查询，避免逐单往返；订单详情「关联入库单」跟单用）
+        var ids = items.Select(o => o.Id).ToList();
+        var quantities = await _dbContext.PurchaseReceiptItems.AsNoTracking()
+            .Where(i => ids.Contains(i.ReceiptId))
+            .GroupBy(i => i.ReceiptId)
+            .Select(g => new { ReceiptId = g.Key, Quantity = g.Sum(i => i.Quantity) })
+            .ToListAsync(cancellationToken);
+        var quantityMap = quantities.ToDictionary(x => x.ReceiptId, x => x.Quantity);
+
+        var rows = items
+            .Select(o => (Order: o, TotalQuantity: quantityMap.TryGetValue(o.Id, out var quantity) ? quantity : 0))
+            .ToList();
+
+        return (rows, total);
     }
 
     /// <inheritdoc />
