@@ -2,8 +2,6 @@ using App.Core.Abstractions;
 using App.Core.Entities;
 using App.Core.Features.StockTakes.GetStockTakePickProducts;
 
-using Xunit;
-
 namespace App.Tests;
 
 /// <summary>
@@ -29,13 +27,23 @@ public class GetStockTakePickProductsRequestHandlerTests
         var clean = Guid.NewGuid();
         products.Picks.Add(new ProductPickItem
         {
-            Id = withMovement, Code = "pick-mv", Name = "已建账商品", Unit = "个",
-            PurchasePrice = 1m, SalePrice = 2m, StockQuantity = 4,
+            Id = withMovement,
+            Code = "pick-mv",
+            Name = "已建账商品",
+            Unit = "个",
+            PurchasePrice = 1m,
+            SalePrice = 2m,
+            StockQuantity = 4,
         });
         products.Picks.Add(new ProductPickItem
         {
-            Id = clean, Code = "pick-cl", Name = "未建账商品", Unit = "个",
-            PurchasePrice = 1m, SalePrice = 2m, StockQuantity = 0,
+            Id = clean,
+            Code = "pick-cl",
+            Name = "未建账商品",
+            Unit = "个",
+            PurchasePrice = 1m,
+            SalePrice = 2m,
+            StockQuantity = 0,
         });
         movements.Appended.Add(new StockMovement
         {
@@ -63,8 +71,13 @@ public class GetStockTakePickProductsRequestHandlerTests
         // 仓储已过滤停用商品，Handler 仅透传（Picks 中即视为启用商品）
         products.Picks.Add(new ProductPickItem
         {
-            Id = Guid.NewGuid(), Code = "only", Name = "唯一商品", Unit = "箱",
-            PurchasePrice = 3m, SalePrice = 5m, StockQuantity = 12,
+            Id = Guid.NewGuid(),
+            Code = "only",
+            Name = "唯一商品",
+            Unit = "箱",
+            PurchasePrice = 3m,
+            SalePrice = 5m,
+            StockQuantity = 12,
         });
 
         var result = await handler.HandleAsync(new GetStockTakePickProductsRequest());

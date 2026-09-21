@@ -12,10 +12,10 @@ namespace App.Tests;
 internal sealed class FakeStockTakeRepository : IStockTakeRepository
 {
     /// <summary>已保存的盘点单主表</summary>
-    public List<StockTake> Takes { get; } = new();
+    public List<StockTake> Takes { get; } = [];
 
     /// <summary>已保存的明细（按 StockTakeId 关联）</summary>
-    public List<StockTakeItem> Items { get; } = new();
+    public List<StockTakeItem> Items { get; } = [];
 
     /// <summary>单号生成调用次数（含重试）</summary>
     public int GenerateCount { get; private set; }
@@ -123,10 +123,10 @@ internal sealed class FakeStockTakeRepository : IStockTakeRepository
 internal sealed class FakeProductRepository : IProductRepository
 {
     /// <summary>按 id 提供的商品（不存在则返回 null）</summary>
-    public Dictionary<Guid, Product> ById { get; } = new();
+    public Dictionary<Guid, Product> ById { get; } = [];
 
     /// <summary>开单选择读模型（启用商品 + 当前库存；停用商品不在此列，模拟仓储已过滤）</summary>
-    public List<ProductPickItem> Picks { get; } = new();
+    public List<ProductPickItem> Picks { get; } = [];
 
     /// <inheritdoc />
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

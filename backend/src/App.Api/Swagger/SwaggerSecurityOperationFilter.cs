@@ -32,7 +32,7 @@ public class SwaggerSecurityOperationFilter : IOperationFilter
             return;
         }
 
-        operation.Security ??= new List<OpenApiSecurityRequirement>();
+        operation.Security ??= [];
         operation.Security.Add(new OpenApiSecurityRequirement
         {
             {

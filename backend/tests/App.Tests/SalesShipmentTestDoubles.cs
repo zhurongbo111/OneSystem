@@ -10,8 +10,8 @@ namespace App.Tests;
 /// </summary>
 internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
 {
-    private readonly Dictionary<Guid, SalesShipment> _orders = new();
-    private readonly Dictionary<Guid, List<SalesShipmentItem>> _items = new();
+    private readonly Dictionary<Guid, SalesShipment> _orders = [];
+    private readonly Dictionary<Guid, List<SalesShipmentItem>> _items = [];
     private readonly List<string>? _calls;
 
     public FakeSalesShipmentRepository(List<string>? calls = null) => _calls = calls;
@@ -31,7 +31,8 @@ internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
 
     /// <summary>已执行的分页查询入参</summary>
     public List<(string? Keyword, Guid? PartnerId, Guid? OrderId, DateTimeOffset? Start, DateTimeOffset? End,
-        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = new();
+        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries
+    { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
     public IReadOnlyList<(SalesShipment Order, int TotalQuantity)> PagedItems { get; set; }
@@ -49,7 +50,7 @@ internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
     }
 
     /// <summary>已执行的详情查询入参（id, includeItems），供断言取数范围（见 erp-settlement design.md §3.1.1）</summary>
-    public List<(Guid Id, bool IncludeItems)> DetailQueries { get; } = new();
+    public List<(Guid Id, bool IncludeItems)> DetailQueries { get; } = [];
 
     public Task<(SalesShipment? Order, IReadOnlyList<SalesShipmentItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default)
     {

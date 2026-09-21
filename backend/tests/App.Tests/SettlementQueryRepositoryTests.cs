@@ -1,5 +1,4 @@
 using App.Core.Entities;
-using App.Infrastructure;
 using App.Infrastructure.Repositories;
 
 namespace App.Tests;

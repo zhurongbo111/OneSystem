@@ -10,8 +10,8 @@ namespace App.Tests;
 /// </summary>
 internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
 {
-    private readonly Dictionary<Guid, SalesReturn> _returns = new();
-    private readonly Dictionary<Guid, List<SalesReturnItem>> _items = new();
+    private readonly Dictionary<Guid, SalesReturn> _returns = [];
+    private readonly Dictionary<Guid, List<SalesReturnItem>> _items = [];
     private readonly List<string>? _calls;
 
     public FakeSalesReturnRepository(List<string>? calls = null) => _calls = calls;
@@ -20,7 +20,7 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
     public Func<Exception?>? AddFailure { get; set; }
 
     /// <summary>已执行的分页查询入参（keyword / partnerId / start / end / settlement / page / pageSize）</summary>
-    public List<(string? Keyword, Guid? PartnerId, DateTimeOffset? Start, DateTimeOffset? End, SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = new();
+    public List<(string? Keyword, Guid? PartnerId, DateTimeOffset? Start, DateTimeOffset? End, SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
     public IReadOnlyList<SalesReturn> PagedItems { get; set; } = Array.Empty<SalesReturn>();
@@ -44,7 +44,7 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
     }
 
     /// <summary>已执行的详情查询入参（id, includeItems），供断言取数范围（见 erp-settlement design.md §3.1.1）</summary>
-    public List<(Guid Id, bool IncludeItems)> DetailQueries { get; } = new();
+    public List<(Guid Id, bool IncludeItems)> DetailQueries { get; } = [];
 
     public Task<(SalesReturn? Return, IReadOnlyList<SalesReturnItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default)
     {

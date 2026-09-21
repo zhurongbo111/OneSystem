@@ -14,13 +14,13 @@ internal sealed class FakeStockMovementRepository : IStockMovementRepository
     public FakeStockMovementRepository(List<string>? calls = null) => _calls = calls;
 
     /// <summary>已追加的流水（入参实体引用），用于类型 / 方向 / 来源 / 操作人 / 时间断言</summary>
-    public List<StockMovement> Appended { get; } = new();
+    public List<StockMovement> Appended { get; } = [];
 
     /// <summary>预置的采购入库明细单价（sourceId, productId）→ 单价（成本重算取数用）</summary>
-    public Dictionary<(Guid SourceId, Guid ProductId), decimal> PurchaseUnitPrices { get; } = new();
+    public Dictionary<(Guid SourceId, Guid ProductId), decimal> PurchaseUnitPrices { get; } = [];
 
     /// <summary>预置的期初建账成本单价（sourceId, productId）→ 单价（成本重算取数用）</summary>
-    public Dictionary<(Guid SourceId, Guid ProductId), decimal> InitialUnitCosts { get; } = new();
+    public Dictionary<(Guid SourceId, Guid ProductId), decimal> InitialUnitCosts { get; } = [];
 
     public Task AppendAsync(StockMovement movement, CancellationToken cancellationToken = default)
     {
@@ -62,7 +62,7 @@ internal sealed class FakeStockMovementRepository : IStockMovementRepository
     }
 
     /// <summary>成本写回序列（id, unitCost, totalCost），供重算用例断言</summary>
-    public List<(Guid Id, decimal UnitCost, decimal TotalCost)> CostUpdates { get; } = new();
+    public List<(Guid Id, decimal UnitCost, decimal TotalCost)> CostUpdates { get; } = [];
 
     public Task UpdateCostAsync(
         Guid id, decimal unitCost, decimal totalCost, CancellationToken cancellationToken = default)

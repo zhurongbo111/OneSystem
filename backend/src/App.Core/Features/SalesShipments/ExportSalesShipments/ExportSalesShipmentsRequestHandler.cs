@@ -1,5 +1,4 @@
 using App.Core.Abstractions;
-using App.Core.Entities;
 using App.Core.Exports;
 
 namespace App.Core.Features.SalesShipments.ExportSalesShipments;

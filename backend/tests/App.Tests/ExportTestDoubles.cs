@@ -14,7 +14,7 @@ internal sealed class RecordingProductRepository : IProductRepository
     public IReadOnlyList<ProductListItem> Items { get; set; } = [];
 
     /// <summary>预置商品编码（GetCodesByIdsAsync 用；缺失 id 不出现在结果中）</summary>
-    public Dictionary<Guid, string> Codes { get; } = new();
+    public Dictionary<Guid, string> Codes { get; } = [];
 
     /// <summary>列表查询入参快照（keyword, categoryId, status, page, pageSize）</summary>
     public (string? Keyword, Guid? CategoryId, ProductStatus? Status, int Page, int PageSize)? LastPagedArgs { get; private set; }
@@ -79,7 +79,7 @@ internal sealed class RecordingProductRepository : IProductRepository
 internal sealed class RecordingUserRepository : IUserRepository
 {
     /// <summary>预置显示名（id → 显示名；缺失 id 不出现在结果中，导出侧输出空串）</summary>
-    public Dictionary<Guid, string> DisplayNames { get; } = new();
+    public Dictionary<Guid, string> DisplayNames { get; } = [];
 
     /// <summary>显示名批量查询入参快照</summary>
     public IReadOnlyCollection<Guid>? LastDisplayNameIds { get; private set; }

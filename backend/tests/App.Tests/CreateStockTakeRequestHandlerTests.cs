@@ -2,8 +2,6 @@ using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.StockTakes.CreateStockTake;
 
-using Xunit;
-
 namespace App.Tests;
 
 /// <summary>

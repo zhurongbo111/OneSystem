@@ -10,8 +10,8 @@ namespace App.Tests;
 /// </summary>
 internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
 {
-    private readonly Dictionary<Guid, PurchaseReceipt> _orders = new();
-    private readonly Dictionary<Guid, List<PurchaseReceiptItem>> _items = new();
+    private readonly Dictionary<Guid, PurchaseReceipt> _orders = [];
+    private readonly Dictionary<Guid, List<PurchaseReceiptItem>> _items = [];
     private readonly List<string>? _calls;
 
     public FakePurchaseReceiptRepository(List<string>? calls = null) => _calls = calls;
@@ -31,7 +31,8 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
 
     /// <summary>已执行的分页查询入参</summary>
     public List<(string? Keyword, Guid? PartnerId, Guid? OrderId, DateTimeOffset? Start, DateTimeOffset? End,
-        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = new();
+        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries
+    { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
     public IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> PagedItems { get; set; }
@@ -49,7 +50,7 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
     }
 
     /// <summary>已执行的详情查询入参（id, includeItems），供断言取数范围（见 erp-settlement design.md §3.1.1）</summary>
-    public List<(Guid Id, bool IncludeItems)> DetailQueries { get; } = new();
+    public List<(Guid Id, bool IncludeItems)> DetailQueries { get; } = [];
 
     public Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default)
     {
@@ -128,7 +129,7 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
 /// </summary>
 internal sealed class FakeInventoryRepository : IInventoryRepository
 {
-    private readonly Dictionary<Guid, int> _stock = new();
+    private readonly Dictionary<Guid, int> _stock = [];
     private readonly List<string>? _calls;
 
     public FakeInventoryRepository(List<string>? calls = null) => _calls = calls;
@@ -137,37 +138,37 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     public Func<Exception?>? IncrementFailure { get; set; }
 
     /// <summary>扣减失败注入：命中返回 false 的商品 id 集合（模拟库存不足，TryDecrementAsync 返回 false）</summary>
-    public HashSet<Guid> TryDecrementFailProducts { get; } = new();
+    public HashSet<Guid> TryDecrementFailProducts { get; } = [];
 
     /// <summary>已执行的增量序列（productId, delta），用于断言回冲 / 入库调用</summary>
-    public List<(Guid ProductId, int Delta)> Increments { get; } = new();
+    public List<(Guid ProductId, int Delta)> Increments { get; } = [];
 
     /// <summary>已执行的扣减序列（productId, amount），用于断言销售扣减调用</summary>
-    public List<(Guid ProductId, int Amount)> Decrements { get; } = new();
+    public List<(Guid ProductId, int Amount)> Decrements { get; } = [];
 
     /// <summary>设定值失败注入：返回非 null 异常时 SetQuantityAsync 抛出</summary>
     public Func<Exception?>? SetQuantityFailure { get; set; }
 
     /// <summary>已执行的设定序列（productId, quantity），用于断言库存校正调用</summary>
-    public List<(Guid ProductId, int Quantity)> Sets { get; } = new();
+    public List<(Guid ProductId, int Quantity)> Sets { get; } = [];
 
     /// <summary>结存成本额台账（productId → CostAmount；erp-cost）</summary>
-    public Dictionary<Guid, decimal> CostAmounts { get; } = new();
+    public Dictionary<Guid, decimal> CostAmounts { get; } = [];
 
     /// <summary>移动加权平均单价台账（productId → AverageCost；erp-cost，派生值）</summary>
-    public Dictionary<Guid, decimal> AverageCosts { get; } = new();
+    public Dictionary<Guid, decimal> AverageCosts { get; } = [];
 
     /// <summary>入库成本调用序列（productId, quantity, unitCost），用于断言「成本与数量同事务」</summary>
-    public List<(Guid ProductId, int Quantity, decimal UnitCost)> InboundCosts { get; } = new();
+    public List<(Guid ProductId, int Quantity, decimal UnitCost)> InboundCosts { get; } = [];
 
     /// <summary>出库成本结转序列（productId, totalCost）</summary>
-    public List<(Guid ProductId, decimal TotalCost)> OutboundCosts { get; } = new();
+    public List<(Guid ProductId, decimal TotalCost)> OutboundCosts { get; } = [];
 
     /// <summary>均价读取序列（productId），用于断言「出库前先读均价」发生</summary>
-    public List<Guid> AverageCostReads { get; } = new();
+    public List<Guid> AverageCostReads { get; } = [];
 
     /// <summary>已读取过账面的商品 id 集合（断言「事务内读账面」发生）</summary>
-    public HashSet<Guid> BookRead { get; } = new();
+    public HashSet<Guid> BookRead { get; } = [];
 
     public void Seed(Guid productId, int quantity) => _stock[productId] = quantity;
 
@@ -313,6 +314,7 @@ internal sealed class RecordingUnitOfWork : IUnitOfWork
         {
             throw failure;
         }
+
         return Task.CompletedTask;
     }
 

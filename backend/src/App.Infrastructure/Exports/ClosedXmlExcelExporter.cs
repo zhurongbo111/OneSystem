@@ -26,7 +26,7 @@ public sealed class ClosedXmlExcelExporter : IExcelExporter
     private const double MaxColumnWidth = 40;
 
     /// <summary>工作表名中不允许出现的字符（Excel 限制）</summary>
-    private static readonly char[] InvalidSheetNameChars = [':', '\\', '/', '?', '*', '[', ']'];
+    private static readonly char[] _invalidSheetNameChars = [':', '\\', '/', '?', '*', '[', ']'];
 
     /// <inheritdoc />
     public byte[] Build(ExcelWorkbookModel model)
@@ -179,7 +179,7 @@ public sealed class ClosedXmlExcelExporter : IExcelExporter
     private static string BuildSheetName(string name, HashSet<string> usedNames)
     {
         var sanitized = (name ?? string.Empty).Trim();
-        foreach (var invalid in InvalidSheetNameChars)
+        foreach (var invalid in _invalidSheetNameChars)
         {
             sanitized = sanitized.Replace(invalid.ToString(), string.Empty, StringComparison.Ordinal);
         }

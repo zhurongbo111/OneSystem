@@ -1,12 +1,11 @@
 using App.Core;
 using App.Core.Entities;
 using App.Core.Errors;
-using App.Core.Features.SalesShipments.CreateSalesShipment;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.GetSalesReturnById;
 using App.Core.Features.SalesReturns.GetSalesReturns;
 using App.Core.Features.SalesReturns.VoidSalesReturn;
-using App.Infrastructure;
+using App.Core.Features.SalesShipments.CreateSalesShipment;
 using App.Infrastructure.Repositories;
 
 namespace App.Tests;
