@@ -101,6 +101,15 @@ frontend/
 - 子表格（明细行）内的受控组件一律「`:model-value` + `@change` 写回」；`a-input-number` 等同理，不得用 `:value`。
 - 选项数据源与回填写值必须同源：回填值不在选项列表内时下拉同样显示为空（如仅启用商品的下拉遇到已停用商品），需先确认数据源口径而非改绑定。
 
+### 4.9 组件 props 数值语义以实际安装版本为准（强制）
+
+> 目的：同名 props 在不同组件库（Arco 的 Vue 版 / React 版）语义可能不同，照搬文档或凭直觉传值会**静默**出错（不报错，只是显示值 / 宽度错）。
+> 判据只此一条，无对应规格正文（任何使用组件 props 的地方都适用）。
+
+- 比例 / 区间类 props 一律按**当前安装版本**的语义传值：动手前查 `node_modules/@arco-design/web-vue/es/<component>/` 源码或实测，不套用 React 版文档。典型反例：`a-progress` 的 `percent` 是 **0–1** 比例（`es/progress/line.js` 内 `NP.times(percent, 100)` 生成文本、`percent * 100%` 生成条宽），后端出参已是 0–1 时页面**不得再乘 100**（曾导致库存占比显示 `9920%`）。
+- 需要固定显示格式时用组件插槽自行格式化（如 `a-progress` 的 `#text`），不依赖组件默认文案拼接的小数位。
+- 升级 `@arco-design/web-vue` 时必须复核本条语义，并把口径变化同步到使用处与对应规格 §0。
+
 ## 5. 列表页约定
 
 > **正文（页面布局、表格配置、列宽策略、交互模式）见 `specs/006-list-showcase/design.md` §0**；本节只留判据。参照实现：`src/views/Showcase/ListShowcaseView.vue`。
