@@ -6,7 +6,7 @@ namespace App.Core.Features.Settlements.CreateSettlement;
 
 /// <summary>
 /// 新增收付款单用例（核销即生效）：
-/// 往来单位校验（存在 / 启用 / 类型与方向匹配）→ 逐行取被核销单据（存在 / 未作废 / 往来一致 / 方向匹配 / 未结金额充足）
+/// 往来单位校验（存在 / 启用；不按收付款方向限制档案类型）→ 逐行取被核销单据（存在 / 未作废 / 往来一致 / 方向匹配 / 未结金额充足）
 /// → 后端重算总额（Σ 核销金额）→ 单号生成（RC / PY + yyyyMMdd + 序号，唯一索引冲突重试最多 3 次）
 /// → 同一事务：插收付款单 + 明细 + 逐行累加各单据已结算金额（IUnitOfWork 包裹）。
 /// </summary>
@@ -60,7 +60,9 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
             throw new BusinessException(ErrorCode.OrderItemsEmpty, "核销明细不能为空");
         }
 
-        // 查库约束：往来单位存在 / 启用 / 类型与方向匹配（收款需客户、付款需供应商）
+        // 查库约束：往来单位存在 / 启用
+        // 不按收付款方向限制档案类型：收款可对客户（销售回款）或供应商（收回退货退款），付款同理；
+        // 往来正确性由下方「核销单据往来 == 收付款单往来」保证（单据的档案类型在其开单时已校验）
         var partner = await _partnerRepository.GetByIdAsync(request.PartnerId, cancellationToken);
         if (partner is null)
         {
@@ -70,12 +72,6 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         if (partner.Status == PartnerStatus.Disabled)
         {
             throw new BusinessException(ErrorCode.PartnerDisabled, "往来单位已停用，不可用于开单");
-        }
-
-        var requiredPartnerType = request.Type == SettlementType.Receipt ? PartnerType.Customer : PartnerType.Supplier;
-        if (partner.Type != requiredPartnerType && partner.Type != PartnerType.Both)
-        {
-            throw new BusinessException(ErrorCode.PartnerTypeMismatch, "往来单位类型与收付款单不匹配");
         }
 
         // 逐行校验被核销单据：类型方向 / 存在 / 未作废 / 往来一致 / 核销金额不超过未结金额

@@ -10,7 +10,7 @@ namespace App.Tests;
 /// <summary>
 /// 收付款单创建 / 作废用例测试（design.md §6）：
 /// CreateSettlement（四种核销方向成功 + 单号前缀 / 总额重算 / 逐行累加 / 明细快照；异常 40110 / 40112 / 40113 / 40114 /
-/// 40400 / 40104 / 40108 / 40109 且失败路径无累加 + Rollback）；
+/// 40400 / 40104 / 40108 且失败路径无累加 + Rollback；往来档案类型不按收付款方向限制）；
 /// VoidSettlement（逐行回退 + 置作废；已作废 40104；不存在 40400）。
 /// 单据 / 收付款 / 工作单元用行为型假实现（规避 InMemory 不支持 ExecuteUpdateAsync），往来单位用真实仓储 + InMemory。
 /// </summary>
@@ -221,7 +221,8 @@ public class SettlementCreateAndVoidTests
     [Fact]
     public async Task 新增收款单_核销采购退货单_应落单并累加已结金额()
     {
-        var harness = await CreateHarnessAsync(PartnerType.Both);
+        // 采购退货的退款是「收供应商的钱」：往来为纯供应商（不再因档案类型被 40109 拒绝）
+        var harness = await CreateHarnessAsync(PartnerType.Supplier);
         var purchaseReturn = NewPurchaseReturn(harness.Partner.Id);
         harness.PurchaseReturns.Seed(purchaseReturn, Array.Empty<PurchaseReturnItem>());
 
@@ -303,18 +304,6 @@ public class SettlementCreateAndVoidTests
                 Line(SettlementOrderType.SalesOutbound, Guid.NewGuid(), 10m))));
 
         Assert.Equal(ErrorCode.PartnerDisabled, ex.Code);
-    }
-
-    [Fact]
-    public async Task 新增收款单_往来为纯供应商_应报PartnerTypeMismatch()
-    {
-        var harness = await CreateHarnessAsync(PartnerType.Supplier);
-
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => CreateHandler(harness).HandleAsync(
-            Request(harness.Partner.Id, SettlementType.Receipt, SettlementMethod.Cash,
-                Line(SettlementOrderType.SalesOutbound, Guid.NewGuid(), 10m))));
-
-        Assert.Equal(ErrorCode.PartnerTypeMismatch, ex.Code);
     }
 
     [Fact]

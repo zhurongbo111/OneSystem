@@ -138,14 +138,15 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
 
         var ids = partners.Select(p => p.Id).ToList();
 
-        // 四类单据按往来聚合：总额 + 未结单据数（未作废且未结金额 > 0）
+        // 四类单据按往来聚合：未结金额 + 未结单据数（未作废且未结金额 > 0）
+        // 余额按被核销单据未结金额（TotalAmount − SettledAmount）归集，不引用收付款单类型 → 天然支持收款挂供应商
         var salesShipments = await _dbContext.SalesShipments.AsNoTracking()
             .Where(o => ids.Contains(o.PartnerId) && o.Status == OrderStatus.Normal)
             .GroupBy(o => o.PartnerId)
             .Select(g => new
             {
                 PartnerId = g.Key,
-                Amount = g.Sum(o => o.TotalAmount),
+                UnsettledAmount = g.Sum(o => o.TotalAmount - o.SettledAmount),
                 UnsettledCount = g.Count(o => o.SettledAmount < o.TotalAmount),
             })
             .ToListAsync(cancellationToken);
@@ -156,7 +157,7 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
             .Select(g => new
             {
                 PartnerId = g.Key,
-                Amount = g.Sum(r => r.TotalAmount),
+                UnsettledAmount = g.Sum(r => r.TotalAmount - r.SettledAmount),
                 UnsettledCount = g.Count(r => r.SettledAmount < r.TotalAmount),
             })
             .ToListAsync(cancellationToken);
@@ -167,7 +168,7 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
             .Select(g => new
             {
                 PartnerId = g.Key,
-                Amount = g.Sum(o => o.TotalAmount),
+                UnsettledAmount = g.Sum(o => o.TotalAmount - o.SettledAmount),
                 UnsettledCount = g.Count(o => o.SettledAmount < o.TotalAmount),
             })
             .ToListAsync(cancellationToken);
@@ -178,16 +179,9 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
             .Select(g => new
             {
                 PartnerId = g.Key,
-                Amount = g.Sum(r => r.TotalAmount),
+                UnsettledAmount = g.Sum(r => r.TotalAmount - r.SettledAmount),
                 UnsettledCount = g.Count(r => r.SettledAmount < r.TotalAmount),
             })
-            .ToListAsync(cancellationToken);
-
-        // 已收 / 已付：收付款单总额（未作废）
-        var settlements = await _dbContext.Settlements.AsNoTracking()
-            .Where(s => ids.Contains(s.PartnerId) && s.Status == OrderStatus.Normal)
-            .GroupBy(s => new { s.PartnerId, s.Type })
-            .Select(g => new { g.Key.PartnerId, g.Key.Type, Amount = g.Sum(s => s.TotalAmount) })
             .ToListAsync(cancellationToken);
 
         var salesShipmentMap = salesShipments.ToDictionary(x => x.PartnerId);
@@ -197,17 +191,13 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
 
         var items = partners.Select(p =>
         {
-            var salesTotal = salesShipmentMap.TryGetValue(p.Id, out var so) ? so.Amount : 0m;
-            var salesReturnTotal = salesReturnMap.TryGetValue(p.Id, out var sr) ? sr.Amount : 0m;
-            var purchaseTotal = purchaseReceiptMap.TryGetValue(p.Id, out var po) ? po.Amount : 0m;
-            var purchaseReturnTotal = purchaseReturnMap.TryGetValue(p.Id, out var pr) ? pr.Amount : 0m;
-
-            var received = settlements
-                .Where(s => s.PartnerId == p.Id && s.Type == SettlementType.Receipt)
-                .Sum(s => s.Amount);
-            var paid = settlements
-                .Where(s => s.PartnerId == p.Id && s.Type == SettlementType.Payment)
-                .Sum(s => s.Amount);
+            // 应收 = 销售出库单未结 + 采购退货单未结；应付 = 采购入库单未结 + 销售退货单未结
+            var receivableAmount =
+                (salesShipmentMap.TryGetValue(p.Id, out var so) ? so.UnsettledAmount : 0m)
+                + (purchaseReturnMap.TryGetValue(p.Id, out var pr) ? pr.UnsettledAmount : 0m);
+            var payableAmount =
+                (purchaseReceiptMap.TryGetValue(p.Id, out var po) ? po.UnsettledAmount : 0m)
+                + (salesReturnMap.TryGetValue(p.Id, out var sr) ? sr.UnsettledAmount : 0m);
 
             var unsettledCount =
                 (salesShipmentMap.TryGetValue(p.Id, out var so2) ? so2.UnsettledCount : 0)
@@ -220,8 +210,8 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
                 PartnerId = p.Id,
                 PartnerName = p.Name,
                 PartnerType = p.Type,
-                ReceivableAmount = salesTotal - salesReturnTotal - received,
-                PayableAmount = purchaseTotal - purchaseReturnTotal - paid,
+                ReceivableAmount = receivableAmount,
+                PayableAmount = payableAmount,
                 UnsettledOrderCount = unsettledCount,
             };
         }).ToList();
