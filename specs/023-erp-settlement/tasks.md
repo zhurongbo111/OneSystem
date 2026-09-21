@@ -103,3 +103,31 @@ updated: 2026-09-21
 - [x] 8.3 后端测试：四类单据各补「已核销 → `40120` 且未开事务 / 未回冲 / 不写流水 / 状态不变」用例；`cd backend && dotnet build` / `dotnet test` 全绿（544 通过）
 - [x] 8.4 E2E：`settlement.spec.ts` 补「销售单收款后作废被拒（提示可见）→ 作废收款单回退 → 再作废成功」；`npm run test:e2e` 全量通过（122 通过）
 - [x] 8.5 规格联动：`specs/015` / `016` / `021` / `022` / `024` 的 `design.md` 加「演进（erp-settlement，已核销禁作废）」注记；`.codebuddy/CONTEXT.md` 错误码同步
+
+## 九、变更（2026-09-21）：收款支持供应商与往来对账口径修正
+
+> 需求 / 设计见 `requirement.md` 目标 3 / 4 / 7、F2 / F3 / F8、验收标准 4 / 10，`design.md` §0 / §2.1 / §3.1 / §3.4 / §4.4 / §5 / §6。
+> 决策：**不新增表字段**——业务类型由 `Type` + 明细 `OrderType` 派生（现有字段足够，可混合核销时单值字段无法表达）。
+
+- [x] 9.1 后端：`CreateSettlementRequestHandler` 移除「往来档案类型与方向匹配」校验（`40109`），保留存在 / 停用校验；正确性由核销行的「往来一致 `40113`」+「方向匹配 `40114`」承担
+- [x] 9.2 后端：`SettlementQueryRepository.GetReconciliationAsync` 改为按四表未结金额（`TotalAmount − SettledAmount`，仅未作废）归集应收 / 应付，删除 `Settlements` 聚合查询；`ReconciliationItem` 注释同步
+- [x] 9.3 后端测试：`SettlementCreateAndVoidTests` 删除「纯供应商 → `40109`」用例、`收款核销采购退货` 成功例改用纯 `Supplier` 往来；`SettlementQueryRepositoryTests` 重写对账断言（未结金额归集）+ 新增「收款挂供应商」用例
+- [x] 9.4 前端：`SettlementFormPage.vue` 往来下拉取全部启用往来（不按类型过滤）、placeholder 调整；`onTypeChange` 不再因类型过滤清空往来
+- [x] 9.5 E2E：`settlement.spec.ts` 补「供应商采购退货 → 收款（可选中该供应商，不再 `40109`）」与对账余额断言
+- [x] 9.6 验证：`cd backend && dotnet test`（544 通过）与 `cd frontend && npm run type-check` / `npm run lint` / `npm run build` / `npm run test:e2e`（123 通过）全绿
+- [x] 9.7 规格联动：`.codebuddy/CONTEXT.md` §2 结算口径备注同步（收款不受往来类型限制、对账按未结金额归集）
+
+## 十、变更（2026-09-21）：收付款列表「单据类型」列
+
+> 需求 / 设计见 `requirement.md` F4 / 验收标准 11，`design.md` §0 / §3.4 / §4.2 / §4.4 / §6。
+> 决策：**不落列**——由核销明细 `OrderType` 派生（可混合核销，故为去重集合，多值以「、」连接）。
+
+- [x] 10.1 后端：`SettlementListItemDto` 增 `OrderTypes`（去重升序集合）+ `SettlementsDtoMapper` 透传
+- [x] 10.2 后端：`GetSettlements` Handler 一次批量取本页核销明细并聚合 `OrderTypes`（与按单据反查的 `OrderAmount` 共用同一次查询，非逐单 N+1）
+- [x] 10.3 后端测试：列表映射断言 `OrderTypes`（混合核销两类单据）；未按单据反查时 `OrderAmount` 为 null、`OrderTypes` 为空集合且明细只查一次
+- [x] 10.4 前端：`api/settlement.ts` 增 `orderTypes`；`SettlementsView.vue` 增可选列「单据类型」（默认显示、置于「类型」之后、多值「、」连接）
+- [x] 10.5 E2E：`settlement.spec.ts` 收付款列表断言该行含「销售出库单」
+- [x] 10.6 验证：`dotnet test`（544 通过）与 `npm run type-check` / `npm run lint` / `npm run build` / `npm run test:e2e`（123 通过）全绿
+- [x] 10.7 默认列调整：「创建时间」移出默认显示（保留列设置可选），与「收付日期」区分业务日期 / 审计时间；E2E 断言默认表头含「单据类型」、不含「创建时间」
+- [x] 10.8 「收付款 / 去收付款」入口显隐（需求 F5 / 设计 §4.4）：新增 `utils/settlement.ts` 的 `canStartSettlement`（单据正常且**未结算**）并接入四类单据**列表 + 详情共 8 处**；E2E 断言「已结算后入口消失 → 作废收付款单回退后入口恢复」及「已结算退货单详情无『去收付款』」
+- [x] 10.9 「作废」按钮前端提前拦截（需求 F7 / 设计 §4.4）：新增 `canVoidOrder`（正常且**未核销**）与 `VOID_SETTLED_HINT`，接入四类单据列表 + 详情共 8 处——已核销时 `disabled` + tooltip 提示处置顺序（后端 `40120` 为兜底）；E2E 把「点了确认才被拒」改为断言按钮 `disabled`，回退后作废链路保持
