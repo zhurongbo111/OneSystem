@@ -11,6 +11,7 @@ updated: 2026-09-21
 >
 > **演进（erp-settlement）**：结算已由 `SettlementStatus`（0/1 状态位）升级为 `SettledAmount`（已结算金额）+ 推导状态（未结 / 部分 / 结清）；手工切换端点 `PUT /api/sales-returns/{id}/settlement` 与按钮已移除，结算变化一律由收付款单核销驱动；列表筛选参数 `settlement`（0/1）改为 `settlementState`（0/1/2），列表 / 详情出参 `settlementStatus` 改为 `settledAmount` / `unsettledAmount` / `settlementState`。销售退货单的核销方向为**付款**（我们退客户钱）。现行为准见 `specs/023-erp-settlement/`。
 > **演进（erp-settlement，已核销禁作废）**：退货单被核销（`SettledAmount > 0`）后**禁止作废**（`40120`，须先作废对应付款单回退金额）；作废用例在既有「已作废 `40104`」校验后追加该校验，判据见 `specs/023-erp-settlement/design.md` §0 / §3.6。
+> **演进（erp-settlement，核销取数只查主表）**：`ISalesReturnRepository.GetDetailAsync` 增 `bool includeItems = true`——`false` 时只查主表、不发明细查询，`Items` 恒为空集合（调用方不得消费）；收付款核销校验取被核销单据只用主表字段，故传 `false`。判据见 `specs/023-erp-settlement/design.md` §3.1.1。
 > **演进（erp-order-flow）**：本规格消费的销售出库单表已随 `specs/024-erp-order-flow/` 重命名——`SalesOrders` → `SalesShipments`（主表单号列 `OrderNo` → `ShipmentNo`、明细外键 `OrderId` → `ShipmentId`），接口路径 `/api/sales-orders` → `/api/sales-shipments`，单号前缀 `SO` → `GI`。销售退货单自身（`SalesReturns` / 前缀 `SR`）与用例语义不变。
 
 ## 1. 相对 erp-purchase-return 的替换规则

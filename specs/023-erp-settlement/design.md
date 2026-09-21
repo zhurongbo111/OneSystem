@@ -142,6 +142,39 @@ updated: 2026-09-21
   - `ReconciliationItem`：`PartnerId` / `PartnerName` / `PartnerType` / `ReceivableAmount`（应收）/ `PayableAmount`（应付）/ `UnsettledOrderCount`（应收 / 应付口径见 §0）。
 - 四类单据仓储追加 `AddSettledAmountAsync(id, delta, ...)`（`ExecuteUpdateAsync`：`SettledAmount = SettledAmount + delta`）；**移除** `UpdateSettlementAsync`。
 
+#### 3.1.1 四类单据仓储 `GetDetailAsync` 增 `includeItems` 参数（核销取数只查主表）
+
+| 仓储 | 方法（改造后） |
+|---|---|
+| `IPurchaseReceiptRepository` | `Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default)` |
+| `ISalesShipmentRepository` | 同形，实体为 `SalesShipment` / `SalesShipmentItem` |
+| `IPurchaseReturnRepository` | 同形，实体为 `PurchaseReturn` / `PurchaseReturnItem` |
+| `ISalesReturnRepository` | 同形，实体为 `SalesReturn` / `SalesReturnItem` |
+
+**参数语义（须写入接口 XML 文档注释）**：
+
+| 取值 | 行为 |
+|---|---|
+| `includeItems = true`（默认） | 主表 + 明细行（明细按 `Id` 升序还原插入顺序）——与现状完全一致 |
+| `includeItems = false` | **只查主表**（`AsNoTracking` + 一次 `FirstOrDefaultAsync`），不发起明细查询；`Items` 恒为 `Array.Empty<TItem>()`，调用方**不得消费 `Items`**，只取主表字段 |
+
+- 主表不存在时两种取值的 `Order` 均为 `null`、`Items` 均为空集合。
+
+**决策与影响**：
+
+- **不新增仓储方法 / 不新增接口**：核销校验与详情用例共用同一取数入口，仅以参数区分取数范围（仓储方法数不增长）。
+- **默认值取 `true`**：既有调用点的语义与行为不变（明细仍可取），只有「只用主表字段」的核销校验显式传 `false`。
+- **参数置于 `CancellationToken` 之前**（`CancellationToken` 保持末位）：既有位置调用 `GetDetailAsync(id, cancellationToken)` 会编译失败，须改为 `GetDetailAsync(id, cancellationToken: cancellationToken)`——机械改动、由编译器强制，不会漏改。
+- **改造范围**：仅本规格用到的四类单据仓储（采购入库 / 销售出库 / 采购退货 / 销售退货）。`ISettlementRepository` / `IStockTakeRepository` / `ISalesOrderRepository` / `IPurchaseOrderRepository` 的同名方法**不加**该参数（未被核销校验使用，避免全仓铺开；订单域 `Void` / `Update` / `Close` 中丢弃明细的调用点本次同样不改）。
+- **调用点清单（共 20 处，编译期可见）**：
+
+| 用例 | 处数 | 改法 |
+|---|---:|---|
+| `CreateSettlement`（`LoadOrderAsync` 四个分支） | 4 | `GetDetailAsync(orderId, includeItems: false, cancellationToken)` |
+| 四类单据 `CreateXxx` / `GetXxxById` / `VoidXxx`（每类 1 / 1 / 2） | 16 | `GetDetailAsync(id, cancellationToken: cancellationToken)`（仅补命名参数，行为不变） |
+
+- `Items` 在 `includeItems = false` 时为空集合属**约定行为**，不是异常路径；若后续有调用点需要明细却又传了 `false`，由 code review 拦截（不引入运行时校验）。
+
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 
 | code | 常量 | 含义 |
@@ -172,7 +205,7 @@ updated: 2026-09-21
 
 1. 核销明细为空 → `40110`（Validator 已拦非空，Handler 双保险）。
 2. 取往来单位：不存在 → `40400`；停用 → `40108`。**不校验档案类型与方向**（收款可对客户或供应商，付款同理，`40109` 不再由本用例触发）；往来正确性由步骤 3 的「单据往来 == 收付款单往来 `40113`」+「方向与单据类型匹配 `40114`」保证。
-3. 逐行取被核销单据（按 `OrderType` 分派四类单据仓储 `GetDetailAsync`）：不存在 → `40400`；已作废 → `40104`；往来单位不一致 → `40113`；方向与单据类型不匹配 → `40114`；核销金额 > `TotalAmount − SettledAmount` → `40112`（message 含单号与未结金额）。
+3. 逐行取被核销单据（按 `OrderType` 分派四类单据仓储 `GetDetailAsync`，传 **`includeItems: false`**——只用主表字段，不查明细分片，见 §3.1.1）：不存在 → `40400`；已作废 → `40104`；往来单位不一致 → `40113`；方向与单据类型不匹配 → `40114`；核销金额 > `TotalAmount − SettledAmount` → `40112`（message 含单号与未结金额）。
 4. 后端重算 `TotalAmount = Σ Amount`；`GenerateSettlementNoAsync(type, settlementDate)` 生成单号。
 5. `IUnitOfWork`：`BeginTransactionAsync` → `ISettlementRepository.AddAsync` → 逐行按其 `OrderType` 调用对应单据仓储 `AddSettledAmountAsync(orderId, +amount)` → `CommitAsync`。
 
@@ -304,6 +337,7 @@ src/
 | 保留 `OrderStatus` 作废语义 | 收付款单复用 `OrderStatus` | 作废模式与既有单据一致（不可改、可作废、作废回退影响） |
 | 历史数据按全额回填 | 迁移内 `UPDATE` | 迁移前「已结算」即「全额已结」的口径，回填后展示与筛选行为不变，无人工对账成本 |
 | 无 RBAC | 登录即可见「收付款」「往来对账」菜单 | 同既有功能（权限由 `028-erp-rbac` 接入）；资金相关菜单在 `028` 落地时应优先纳入按钮级权限 |
+| 核销取被核销单据只查主表 | 既有 `GetDetailAsync` 增 `bool includeItems = true` 标记参数，核销校验传 `false` | 逐行校验只用主表字段（单号 / 日期 / `TotalAmount` / `SettledAmount` / `PartnerId` / `Status`），却会为每行多付一次明细查询；**不新增仓储方法与接口**，默认 `true` 使既有调用点语义不变，仅核销校验显式收窄。代价：`includeItems = false` 时 `Items` 恒为空集合，返回契约需靠注释约定「不得消费 `Items`」（§3.1.1） |
 | 已核销单据禁止作废（而非自动反核销） | 作废前校验 `SettledAmount > 0` → `40120` | 自动连带作废 / 反核销需处理「一张收付款单核销多张单据」的级联语义，复杂且易生歧义；拒绝并提示「先作废对应收付款单」把决策留给用户，与「作废是终态、资金口径单一」一致（`015` / `016` / `021` / `022` / `024` 已留演进注记） |
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
@@ -314,6 +348,7 @@ src/
   - 成功（收款核销销售单）：断言单号前缀 `RC` + 日期、`TotalAmount` 后端重算（前端传值被忽略）、每行按其 `OrderType` 调用 `AddSettledAmountAsync(+amount)`、核销明细快照、`Commit`。
   - 成功（付款核销采购入库单 / **收款核销采购退货单（往来为纯 `Supplier`）** / 付款核销销售退货单）：方向与往来类型组合各一例；断言不再因档案类型返回 `40109`。
   - 异常：明细空 `40110`；往来不存在 `40400` / 停用 `40108`；单据不存在 `40400` / 已作废 `40104` / 往来不一致 `40113` / 方向不匹配 `40114` / 超额 `40112`；失败路径**无任何金额累加**、`RollbackAsync` 断言。
+  - 取数范围（§3.1.1）：核销校验调 `GetDetailAsync` 时 `includeItems = false`（假实现断言：主表查询 1 次 / 明细查询 0 次）；`includeItems = true`（默认）时明细正常返回（既有详情用例回归）。
 - **VoidSettlement**：成功（断言逐行 `AddSettledAmountAsync(−amount)` + `UpdateStatusAsync(Voided)`）；已作废 → `40104`；不存在 → `40400`。
 - **GetSettlements / GetSettlementById**：筛选传参组合、分页映射（含作废）、核销明细快照透传、不存在 `40400`；**单据类型列**：按本页核销明细去重升序聚合 `OrderTypes`（混合核销为多值、无明细为空集合）、空页不查明细、未指定被核销单据时明细仍只批量查一次（非逐单 N+1）；**按单据反查**：`orderType` + `orderId` 透传断言、`orderAmount` 取该单据核销金额之和（非该单据的明细不计入）、`orderId` 为空时 `OrderAmount` 为 `null`；仓储按 `orderType` + `orderId` 过滤（`SettlementRepositoryTests`）——命中单返回、未核销该单据的单被排除。
 - **GetUnsettledOrders**：方向 → 单据类型集合映射正确（收款 → 销售单 + 采购退货单；付款 → 采购单 + 销售退货单）；仅返回未结且未作废（断言透传仓储过滤）。

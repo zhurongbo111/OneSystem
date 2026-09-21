@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 需求规格：采购入库（erp-purchase）
