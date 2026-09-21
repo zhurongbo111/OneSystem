@@ -64,7 +64,7 @@ updated: 2026-09-16
 
 ## 7. e2e
 
-- [x] T38 新增 `frontend/e2e/user-management.spec.ts`：列表渲染与分页/筛选、新增用户、编辑用户、启停、重置密码后新密码登录、详情页返回
+- [x] T38 新增 `frontend/e2e/user.spec.ts`：列表渲染与分页/筛选、新增用户、编辑用户、启停、重置密码后新密码登录、详情页返回
 - [x] T39 新增 `frontend/e2e/login-log.spec.ts`：菜单进入 `/login-logs`、登录后记录存在（含 `admin`）、按登录名筛选、按时间范围（今天）筛选、分页与空状态
 - [x] T40 启动 dev 前后端（含 PostgreSQL 迁移）并跑通 `npm run test:e2e`
 
@@ -82,4 +82,4 @@ updated: 2026-09-16
 
 - [x] T46 `specs/009-user-management/design.md` §4.4 与 `requirement.md` 验收标准 15 补「打开抽屉先重置表单 + 回填完成前字段禁用」的行为约定（规格先行）
 - [x] T47 `UserFormDrawer.vue`：`visible` watcher 统一先 `Object.assign(form, emptyForm())` 再按需 `loadUser`；各字段 `:disabled="detailLoading"`，消除"残留上一个用户数据"与"输入被异步回填覆盖导致提交旧值"
-- [x] T48 `e2e/user-management.spec.ts` 新增「详情接口较慢时表单先重置并禁用，回填后编辑仍生效」回归用例（延迟详情接口放大竞态窗口）；`npm run test:e2e` 46 通过
+- [x] T48 `e2e/user.spec.ts` 新增「详情接口较慢时表单先重置并禁用，回填后编辑仍生效」回归用例（延迟详情接口放大竞态窗口）；`npm run test:e2e` 46 通过

@@ -31,14 +31,14 @@ updated: 2026-09-16
 
 ## 四、E2E（Playwright）
 
-- [x] 4.1 `category-management.spec.ts` 重写：菜单进入渲染 / 抽屉新增 + 重名 40105 / 抽屉编辑 + 重名 / 删除 + 有引用 40106 / 搜索命中与重置 / 分页翻页与序号跨页
+- [x] 4.1 `category.spec.ts` 重写：菜单进入渲染 / 抽屉新增 + 重名 40105 / 抽屉编辑 + 重名 / 删除 + 有引用 40106 / 搜索命中与重置 / 分页翻页与序号跨页
 
 ## 五、质量
 
 - [x] 5.1 `cd backend && dotnet build` / `dotnet test` 通过
 - [x] 5.2 `cd frontend && npm run type-check` / `lint` / `build` 全绿
 - [x] 5.3 `cd frontend && npm run test:e2e` 全绿（含分类管理新用例 + 商品管理回归）
-  - 复跑记录（2026-09-16）：先启动 dev 前后端（5080 / 5173），再执行 `npm run test:e2e`，全量 **87 passed (3.5m)**、0 失败；含 `category-management.spec.ts` 全部用例与 `product-management.spec.ts` 回归。
+  - 复跑记录（2026-09-16）：先启动 dev 前后端（5080 / 5173），再执行 `npm run test:e2e`，全量 **87 passed (3.5m)**、0 失败；含 `category.spec.ts` 全部用例与 `product.spec.ts` 回归。
 
 ## 变更：规格与实现对齐（2026-09-16）
 

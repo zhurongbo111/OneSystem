@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-21
 ---
 
 # 任务清单：成本核算与销售毛利（erp-cost）
@@ -77,7 +77,7 @@ updated: 2026-09-17
 - [x] 8.2 `specs/020-erp-stock-take/design.md` 加注记：期初建账新增成本单价（必填）、明细追加 `UnitCost`、页面成本列
 - [x] 8.3 `specs/021` / `022` `design.md` 加注记：退货 / 作废回冲的成本口径与流水成本列
 - [x] 8.4 `specs/025-erp-report/design.md` §0.1 加注记：库存余额表追加库存金额 / 均价列；成本毛利口径以 `026` §0.3 为准
-- [x] 8.5 `.codebuddy/CONTEXT.md` §2（成本仓储方法 / 读模型 / 错误码）、§3（api 文件与报表域页面）、§6 同步
+- [x] 8.5 `.codebuddy/CONTEXT.md` §2（成本入口与指针，明细见本规格 `design.md`）、§3（api 文件与报表域页面）、§6 同步
 - [x] 8.6 `specs/ROADMAP.md` 状态列更新（`026` → 已实现）
 
 ## 完成定义

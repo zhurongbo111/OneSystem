@@ -85,7 +85,7 @@ ApiResponse<PagedResult<CategoryDto>> GetPaged(
 ## 3. 目录结构（前端）
 
 ```
-src/views/CategoryManagement/       # 分类独立功能域（对齐 Features/Categories、/categories、category-management.spec.ts）
+src/views/CategoryManagement/       # 分类独立功能域（对齐 Features/Categories、/categories、category.spec.ts）
 ├── CategoriesView.vue              # 分类管理页（搜索 + 分页 + 操作列编辑/删除）
 └── CategoryFormDrawer.vue          # 分类新增/编辑抽屉（新增）
 
@@ -159,7 +159,7 @@ export function getCategoriesPaged(query: CategoryListQuery): Promise<PagedResul
 
 ## 6. e2e 设计（Playwright）
 
-`frontend/e2e/category-management.spec.ts` 重写（搜索 + 分页 + 抽屉新增/编辑 + 删除拦截）：
+`frontend/e2e/category.spec.ts` 重写（搜索 + 分页 + 抽屉新增/编辑 + 删除拦截）：
 
 1. 菜单进入分类管理页，渲染表头（分类名称 / 创建时间 / 操作）。
 2. 新增分类：点「新增」→ 抽屉输入名称 → 提交 → 提示「分类已创建」→ 第 1 页列表可见新行；重名新增抽屉提交提示「分类名称已存在」（40105）。
@@ -168,7 +168,7 @@ export function getCategoriesPaged(query: CategoryListQuery): Promise<PagedResul
 5. 搜索：输入命中关键词「搜索」→ 仅命中行可见；「重置」→ 恢复。
 6. 分页：建 11 条同前缀数据后切 `pageSize=10` → 第 1 页 10 行（序号 1-10）、第 2 页 1 行（序号 11），验证切片正确与序号跨页连续。
 
-`product-management.spec.ts`：入口跳转用例与 `createCategoryInDrawer` 行内新增保持不变（不回归）。
+`product.spec.ts`：入口跳转用例与 `createCategoryInDrawer` 行内新增保持不变（不回归）。
 
 ## 7. 不做的事
 
