@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 设计规格：收付款与应收应付（erp-settlement）
@@ -19,6 +19,7 @@ updated: 2026-09-20
 | 结算状态（展示） | `SettlementState`：`0 = 未结算`（`SettledAmount ≤ 0`）、`1 = 部分结算`（`0 < SettledAmount < TotalAmount`）、`2 = 已结算`（`SettledAmount ≥ TotalAmount`）；**推导，不落列** |
 | 核销方向 | 收款单（`Receipt`）→ 核销销售出库单（`SalesOutbound`）/ 采购退货单（`PurchaseReturn`）；付款单（`Payment`）→ 核销采购入库单（`PurchaseInbound`）/ 销售退货单（`SalesReturn`） |
 | 往来余额 | 应收 = Σ 销售单总额 − Σ 销售退货总额 − Σ 已收；应付 = Σ 采购单总额 − Σ 采购退货总额 − Σ 已付 |
+| 已核销单据作废 | `SettledAmount > 0` 的单据**禁止作废**（`40120`）：须先作废对应收付款单回退金额，方可作废（作废与核销互斥） |
 
 - 前端结算状态标签文案与颜色：`未结算`（`gray`）/ `部分结算（未结 x）`（`orange`）/ `已结算`（`green`）；全项目唯一来源，单据列表 / 详情与收付款页共用。
 - 被核销单据类型的**文案与详情路由**同样收敛到 `src/utils/settlement.ts`（`settlementOrderTypeLabel` / `settlementOrderTypeRouteName`）：收付款详情核销明细、往来对账未结单据抽屉的「单号」一律渲染为 `a-link` 超链接直达对应单据详情，**不另设「详情」按钮**。
@@ -46,6 +47,7 @@ updated: 2026-09-20
 - **核销即快照**：核销明细记录单据号、单据日期、单据总额的快照，详情页免跨表联查。
 - **整单事务**：核销累加（跨 1–4 类单据仓储）与收付款单落库在同一 `IUnitOfWork` 事务内；任一失败整体回滚。
 - **金额由后端重算**：收付款单总额 = Σ 核销金额（不信任前端）。
+- **作废与核销互斥**：作废是终态、核销是资金事实；已核销单据不允许作废，避免「单据作废但收付款单仍挂着核销」的悬空台账（处置顺序：先作废收付款单回退金额，再作废单据）。
 
 ## 2. 数据模型
 
@@ -145,6 +147,7 @@ updated: 2026-09-20
 | 40112 | `SettlementAmountExceeded` | 核销金额超过单据未结金额（message 含单号与未结金额） |
 | 40113 | `SettlementPartnerMismatch` | 核销单据的往来单位与收付款单不一致 |
 | 40114 | `SettlementDirectionMismatch` | 收付款方向与单据类型不匹配（如收款单核销采购单） |
+| 40120 | `OrderSettledCannotVoid` | 单据已被收付款单核销，禁止作废（message 含单号与已结金额） |
 
 > 复用：`40104 OrderVoided`（被核销单据已作废 / 收付款单已作废）、`40110 OrderItemsEmpty`（未指定核销单据）、`40400`、`40000`。
 
@@ -202,6 +205,7 @@ updated: 2026-09-20
 | DTO | 列表 / 详情出参把 `settlementStatus` 替换为 `settledAmount` + `unsettledAmount` + `settlementState`（推导值，`Mapper` 内计算） |
 | 筛选 | 列表请求参数 `settlement`（0/1）→ `settlementState`（0/1/2） |
 | Swagger | 四个结算端点从文档移除（`003-api-swagger` 的端点清单如有断言需同步） |
+| 作废校验 | 四类单据作废用例（`VoidPurchaseReceipt` / `VoidSalesShipment` / `VoidPurchaseReturn` / `VoidSalesReturn`）在既有「已作废 `40104`」校验之后追加「已核销 `40120`」校验：`SettledAmount > 0` 直接拒绝（**不开事务、不动库存与流水**）；不改仓储与 DTO |
 
 ### 3.7 Swagger
 
@@ -291,6 +295,7 @@ src/
 | 保留 `OrderStatus` 作废语义 | 收付款单复用 `OrderStatus` | 作废模式与既有单据一致（不可改、可作废、作废回退影响） |
 | 历史数据按全额回填 | 迁移内 `UPDATE` | 迁移前「已结算」即「全额已结」的口径，回填后展示与筛选行为不变，无人工对账成本 |
 | 无 RBAC | 登录即可见「收付款」「往来对账」菜单 | 同既有功能（权限由 `028-erp-rbac` 接入）；资金相关菜单在 `028` 落地时应优先纳入按钮级权限 |
+| 已核销单据禁止作废（而非自动反核销） | 作废前校验 `SettledAmount > 0` → `40120` | 自动连带作废 / 反核销需处理「一张收付款单核销多张单据」的级联语义，复杂且易生歧义；拒绝并提示「先作废对应收付款单」把决策留给用户，与「作废是终态、资金口径单一」一致（`015` / `016` / `021` / `022` / `024` 已留演进注记） |
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
 
@@ -306,3 +311,4 @@ src/
 - **GetReconciliation**：按往来聚合的应收 / 应付计算正确（含退货冲减与已收 / 已付抵扣）、未结单据数正确、分页 `total`。
 - **单据侧回归**（`015` / `016` / `021` / `022` 既有测试调整）：`SettlementState` 推导三态（0 / 部分 / 结清边界：`SettledAmount = 0`、`0 < x < TotalAmount`、`x = TotalAmount`、`x > TotalAmount` 视为结清）；列表 `settlementState` 筛选传参；`UpdateXxxSettlement` 用例与其测试**删除**。
 - **字段约束一致性**：`SettlementNo` EF `HasMaxLength` 20 == `OrderFieldConstraints.OrderNoMaxLength`；核销明细列长（20）与 `Amount` 精度（`numeric(18,2)`）与单据金额口径一致；`amount` 边界（`0.01` 通过 / `0` 拒绝 / 超 `PriceMaxValue` 拒绝）。
+- **已核销禁作废**（`VoidPurchaseReceipt` / `VoidSalesShipment` / `VoidPurchaseReturn` / `VoidSalesReturn` 各一例）：`SettledAmount > 0` → `40120`，message 含单号与已结金额，且**未开启事务、未回冲库存、不写流水、单据状态不变**；`SettledAmount = 0` 时作废行为不变（既有成功用例回归）。

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 设计规格：采购入库（erp-purchase）
@@ -10,6 +10,7 @@ updated: 2026-09-20
 > 本规格为进销存功能组**单据域首个规格**，其数据模型 / 仓储 / 单号 / 校验约定为采购 / 销售共用，erp-sale 照抄本规格模板实现（见 §0 替换规则）。
 >
 > **演进（erp-settlement）**：结算已由 `SettlementStatus`（0/1 状态位）升级为 `SettledAmount`（已结算金额）+ 推导状态（未结 / 部分 / 结清）；手工切换端点 `PUT /api/purchase-orders/{id}/settlement` 与按钮已移除，结算变化一律由收付款单核销驱动；列表筛选参数 `settlement`（0/1）改为 `settlementState`（0/1/2），列表 / 详情出参 `settlementStatus` 改为 `settledAmount` / `unsettledAmount` / `settlementState`。采购入库单的核销方向为**付款**（我们付供应商）。现行为准见 `specs/023-erp-settlement/`。
+> **演进（erp-settlement，已核销禁作废）**：入库单被核销（`SettledAmount > 0`）后**禁止作废**（`40120`，须先作废对应付款单回退金额）；作废用例在既有「已作废 `40104`」校验后追加该校验，判据见 `specs/023-erp-settlement/design.md` §0 / §3.6。
 > **演进（erp-order-flow）**：本规格的单据域已随 `specs/024-erp-order-flow/` 重命名——表 / 实体 `PurchaseOrders` → `PurchaseReceipts`（`PurchaseOrder` → `PurchaseReceipt`）、主表单号列 `OrderNo` → `ReceiptNo`、明细外键 `OrderId` → `ReceiptId`；接口路径 `/api/purchase-orders` → `/api/purchase-receipts`；单号前缀 `PO` → `GR`（历史单号已在迁移内改写）。入库单新增可空 `OrderId` / `OrderNo` / `OrderItemId`，用于**可选关联采购订单**并回写订单明细累计已收。订单（前缀 `PO`）与订单端点见 `specs/024-erp-order-flow/`。
 > **演进（erp-order-flow，跟单数量）**：`IPurchaseReceiptRepository.GetPagedAsync` 返回 `(PurchaseReceipt Order, int TotalQuantity)`（明细数量合计，`024` §3.1）；入库单列表 / 详情出参新增 `totalQuantity`。
 > 注：本文件 §3.1 的 `GetPagedAsync` 签名与出参字段为**历史记录**，现行为准见 `specs/024-erp-order-flow/design.md` §3.1。
