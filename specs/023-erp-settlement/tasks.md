@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-20
 ---
 
 # 任务清单：收付款与应收应付（erp-settlement）
@@ -77,3 +77,19 @@ updated: 2026-09-17
 ## 完成定义
 
 - 上述任务全部勾选，且 `AGENTS.md` §6 强制测试门槛通过（后端 `dotnet test` + 前端 `npm run test:e2e` 全绿）。
+
+## 七、变更（2026-09-20）：单据结算明细反查（详情页「收付款明细」）
+
+> 需求 / 设计见 `requirement.md` F3 / F5 / 验收标准 7，`design.md` §3.1 / §3.3 / §3.4 / §3.5 / §4.2 / §4.4 / §5 / §6。
+
+- [x] 7.1 后端：`GetSettlementsRequest` 增可选 `OrderType` + `OrderId`；Validator 校验取值合法且**成对出现**
+- [x] 7.2 后端：`ISettlementRepository.GetPagedAsync` / 实现增 `orderType` + `orderId`（按核销明细反查，含已作废）
+- [x] 7.3 后端：`SettlementListItemDto` 增 `OrderAmount`；Mapper 支持传入；`GetSettlements` Handler 按单据反查时用既有 `GetItemsBySettlementIdsAsync` 补齐本单核销金额
+- [x] 7.4 后端测试：Handler 透传 / `orderAmount` 计算 / 未传 `orderId` 不查询；`SettlementRepositoryTests` 按单过滤（命中返回、未命中排除）
+- [x] 7.5 前端：`api/settlement.ts` 的 `SettlementQuery` 增 `orderType` / `orderId`，`SettlementListItem` 增 `orderAmount`
+- [x] 7.6 前端：新增跨域共享组件 `components/SettlementRecords.vue`（只读 + 跳详情 + 作废行置灰 + `loading`）
+- [x] 7.7 前端：四类单据详情（采购入库 / 销售出库 / 采购退货 / 销售退货）接入「收付款明细」区块
+- [x] 7.8 E2E：`settlement.spec.ts` 补「销售出库详情可见该笔收付款单并可跳详情」
+- [x] 7.9 验证：`dotnet test`（540 通过）与 `npm run e2e:run`（121 通过）通过
+- [x] 7.10 前端：单据类型文案与详情路由收敛到 `utils/settlement.ts`（`settlementOrderTypeLabel` / `settlementOrderTypeRouteName`）；`SettlementRecords.vue`、`SettlementDetailView.vue`（核销明细）、`ReconciliationView.vue`（未结单据抽屉）的**单号改 `a-link` 超链接**并去掉「操作」列；`PurchaseDetailView` / `SaleDetailView` 的「关联订单」同样改超链接
+- [x] 7.11 E2E：`settlement.spec.ts` / `purchase-order.spec.ts` / `sale-order.spec.ts` 改为断言「单号链接存在 / 点击跳转」，并覆盖关联订单超链接回跳
