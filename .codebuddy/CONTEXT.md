@@ -23,40 +23,22 @@ backend/
 
 **命名规律**（据此定位，不逐一列举）：
 
-- `App.Core/Abstractions/`：`I<实体>Repository`、`IUnitOfWork`、`IMediator` / `IRequest` / `IRequestHandler`、`ICurrentUser`(Extensions)、`IClientInfo`、`IExcelExporter`，以及跨用例读模型（`ProductListItem` / `ProductDetail` / `ProductPickItem` / `InventoryItem` / `StockMovementItem` / `SettlementCandidateItem` / `ReconciliationItem` / `InventoryFlowItem` / `StockBalanceItem` / `PurchaseSummaryItem` / `SalesSummaryItem` 及对应 `*Total` 合计模型）。
+- `App.Core/Abstractions/`：仓储（`I<实体>Repository`）、`IUnitOfWork`、中介（`IMediator` / `IRequest` / `IRequestHandler`）、`ICurrentUser`(Extensions)、`IClientInfo`、`IExcelExporter` 等接口，以及跨用例**读模型**（命名 `<实体><用途>`，创建判据见后端规则 §4.3）；完整清单用目录列表获取。
 - `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）/ `OrderFlowStatus`（024，订单流转状态：待收货 / 部分收货 / 已完成 / 已关闭 / 已作废）。
 - 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）。
 - `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
-- `AppDbContext` 含 23 个 DbSet（与实体一一对应，另有 PurchaseReceiptItems / SalesShipmentItems / PurchaseOrderItems / SalesOrderItems / StockTakeItems / PurchaseReturnItems / SalesReturnItems / SettlementItems 八张明细表）。
+- `AppDbContext`：DbSet 与实体一一对应，单据明细表为 `<单据>Items` 独立 DbSet（八张）；**完整清单以 `AppDbContext` 为准**（用目录 / 文件查看获取）。
 - **共享出参与映射**：各功能在 `Features/<Feature>/` 下放跨用例共享 DTO 与 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
 - **当前用户与审计**：id 解析入口 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
 - **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）、`App.Core/SettlementStateCalculator.cs`（单据结算状态 / 未结金额推导，四类单据 DTO 映射共用）；**已核销单据禁止作废**由四类单据 `Void*` Handler 校验（`ErrorCode.OrderSettledCannotVoid = 40120`，判据见 `specs/023-erp-settlement/design.md` §0）；**收付款单不限制往来档案类型**（收款可对供应商收回退货退款），**往来对账应收 / 应付按四表未结金额（`TotalAmount − SettledAmount`）归集**、不引用收付款单类型，业务类型由 `SettlementType` + `SettlementItem.OrderType` 派生（同节）。
-- **导出能力（erp-export）**：`App.Core/Exports/`（`ExcelWorkbookModel` / `ExcelSheetModel` / `ExcelColumnModel` / `ExcelValueType` / `ExportFieldConstraints`（`MaxRows = 50000`）/ `ExportDomainNames` / `ExportFileNames` / `ExportGuards` / `ExportLabels` / `ExportResultDto`）+ `Abstractions/IExcelExporter.cs`（实现 `App.Infrastructure/Exports/ClosedXmlExcelExporter.cs`，包依赖 `ClosedXML`，注册于 `AddInfrastructure`）；各域导出用例为 `Features/<Feature>/Export<X>`，端点为各域 Controller 追加的 `GET .../export`（契约例外：成功返回二进制流，见 `specs/027-erp-export/design.md` §0.1）。
-- **导出用批量查询**：`IUserRepository.GetDisplayNamesByIdsAsync`（创建人显示名）、`IProductRepository.GetCodesByIdsAsync`（单据明细商品编码）、六类单据仓储的 `GetItemsBy...IdsAsync`（按单据 id 集合一次取明细，避免逐单 N+1）。
+- **导出能力（erp-export）**：表格模型与守卫类型集中在 `App.Core/Exports/`（导出上限单一来源 `ExportFieldConstraints.MaxRows = 50000`），抽象 `Abstractions/IExcelExporter.cs`、实现 `App.Infrastructure/Exports/ClosedXmlExcelExporter.cs`（依赖 `ClosedXML`，注册于 `AddInfrastructure`）；各域导出用例为 `Features/<Feature>/Export<X>`，端点为各域 Controller 追加的 `GET .../export`（契约例外：成功返回二进制流，见 `specs/027-erp-export/design.md` §0.1）。
+- **导出用批量查询**：各仓储提供 `Get*ByIdsAsync`（创建人显示名、单据明细商品编码等），按 id 集合一次取数、避免逐单 N+1。
 
-**已实现的 Features**（`App.Core/Features/`，每用例四件套）：
+**已实现的 Features**（`App.Core/Features/`，每用例一个 `<Action>/` 目录、四件套）：
 
-| Feature | 用例 |
-|---|---|
-| Auth | Login |
-| LoginLogs | GetLoginLogs |
-| Users | CreateUser、GetUsers、GetUserById、GetCurrentUser（空 Request 无 Validator）、UpdateUser、UpdateUserStatus、ResetPassword |
-| Products | GetProducts、GetProductById、CreateProduct、UpdateProduct、UpdateProductStatus、GetProductPickList |
-| Categories | GetCategories、GetCategoriesPaged、CreateCategory、UpdateCategory、DeleteCategory |
-| Partners | GetPartners、CreatePartner、GetPartnerById、UpdatePartner、UpdatePartnerStatus |
-| Inventory | GetInventory |
-| StockMovements | GetStockMovements |
-| PurchaseOrders | GetPurchaseOrders、CreatePurchaseOrder、GetPurchaseOrderById、UpdatePurchaseOrder、VoidPurchaseOrder、ClosePurchaseOrder |
-| PurchaseReceipts | CreatePurchaseReceipt、GetPurchaseReceipts、GetPurchaseReceiptById、VoidPurchaseReceipt、GetPurchaseOrderPicks、GetPurchaseOrderLines、UpdatePurchaseReceiptSettlement |
-| PurchaseReturns | CreatePurchaseReturn、GetPurchaseReturns、GetPurchaseReturnById、VoidPurchaseReturn、UpdatePurchaseReturnSettlement |
-| SalesOrders | GetSalesOrders、CreateSalesOrder、GetSalesOrderById、UpdateSalesOrder、VoidSalesOrder、CloseSalesOrder |
-| SalesShipments | CreateSalesShipment、GetSalesShipments、GetSalesShipmentById、VoidSalesShipment、GetSalesOrderPicks、GetSalesOrderLines、UpdateSalesShipmentSettlement |
-| SalesReturns | CreateSalesReturn、GetSalesReturns、GetSalesReturnById、VoidSalesReturn、UpdateSalesReturnSettlement |
-| StockTakes | CreateStockTake、GetStockTakes、GetStockTakeById、GetStockTakePickProducts |
-| Settlements | GetSettlements、CreateSettlement、GetSettlementById、VoidSettlement、GetUnsettledOrders、GetReconciliation |
-| Reports | GetInventoryFlow、GetStockBalance、GetPurchaseSummary、GetSalesSummary（只读，经 `IReportQueryRepository` 跨表聚合，不新增写路径） |
+完整清单用目录列表获取；命名规律为 Feature 用资源名（可数用复数，不可数 / 集合概念保留单数，如 `Products` / `Inventory`）、`<Action>` 用动词短语，用例既有形态照下方「基准参照」与同域已有 `<Action>/` 一比一组织。`Reports` 各用例为只读聚合（经 `IReportQueryRepository` 跨表，不新增写路径）。
 
-**成本能力（erp-cost，`026`）**：`IInventoryRepository` 新增 `GetAverageCostAsync` / `ApplyInboundCostAsync` / `ApplyOutboundCostAsync` / `SetCostAsync`；`IStockMovementRepository` 新增 `GetMovementUnitCostAsync` / `GetAllForCostAsync` / `UpdateCostAsync`；读模型新增 `StockMovementCostRow`、`CostProfitItem`（合计 `CostProfitTotal`）；`ErrorCode` 追加 `40118 CostRecalculationRunning`。成本写入见各单据 `Create*/Void*` Handler，重算见 `Costs/RecalculateCosts`，报表见 `Reports/GetCostProfitReport`。
+**成本能力（erp-cost，`026`）**：成本写入见各单据 `Create*/Void*` Handler，重算入口 `Costs/RecalculateCosts`（并发拒绝 `40118`），报表 `Reports/GetCostProfitReport`；仓储方法、读模型与错误码明细见 `specs/026-erp-cost/design.md`。
 
 **基准参照**：
 
@@ -80,7 +62,7 @@ backend/
 ```
 frontend/
 ├── index.html / vite.config.ts / playwright.config.ts / eslint.config.js
-├── e2e/        # 每功能域一个 <域名>.spec.ts（kebab-case）+ helpers/（菜单点击 / 表格搜索 / 重试点击 / 登录 loginAs / 消息断言 expectMessage，判据见前端规则 §10.1）+ global-setup.ts（冷启动预热，见前端规则 §10）
+├── e2e/        # 每功能域一个或多个 <域名>.spec.ts（kebab-case 功能短名，命名判据见前端规则 §10）+ helpers/（菜单点击 / 表格搜索 / 重试点击 / 登录 loginAs / 消息断言 expectMessage，判据见前端规则 §10.1）+ global-setup.ts（冷启动预热，见前端规则 §10）
 └── src/
     ├── main.ts / App.vue / env.d.ts
     ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流）+ 按业务域拆分 <entity>.ts + export.ts（10 个列表导出）
@@ -92,24 +74,14 @@ frontend/
 
 **功能域目录**（`views/`，与后端 `Features/<Feature>`、路由前缀、e2e spec 四者对齐，约定见前端规则 §4.1）：
 
-- `Showcase/` — 示例页：ComponentShowcaseView / ListShowcaseView / FormShowcaseView / FormPageFormView / FormDetailView + 共享 `OrderFormDrawer.vue`
-- `UserManagement/` — UsersView + UserDetailView + UserFormDrawer
-- `LoginLogManagement/` — LoginLogsView
-- `ProductManagement/` — ProductsView + ProductFormDrawer
-- `CategoryManagement/` — CategoriesView + CategoryFormDrawer
-- `PartnerManagement/` — PartnersView + PartnerFormDrawer
-- `InventoryManagement/` — InventoryView（只读；操作列含「流水」下钻到 StockMovementManagement）
-- `StockMovementManagement/` — StockMovementsView（只读；API 在 `api/stockMovement.ts`）
-- `PurchaseOrderManagement/` — PurchaseOrdersView + PurchaseOrderFormPage + PurchaseOrderDetailView（采购订单；API 在 `api/purchaseOrder.ts`）
-- `PurchaseManagement/` — PurchasesView + PurchaseFormPage + PurchaseDetailView + PurchasePrintView（采购入库；开单页可关联采购订单；打印视图在顶层 `print/purchases/:id` 路由）
-- `PurchaseReturnManagement/` — PurchaseReturnsView + PurchaseReturnFormPage + PurchaseReturnDetailView + PurchaseReturnPrintView（API 在 `api/purchaseReturn.ts`；打印视图在顶层 `print/purchase-returns/:id` 路由）
-- `SalesReturnManagement/` — SalesReturnsView + SalesReturnFormPage + SalesReturnDetailView + SalesReturnPrintView（API 在 `api/saleReturn.ts`；打印视图在顶层 `print/sales-returns/:id` 路由）
-- `SalesOrderManagement/` — SalesOrdersView + SalesOrderFormPage + SalesOrderDetailView（销售订单；API 在 `api/saleOrder.ts`）
-- `SalesManagement/` — SalesView + SaleFormPage + SaleDetailView + SalePrintView（销售出库；开单页可关联销售订单；打印视图在顶层 `print/sales/:id` 路由）
-- `StockTakeManagement/` — StockTakesView + StockTakeFormPage + StockTakeDetailView + StockTakePrintView（API 在 `api/stockTake.ts`；打印视图在顶层 `print/stock-takes/:id` 路由）
-- `SettlementManagement/` — SettlementsView + SettlementFormPage + SettlementDetailView + ReconciliationView + SettlementPrintView（收付款 + 往来对账；API 在 `api/settlement.ts`；打印视图在顶层 `print/settlements/:id` 路由）
-- `ReportManagement/` — InventoryFlowReportView + StockBalanceReportView + PurchaseSummaryReportView + SalesSummaryReportView + **CostProfitReportView（成本与毛利，`026`）**（进销存报表 / 库存余额表 / 采购汇总 / 销售汇总 / 成本毛利；库存余额表与流水页含成本列；报表 API 在 `api/report.ts`，成本重算在 `api/cost.ts`）
+- 规律：一个域一个 `<Domain>/`，域内文件平铺不套子目录；列表页用复数域名，表单 / 详情页用单数实体名（如 `PurchasesView` / `PurchaseFormPage` / `PurchaseDetailView`）；完整清单用目录列表获取。
 - 无功能域归属的独立页平铺在 `views/` 根：`LoginView.vue` / `HomeView.vue`（菜单归属见 `components/AppLayout.vue`）。
+- 接口文件按业务域命名 `api/<entity>.ts`（归属判定见前端规则 §3）；各单据打印视图统一为顶层 `print/<资源路径>/:id` 路由、不进 `AppLayout`（共 6 条，清单见上方目录树 `router/` 注释）。
+- 目录枚举不出来的关联：
+  - `Showcase/` 为示例页集合，其 `OrderFormDrawer.vue` 为域内共享表单；
+  - `InventoryManagement/` 与 `StockMovementManagement/`（库存流水）均为只读页，前者操作列「流水」下钻后者；
+  - `PurchaseManagement/`（采购入库）与 `SalesManagement/`（销售出库）开单页可关联上游订单，见 `specs/024-erp-order-flow/design.md`；
+  - `SettlementManagement/` 含往来对账页；`ReportManagement/` 含成本毛利报表（库存余额表与库存流水页也含成本列）；报表 API 集中 `api/report.ts`，成本重算在 `api/cost.ts`。
 
 **图标选型**：业务图标（侧边菜单、列表工具条、操作列）统一 Tabler（`@tabler/icons-vue`）；仅「图标」示例页为演示保留三套并存；优先级见前端规则 §4.7。
 
@@ -145,13 +117,7 @@ frontend/
 
 ## 6. 现有功能规格（specs/）
 
-`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。分类如下：
-
-- 工程 / 脚手架：`001-project-scaffold`、`003-api-swagger`
-- 前端交互模式：`002-frontend-e2e`、`004-frontend-component-showcase`、`005-app-layout`、`006-list-showcase`、`007-form-detail-showcase`、`008-composable-style`、`010-button-loading`、`011-action-column`、`018-icon-showcase`
-- 业务：`009-user-management`
-- ERP（均已实现）：`012-erp-product`、`013-erp-partner`、`014-erp-inventory-query`、`015-erp-purchase`、`016-erp-sale`、`017-erp-category`、`019-erp-stock-movement`、`020-erp-stock-take`、`021-erp-purchase-return`、`022-erp-sale-return`、`023-erp-settlement`、`024-erp-order-flow`、`025-erp-report`、`026-erp-cost`、`027-erp-export`
-- ERP 全域路线（`ROADMAP` 已升级为**内核 + 外围**）：**已起草未实现** `028-erp-rbac`、`029-erp-audit-log`、`030-erp-org-employee`、`031-erp-finance-master`、`032-erp-invoice`、`033-erp-general-ledger`、`034-erp-cash`、`035-erp-uom`、`036-erp-partner-price`、`037-erp-quotation`、`038-erp-multi-warehouse`、`039-erp-transfer`、`040-erp-batch-expiry`、`041-erp-stock-alert`、`042-erp-approval`、`043-erp-crm-presale`、`044-erp-hcm-payroll`、`045-erp-crm-service`（**均已起草，无待起草模块**）；阶段划分（P1–P6）见 `specs/ROADMAP.md` §4.2；范围与边界（HCM / CRM 并入主线，WMS / SRM 独立立项；**纯贸易不做生产制造 / MES / PLM**）见该文件 §1。
+`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。范围规律：工程与前端交互模式为 `001`–`011`、`018`，业务为 `009`，ERP 为 `012`–`027`（已实现）与 `028`–`045`（已起草未实现，**无待起草模块**）。
 
 `specs/ROADMAP.md` 是 ERP **全域**（内核 + 外围系统）的**路线索引**（单文件，非 spec 目录、无三件套）：记录模块边界（§1）、模块地图（§2）、覆盖矩阵（§3）、阶段路线 P1–P6（§4.2），并写明跨功能前置决策（多仓 / 结算 / 权限 / 组织等）。接续 ERP 功能前先读它，再进具体规格。
 
