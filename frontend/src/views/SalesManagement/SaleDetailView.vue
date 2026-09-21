@@ -7,7 +7,13 @@ import type { SalesShipmentDetail, SalesShipmentItem } from '@/api/sale'
 import { getUser } from '@/api/user'
 import SettlementRecords from '@/components/SettlementRecords.vue'
 import { formatDateTime } from '@/utils/datetime'
-import { settlementStateColor, settlementStateLabel } from '@/utils/settlement'
+import {
+  canStartSettlement,
+  canVoidOrder,
+  settlementStateColor,
+  settlementStateLabel,
+  VOID_SETTLED_HINT,
+} from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { IconPrinter } from '@tabler/icons-vue'
@@ -248,12 +254,27 @@ function onOrderDetail(): void {
       >
         <a-space>
           <a-button
+            v-if="canStartSettlement(detail)"
             type="primary"
             @click="onGoSettlement"
           >
             去收付款
           </a-button>
+          <a-tooltip
+            v-if="!canVoidOrder(detail)"
+            :content="VOID_SETTLED_HINT"
+          >
+            <span>
+              <a-button
+                status="danger"
+                disabled
+              >
+                作废
+              </a-button>
+            </span>
+          </a-tooltip>
           <a-popconfirm
+            v-else
             type="warning"
             content="确认作废该销售单？作废后库存将回冲，且不可恢复"
             @ok="onVoid"

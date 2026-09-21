@@ -14,6 +14,7 @@ import {
   type SettlementType,
 } from '@/api/settlement'
 import { formatDateTime } from '@/utils/datetime'
+import { settlementOrderTypeLabel } from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
@@ -103,6 +104,7 @@ const partnerOptions = computed(() => partners.value.map((p) => ({ label: p.name
 const columnOptions = [
   { label: '单号', value: 'settlementNo' },
   { label: '类型', value: 'type' },
+  { label: '单据类型', value: 'orderTypes' },
   { label: '往来单位', value: 'partnerName' },
   { label: '收付日期', value: 'settlementDate' },
   { label: '总额', value: 'totalAmount' },
@@ -115,12 +117,12 @@ const columnOptions = [
 const visibleColumns = ref<string[]>([
   'settlementNo',
   'type',
+  'orderTypes',
   'partnerName',
   'settlementDate',
   'totalAmount',
   'method',
   'status',
-  'createdAt',
 ])
 
 /** 表格列：序号 + 可选列 + 操作（序号与操作固定显示） */
@@ -131,6 +133,9 @@ const columns = computed<TableColumnData[]>(() => {
   }
   if (visibleColumns.value.includes('type')) {
     cols.push({ title: '类型', slotName: 'type', width: 90, align: 'center' })
+  }
+  if (visibleColumns.value.includes('orderTypes')) {
+    cols.push({ title: '单据类型', slotName: 'orderTypes', width: 160, ellipsis: true, tooltip: true })
   }
   if (visibleColumns.value.includes('partnerName')) {
     cols.push({ title: '往来单位', dataIndex: 'partnerName', width: 180, ellipsis: true, tooltip: true })
@@ -277,6 +282,14 @@ async function onExport(): Promise<void> {
 /** 打印单据：同步路由跳转（瞬时动作不置 loading） */
 function onPrint(row: SettlementListItem): void {
   void router.push({ name: 'settlementPrint', params: { id: row.id } })
+}
+
+/**
+ * 单据类型文案：该单核销明细的被核销单据类型集合（后端去重升序派生，不落列）。
+ * 一张单可混合核销多类单据（如「两者」往来的收款单同时核销销售出库单与采购退货单），故多值以「、」连接。
+ */
+function orderTypeText(row: SettlementListItem): string {
+  return (row.orderTypes ?? []).map(settlementOrderTypeLabel).join('、')
 }
 
 /** 作废行整体置灰 */
@@ -476,6 +489,9 @@ async function onVoid(row: SettlementListItem): Promise<void> {
           <a-tag :color="(record as SettlementListItem).type === 0 ? 'green' : 'orange'">
             {{ (record as SettlementListItem).type === 0 ? '收款' : '付款' }}
           </a-tag>
+        </template>
+        <template #orderTypes="{ record }">
+          {{ orderTypeText(record as SettlementListItem) }}
         </template>
         <template #settlementDate="{ record }">
           {{ formatDateTime((record as SettlementListItem).settlementDate).slice(0, 10) }}

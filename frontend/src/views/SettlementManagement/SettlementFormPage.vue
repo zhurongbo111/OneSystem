@@ -81,7 +81,7 @@ const settlementDate = ref(todayLocal())
 const method = ref<SettlementMethod>(0)
 const remark = ref('')
 
-/** 往来下拉数据源（全部启用往来，按类型过滤） */
+/** 往来下拉数据源（全部启用往来；不按类型过滤，收款可对供应商收回退货退款） */
 const partners = ref<Partner[]>([])
 
 /** 可核销单据候选（未结 + 未作废）与已选核销行 */
@@ -96,12 +96,8 @@ const rules = {
 }
 
 // —— computed ——
-/** 往来下拉：收款取客户 / 两者，付款取供应商 / 两者 */
-const partnerOptions = computed(() =>
-  partners.value
-    .filter((p) => (type.value === 0 ? p.type === 2 || p.type === 3 : p.type === 1 || p.type === 3))
-    .map((p) => ({ label: p.name, value: p.id })),
-)
+/** 往来下拉：全部启用往来（不按类型过滤——收款需支持「收供应商退款」，付款同理） */
+const partnerOptions = computed(() => partners.value.map((p) => ({ label: p.name, value: p.id })))
 
 /** 表格行选择配置 */
 const rowSelection = computed(() => ({ type: 'checkbox' as const, showCheckedAll: true }))
@@ -167,10 +163,7 @@ function resetItems(): void {
 }
 
 function onTypeChange(): void {
-  // 类型切换后原往来的方向可能不匹配，一并清空重选
-  if (partnerId.value && !partnerOptions.value.some((o) => o.value === partnerId.value)) {
-    partnerId.value = undefined
-  }
+  // 往来不再按类型过滤（收款可对供应商），保留已选往来；仅清空核销明细并按新方向重载候选
   resetItems()
   void loadCandidates()
 }
@@ -299,7 +292,7 @@ async function onSubmit(): Promise<void> {
               <a-select
                 v-model="partnerId"
                 :options="partnerOptions"
-                :placeholder="type === 0 ? '请选择客户（仅客户 / 两者类型）' : '请选择供应商（仅供应商 / 两者类型）'"
+                :placeholder="type === 0 ? '客户（销售回款）或供应商（收回退货退款）' : '供应商（采购付款）或客户（退出退款）'"
                 allow-search
                 allow-clear
                 :loading="partners.length === 0"

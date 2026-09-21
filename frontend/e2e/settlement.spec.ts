@@ -76,6 +76,13 @@ async function goPartners(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/partners$/)
 }
 
+/** 经侧边菜单进入采购退货页（用于造「收供应商退款」场景） */
+async function goPurchaseReturns(page: Page): Promise<void> {
+  await login(page)
+  await clickMenuItem(page, '采购退货')
+  await expect(page).toHaveURL(/\/purchase-returns$/)
+}
+
 /** 当前表格数据行（排除空状态行） */
 function dataRows(page: Page): ReturnType<typeof page.locator> {
   return page.locator('tbody tr:not(.arco-table-tr-empty)')
@@ -312,12 +319,19 @@ test.describe('收付款与往来对账（集成）', () => {
 
     const settledRow = await findSalesRow(page, orderNo)
     await expect(settledRow.getByText('已结算', { exact: true })).toBeVisible()
+    // 已结算 → 无未结金额：列表不再显示「收付款」入口（点入必为空候选）
+    await expect(settledRow.getByRole('button', { name: '收付款' })).toHaveCount(0)
 
     // 作废第一张收款单（8.00）→ 单据回到部分结算（未结 12.00）
     await goSettlements(page)
+    // 默认列：「单据类型」显示，「创建时间」不显示（审计信息，列设置可选；收付日期才是列表主时间口径）
+    await expect(page.locator('thead')).toContainText('单据类型')
+    await expect(page.locator('thead')).not.toContainText('创建时间')
     await page.getByPlaceholder('搜索单号 / 往来单位').fill(customer)
     await clickUntil(page, '搜索', dataRows(page).filter({ hasText: '8.00' }).first())
     const receiptRow = dataRows(page).filter({ hasText: '8.00' }).first()
+    // 列表「单据类型」列：由核销明细派生（该收款单核销的是销售出库单）
+    await expect(receiptRow).toContainText('销售出库单')
     await receiptRow.getByRole('button', { name: '作废' }).click()
     await expect(page.getByText('确认作废该收付款单？')).toBeVisible()
     await page
@@ -329,6 +343,8 @@ test.describe('收付款与往来对账（集成）', () => {
     // 作废 8.00 后：已结回到 12.00 → 未结 8.00（20 − 12）
     const revertedRow = await findSalesRow(page, orderNo)
     await expect(revertedRow.getByText('部分结算（未结 8.00）', { exact: true })).toBeVisible()
+    // 回退后重新出现未结金额 → 「收付款」入口恢复显示
+    await expect(revertedRow.getByRole('button', { name: '收付款' })).toBeVisible()
   })
 
   test('核销校验：方向不匹配与超额核销被拒', async ({ page, request }) => {
@@ -430,20 +446,14 @@ test.describe('收付款与往来对账（集成）', () => {
     await expectMessage(page, '收付款单已创建')
     await expect(page).toHaveURL(/\/settlements\/detail\//)
 
-    // 已核销 → 作废单据被拒（后端 40120），单据保持正常
+    // 已核销 → 前端即禁用「作废」（提前拦截，后端 40120 兜底），单据保持正常
     const settledRow = await findSalesRow(page, orderNo)
     await expect(settledRow.getByText('部分结算（未结 12.00）', { exact: true })).toBeVisible()
-    await settledRow.getByRole('button', { name: '作废' }).click()
-    await expect(page.getByText('确认作废该销售单？')).toBeVisible()
-    await page
-      .locator('.arco-trigger-popup', { hasText: '确认作废该销售单？' })
-      .getByRole('button', { name: /确\s*定/ })
-      .click()
-    await expectMessage(page, '已被收付款单核销')
+    await expect(settledRow.getByRole('button', { name: '作废' })).toBeDisabled()
 
     const stillRow = await findSalesRow(page, orderNo)
     await expect(stillRow.getByText('部分结算（未结 12.00）', { exact: true })).toBeVisible()
-    await expect(stillRow.getByRole('button', { name: '作废' })).toBeVisible()
+    await expect(stillRow.getByRole('button', { name: '作废' })).toBeDisabled()
 
     // 作废该收款单回退金额 → 单据回到未结算 → 再作废成功
     await goSettlements(page)
@@ -468,5 +478,70 @@ test.describe('收付款与往来对账（集成）', () => {
       .click()
     await expectMessage(page, '已作废，库存已回冲')
     await expect(dataRows(page).first().getByText('已作废', { exact: true })).toBeVisible()
+  })
+
+  test('采购退货收款（供应商退款）：往来可选纯供应商、核销成功且不误入应收', async ({ page }) => {
+    const code = uniqueProductCode('stl_refund')
+    const supplier = uniquePartnerName()
+
+    // 准备：供应商 + 商品（采购价 10）
+    await goPartners(page)
+    await createPartner(page, supplier, '供应商')
+    await goProducts(page)
+    await createProduct(page, code, `退款商品${Date.now() % 100000}`)
+
+    // 垫库存 10 件（采购入库 100.00 未付），再退货 1 件（总额 10.00）
+    await goPurchases(page)
+    await seedStockByPurchase(page, supplier, code)
+    await goPurchaseReturns(page)
+    await page.getByRole('button', { name: '开退货单' }).click()
+    await expect(page).toHaveURL(/\/purchase-returns\/new$/)
+    await selectBySearch(page, page.locator('.arco-select').first(), supplier)
+    const formRow = dataRows(page).nth(0)
+    await selectBySearch(page, formRow.locator('.arco-select'), code)
+    const qtyInput = formRow.locator('.arco-input-number').nth(0).locator('input')
+    await qtyInput.fill('1')
+    await qtyInput.blur()
+    await page.getByRole('button', { name: '提交', exact: true }).click()
+    await expectMessage(page, '采购退货单已创建')
+    await expect(page).toHaveURL(/\/purchase-returns\/detail\//)
+    const returnNo = (await page.locator('.detail-desc').getByText(/^PR\d{12}$/).first().innerText()).trim()
+
+    // 「收付款」预置收款方向 + 该供应商；往来下拉须能显示纯供应商（放宽前只列客户 / 两者，会显示为空）
+    await goPurchaseReturns(page)
+    await page.getByPlaceholder('搜索单号 / 供应商').fill(returnNo)
+    await searchAndWaitHit(page, returnNo)
+    await dataRows(page).first().getByRole('button', { name: '收付款' }).click()
+    await expect(page).toHaveURL(/\/settlements\/new/)
+    await expect(page.getByRole('radio', { name: '收款' })).toBeChecked()
+    await expect(page.locator('.arco-select').first()).toContainText(supplier)
+
+    // 核销该采购退货单（未结 10.00）→ 提交成功
+    await expect(dataRows(page).first()).toContainText(returnNo)
+    await createReceipt(page, '10.00')
+    await expectMessage(page, '收付款单已创建')
+    await expect(page).toHaveURL(/\/settlements\/detail\//)
+
+    // 退货单已结算：列表与详情均不再显示「收付款 / 去收付款」入口（无未结金额）
+    await goPurchaseReturns(page)
+    await page.getByPlaceholder('搜索单号 / 供应商').fill(returnNo)
+    await searchAndWaitHit(page, returnNo)
+    const settledReturnRow = dataRows(page).first()
+    await expect(settledReturnRow.getByText('已结算', { exact: true })).toBeVisible()
+    await expect(settledReturnRow.getByRole('button', { name: '收付款' })).toHaveCount(0)
+    await settledReturnRow.getByRole('button', { name: '详情' }).click()
+    await expect(page).toHaveURL(/\/purchase-returns\/detail\//)
+    await expect(page.getByRole('button', { name: '去收付款' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '作废' })).toBeVisible()
+
+    // 往来对账：退供应商的钱不进应收（应收 0.00）；应付为采购入库未付 100.00；未结单据数 1
+    await goReconciliation(page)
+    const keywordBox = page.getByPlaceholder('搜索往来名称')
+    await keywordBox.fill(supplier)
+    await clickUntil(page, '搜索', dataRows(page).filter({ hasText: supplier }).first())
+    const reconRow = dataRows(page).filter({ hasText: supplier }).first()
+    await expect(reconRow.locator('td').nth(3)).toHaveText('¥ 0.00')
+    await expect(reconRow.locator('td').nth(4)).toHaveText('¥ 100.00')
+    await expect(reconRow.locator('td').nth(5)).toHaveText('1')
   })
 })

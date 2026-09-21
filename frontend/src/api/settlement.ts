@@ -30,6 +30,8 @@ export interface SettlementListItem {
   createdAt: string
   /** 本次核销金额（仅按被核销单据反查时返回，普通列表为 null） */
   orderAmount?: number | null
+  /** 该单核销明细的被核销单据类型集合（去重升序；列表返回，详情页用 items 自派生） */
+  orderTypes?: SettlementOrderType[]
 }
 
 /** 核销明细行（快照字段原样返回，对应后端 SettlementItemDto） */
