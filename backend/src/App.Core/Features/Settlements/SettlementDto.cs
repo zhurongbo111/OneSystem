@@ -105,6 +105,12 @@ public sealed class SettlementListItemDto
 
     /// <summary>本次核销金额（仅按被核销单据反查时返回；普通列表为 null）</summary>
     public decimal? OrderAmount { get; init; }
+
+    /// <summary>
+    /// 该单核销明细的被核销单据类型集合（去重升序，0 采购入库 / 1 销售出库 / 2 采购退货 / 3 销售退货）。
+    /// 由核销明细派生（不落列）：一张单可混合核销多类单据，故为集合；业务类型 = Type × OrderType（design.md §0）。
+    /// </summary>
+    public required IReadOnlyList<int> OrderTypes { get; init; }
 }
 
 /// <summary>未结单据候选出参模型（新建收付款单页选择核销单据用）</summary>
