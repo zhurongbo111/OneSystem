@@ -183,7 +183,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                var (createdReturn, createdItems) = await _salesReturnRepository.GetDetailAsync(salesReturn.Id, cancellationToken);
+                var (createdReturn, createdItems) = await _salesReturnRepository.GetDetailAsync(salesReturn.Id, cancellationToken: cancellationToken);
                 if (createdReturn is null)
                 {
                     throw new BusinessException(ErrorCode.NotFound, "销售退货单创建后读取失败");

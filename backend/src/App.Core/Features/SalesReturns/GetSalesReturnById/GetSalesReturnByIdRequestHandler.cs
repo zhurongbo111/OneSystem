@@ -25,7 +25,7 @@ public sealed class GetSalesReturnByIdRequestHandler : IRequestHandler<GetSalesR
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<SalesReturnDetailDto> HandleAsync(GetSalesReturnByIdRequest request, CancellationToken cancellationToken = default)
     {
-        var (salesReturn, items) = await _salesReturnRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (salesReturn, items) = await _salesReturnRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (salesReturn is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售退货单不存在");

@@ -199,7 +199,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                var (createdReturn, createdItems) = await _purchaseReturnRepository.GetDetailAsync(purchaseReturn.Id, cancellationToken);
+                var (createdReturn, createdItems) = await _purchaseReturnRepository.GetDetailAsync(purchaseReturn.Id, cancellationToken: cancellationToken);
                 if (createdReturn is null)
                 {
                     throw new BusinessException(ErrorCode.NotFound, "采购退货单创建后读取失败");

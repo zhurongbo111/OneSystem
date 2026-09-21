@@ -42,7 +42,7 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<SalesReturnDetailDto> HandleAsync(VoidSalesReturnRequest request, CancellationToken cancellationToken = default)
     {
-        var (salesReturn, items) = await _salesReturnRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (salesReturn, items) = await _salesReturnRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (salesReturn is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售退货单不存在");
@@ -105,7 +105,7 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
             throw;
         }
 
-        var (updatedReturn, updatedItems) = await _salesReturnRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (updatedReturn, updatedItems) = await _salesReturnRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (updatedReturn is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售退货单不存在");

@@ -183,7 +183,7 @@ internal sealed class RecordingPurchaseReceiptRepository : IPurchaseReceiptRepos
 
     /// <inheritdoc />
     public Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(
-        Guid id, CancellationToken cancellationToken = default)
+        Guid id, bool includeItems = true, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 
     /// <inheritdoc />

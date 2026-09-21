@@ -34,11 +34,15 @@ public interface IPurchaseReceiptRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 查询采购单详情（主表实体 + 明细行实体，按明细 Id 还原插入顺序），不存在时 Order 为 null
+    /// 查询采购单详情（主表实体 + 可选明细行实体，按明细 Id 还原插入顺序），不存在时 Order 为 null
     /// </summary>
     /// <param name="id">采购单 id</param>
+    /// <param name="includeItems">
+    /// 是否查询明细行：<c>true</c>（默认）返回主表 + 明细；<c>false</c> 只查主表、不发起明细查询，
+    /// 此时 <c>Items</c> 恒为空集合、调用方不得消费（核销校验等只用主表字段的场景传 <c>false</c>，见 erp-settlement design.md §3.1.1）
+    /// </param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 新增单据 + 明细并持久化（同一仓储内一次 SaveChanges）

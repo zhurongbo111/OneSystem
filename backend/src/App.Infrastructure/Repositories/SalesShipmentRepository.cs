@@ -108,7 +108,7 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
     }
 
     /// <inheritdoc />
-    public async Task<(SalesShipment? Order, IReadOnlyList<SalesShipmentItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<(SalesShipment? Order, IReadOnlyList<SalesShipmentItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default)
     {
         var order = await _dbContext.SalesShipments.AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
@@ -116,6 +116,12 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
         if (order is null)
         {
             return (null, Array.Empty<SalesShipmentItem>());
+        }
+
+        // 只取主表（核销校验等只用主表字段的场景）：不发起明细查询，Items 恒为空集合
+        if (!includeItems)
+        {
+            return (order, Array.Empty<SalesShipmentItem>());
         }
 
         // 明细行按插入顺序（明细 Id 为顺序 Guid，与 AddRange 顺序一致）

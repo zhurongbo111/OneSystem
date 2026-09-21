@@ -193,6 +193,11 @@ public class SettlementCreateAndVoidTests
         Assert.Equal(1000m, line.OrderTotalAmount);
         Assert.Equal(400m, line.Amount);
 
+        // 取数范围：核销校验只取主表（includeItems: false），不发明细查询（design.md §3.1.1）
+        var detailQuery = Assert.Single(harness.SalesShipments.DetailQueries);
+        Assert.Equal(order.Id, detailQuery.Id);
+        Assert.False(detailQuery.IncludeItems);
+
         // 单据已结算金额被原子累加，且事务提交
         var (updated, _) = await harness.SalesShipments.GetDetailAsync(order.Id);
         Assert.Equal(400m, updated!.SettledAmount);
@@ -213,6 +218,12 @@ public class SettlementCreateAndVoidTests
 
         Assert.Matches("^PY20260101\\d{4}$", result.SettlementNo);
         Assert.Equal(250m, result.TotalAmount);
+
+        // 取数范围：核销校验只取主表（includeItems: false）
+        var detailQuery = Assert.Single(harness.PurchaseReceipts.DetailQueries);
+        Assert.Equal(order.Id, detailQuery.Id);
+        Assert.False(detailQuery.IncludeItems);
+
         var (updated, _) = await harness.PurchaseReceipts.GetDetailAsync(order.Id);
         Assert.Equal(250m, updated!.SettledAmount);
         Assert.Contains("Commit", harness.Calls);
@@ -231,6 +242,12 @@ public class SettlementCreateAndVoidTests
                 Line(SettlementOrderType.PurchaseReturn, purchaseReturn.Id, 1000m)));
 
         Assert.Matches("^RC20260101\\d{4}$", result.SettlementNo);
+
+        // 取数范围：核销校验只取主表（includeItems: false）
+        var detailQuery = Assert.Single(harness.PurchaseReturns.DetailQueries);
+        Assert.Equal(purchaseReturn.Id, detailQuery.Id);
+        Assert.False(detailQuery.IncludeItems);
+
         var (updated, _) = await harness.PurchaseReturns.GetDetailAsync(purchaseReturn.Id);
         Assert.Equal(1000m, updated!.SettledAmount);
     }
@@ -247,6 +264,12 @@ public class SettlementCreateAndVoidTests
                 Line(SettlementOrderType.SalesReturn, salesReturn.Id, 600m)));
 
         Assert.Matches("^PY20260101\\d{4}$", result.SettlementNo);
+
+        // 取数范围：核销校验只取主表（includeItems: false）
+        var detailQuery = Assert.Single(harness.SalesReturns.DetailQueries);
+        Assert.Equal(salesReturn.Id, detailQuery.Id);
+        Assert.False(detailQuery.IncludeItems);
+
         var (updated, _) = await harness.SalesReturns.GetDetailAsync(salesReturn.Id);
         Assert.Equal(600m, updated!.SettledAmount);
     }
@@ -267,6 +290,10 @@ public class SettlementCreateAndVoidTests
 
         Assert.Equal(700m, result.TotalAmount);
         Assert.Equal(2, result.Items.Count);
+
+        // 取数范围：每核销行各查一次主表、均为 includeItems: false（不查明细分片）
+        Assert.Equal(new[] { order1.Id, order2.Id }, harness.SalesShipments.DetailQueries.Select(q => q.Id));
+        Assert.All(harness.SalesShipments.DetailQueries, q => Assert.False(q.IncludeItems));
     }
 
     // ============================== CreateSettlement 异常 ==============================

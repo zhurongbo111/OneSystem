@@ -48,14 +48,22 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
         return Task.FromResult((PagedItems, PagedTotal));
     }
 
-    public Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    /// <summary>已执行的详情查询入参（id, includeItems），供断言取数范围（见 erp-settlement design.md §3.1.1）</summary>
+    public List<(Guid Id, bool IncludeItems)> DetailQueries { get; } = new();
+
+    public Task<(PurchaseReceipt? Order, IReadOnlyList<PurchaseReceiptItem> Items)> GetDetailAsync(Guid id, bool includeItems = true, CancellationToken cancellationToken = default)
     {
+        DetailQueries.Add((id, includeItems));
+
         if (!_orders.TryGetValue(id, out var order))
         {
             return Task.FromResult<(PurchaseReceipt?, IReadOnlyList<PurchaseReceiptItem>)>((null, Array.Empty<PurchaseReceiptItem>()));
         }
 
-        IReadOnlyList<PurchaseReceiptItem> items = _items[id].OrderBy(i => i.Id).ToList(); // 与真实仓储一致：按 Id 还原插入顺序
+        // 与真实仓储一致：includeItems = false 时只取主表、不返回明细（Items 恒为空集合）
+        IReadOnlyList<PurchaseReceiptItem> items = includeItems
+            ? _items[id].OrderBy(i => i.Id).ToList() // 按 Id 还原插入顺序
+            : Array.Empty<PurchaseReceiptItem>();
         return Task.FromResult((Order: (PurchaseReceipt?)order, Items: items));
     }
 

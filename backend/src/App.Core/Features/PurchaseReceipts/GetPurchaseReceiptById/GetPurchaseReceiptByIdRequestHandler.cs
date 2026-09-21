@@ -25,7 +25,7 @@ public sealed class GetPurchaseReceiptByIdRequestHandler : IRequestHandler<GetPu
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<PurchaseReceiptDetailDto> HandleAsync(GetPurchaseReceiptByIdRequest request, CancellationToken cancellationToken = default)
     {
-        var (order, items) = await _purchaseReceiptRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (order, items) = await _purchaseReceiptRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购单不存在");

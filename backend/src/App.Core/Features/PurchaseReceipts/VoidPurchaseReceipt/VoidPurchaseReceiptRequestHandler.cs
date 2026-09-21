@@ -47,7 +47,7 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<PurchaseReceiptDetailDto> HandleAsync(VoidPurchaseReceiptRequest request, CancellationToken cancellationToken = default)
     {
-        var (order, items) = await _purchaseReceiptRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (order, items) = await _purchaseReceiptRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购入库单不存在");
@@ -147,7 +147,7 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
             throw;
         }
 
-        var (updatedOrder, updatedItems) = await _purchaseReceiptRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (updatedOrder, updatedItems) = await _purchaseReceiptRepository.GetDetailAsync(request.Id, cancellationToken: cancellationToken);
         if (updatedOrder is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "采购入库单不存在");
