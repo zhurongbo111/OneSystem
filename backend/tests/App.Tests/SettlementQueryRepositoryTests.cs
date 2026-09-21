@@ -6,13 +6,12 @@ namespace App.Tests;
 
 /// <summary>
 /// 结算跨表只读仓储测试（design.md §6）：GetUnsettledAsync（方向 → 单据类型集合映射、过滤已作废 / 已结清）；
-/// GetReconciliationAsync（按往来聚合应收 / 应付：含退货冲减与已收 / 已付抵扣、未结单据数）。
+/// GetReconciliationAsync（按往来聚合应收 / 应付：按被核销单据未结金额归集、未结单据数；不引用收付款单类型）。
 /// 纯读查询，用 InMemory 提供程序 + 真实仓储。
 /// </summary>
 public class SettlementQueryRepositoryTests
 {
     private static readonly DateTimeOffset OrderDate = new(2025, 12, 20, 0, 0, 0, TimeSpan.Zero);
-    private static readonly DateTimeOffset SettlementDate = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     private static DateTimeOffset Now => DateTimeOffset.UtcNow;
 
@@ -71,22 +70,6 @@ public class SettlementQueryRepositoryTests
             ReturnDate = OrderDate,
             TotalAmount = total,
             SettledAmount = settled,
-            Status = status,
-            CreatedAt = Now,
-            UpdatedAt = Now,
-        };
-
-    private static Settlement NewSettlement(Guid partnerId, SettlementType type, decimal totalAmount, OrderStatus status = OrderStatus.Normal)
-        => new()
-        {
-            Id = Guid.NewGuid(),
-            SettlementNo = type == SettlementType.Receipt ? "RC202601010001" : "PY202601010001",
-            Type = type,
-            PartnerId = partnerId,
-            PartnerName = "往来",
-            SettlementDate = SettlementDate,
-            TotalAmount = totalAmount,
-            Method = SettlementMethod.Cash,
             Status = status,
             CreatedAt = Now,
             UpdatedAt = Now,
@@ -168,22 +151,20 @@ public class SettlementQueryRepositoryTests
     }
 
     [Fact]
-    public async Task 往来台账_应收应付_应含退货冲减与已收已付抵扣()
+    public async Task 往来台账_应收应付_应按被核销单据未结金额归集()
     {
         var context = TestSupport.CreateDbContext();
         var customer = TestSupport.NewPartner("客户一", PartnerType.Customer);
         context.Partners.Add(customer);
 
-        // 应收 = 销售 1000 − 销售退货 300 − 已收 400 = 300（退货单已结清，不影响未结单据数）
+        // 应收 = 销售出库未结 600（1000 − 400）+ 采购退货未结 100（100 − 0）= 700
         context.SalesShipments.Add(NewSalesShipment(customer.Id, "GI202512200001", 1000m, 400m));
-        context.SalesReturns.Add(NewSalesReturn(customer.Id, "SR202512200001", 300m, 300m));
-        context.Settlements.Add(NewSettlement(customer.Id, SettlementType.Receipt, 400m));
-        // 已作废收款单不计入已收
-        context.Settlements.Add(NewSettlement(customer.Id, SettlementType.Receipt, 999m, OrderStatus.Voided));
-        // 应付 = 采购 500 − 采购退货 100 − 已付 200 = 200
+        context.PurchaseReturns.Add(NewPurchaseReturn(customer.Id, "PR202512200001", 100m, 0m));
+        // 应付 = 采购入库未结 300（500 − 200）+ 销售退货未结 0（300 − 300）= 300
         context.PurchaseReceipts.Add(NewPurchaseReceipt(customer.Id, "GR202512200001", 500m, 200m));
-        context.PurchaseReturns.Add(NewPurchaseReturn(customer.Id, "PR202512200001", 100m, 100m));
-        context.Settlements.Add(NewSettlement(customer.Id, SettlementType.Payment, 200m));
+        context.SalesReturns.Add(NewSalesReturn(customer.Id, "SR202512200001", 300m, 300m));
+        // 已作废单据不计入未结
+        context.SalesShipments.Add(NewSalesShipment(customer.Id, "GI202512200002", 999m, 0m, OrderStatus.Voided));
         await context.SaveChangesAsync();
 
         var repository = new SettlementQueryRepository(context);
@@ -194,10 +175,41 @@ public class SettlementQueryRepositoryTests
         var row = Assert.Single(items);
         Assert.Equal(customer.Id, row.PartnerId);
         Assert.Equal("客户一", row.PartnerName);
-        Assert.Equal(300m, row.ReceivableAmount);
-        Assert.Equal(200m, row.PayableAmount);
-        // 未结单据数：销售单（未结）、采购单（未结）= 2；退货单均已结清 / 无未结
-        Assert.Equal(2, row.UnsettledOrderCount);
+        Assert.Equal(700m, row.ReceivableAmount);
+        Assert.Equal(300m, row.PayableAmount);
+        // 未结单据数：销售出库（未结）、采购退货（未结）、采购入库（未结）= 3；销售退货已结清、已作废不计
+        Assert.Equal(3, row.UnsettledOrderCount);
+    }
+
+    [Fact]
+    public async Task 往来台账_收款挂供应商_余额应按未结金额归集()
+    {
+        var context = TestSupport.CreateDbContext();
+        var settledSupplier = TestSupport.NewPartner("已退款供应商", PartnerType.Supplier);
+        var pendingSupplier = TestSupport.NewPartner("未退款供应商", PartnerType.Supplier);
+        context.Partners.AddRange(settledSupplier, pendingSupplier);
+
+        // 已退款供应商：采购入库 800 未付 → 应付 800；采购退货 500 已由收款单收回退款 → 未结 0（旧口径会把 500 算成负应收）
+        context.PurchaseReceipts.Add(NewPurchaseReceipt(settledSupplier.Id, "GR202512200001", 800m, 0m));
+        context.PurchaseReturns.Add(NewPurchaseReturn(settledSupplier.Id, "PR202512200001", 500m, 500m));
+        // 未退款供应商：采购退货 200 未收回 → 挂应收 200
+        context.PurchaseReturns.Add(NewPurchaseReturn(pendingSupplier.Id, "PR202512200002", 200m, 0m));
+        await context.SaveChangesAsync();
+
+        var repository = new SettlementQueryRepository(context);
+
+        var (items, total) = await repository.GetReconciliationAsync(null, null, 1, 20);
+
+        Assert.Equal(2, total);
+        var settled = items.Single(i => i.PartnerId == settledSupplier.Id);
+        Assert.Equal(0m, settled.ReceivableAmount);
+        Assert.Equal(800m, settled.PayableAmount);
+        Assert.Equal(1, settled.UnsettledOrderCount);
+
+        var pending = items.Single(i => i.PartnerId == pendingSupplier.Id);
+        Assert.Equal(200m, pending.ReceivableAmount);
+        Assert.Equal(0m, pending.PayableAmount);
+        Assert.Equal(1, pending.UnsettledOrderCount);
     }
 
     [Fact]
