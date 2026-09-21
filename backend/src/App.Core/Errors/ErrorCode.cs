@@ -97,4 +97,7 @@ public static class ErrorCode
 
     /// <summary>往来单位类型不允许收窄（erp-partner 功能业务码；只可保持原类型或改为两者）</summary>
     public const int PartnerTypeNarrowingNotAllowed = 40119;
+
+    /// <summary>单据已被收付款单核销，禁止作废（erp-settlement 功能业务码；message 含单号与已结金额）</summary>
+    public const int OrderSettledCannotVoid = 40120;
 }

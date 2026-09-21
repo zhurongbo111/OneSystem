@@ -136,6 +136,30 @@ public class PurchaseReturnLifecycleTests
         Assert.Equal(10, inventory.GetQuantity(p1.Id));
     }
 
+    [Fact]
+    public async Task 作废采购退货单_已核销_应报OrderSettledCannotVoid且不回冲()
+    {
+        var (returns, inventory, uow, user, purchaseReturn, p1, _, calls) = SeedNormal();
+        purchaseReturn.SettledAmount = 10m; // 已被收款单核销（部分）
+
+        var movements = new FakeStockMovementRepository(calls);
+        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user);
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => handler.HandleAsync(new VoidPurchaseReturnRequest { Id = purchaseReturn.Id }));
+        Assert.Equal(ErrorCode.OrderSettledCannotVoid, ex.Code);
+        Assert.Contains(purchaseReturn.ReturnNo, ex.Message);
+        Assert.Contains("10.00", ex.Message);
+
+        // 作废与核销互斥：未开启事务、未回冲库存、不写流水、状态保持正常
+        Assert.Empty(inventory.Increments);
+        Assert.Empty(movements.Appended);
+        Assert.DoesNotContain("Begin", calls);
+        Assert.Equal(10, inventory.GetQuantity(p1.Id));
+        var (afterVoid, _) = await returns.GetDetailAsync(purchaseReturn.Id);
+        Assert.Equal(OrderStatus.Normal, afterVoid!.Status);
+    }
+
     // ============================== 结算状态推导（erp-settlement） ==============================
 
     [Theory]

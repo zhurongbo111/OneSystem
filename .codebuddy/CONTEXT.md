@@ -30,7 +30,7 @@ backend/
 - `AppDbContext` 含 23 个 DbSet（与实体一一对应，另有 PurchaseReceiptItems / SalesShipmentItems / PurchaseOrderItems / SalesOrderItems / StockTakeItems / PurchaseReturnItems / SalesReturnItems / SettlementItems 八张明细表）。
 - **共享出参与映射**：各功能在 `Features/<Feature>/` 下放跨用例共享 DTO 与 `<Feature>DtoMapper`（正向映射，方法名 `To` + 目标 DTO 类型名），约定见 `rules/backend/RULE.mdc` §4.3。
 - **当前用户与审计**：id 解析入口 `Abstractions/ICurrentUserExtensions.UserId()`；审计字段由 Handler 经 `ICurrentUser` 传入、仓储不感知当前用户（约定见 `rules/backend/RULE.mdc` §4.1）。
-- **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）、`App.Core/SettlementStateCalculator.cs`（单据结算状态 / 未结金额推导，四类单据 DTO 映射共用）。
+- **共享工具**：`App.Core/SequentialGuidGenerator.cs`（顺序 GUID 生成器，采购 / 销售单据共用，命名空间 `App.Core`）、`App.Core/SettlementStateCalculator.cs`（单据结算状态 / 未结金额推导，四类单据 DTO 映射共用）；**已核销单据禁止作废**由四类单据 `Void*` Handler 校验（`ErrorCode.OrderSettledCannotVoid = 40120`，判据见 `specs/023-erp-settlement/design.md` §0）。
 - **导出能力（erp-export）**：`App.Core/Exports/`（`ExcelWorkbookModel` / `ExcelSheetModel` / `ExcelColumnModel` / `ExcelValueType` / `ExportFieldConstraints`（`MaxRows = 50000`）/ `ExportDomainNames` / `ExportFileNames` / `ExportGuards` / `ExportLabels` / `ExportResultDto`）+ `Abstractions/IExcelExporter.cs`（实现 `App.Infrastructure/Exports/ClosedXmlExcelExporter.cs`，包依赖 `ClosedXML`，注册于 `AddInfrastructure`）；各域导出用例为 `Features/<Feature>/Export<X>`，端点为各域 Controller 追加的 `GET .../export`（契约例外：成功返回二进制流，见 `specs/027-erp-export/design.md` §0.1）。
 - **导出用批量查询**：`IUserRepository.GetDisplayNamesByIdsAsync`（创建人显示名）、`IProductRepository.GetCodesByIdsAsync`（单据明细商品编码）、六类单据仓储的 `GetItemsBy...IdsAsync`（按单据 id 集合一次取明细，避免逐单 N+1）。
 
