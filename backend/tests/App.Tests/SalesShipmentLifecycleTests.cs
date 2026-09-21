@@ -130,6 +130,30 @@ public class SalesShipmentLifecycleTests
         Assert.Equal(10, inventory.GetQuantity(p1.Id));
     }
 
+    [Fact]
+    public async Task 作废销售单_已核销_应报OrderSettledCannotVoid且不回冲()
+    {
+        var (orders, inventory, uow, user, order, p1, _, calls) = SeedNormal();
+        order.SettledAmount = 10m; // 已被收款单核销（部分）
+
+        var movements = new FakeStockMovementRepository(calls);
+        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(calls), inventory, movements, uow, user);
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => handler.HandleAsync(new VoidSalesShipmentRequest { Id = order.Id }));
+        Assert.Equal(ErrorCode.OrderSettledCannotVoid, ex.Code);
+        Assert.Contains(order.ShipmentNo, ex.Message);
+        Assert.Contains("10.00", ex.Message);
+
+        // 作废与核销互斥：未开启事务、未回冲库存、不写流水、状态保持正常
+        Assert.Empty(inventory.Increments);
+        Assert.Empty(movements.Appended);
+        Assert.DoesNotContain("Begin", calls);
+        Assert.Equal(10, inventory.GetQuantity(p1.Id));
+        var (afterVoid, _) = await orders.GetDetailAsync(order.Id);
+        Assert.Equal(OrderStatus.Normal, afterVoid!.Status);
+    }
+
     // ============================== 结算状态推导（erp-settlement） ==============================
 
     [Theory]

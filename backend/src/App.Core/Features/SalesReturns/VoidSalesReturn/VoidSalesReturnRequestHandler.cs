@@ -6,6 +6,7 @@ namespace App.Core.Features.SalesReturns.VoidSalesReturn;
 
 /// <summary>
 /// 销售退货单作废用例：不存在 → 40400；已作废 → 40104（幂等防重，不重复回冲）；
+/// 已核销（`SettledAmount > 0`）→ 40120（作废与核销互斥，须先作废对应收付款单）；
 /// 事务内逐行库存回冲（IncrementAsync(-quantity)，**允许冲负** —— 退回入库的货可能已被再次卖出）
 /// + 状态置作废 + 审计。作废后单号不复用；仅改状态，不删数据（明细保留供审计）。
 /// </summary>
@@ -51,6 +52,14 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
         {
             // 已作废禁止再操作（防重复作废 / 重复回冲）
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
+        }
+
+        // 已核销禁止作废：作废与核销互斥（specs/023-erp-settlement design.md §0）——须先作废对应收付款单回退已结金额
+        if (salesReturn.SettledAmount > 0)
+        {
+            throw new BusinessException(
+                ErrorCode.OrderSettledCannotVoid,
+                $"销售退货单 {salesReturn.ReturnNo} 已被收付款单核销（已结 {salesReturn.SettledAmount:0.00}），请先作废对应收付款单");
         }
 
         var now = DateTimeOffset.UtcNow;

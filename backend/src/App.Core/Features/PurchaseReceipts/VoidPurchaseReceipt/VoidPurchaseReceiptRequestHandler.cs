@@ -6,6 +6,7 @@ namespace App.Core.Features.PurchaseReceipts.VoidPurchaseReceipt;
 
 /// <summary>
 /// 采购入库单作废用例：不存在 → 40400；已作废 → 40104（幂等防重，不重复回冲）；
+/// 已核销（`SettledAmount > 0`）→ 40120（作废与核销互斥，须先作废对应收付款单）；
 /// 事务内逐行库存回冲（IncrementAsync(-quantity)，允许冲负）+ 状态置作废 + 审计。
 /// **关联订单时**（specs/024-erp-order-flow design.md §3.4）：同步回退订单明细累计已收并重算订单状态
 /// （订单已关闭保持关闭、已作废不会出现）；全部在同一事务内完成。
@@ -56,6 +57,14 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
         {
             // 已作废禁止再操作（防重复作废 / 重复回冲）
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
+        }
+
+        // 已核销禁止作废：作废与核销互斥（specs/023-erp-settlement design.md §0）——须先作废对应收付款单回退已结金额
+        if (order.SettledAmount > 0)
+        {
+            throw new BusinessException(
+                ErrorCode.OrderSettledCannotVoid,
+                $"采购入库单 {order.ReceiptNo} 已被收付款单核销（已结 {order.SettledAmount:0.00}），请先作废对应收付款单");
         }
 
         // 关联订单：先取订单当前状态与明细（用于回退累计量与重算状态）
