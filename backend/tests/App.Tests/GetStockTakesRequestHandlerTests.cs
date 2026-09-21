@@ -1,8 +1,6 @@
 using App.Core.Entities;
 using App.Core.Features.StockTakes.GetStockTakes;
 
-using Xunit;
-
 namespace App.Tests;
 
 /// <summary>

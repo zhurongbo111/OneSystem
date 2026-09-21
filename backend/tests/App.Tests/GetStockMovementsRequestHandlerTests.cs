@@ -1,7 +1,6 @@
 using App.Core.Abstractions;
 using App.Core.Entities;
 using App.Core.Features.StockMovements.GetStockMovements;
-using App.Infrastructure;
 using App.Infrastructure.Repositories;
 
 namespace App.Tests;
@@ -17,20 +16,20 @@ public class GetStockMovementsRequestHandlerTests
 
     private static StockMovementItem Item(
         StockMovementType type, int quantity, string? sourceNo, Guid? createdBy, decimal unitCost = 0m) => new()
-    {
-        Id = Guid.NewGuid(),
-        ProductId = Guid.NewGuid(),
-        ProductCode = "sku-mv",
-        ProductName = "流水商品",
-        Unit = "个",
-        MovementType = type,
-        Quantity = quantity,
-        UnitCost = unitCost,
-        TotalCost = quantity * unitCost,
-        SourceNo = sourceNo,
-        Remark = null,
-        CreatedAt = Time,
-        CreatedByName = createdBy is null ? null : "管理员",
+        {
+            Id = Guid.NewGuid(),
+            ProductId = Guid.NewGuid(),
+            ProductCode = "sku-mv",
+            ProductName = "流水商品",
+            Unit = "个",
+            MovementType = type,
+            Quantity = quantity,
+            UnitCost = unitCost,
+            TotalCost = quantity * unitCost,
+            SourceNo = sourceNo,
+            Remark = null,
+            CreatedAt = Time,
+            CreatedByName = createdBy is null ? null : "管理员",
         };
 
     /// <summary>
@@ -39,7 +38,8 @@ public class GetStockMovementsRequestHandlerTests
     private sealed class FakeMovementRepository : IStockMovementRepository
     {
         public (string? Keyword, Guid? ProductId, StockMovementType? Type,
-            DateTimeOffset? Start, DateTimeOffset? End, int Page, int PageSize) LastRequest { get; private set; }
+            DateTimeOffset? Start, DateTimeOffset? End, int Page, int PageSize) LastRequest
+        { get; private set; }
 
         public Task AppendAsync(StockMovement movement, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();

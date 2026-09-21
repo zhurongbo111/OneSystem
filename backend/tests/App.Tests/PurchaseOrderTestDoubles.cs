@@ -10,8 +10,8 @@ namespace App.Tests;
 /// </summary>
 internal sealed class FakePurchaseOrderRepository : IPurchaseOrderRepository
 {
-    private readonly Dictionary<Guid, PurchaseOrder> _orders = new();
-    private readonly Dictionary<Guid, List<PurchaseOrderItem>> _items = new();
+    private readonly Dictionary<Guid, PurchaseOrder> _orders = [];
+    private readonly Dictionary<Guid, List<PurchaseOrderItem>> _items = [];
     private readonly List<string>? _calls;
 
     public FakePurchaseOrderRepository(List<string>? calls = null) => _calls = calls;
@@ -23,10 +23,10 @@ internal sealed class FakePurchaseOrderRepository : IPurchaseOrderRepository
     public Func<Exception?>? UpdateFailure { get; set; }
 
     /// <summary>已执行的累计量累加序列（明细行 id, delta），用于断言关联回写 / 作废回退</summary>
-    public List<(Guid OrderItemId, int Delta)> FulfilledAdds { get; } = new();
+    public List<(Guid OrderItemId, int Delta)> FulfilledAdds { get; } = [];
 
     /// <summary>已执行的流转状态更新序列，用于断言状态推导</summary>
-    public List<OrderFlowStatus> FlowStatusUpdates { get; } = new();
+    public List<OrderFlowStatus> FlowStatusUpdates { get; } = [];
 
     /// <summary>分页查询注入结果（未设置时返回空页）</summary>
     public (IReadOnlyList<(PurchaseOrder Order, int UnfulfilledQuantity)> Items, int Total)? PagedResult { get; set; }

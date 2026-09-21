@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Swagger 文档：生成 XML 注释供 AddSwaggerGen 读取（既有公共成员缺注释以 1591 抑制，逐步补齐） -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 

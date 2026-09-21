@@ -1,13 +1,11 @@
 using App.Core;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
-using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
-using App.Core.Responses;
-using App.Infrastructure;
 using App.Infrastructure.Repositories;
 
 namespace App.Tests;

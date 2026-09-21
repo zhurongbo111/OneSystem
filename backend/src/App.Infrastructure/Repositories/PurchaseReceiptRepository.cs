@@ -198,5 +198,4 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
             .OrderBy(i => i.Id)
             .ToListAsync(cancellationToken);
     }
-
 }

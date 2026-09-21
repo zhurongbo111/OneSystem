@@ -9,8 +9,8 @@ namespace App.Tests;
 /// </summary>
 internal sealed class FakeSettlementRepository : ISettlementRepository
 {
-    private readonly Dictionary<Guid, Settlement> _settlements = new();
-    private readonly Dictionary<Guid, List<SettlementItem>> _items = new();
+    private readonly Dictionary<Guid, Settlement> _settlements = [];
+    private readonly Dictionary<Guid, List<SettlementItem>> _items = [];
     private readonly List<string>? _calls;
 
     public FakeSettlementRepository(List<string>? calls = null) => _calls = calls;
@@ -21,7 +21,8 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
     /// <summary>已执行的分页查询入参</summary>
     public List<(string? Keyword, SettlementType? Type, Guid? PartnerId, SettlementMethod? Method,
         DateTimeOffset? Start, DateTimeOffset? End, SettlementOrderType? OrderType, Guid? OrderId,
-        int Page, int PageSize)> PagedQueries { get; } = new();
+        int Page, int PageSize)> PagedQueries
+    { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
     public IReadOnlyList<Settlement> PagedItems { get; set; } = Array.Empty<Settlement>();
@@ -112,7 +113,7 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
 internal sealed class FakeSettlementQueryRepository : ISettlementQueryRepository
 {
     /// <summary>已执行的未结候选查询入参</summary>
-    public List<(Guid PartnerId, SettlementType Type, int Page, int PageSize)> UnsettledQueries { get; } = new();
+    public List<(Guid PartnerId, SettlementType Type, int Page, int PageSize)> UnsettledQueries { get; } = [];
 
     /// <summary>未结候选返回行（由用例预置）</summary>
     public IReadOnlyList<SettlementCandidateItem> UnsettledItems { get; set; } = Array.Empty<SettlementCandidateItem>();
@@ -121,7 +122,7 @@ internal sealed class FakeSettlementQueryRepository : ISettlementQueryRepository
     public int UnsettledTotal { get; set; }
 
     /// <summary>已执行的往来台账查询入参</summary>
-    public List<(string? Keyword, PartnerType? Type, int Page, int PageSize)> ReconciliationQueries { get; } = new();
+    public List<(string? Keyword, PartnerType? Type, int Page, int PageSize)> ReconciliationQueries { get; } = [];
 
     /// <summary>往来台账返回行（由用例预置）</summary>
     public IReadOnlyList<ReconciliationItem> ReconciliationItems { get; set; } = Array.Empty<ReconciliationItem>();

@@ -200,5 +200,4 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
             .OrderBy(i => i.Id)
             .ToListAsync(cancellationToken);
     }
-
 }

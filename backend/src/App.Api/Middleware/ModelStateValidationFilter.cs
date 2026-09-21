@@ -1,6 +1,5 @@
 using App.Core.Errors;
 
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace App.Api.Middleware;

@@ -186,9 +186,11 @@ public class SettlementQueryHandlerTests
     public async Task 查询收付款单列表_未按单据反查_OrderAmount为空且单据类型为空集合()
     {
         var calls = new List<string>();
-        var repository = new FakeSettlementRepository(calls);
-        repository.PagedItems = new[] { NewSettlement() };
-        repository.PagedTotal = 1;
+        var repository = new FakeSettlementRepository(calls)
+        {
+            PagedItems = new[] { NewSettlement() },
+            PagedTotal = 1
+        };
 
         var result = await new GetSettlementsRequestHandler(repository).HandleAsync(new GetSettlementsRequest());
 
@@ -285,20 +287,22 @@ public class SettlementQueryHandlerTests
     [Fact]
     public async Task 查询往来对账_应透传往来类型并映射应收应付()
     {
-        var repository = new FakeSettlementQueryRepository();
-        repository.ReconciliationItems = new[]
+        var repository = new FakeSettlementQueryRepository
         {
-            new ReconciliationItem
+            ReconciliationItems = new[]
             {
-                PartnerId = Guid.NewGuid(),
-                PartnerName = "客户一",
-                PartnerType = PartnerType.Customer,
-                ReceivableAmount = 600m,
-                PayableAmount = 0m,
-                UnsettledOrderCount = 2,
+                new ReconciliationItem
+                {
+                    PartnerId = Guid.NewGuid(),
+                    PartnerName = "客户一",
+                    PartnerType = PartnerType.Customer,
+                    ReceivableAmount = 600m,
+                    PayableAmount = 0m,
+                    UnsettledOrderCount = 2,
+                },
             },
+            ReconciliationTotal = 1
         };
-        repository.ReconciliationTotal = 1;
 
         var result = await new GetReconciliationRequestHandler(repository).HandleAsync(new GetReconciliationRequest
         {
