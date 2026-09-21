@@ -14,8 +14,11 @@ import {
 import { formatDateTime } from '@/utils/datetime'
 import {
   SETTLEMENT_STATE_OPTIONS,
+  canStartSettlement,
+  canVoidOrder,
   settlementStateColor,
   settlementStateLabel,
+  VOID_SETTLED_HINT,
   type SettlementState,
 } from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
@@ -493,7 +496,7 @@ function onGoSettlement(row: SalesReturnListItem): void {
             </a-button>
 
             <a-button
-              v-if="(record as SalesReturnListItem).status === 1"
+              v-if="canStartSettlement(record as SalesReturnListItem)"
               type="text"
               size="small"
               @click="onGoSettlement(record as SalesReturnListItem)"
@@ -503,8 +506,27 @@ function onGoSettlement(row: SalesReturnListItem): void {
               </template>
               收付款
             </a-button>
+            <!-- 已核销 → 禁用并提示处置顺序；未核销 → 二次确认（前端提前拦截，后端 40120 兜底） -->
+            <a-tooltip
+              v-if="(record as SalesReturnListItem).status === 1 && !canVoidOrder(record as SalesReturnListItem)"
+              :content="VOID_SETTLED_HINT"
+            >
+              <span>
+                <a-button
+                  type="text"
+                  size="small"
+                  status="danger"
+                  disabled
+                >
+                  <template #icon>
+                    <IconBan />
+                  </template>
+                  作废
+                </a-button>
+              </span>
+            </a-tooltip>
             <a-popconfirm
-              v-if="(record as SalesReturnListItem).status === 1"
+              v-else-if="canVoidOrder(record as SalesReturnListItem)"
               type="warning"
               content="确认作废该销售退货单？作废后库存将回冲，且不可恢复"
               @ok="onVoid(record as SalesReturnListItem)"

@@ -36,6 +36,27 @@ export function settlementStateColor(state: SettlementState): string {
   return (SETTLEMENT_STATE_META[state] ?? SETTLEMENT_STATE_META[0]).color
 }
 
+/**
+ * 是否可发起收付款（四类单据列表 / 详情「收付款 / 去收付款」按钮的显隐判据，唯一来源）：
+ * 单据正常（未作废）且**仍有未结金额**——已结算时没有可核销金额，
+ * 点入新建页必然得到空候选列表（`GetUnsettledOrders` 只返回未结单据），故不显示入口。
+ */
+export function canStartSettlement(order: { status: number; settlementState: SettlementState }): boolean {
+  return order.status === 1 && order.settlementState !== 2
+}
+
+/** 已核销单据的作废提示（四类单据列表 / 详情共用；与后端 `40120` 处置顺序一致：先作废对应收付款单回退金额） */
+export const VOID_SETTLED_HINT = '已被收付款单核销，请先作废对应收付款单'
+
+/**
+ * 是否可作废单据（四类单据列表 / 详情「作废」按钮的唯一判据）：
+ * 单据正常（未作废）且**未被收付款单核销**——已核销（`settledAmount > 0`）时后端拒绝（`40120`），
+ * 前端提前禁用并给出处置提示，避免「点了确认才被拒」。
+ */
+export function canVoidOrder(order: { status: number; settledAmount: number }): boolean {
+  return order.status === 1 && order.settledAmount <= 0
+}
+
 /** 被核销单据类型元数据：文案 + 详情路由名（唯一来源，收付款详情 / 往来对账的「单号」超链接共用） */
 const SETTLEMENT_ORDER_TYPE_META: Record<SettlementOrderType, { label: string; routeName: string }> = {
   0: { label: '采购入库单', routeName: 'purchaseDetail' },
