@@ -158,6 +158,11 @@ function onPageSizeChange(size: number): void {
 function onShowDetail(record: StockBalanceItem): void {
   void router.push({ name: 'inventory', query: { categoryId: record.categoryId } })
 }
+
+/** 占比文案（0–1 → `xx.xx%`，与导出侧 `FormatRatio` 同口径；进度条文本单独格式化，避免浮点尾数） */
+function formatRatio(ratio: number): string {
+  return `${(ratio * 100).toFixed(2)}%`
+}
 </script>
 
 <template>
@@ -325,10 +330,15 @@ function onShowDetail(record: StockBalanceItem): void {
           </span>
         </template>
         <template #quantityRatio="{ record }">
+          <!-- percent 直接传 0–1 占比：Arco 组件内部再 ×100（前端规则 §4.9） -->
           <a-progress
-            :percent="Number(((record as StockBalanceItem).quantityRatio * 100).toFixed(1))"
+            :percent="(record as StockBalanceItem).quantityRatio"
             size="small"
-          />
+          >
+            <template #text>
+              {{ formatRatio((record as StockBalanceItem).quantityRatio) }}
+            </template>
+          </a-progress>
         </template>
         <template #totalCostAmount="{ record }">
           {{ (record as StockBalanceItem).totalCostAmount.toFixed(2) }}
