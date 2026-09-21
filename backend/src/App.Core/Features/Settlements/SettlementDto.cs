@@ -102,6 +102,9 @@ public sealed class SettlementListItemDto
 
     /// <summary>创建时间</summary>
     public required DateTimeOffset CreatedAt { get; init; }
+
+    /// <summary>本次核销金额（仅按被核销单据反查时返回；普通列表为 null）</summary>
+    public decimal? OrderAmount { get; init; }
 }
 
 /// <summary>未结单据候选出参模型（新建收付款单页选择核销单据用）</summary>

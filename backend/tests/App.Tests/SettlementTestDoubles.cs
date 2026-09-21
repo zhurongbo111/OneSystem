@@ -20,7 +20,8 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
 
     /// <summary>已执行的分页查询入参</summary>
     public List<(string? Keyword, SettlementType? Type, Guid? PartnerId, SettlementMethod? Method,
-        DateTimeOffset? Start, DateTimeOffset? End, int Page, int PageSize)> PagedQueries { get; } = new();
+        DateTimeOffset? Start, DateTimeOffset? End, SettlementOrderType? OrderType, Guid? OrderId,
+        int Page, int PageSize)> PagedQueries { get; } = new();
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
     public IReadOnlyList<Settlement> PagedItems { get; set; } = Array.Empty<Settlement>();
@@ -40,9 +41,10 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
 
     public Task<(IReadOnlyList<Settlement> Items, int Total)> GetPagedAsync(
         string? keyword, SettlementType? type, Guid? partnerId, SettlementMethod? method,
-        DateTimeOffset? start, DateTimeOffset? end, int page, int pageSize, CancellationToken cancellationToken = default)
+        DateTimeOffset? start, DateTimeOffset? end, SettlementOrderType? orderType, Guid? orderId,
+        int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        PagedQueries.Add((keyword, type, partnerId, method, start, end, page, pageSize));
+        PagedQueries.Add((keyword, type, partnerId, method, start, end, orderType, orderId, page, pageSize));
         return Task.FromResult((PagedItems, PagedTotal));
     }
 

@@ -41,6 +41,8 @@ public sealed class ExportSettlementsRequestHandler : IRequestHandler<ExportSett
             request.Method,
             request.Start,
             request.End,
+            null,
+            null,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);

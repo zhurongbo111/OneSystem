@@ -10,7 +10,8 @@ namespace App.Core.Abstractions;
 public interface ISettlementRepository
 {
     /// <summary>
-    /// 分页查询收付款单：单号 / 往来名称关键词 + 类型 + 往来 + 方式 + 业务日期闭区间，创建时间倒序；含作废单据
+    /// 分页查询收付款单：单号 / 往来名称关键词 + 类型 + 往来 + 方式 + 业务日期闭区间，创建时间倒序；含作废单据。
+    /// orderType + orderId 成对传入时按被核销单据反查（仅返回核销了该单据的收付款单），用于单据详情「收付款明细」
     /// </summary>
     /// <param name="keyword">单号 / 往来名称关键词，可空</param>
     /// <param name="type">类型（0 收款 / 1 付款），可空</param>
@@ -18,6 +19,8 @@ public interface ISettlementRepository
     /// <param name="method">方式，可空</param>
     /// <param name="start">起始业务日期（含），可空</param>
     /// <param name="end">结束业务日期（含），可空</param>
+    /// <param name="orderType">被核销单据类型，可空（与 orderId 成对）</param>
+    /// <param name="orderId">被核销单据 id，可空（与 orderType 成对）</param>
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -28,6 +31,8 @@ public interface ISettlementRepository
         SettlementMethod? method,
         DateTimeOffset? start,
         DateTimeOffset? end,
+        SettlementOrderType? orderType,
+        Guid? orderId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

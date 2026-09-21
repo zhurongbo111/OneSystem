@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import {
   getReconciliation,
@@ -7,9 +8,9 @@ import {
   type PartnerType,
   type ReconciliationListItem,
   type SettlementCandidate,
-  type SettlementOrderType,
 } from '@/api/settlement'
 import { formatDateTime } from '@/utils/datetime'
+import { settlementOrderTypeLabel, settlementOrderTypeRouteName } from '@/utils/settlement'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
   IconListDetails,
@@ -29,23 +30,18 @@ const partnerTypeOptions: { label: string; value: PartnerType }[] = [
 /** 往来类型文案 */
 const PARTNER_TYPE_LABELS: Record<PartnerType, string> = { 1: '供应商', 2: '客户', 3: '两者' }
 
-/** 被核销单据类型文案 */
-const ORDER_TYPE_LABELS: Record<SettlementOrderType, string> = {
-  0: '采购入库单',
-  1: '销售出库单',
-  2: '采购退货单',
-  3: '销售退货单',
-}
-
-/** 未结单据抽屉表格列（只读） */
+/** 未结单据抽屉表格列（只读；单号为超链接 → 对应单据详情） */
 const unsettledColumns: TableColumnData[] = [
   { title: '单据类型', slotName: 'orderType', width: 120 },
-  { title: '单号', dataIndex: 'orderNo', width: 160 },
+  { title: '单号', slotName: 'orderNo', width: 180 },
   { title: '单据日期', slotName: 'orderDate', width: 110 },
   { title: '单据总额', slotName: 'totalAmount', width: 120, align: 'right' },
   { title: '已结金额', slotName: 'settledAmount', width: 120, align: 'right' },
   { title: '未结金额', slotName: 'unsettledAmount', width: 120, align: 'right' },
 ]
+
+// —— stores/composables ——
+const router = useRouter()
 
 /** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
 let fetchSeq = 0
@@ -180,6 +176,18 @@ async function onOpenUnsettled(row: ReconciliationListItem): Promise<void> {
   } finally {
     candidatesLoading.value = false
   }
+}
+
+/** 未结单据详情路径（单号超链接 href；未知单据类型返回空串） */
+function orderHref(candidate: SettlementCandidate): string {
+  const routeName = settlementOrderTypeRouteName(candidate.orderType)
+  return routeName ? router.resolve({ name: routeName, params: { id: candidate.orderId } }).href : ''
+}
+
+/** 打开未结单据详情（同步路由跳转不置 loading） */
+function onOrderDetail(candidate: SettlementCandidate): void {
+  const routeName = settlementOrderTypeRouteName(candidate.orderType)
+  if (routeName) void router.push({ name: routeName, params: { id: candidate.orderId } })
 }
 </script>
 
@@ -324,7 +332,15 @@ async function onOpenUnsettled(row: ReconciliationListItem): Promise<void> {
           :pagination="false"
         >
           <template #orderType="{ record }">
-            {{ ORDER_TYPE_LABELS[(record as SettlementCandidate).orderType] }}
+            {{ settlementOrderTypeLabel((record as SettlementCandidate).orderType) }}
+          </template>
+          <template #orderNo="{ record }">
+            <a-link
+              :href="orderHref(record as SettlementCandidate)"
+              @click.prevent="onOrderDetail(record as SettlementCandidate)"
+            >
+              {{ (record as SettlementCandidate).orderNo }}
+            </a-link>
           </template>
           <template #orderDate="{ record }">
             {{ formatDateTime((record as SettlementCandidate).orderDate).slice(0, 10) }}
@@ -355,7 +371,15 @@ async function onOpenUnsettled(row: ReconciliationListItem): Promise<void> {
           :pagination="false"
         >
           <template #orderType="{ record }">
-            {{ ORDER_TYPE_LABELS[(record as SettlementCandidate).orderType] }}
+            {{ settlementOrderTypeLabel((record as SettlementCandidate).orderType) }}
+          </template>
+          <template #orderNo="{ record }">
+            <a-link
+              :href="orderHref(record as SettlementCandidate)"
+              @click.prevent="onOrderDetail(record as SettlementCandidate)"
+            >
+              {{ (record as SettlementCandidate).orderNo }}
+            </a-link>
           </template>
           <template #orderDate="{ record }">
             {{ formatDateTime((record as SettlementCandidate).orderDate).slice(0, 10) }}

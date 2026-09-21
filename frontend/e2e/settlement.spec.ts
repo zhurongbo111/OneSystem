@@ -249,6 +249,10 @@ test.describe('收付款与往来对账（集成）', () => {
     // 详情：核销明细快照 + 总额 8.00（限定 arco-table 内，避免命中 descriptions 行）
     await expect(page.locator('.arco-table tbody tr').first()).toContainText(orderNo)
     await expect(page.getByText('¥ 8.00', { exact: true }).first()).toBeVisible()
+    // 核销明细的单号为超链接（跳被核销单据详情；此处只断言链接存在，不打断后续流程）
+    await expect(
+      page.locator('.arco-table tbody tr').first().getByRole('link', { name: orderNo }),
+    ).toBeVisible()
 
     // 打印视图（specs/027-erp-export）：详情页头部「打印」入口 → 收付款单版式含收付方向与核销明细
     const receiptNo = (await page.locator('.detail-desc').getByText(/^RC\d{12}$/).first().innerText()).trim()
@@ -272,6 +276,18 @@ test.describe('收付款与往来对账（集成）', () => {
     const partialRow = await findSalesRow(page, orderNo)
     await expect(partialRow.getByText('部分结算（未结 12.00）', { exact: true })).toBeVisible()
 
+    // 单据详情「收付款明细」反查：可见核销该单的收款单（本次核销金额 8.00）并可跳其详情
+    await partialRow.getByRole('button', { name: '详情' }).click()
+    await expect(page).toHaveURL(/\/sales\/detail\//)
+    const settlementSection = page.locator('.settlement-records')
+    await expect(settlementSection.locator('tbody tr')).toHaveCount(1)
+    await expect(settlementSection.locator('tbody tr').first()).toContainText(receiptNo)
+    await expect(settlementSection.locator('tbody tr').first()).toContainText('收款')
+    await expect(settlementSection.locator('tbody tr').first()).toContainText('8.00')
+    await settlementSection.getByRole('link', { name: receiptNo }).click()
+    await expect(page).toHaveURL(/\/settlements\/detail\//)
+    await expect(page.locator('.detail-desc').getByText(receiptNo)).toBeVisible()
+
     // 往来对账：客户应收 12.00；抽屉「应收未结单据」含该单
     await goReconciliation(page)
     await expect(dataRows(page).first()).toBeVisible()
@@ -284,7 +300,7 @@ test.describe('收付款与往来对账（集成）', () => {
     await expect(reconRow).toContainText('12.00')
     await reconRow.getByRole('button', { name: '未结单据' }).click()
     await expect(page.getByText(`未结单据 — ${customer}`, { exact: true })).toBeVisible()
-    await expect(page.locator('.arco-drawer').getByText(orderNo, { exact: true })).toBeVisible()
+    await expect(page.locator('.arco-drawer').getByRole('link', { name: orderNo })).toBeVisible()
     await page.locator('.arco-drawer-close-btn').click()
 
     // 再收 12.00 → 已结算；往来应收归零

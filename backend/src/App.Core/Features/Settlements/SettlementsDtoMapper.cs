@@ -41,7 +41,9 @@ internal static class SettlementsDtoMapper
     /// <summary>
     /// 主表实体转列表 DTO
     /// </summary>
-    public static SettlementListItemDto ToSettlementListItemDto(Settlement settlement)
+    /// <param name="settlement">收付款单实体</param>
+    /// <param name="orderAmount">本次核销金额（按被核销单据反查时传入；普通列表为 null）</param>
+    public static SettlementListItemDto ToSettlementListItemDto(Settlement settlement, decimal? orderAmount = null)
         => new()
         {
             Id = settlement.Id.ToString(),
@@ -54,6 +56,7 @@ internal static class SettlementsDtoMapper
             Method = (int)settlement.Method,
             Status = (int)settlement.Status,
             CreatedAt = settlement.CreatedAt,
+            OrderAmount = orderAmount,
         };
 
     /// <summary>

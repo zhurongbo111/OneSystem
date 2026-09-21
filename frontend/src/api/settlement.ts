@@ -28,6 +28,8 @@ export interface SettlementListItem {
   method: SettlementMethod
   status: OrderStatus
   createdAt: string
+  /** 本次核销金额（仅按被核销单据反查时返回，普通列表为 null） */
+  orderAmount?: number | null
 }
 
 /** 核销明细行（快照字段原样返回，对应后端 SettlementItemDto） */
@@ -58,6 +60,9 @@ export interface SettlementQuery {
   method?: SettlementMethod
   start?: string
   end?: string
+  /** 被核销单据类型 / id：成对传入，用于按单据反查（单据详情「收付款明细」） */
+  orderType?: SettlementOrderType
+  orderId?: string
 }
 
 /** 核销明细行入参（对应后端 CreateSettlementItem） */
