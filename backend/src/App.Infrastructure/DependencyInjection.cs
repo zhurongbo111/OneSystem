@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Infrastructure.Audit;
 using App.Infrastructure.Auth;
 using App.Infrastructure.Exports;
 using App.Infrastructure.Persistence;
@@ -65,6 +66,10 @@ public static class DependencyInjection
         services.AddScoped<ISettlementRepository, SettlementRepository>();
         services.AddScoped<ISettlementQueryRepository, SettlementQueryRepository>();
         services.AddScoped<IReportQueryRepository, ReportQueryRepository>();
+
+        // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IAuditLogger, AuditLogger>();
 
         return services;
     }

@@ -19,7 +19,7 @@ public class UpdateProductStatusRequestHandlerTests
         var handler = new UpdateProductStatusRequestHandler(
             new ProductRepository(context),
             new CategoryRepository(context),
-            new InventoryRepository(context));
+            new InventoryRepository(context), TestSupport.AuditLogger);
         return (context, handler);
     }
 

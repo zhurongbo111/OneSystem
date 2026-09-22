@@ -49,7 +49,7 @@ public class CategoryRequestHandlerTests
     public async Task 新增分类_应成功()
     {
         var context = CreateContext();
-        var handler = new CreateCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new CreateCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new CreateCategoryRequest { Name = "原材料" });
 
@@ -61,7 +61,7 @@ public class CategoryRequestHandlerTests
     public async Task 新增分类_名称重复_应报CategoryNameExists()
     {
         var context = CreateContext();
-        var handler = new CreateCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new CreateCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
         await SeedCategoryAsync(context, "原材料");
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreateCategoryRequest { Name = "原材料" }));
@@ -72,7 +72,7 @@ public class CategoryRequestHandlerTests
     public async Task 新增分类_名称大小写不同_视为重复()
     {
         var context = CreateContext();
-        var handler = new CreateCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new CreateCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
         await SeedCategoryAsync(context, "ABC");
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreateCategoryRequest { Name = "abc" }));
@@ -83,7 +83,7 @@ public class CategoryRequestHandlerTests
     public async Task 编辑分类_应改名且不影响其他()
     {
         var context = CreateContext();
-        var handler = new UpdateCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new UpdateCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
         var category = await SeedCategoryAsync(context, "原材料");
 
         var result = await handler.HandleAsync(new UpdateCategoryRequest { Id = category.Id, Name = "辅料" });
@@ -96,7 +96,7 @@ public class CategoryRequestHandlerTests
     public async Task 编辑分类_名称与其他分类重复_应报CategoryNameExists()
     {
         var context = CreateContext();
-        var handler = new UpdateCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new UpdateCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
         await SeedCategoryAsync(context, "原材料");
         var target = await SeedCategoryAsync(context, "包装材料");
 
@@ -108,7 +108,7 @@ public class CategoryRequestHandlerTests
     public async Task 编辑分类_改为自身原名_应成功()
     {
         var context = CreateContext();
-        var handler = new UpdateCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new UpdateCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
         var category = await SeedCategoryAsync(context, "原材料");
 
         var result = await handler.HandleAsync(new UpdateCategoryRequest { Id = category.Id, Name = "原材料" });
@@ -120,7 +120,7 @@ public class CategoryRequestHandlerTests
     public async Task 删除分类_无引用_应成功()
     {
         var context = CreateContext();
-        var handler = new DeleteCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new DeleteCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
         var category = await SeedCategoryAsync(context, "可删除");
 
         await handler.HandleAsync(new DeleteCategoryRequest { Id = category.Id });
@@ -132,7 +132,7 @@ public class CategoryRequestHandlerTests
     public async Task 删除分类_被商品引用_应报CategoryInUse()
     {
         var context = CreateContext();
-        var handler = new DeleteCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new DeleteCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
         var category = await SeedCategoryAsync(context, "被引用");
         await SeedProductAsync(context, category);
 
@@ -144,7 +144,7 @@ public class CategoryRequestHandlerTests
     public async Task 删除分类_不存在_应报NotFound()
     {
         var context = CreateContext();
-        var handler = new DeleteCategoryRequestHandler(new CategoryRepository(context));
+        var handler = new DeleteCategoryRequestHandler(new CategoryRepository(context), TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new DeleteCategoryRequest { Id = Guid.NewGuid() }));
         Assert.Equal(ErrorCode.NotFound, ex.Code);

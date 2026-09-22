@@ -70,7 +70,7 @@ public class PurchaseOrderLifecycleTests
         orders.Seed(order, new[] { NewItem(order.Id, 10) });
 
         var handler = new UpdatePurchaseOrderRequestHandler(
-            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user, TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new UpdatePurchaseOrderRequest
         {
@@ -98,7 +98,7 @@ public class PurchaseOrderLifecycleTests
         orders.Seed(order, new[] { NewItem(order.Id) });
 
         var handler = new UpdatePurchaseOrderRequestHandler(
-            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new UpdatePurchaseOrderRequest
         {
@@ -118,7 +118,7 @@ public class PurchaseOrderLifecycleTests
         orders.Seed(order, new[] { NewItem(order.Id) });
 
         var handler = new UpdatePurchaseOrderRequestHandler(
-            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new UpdatePurchaseOrderRequest
         {
@@ -135,7 +135,7 @@ public class PurchaseOrderLifecycleTests
     {
         var (context, orders, user) = CreateRepo();
         var handler = new UpdatePurchaseOrderRequestHandler(
-            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user);
+            orders, new PartnerRepository(context), new ProductRepository(context), new RecordingUnitOfWork(), user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new UpdatePurchaseOrderRequest
         {
@@ -156,7 +156,7 @@ public class PurchaseOrderLifecycleTests
         var order = NewOrder(OrderFlowStatus.Pending);
         orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var result = await new VoidPurchaseOrderRequestHandler(orders, user)
+        var result = await new VoidPurchaseOrderRequestHandler(orders, user, TestSupport.AuditLogger)
             .HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id });
 
         Assert.Equal((int)OrderFlowStatus.Voided, result.FlowStatus);
@@ -171,7 +171,7 @@ public class PurchaseOrderLifecycleTests
         var order = NewOrder(OrderFlowStatus.Partial);
         orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => new VoidPurchaseOrderRequestHandler(orders, user)
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new VoidPurchaseOrderRequestHandler(orders, user, TestSupport.AuditLogger)
             .HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id }));
         Assert.Equal(ErrorCode.OrderStateInvalid, ex.Code);
     }
@@ -183,7 +183,7 @@ public class PurchaseOrderLifecycleTests
         var order = NewOrder(OrderFlowStatus.Voided);
         orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => new VoidPurchaseOrderRequestHandler(orders, user)
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new VoidPurchaseOrderRequestHandler(orders, user, TestSupport.AuditLogger)
             .HandleAsync(new VoidPurchaseOrderRequest { Id = order.Id }));
         Assert.Equal(ErrorCode.OrderVoided, ex.Code);
     }
@@ -199,7 +199,7 @@ public class PurchaseOrderLifecycleTests
         var order = NewOrder(status);
         orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var result = await new ClosePurchaseOrderRequestHandler(orders, user)
+        var result = await new ClosePurchaseOrderRequestHandler(orders, user, TestSupport.AuditLogger)
             .HandleAsync(new ClosePurchaseOrderRequest { Id = order.Id });
 
         Assert.Equal((int)OrderFlowStatus.Closed, result.FlowStatus);
@@ -215,7 +215,7 @@ public class PurchaseOrderLifecycleTests
         var order = NewOrder(status);
         orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => new ClosePurchaseOrderRequestHandler(orders, user)
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new ClosePurchaseOrderRequestHandler(orders, user, TestSupport.AuditLogger)
             .HandleAsync(new ClosePurchaseOrderRequest { Id = order.Id }));
         Assert.Equal(ErrorCode.OrderStateInvalid, ex.Code);
     }
@@ -227,7 +227,7 @@ public class PurchaseOrderLifecycleTests
         var order = NewOrder(OrderFlowStatus.Voided);
         orders.Seed(order, new[] { NewItem(order.Id) });
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => new ClosePurchaseOrderRequestHandler(orders, user)
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => new ClosePurchaseOrderRequestHandler(orders, user, TestSupport.AuditLogger)
             .HandleAsync(new ClosePurchaseOrderRequest { Id = order.Id }));
         Assert.Equal(ErrorCode.OrderVoided, ex.Code);
     }

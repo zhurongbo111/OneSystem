@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -28,6 +29,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增采购入库单用例处理器
@@ -40,7 +42,8 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _purchaseReceiptRepository = purchaseReceiptRepository;
         _purchaseOrderRepository = purchaseOrderRepository;
@@ -50,6 +53,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -240,6 +244,26 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     var flowStatus = DeriveFlowStatus(orderItems, request.Items);
                     await _purchaseOrderRepository.UpdateFlowStatusAsync(linkedOrder.Id, flowStatus, operatorId, cancellationToken);
                 }
+
+                // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+                var createdReceiptChangeBuilder = new AuditChangeBuilder()
+                    .Add("receiptNo", "入库单号", null, order.ReceiptNo)
+                    .Add("partnerName", "供应商", null, order.PartnerName)
+                    .Add("orderDate", "入库日期", null, AuditSummary.Date(order.OrderDate))
+                    .Add("orderNo", "关联订单号", null, order.OrderNo)
+                    .Add("totalAmount", "入库金额", null, AuditSummary.Money(order.TotalAmount))
+                    .Add("remark", "备注", null, order.Remark);
+                await _auditLogger.RecordAsync(new AuditEntry
+                {
+                    Resource = AuditResource.PurchaseReceipt,
+                    Action = AuditAction.Create,
+                    ResourceId = order.Id,
+                    ResourceNo = order.ReceiptNo,
+                    Summary = $"创建采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
+                    Changes = createdReceiptChangeBuilder.Build(),
+                    ChangesTruncated = createdReceiptChangeBuilder.Truncated,
+                    UtcNow = now,
+                }, cancellationToken);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 

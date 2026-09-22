@@ -20,7 +20,7 @@ public class UpdateProductRequestHandlerTests
             new CategoryRepository(context),
             new InventoryRepository(context),
             new UnitOfWork(context),
-            new StubCurrentUser(Guid.NewGuid()));
+            new StubCurrentUser(Guid.NewGuid()), TestSupport.AuditLogger);
         return (context, handler);
     }
 

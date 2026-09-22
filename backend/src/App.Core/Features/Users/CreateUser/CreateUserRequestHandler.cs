@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Auth;
 using App.Core.Entities;
 using App.Core.Errors;
@@ -17,6 +18,7 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
     private readonly IUnitOfWork _unitOfWork;
     private readonly PasswordHasher _passwordHasher;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增用户用例处理器
@@ -27,7 +29,8 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
         IUserRoleRepository userRoleRepository,
         IUnitOfWork unitOfWork,
         PasswordHasher passwordHasher,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
@@ -35,6 +38,7 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -95,6 +99,27 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
         {
             await _userRepository.AddAsync(user, cancellationToken);
             await _userRoleRepository.ReplaceUserRolesAsync(user.Id, roleIds, cancellationToken);
+
+            // 密码哈希不进 change 明细：字段名命中敏感黑名单（AuditChangeBuilder 兜底拦截）
+            var createdUserChangeBuilder = new AuditChangeBuilder()
+                .Add("username", "用户名", null, user.Username)
+                .Add("displayName", "显示名称", null, user.DisplayName)
+                .Add("email", "邮箱", null, user.Email)
+                .Add("phone", "手机号", null, user.Phone)
+                .Add("status", "状态", null, AuditText.UserStatus(user.Status))
+                .Add("roleIds", "角色", null, AuditSummary.Join(roles.Select(r => r.Name)));
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.User,
+                Action = AuditAction.Create,
+                ResourceId = user.Id,
+                ResourceNo = user.Username,
+                Summary = $"新增用户 {user.DisplayName}（{user.Username}）角色：{AuditSummary.Join(roles.Select(r => r.Name))}",
+                Changes = createdUserChangeBuilder.Build(),
+                ChangesTruncated = createdUserChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

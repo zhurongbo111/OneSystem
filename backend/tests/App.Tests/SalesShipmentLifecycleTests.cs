@@ -67,7 +67,7 @@ public class SalesShipmentLifecycleTests
     {
         var (orders, inventory, uow, user, order, p1, p2, calls) = SeedNormal();
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(calls), inventory, movements, uow, user);
+        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(calls), inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new VoidSalesShipmentRequest { Id = order.Id });
 
@@ -102,7 +102,7 @@ public class SalesShipmentLifecycleTests
     public async Task 作废销售单_不存在_应报NotFound()
     {
         var (orders, inventory, uow, user, _, _, _, _) = SeedNormal();
-        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(), inventory, new FakeStockMovementRepository(), uow, user);
+        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(), inventory, new FakeStockMovementRepository(), uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesShipmentRequest { Id = Guid.NewGuid() }));
@@ -117,7 +117,7 @@ public class SalesShipmentLifecycleTests
         await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided, null);
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(calls), inventory, movements, uow, user);
+        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(calls), inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesShipmentRequest { Id = order.Id }));
@@ -137,7 +137,7 @@ public class SalesShipmentLifecycleTests
         order.SettledAmount = 10m; // 已被收款单核销（部分）
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(calls), inventory, movements, uow, user);
+        var handler = new VoidSalesShipmentRequestHandler(orders, new FakeSalesOrderRepository(calls), inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesShipmentRequest { Id = order.Id }));

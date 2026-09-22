@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Auth;
 using App.Core.Entities;
 using App.Infrastructure;
@@ -16,6 +17,9 @@ internal static class TestSupport
 {
     /// <summary>被测的密码哈希组件（无状态）</summary>
     public static readonly PasswordHasher PasswordHasher = new();
+
+    /// <summary>审计日志桩：遗留用例不关心日志内容时的默认依赖（丢空）</summary>
+    public static IAuditLogger AuditLogger { get; } = new RecordingAuditLogger();
 
     /// <summary>创建一个独立的 InMemory AppDbContext（每个用例互不干扰）</summary>
     public static AppDbContext CreateDbContext()
@@ -173,6 +177,23 @@ internal sealed class StubClientInfo : IClientInfo
     public string? IpAddress { get; init; }
 
     public string? UserAgent { get; init; }
+}
+
+/// <summary>
+/// 审计日志桩：记录被测用例写入的每条 AuditEntry，供断言「写没写 / 写了什么」；
+/// 默认不抛异常（事务与业务仍照常跑完）。
+/// </summary>
+internal sealed class RecordingAuditLogger : IAuditLogger
+{
+    /// <summary>按写入顺序记录的日志条目</summary>
+    public List<AuditEntry> Entries { get; } = [];
+
+    /// <summary>记录一条日志</summary>
+    public Task RecordAsync(AuditEntry entry, CancellationToken cancellationToken = default)
+    {
+        Entries.Add(entry);
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>权限解析器桩：返回固定权限点集合，并记录解析次数（校验是否被重复解析）</summary>

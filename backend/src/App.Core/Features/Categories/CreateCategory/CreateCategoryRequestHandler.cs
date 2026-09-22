@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -10,13 +11,15 @@ namespace App.Core.Features.Categories.CreateCategory;
 public sealed class CreateCategoryRequestHandler : IRequestHandler<CreateCategoryRequest, CategoryDto>
 {
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增商品分类用例处理器
     /// </summary>
-    public CreateCategoryRequestHandler(ICategoryRepository categoryRepository)
+    public CreateCategoryRequestHandler(ICategoryRepository categoryRepository, IAuditLogger auditLogger)
     {
         _categoryRepository = categoryRepository;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -34,14 +37,30 @@ public sealed class CreateCategoryRequestHandler : IRequestHandler<CreateCategor
             throw new BusinessException(ErrorCode.CategoryNameExists, "分类名称已存在");
         }
 
+        var now = DateTimeOffset.UtcNow;
         var category = new Category
         {
             Id = Guid.NewGuid(),
             Name = name,
-            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = now,
         };
 
         await _categoryRepository.AddAsync(category, cancellationToken);
+
+        var changeBuilder = new AuditChangeBuilder()
+            .Add("name", "分类名称", null, category.Name);
+        await _auditLogger.RecordAsync(new AuditEntry
+        {
+            Resource = AuditResource.Category,
+            Action = AuditAction.Create,
+            ResourceId = category.Id,
+            ResourceNo = category.Name,
+            Summary = $"新增分类 {category.Name}",
+            Changes = changeBuilder.Build(),
+            ChangesTruncated = changeBuilder.Truncated,
+            UtcNow = now,
+        }, cancellationToken);
+
         return CategoryDtoMapper.ToCategoryDto(category);
     }
 }

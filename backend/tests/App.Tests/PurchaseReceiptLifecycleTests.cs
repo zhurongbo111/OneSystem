@@ -67,7 +67,7 @@ public class PurchaseReceiptLifecycleTests
     {
         var (orders, inventory, uow, user, order, p1, p2, calls) = SeedNormal();
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(calls), inventory, movements, uow, user);
+        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(calls), inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new VoidPurchaseReceiptRequest { Id = order.Id });
 
@@ -101,7 +101,7 @@ public class PurchaseReceiptLifecycleTests
     public async Task 作废采购单_不存在_应报NotFound()
     {
         var (orders, inventory, uow, user, _, _, _, _) = SeedNormal();
-        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(), inventory, new FakeStockMovementRepository(), uow, user);
+        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(), inventory, new FakeStockMovementRepository(), uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseReceiptRequest { Id = Guid.NewGuid() }));
@@ -116,7 +116,7 @@ public class PurchaseReceiptLifecycleTests
         await orders.UpdateStatusAsync(order.Id, OrderStatus.Voided, null);
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(calls), inventory, movements, uow, user);
+        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(calls), inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseReceiptRequest { Id = order.Id }));
@@ -136,7 +136,7 @@ public class PurchaseReceiptLifecycleTests
         order.SettledAmount = 10m; // 已被付款单核销（部分）
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(calls), inventory, movements, uow, user);
+        var handler = new VoidPurchaseReceiptRequestHandler(orders, new FakePurchaseOrderRepository(calls), inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseReceiptRequest { Id = order.Id }));

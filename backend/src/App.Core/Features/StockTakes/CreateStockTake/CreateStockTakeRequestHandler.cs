@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -15,12 +16,16 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
     /// <summary>单号冲突重试上限（含首次）；单号前缀 ST 固化在仓储 GenerateTakeNoAsync 内（见 design.md §2.1）</summary>
     private const int MaxTakeNoAttempts = 3;
 
+    /// <summary>摘要中列举的商品个数上限（超出折叠为「等 N 种商品」，避免摘要超列长）</summary>
+    private const int MaxSummaryProductCount = 3;
+
     private readonly IStockTakeRepository _stockTakeRepository;
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增盘点单用例处理器
@@ -31,7 +36,8 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _stockTakeRepository = stockTakeRepository;
         _productRepository = productRepository;
@@ -39,6 +45,7 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -193,6 +200,31 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                         CreatedBy = operatorId,
                     }, cancellationToken);
                 }
+
+                // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+                var productNames = items.Select(i => i.ProductName).Distinct(StringComparer.Ordinal).ToList();
+                var involvedText = productNames.Count > MaxSummaryProductCount
+                    ? $"{AuditSummary.Join(productNames.Take(MaxSummaryProductCount))} 等 {AuditSummary.Count(productNames.Count)} 种商品"
+                    : AuditSummary.Join(productNames);
+                var changeBuilder = new AuditChangeBuilder()
+                    .Add("takeNo", "盘点单号", null, take.TakeNo)
+                    .Add("type", "单据类型", null, AuditText.StockTakeType(take.Type))
+                    .Add("takeDate", "盘点日期", null, AuditSummary.Date(take.TakeDate))
+                    .Add("itemCount", "明细行数", null, AuditSummary.Count(take.ItemCount))
+                    .Add("diffItemCount", "差异行数", null, AuditSummary.Count(take.DiffItemCount))
+                    .Add("productNames", "涉及商品", null, AuditSummary.Join(productNames))
+                    .Add("remark", "备注", null, take.Remark);
+                await _auditLogger.RecordAsync(new AuditEntry
+                {
+                    Resource = AuditResource.StockTake,
+                    Action = AuditAction.Adjust,
+                    ResourceId = take.Id,
+                    ResourceNo = take.TakeNo,
+                    Summary = $"{AuditText.StockTakeType(take.Type)} {take.TakeNo}：{AuditSummary.Count(take.ItemCount)} 行、差异 {AuditSummary.Count(take.DiffItemCount)} 行、涉及 {involvedText}",
+                    Changes = changeBuilder.Build(),
+                    ChangesTruncated = changeBuilder.Truncated,
+                    UtcNow = now,
+                }, cancellationToken);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 

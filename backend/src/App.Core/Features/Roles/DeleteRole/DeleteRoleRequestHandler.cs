@@ -1,4 +1,6 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
+using App.Core.Entities;
 using App.Core.Errors;
 
 namespace App.Core.Features.Roles.DeleteRole;
@@ -11,6 +13,7 @@ public sealed class DeleteRoleRequestHandler : IRequestHandler<DeleteRoleRequest
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化删除角色用例处理器
@@ -18,11 +21,13 @@ public sealed class DeleteRoleRequestHandler : IRequestHandler<DeleteRoleRequest
     public DeleteRoleRequestHandler(
         IRoleRepository roleRepository,
         IUserRoleRepository userRoleRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditLogger auditLogger)
     {
         _roleRepository = roleRepository;
         _userRoleRepository = userRoleRepository;
         _unitOfWork = unitOfWork;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -46,10 +51,30 @@ public sealed class DeleteRoleRequestHandler : IRequestHandler<DeleteRoleRequest
             throw new BusinessException(ErrorCode.RoleInUse, "角色已被用户绑定，禁止删除");
         }
 
+        // 删除前取出权限点集合：角色行删除后其权限行随之消失，日志必须留住"删掉了什么权限"
+        var beforePermissionKeys = await _roleRepository.GetPermissionKeysAsync(role.Id, cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
             await _roleRepository.DeleteAsync(role, cancellationToken);
+
+            var deletedRoleChangeBuilder = new AuditChangeBuilder()
+                .Add("name", "角色名称", role.Name, null)
+                .Add("permissionKeys", "权限点", AuditSummary.Join(beforePermissionKeys.Select(App.Core.Auth.Permissions.LabelOf)), null);
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.Role,
+                Action = AuditAction.Delete,
+                ResourceId = role.Id,
+                ResourceNo = role.Name,
+                Summary = $"删除角色 {role.Name}",
+                Changes = deletedRoleChangeBuilder.Build(),
+                ChangesTruncated = deletedRoleChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

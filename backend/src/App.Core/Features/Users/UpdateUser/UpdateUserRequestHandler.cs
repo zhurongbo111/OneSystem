@@ -1,4 +1,6 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
+using App.Core.Entities;
 using App.Core.Errors;
 
 namespace App.Core.Features.Users.UpdateUser;
@@ -14,6 +16,7 @@ public sealed class UpdateUserRequestHandler : IRequestHandler<UpdateUserRequest
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化编辑用户用例处理器
@@ -23,13 +26,15 @@ public sealed class UpdateUserRequestHandler : IRequestHandler<UpdateUserRequest
         IRoleRepository roleRepository,
         IUserRoleRepository userRoleRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _userRoleRepository = userRoleRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -65,11 +70,28 @@ public sealed class UpdateUserRequestHandler : IRequestHandler<UpdateUserRequest
             throw new BusinessException(ErrorCode.NotFound, "角色不存在");
         }
 
+        // 变更前后快照：角色是全量替换，需先取原绑定才能还原「谁的角色被改了」
+        var beforeRoleNames = await GetRoleNamesAsync(user.Id, cancellationToken);
+        var beforeDisplayName = user.DisplayName;
+        var beforeEmail = user.Email;
+        var beforePhone = user.Phone;
+        var now = DateTimeOffset.UtcNow;
+
         user.DisplayName = request.DisplayName.Trim();
         user.Email = email;
         user.Phone = phone;
-        user.UpdatedAt = DateTimeOffset.UtcNow;
+        user.UpdatedAt = now;
         user.UpdatedBy = _currentUser.UserId();
+
+        var changeBuilder = new AuditChangeBuilder()
+            .Add("displayName", "显示名称", beforeDisplayName, user.DisplayName)
+            .Add("email", "邮箱", beforeEmail, user.Email)
+            .Add("phone", "手机号", beforePhone, user.Phone)
+            .Add(
+                "roleIds",
+                "角色",
+                AuditSummary.Join(beforeRoleNames),
+                AuditSummary.Join(roles.Select(r => r.Name)));
 
         // 用户更新与角色绑定替换必须同时成功，故由工作单元显式界定事务边界
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -77,6 +99,19 @@ public sealed class UpdateUserRequestHandler : IRequestHandler<UpdateUserRequest
         {
             await _userRepository.UpdateAsync(user, cancellationToken);
             await _userRoleRepository.ReplaceUserRolesAsync(user.Id, roleIds, cancellationToken);
+
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.User,
+                Action = AuditAction.Update,
+                ResourceId = user.Id,
+                ResourceNo = user.Username,
+                Summary = $"编辑用户 {user.DisplayName}（{user.Username}）角色：{AuditSummary.Join(beforeRoleNames)} → {AuditSummary.Join(roles.Select(r => r.Name))}",
+                Changes = changeBuilder.Build(),
+                ChangesTruncated = changeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch
@@ -87,5 +122,14 @@ public sealed class UpdateUserRequestHandler : IRequestHandler<UpdateUserRequest
 
         var roleItems = roles.Select(r => new UserRoleItem { Id = r.Id, Name = r.Name }).ToList();
         return UserDtoMapper.ToUserDetailDto(user, UserDtoMapper.ToUserRoleDtos(roleItems));
+    }
+
+    /// <summary>读取用户当前绑定的角色名（变更前后比对用）</summary>
+    private async Task<IReadOnlyList<string>> GetRoleNamesAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var rolesByUser = await _userRoleRepository.GetRolesByUserIdsAsync([userId], cancellationToken);
+        return rolesByUser.TryGetValue(userId, out var items)
+            ? items.Select(x => x.Name).Where(name => !string.IsNullOrWhiteSpace(name)).ToList()
+            : [];
     }
 }

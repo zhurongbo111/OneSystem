@@ -72,7 +72,7 @@ public class PurchaseReturnLifecycleTests
     {
         var (returns, inventory, uow, user, purchaseReturn, p1, p2, calls) = SeedNormal();
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user);
+        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new VoidPurchaseReturnRequest { Id = purchaseReturn.Id });
 
@@ -106,7 +106,7 @@ public class PurchaseReturnLifecycleTests
     public async Task 作废采购退货单_不存在_应报NotFound()
     {
         var (returns, inventory, uow, user, _, _, _, _) = SeedNormal();
-        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, new FakeStockMovementRepository(), uow, user);
+        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, new FakeStockMovementRepository(), uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseReturnRequest { Id = Guid.NewGuid() }));
@@ -121,7 +121,7 @@ public class PurchaseReturnLifecycleTests
         await returns.UpdateStatusAsync(purchaseReturn.Id, OrderStatus.Voided, null);
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user);
+        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseReturnRequest { Id = purchaseReturn.Id }));
@@ -141,7 +141,7 @@ public class PurchaseReturnLifecycleTests
         purchaseReturn.SettledAmount = 10m; // 已被收款单核销（部分）
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user);
+        var handler = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidPurchaseReturnRequest { Id = purchaseReturn.Id }));
@@ -280,11 +280,11 @@ public class PurchaseReturnLifecycleTests
 
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
             purchaseReceipts, new FakePurchaseOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, uow, user);
+            inventory, movements, uow, user, TestSupport.AuditLogger);
         var createReturn = new CreatePurchaseReturnRequestHandler(
             returns, new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, uow, user);
-        var voidReturn = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user);
+            inventory, movements, uow, user, TestSupport.AuditLogger);
+        var voidReturn = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
 
         var inbound = await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
         {

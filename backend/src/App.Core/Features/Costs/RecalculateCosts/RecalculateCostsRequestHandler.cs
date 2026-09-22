@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -17,6 +18,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly CostRecalculationLock _recalculationLock;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化成本重算用例处理器
@@ -25,16 +27,19 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
     /// <param name="inventoryRepository">库存台账仓储</param>
     /// <param name="unitOfWork">工作单元（重算写回同一事务）</param>
     /// <param name="recalculationLock">重算互斥锁（Singleton）</param>
+    /// <param name="auditLogger">操作日志写入器（重算无明确业务对象，故 ResourceId 为空）</param>
     public RecalculateCostsRequestHandler(
         IStockMovementRepository stockMovementRepository,
         IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork,
-        CostRecalculationLock recalculationLock)
+        CostRecalculationLock recalculationLock,
+        IAuditLogger auditLogger)
     {
         _stockMovementRepository = stockMovementRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
         _recalculationLock = recalculationLock;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -125,6 +130,22 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
                     await _inventoryRepository.SetCostAsync(
                         pair.Key, pair.Value.Amount, pair.Value.AverageCost, cancellationToken);
                 }
+
+                var changeBuilder = new AuditChangeBuilder()
+                    .Add("start", "重算起始日期", null, AuditSummary.Date(request.Start))
+                    .Add("end", "重算结束日期", null, AuditSummary.Date(request.End))
+                    .Add("movementCount", "重算流水数", null, AuditSummary.Count(updates.Count))
+                    .Add("productCount", "涉及商品数", null, AuditSummary.Count(states.Count))
+                    .Add("missingCostCount", "缺价流水数", null, AuditSummary.Count(missingCostCount));
+                await _auditLogger.RecordAsync(new AuditEntry
+                {
+                    Resource = AuditResource.Cost,
+                    Action = AuditAction.Recalculate,
+                    Summary = $"成本重算 {AuditSummary.Date(request.Start)} ~ {AuditSummary.Date(request.End)}：{AuditSummary.Count(updates.Count)} 条流水、{AuditSummary.Count(states.Count)} 个商品、缺价 {AuditSummary.Count(missingCostCount)} 条",
+                    Changes = changeBuilder.Build(),
+                    ChangesTruncated = changeBuilder.Truncated,
+                    UtcNow = DateTimeOffset.UtcNow,
+                }, cancellationToken);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
             }

@@ -56,7 +56,7 @@ public class CostWritePathTests
 
         // ① 采购入库 10 件 × 20 元 → 数量 20、金额 300、均价 15
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, inventory, movements, uow, user);
+            orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, inventory, movements, uow, user, TestSupport.AuditLogger);
         await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
         {
             PartnerId = supplier.Id,
@@ -74,7 +74,7 @@ public class CostWritePathTests
 
         // ② 销售出库 5 件 → 按变动前均价 15 结转，成本 75、金额 225、均价仍 15
         var createSale = new CreateSalesShipmentRequestHandler(
-            sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, inventory, movements, uow, user);
+            sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, inventory, movements, uow, user, TestSupport.AuditLogger);
         await createSale.HandleAsync(new CreateSalesShipmentRequest
         {
             PartnerId = customer.Id,
@@ -93,7 +93,7 @@ public class CostWritePathTests
 
         // ③ 采购作废（回冲 −10 件）→ 按原入库单价 20 结转 −200，金额 25
         var voidPurchase = new VoidPurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), inventory, movements, uow, user);
+            orders, new FakePurchaseOrderRepository(), inventory, movements, uow, user, TestSupport.AuditLogger);
         var receipt = Assert.Single(orders.Orders);
         await voidPurchase.HandleAsync(new VoidPurchaseReceiptRequest { Id = receipt.Id });
 
@@ -139,7 +139,7 @@ public class CostWritePathTests
         inventory.AverageCosts[product.Id] = 20m;
 
         var handler = new VoidPurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), inventory, movements, uow, user);
+            orders, new FakePurchaseOrderRepository(), inventory, movements, uow, user, TestSupport.AuditLogger);
         await handler.HandleAsync(new VoidPurchaseReceiptRequest { Id = receipt.Id });
 
         var reversal = Assert.Single(movements.Appended);
@@ -156,7 +156,7 @@ public class CostWritePathTests
         var (context, _, _, product, inventory, movements, _, uow, user) = await CreateAsync();
 
         var handler = new CreateStockTakeRequestHandler(
-            new FakeStockTakeRepository(), new ProductRepository(context), inventory, movements, uow, user);
+            new FakeStockTakeRepository(), new ProductRepository(context), inventory, movements, uow, user, TestSupport.AuditLogger);
         await handler.HandleAsync(new CreateStockTakeRequest
         {
             Type = StockTakeType.Initial,
@@ -185,7 +185,7 @@ public class CostWritePathTests
         inventory.AverageCosts[product.Id] = 10m;
 
         var handler = new CreateStockTakeRequestHandler(
-            new FakeStockTakeRepository(), new ProductRepository(context), inventory, movements, uow, user);
+            new FakeStockTakeRepository(), new ProductRepository(context), inventory, movements, uow, user, TestSupport.AuditLogger);
 
         // 无差异（实盘 = 账面）→ 回归 020 既有语义：不改库存、不写流水、不动成本
         await handler.HandleAsync(new CreateStockTakeRequest

@@ -19,7 +19,8 @@ public class UpdateUserRequestHandlerTests
             new RoleRepository(dbContext),
             new UserRoleRepository(dbContext),
             new UnitOfWork(dbContext),
-            new StubCurrentUser(operatorId));
+            new StubCurrentUser(operatorId),
+            TestSupport.AuditLogger);
 
     [Fact]
     public async Task HandleAsync_合法请求_应更新展示字段与审计字段()

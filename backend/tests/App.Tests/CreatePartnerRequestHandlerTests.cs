@@ -17,7 +17,7 @@ public class CreatePartnerRequestHandlerTests
     {
         var context = TestSupport.CreateDbContext();
         var user = new StubCurrentUser(Guid.NewGuid());
-        var handler = new CreatePartnerRequestHandler(new PartnerRepository(context), user);
+        var handler = new CreatePartnerRequestHandler(new PartnerRepository(context), user, TestSupport.AuditLogger);
         return (context, handler, user);
     }
 

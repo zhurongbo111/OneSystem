@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -17,6 +18,7 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化销售退货单作废用例处理器
@@ -26,13 +28,15 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _salesReturnRepository = salesReturnRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -97,6 +101,22 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
             }
 
             await _salesReturnRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, operatorId, cancellationToken);
+
+            // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+            var voidedSalesReturnChangeBuilder = new AuditChangeBuilder()
+                .Add("status", "单据状态", AuditText.OrderStatus(OrderStatus.Normal), AuditText.OrderStatus(OrderStatus.Voided));
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.SalesReturn,
+                Action = AuditAction.Void,
+                ResourceId = salesReturn.Id,
+                ResourceNo = salesReturn.ReturnNo,
+                Summary = $"作废销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、{AuditSummary.Money(salesReturn.TotalAmount)}）",
+                Changes = voidedSalesReturnChangeBuilder.Build(),
+                ChangesTruncated = voidedSalesReturnChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

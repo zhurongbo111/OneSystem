@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -20,6 +21,7 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化采购入库单作废用例处理器
@@ -30,7 +32,8 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _purchaseReceiptRepository = purchaseReceiptRepository;
         _purchaseOrderRepository = purchaseOrderRepository;
@@ -38,6 +41,7 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -139,6 +143,22 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
             }
 
             await _purchaseReceiptRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, operatorId, cancellationToken);
+
+            // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+            var voidedReceiptChangeBuilder = new AuditChangeBuilder()
+                .Add("status", "单据状态", AuditText.OrderStatus(OrderStatus.Normal), AuditText.OrderStatus(OrderStatus.Voided));
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.PurchaseReceipt,
+                Action = AuditAction.Void,
+                ResourceId = order.Id,
+                ResourceNo = order.ReceiptNo,
+                Summary = $"作废采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、{AuditSummary.Money(order.TotalAmount)}）",
+                Changes = voidedReceiptChangeBuilder.Build(),
+                ChangesTruncated = voidedReceiptChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

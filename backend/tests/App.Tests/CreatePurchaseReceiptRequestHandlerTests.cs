@@ -36,7 +36,7 @@ public class CreatePurchaseReceiptRequestHandlerTests
             inventory,
             movements,
             uow,
-            user);
+            user, TestSupport.AuditLogger);
         return (context, user, orders, inventory, movements, uow, handler, calls);
     }
 

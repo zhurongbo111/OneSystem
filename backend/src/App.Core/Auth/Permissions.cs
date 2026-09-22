@@ -387,4 +387,30 @@ public static class Permissions
     /// </summary>
     /// <param name="key">权限点 key</param>
     public static bool IsKnown(string key) => key is not null && All.Contains(key, StringComparer.Ordinal);
+
+    /// <summary>
+    /// 取权限点的中文标签（<c>分组.动作名</c>，如 <c>操作日志.查看</c>）；未登记的 key 原样返回。
+    /// 用于需要人读权限点差异的场景（如操作日志），前端展示文案仍以 <see cref="Groups"/> 为准。
+    /// </summary>
+    /// <param name="key">权限点 key</param>
+    public static string LabelOf(string key)
+    {
+        if (key is null)
+        {
+            return string.Empty;
+        }
+
+        foreach (var group in Groups)
+        {
+            foreach (var item in group.Items)
+            {
+                if (string.Equals(item.Key, key, StringComparison.Ordinal))
+                {
+                    return $"{group.Name}.{item.Name}";
+                }
+            }
+        }
+
+        return key;
+    }
 }

@@ -1,6 +1,9 @@
 using App.Core.Abstractions;
 using App.Core.Auth;
 using App.Core.Exports;
+using App.Core.Features.AuditLogs;
+using App.Core.Features.AuditLogs.GetAuditLogById;
+using App.Core.Features.AuditLogs.GetAuditLogs;
 using App.Core.Features.Auth.Login;
 using App.Core.Features.Categories;
 using App.Core.Features.Categories.CreateCategory;
@@ -163,6 +166,10 @@ public static class DependencyInjection
         // 用户登录日志用例（user-management）
         services.AddScoped<IRequestHandler<GetLoginLogsRequest, PagedResult<LoginLogListItemDto>>, GetLoginLogsRequestHandler>();
 
+        // 操作审计日志用例（erp-audit-log；只读，追加写入由 IAuditLogger 在各写用例内完成）
+        services.AddScoped<IRequestHandler<GetAuditLogsRequest, PagedResult<AuditLogListItemDto>>, GetAuditLogsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetAuditLogByIdRequest, AuditLogDetailDto>, GetAuditLogByIdRequestHandler>();
+
         // 角色与权限用例（erp-rbac：角色维护 + 权限点清单）
         services.AddScoped<IRequestHandler<GetRolesRequest, PagedResult<RoleListItemDto>>, GetRolesRequestHandler>();
         services.AddScoped<IRequestHandler<CreateRoleRequest, RoleDetailDto>, CreateRoleRequestHandler>();
@@ -298,6 +305,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdateUserStatusRequest>, UpdateUserStatusRequestValidator>();
         services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordRequestValidator>();
         services.AddScoped<IValidator<GetLoginLogsRequest>, GetLoginLogsRequestValidator>();
+        services.AddScoped<IValidator<GetAuditLogsRequest>, GetAuditLogsRequestValidator>();
         services.AddScoped<IValidator<GetRolesRequest>, GetRolesRequestValidator>();
         services.AddScoped<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
         services.AddScoped<IValidator<UpdateRoleRequest>, UpdateRoleRequestValidator>();

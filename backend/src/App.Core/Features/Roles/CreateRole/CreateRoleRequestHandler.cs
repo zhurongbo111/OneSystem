@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Auth;
 using App.Core.Entities;
 using App.Core.Errors;
@@ -13,6 +14,7 @@ public sealed class CreateRoleRequestHandler : IRequestHandler<CreateRoleRequest
     private readonly IRoleRepository _roleRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增角色用例处理器
@@ -20,11 +22,13 @@ public sealed class CreateRoleRequestHandler : IRequestHandler<CreateRoleRequest
     public CreateRoleRequestHandler(
         IRoleRepository roleRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _roleRepository = roleRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -66,6 +70,24 @@ public sealed class CreateRoleRequestHandler : IRequestHandler<CreateRoleRequest
         {
             await _roleRepository.AddAsync(role, cancellationToken);
             await _roleRepository.ReplacePermissionsAsync(role.Id, permissionKeys, cancellationToken);
+
+            var permissionDiff = AuditSummary.Diff(null, permissionKeys, App.Core.Auth.Permissions.LabelOf);
+            var createdRoleChangeBuilder = new AuditChangeBuilder()
+                .Add("name", "角色名称", null, role.Name)
+                .Add("remark", "备注", null, role.Remark)
+                .Add("permissionKeys", "权限点", null, permissionDiff);
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.Role,
+                Action = AuditAction.Create,
+                ResourceId = role.Id,
+                ResourceNo = role.Name,
+                Summary = $"新增角色 {role.Name} 授权：{permissionDiff}",
+                Changes = createdRoleChangeBuilder.Build(),
+                ChangesTruncated = createdRoleChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

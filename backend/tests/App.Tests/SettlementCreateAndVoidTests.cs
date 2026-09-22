@@ -63,7 +63,8 @@ public class SettlementCreateAndVoidTests
             harness.SalesReturns,
             new PartnerRepository(harness.Context),
             harness.Uow,
-            harness.User);
+            harness.User,
+            TestSupport.AuditLogger);
 
     private static VoidSettlementRequestHandler CreateVoidHandler(Harness harness)
         => new(
@@ -73,7 +74,8 @@ public class SettlementCreateAndVoidTests
             harness.PurchaseReturns,
             harness.SalesReturns,
             harness.Uow,
-            harness.User);
+            harness.User,
+            TestSupport.AuditLogger);
 
     private static SalesShipment NewSalesShipment(Guid partnerId, decimal totalAmount = 1000m, OrderStatus status = OrderStatus.Normal)
     {

@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -12,14 +13,19 @@ public sealed class CreatePartnerRequestHandler : IRequestHandler<CreatePartnerR
 {
     private readonly IPartnerRepository _partnerRepository;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增往来单位用例处理器
     /// </summary>
-    public CreatePartnerRequestHandler(IPartnerRepository partnerRepository, ICurrentUser currentUser)
+    public CreatePartnerRequestHandler(
+        IPartnerRepository partnerRepository,
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _partnerRepository = partnerRepository;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -56,6 +62,26 @@ public sealed class CreatePartnerRequestHandler : IRequestHandler<CreatePartnerR
         };
 
         await _partnerRepository.AddAsync(partner, cancellationToken);
+
+        var changeBuilder = new AuditChangeBuilder()
+            .Add("name", "单位名称", null, partner.Name)
+            .Add("type", "单位类型", null, AuditText.PartnerType(partner.Type))
+            .Add("contact", "联系人", null, partner.Contact)
+            .Add("phone", "联系电话", null, partner.Phone)
+            .Add("address", "地址", null, partner.Address)
+            .Add("remark", "备注", null, partner.Remark);
+        await _auditLogger.RecordAsync(new AuditEntry
+        {
+            Resource = AuditResource.Partner,
+            Action = AuditAction.Create,
+            ResourceId = partner.Id,
+            ResourceNo = partner.Name,
+            Summary = $"新增往来单位 {partner.Name}",
+            Changes = changeBuilder.Build(),
+            ChangesTruncated = changeBuilder.Truncated,
+            UtcNow = now,
+        }, cancellationToken);
+
         return PartnerDtoMapper.ToPartnerDto(partner);
     }
 }

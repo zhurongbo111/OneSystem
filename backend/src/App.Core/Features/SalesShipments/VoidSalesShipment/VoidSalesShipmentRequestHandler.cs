@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -20,6 +21,7 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化销售出库单作废用例处理器
@@ -30,7 +32,8 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _salesShipmentRepository = salesShipmentRepository;
         _salesOrderRepository = salesOrderRepository;
@@ -38,6 +41,7 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -138,6 +142,22 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
             }
 
             await _salesShipmentRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, operatorId, cancellationToken);
+
+            // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+            var voidedShipmentChangeBuilder = new AuditChangeBuilder()
+                .Add("status", "单据状态", AuditText.OrderStatus(OrderStatus.Normal), AuditText.OrderStatus(OrderStatus.Voided));
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.SalesShipment,
+                Action = AuditAction.Void,
+                ResourceId = order.Id,
+                ResourceNo = order.ShipmentNo,
+                Summary = $"作废销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、{AuditSummary.Money(order.TotalAmount)}）",
+                Changes = voidedShipmentChangeBuilder.Build(),
+                ChangesTruncated = voidedShipmentChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch
