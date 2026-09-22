@@ -61,7 +61,7 @@ updated: 2026-09-22
 | 库存（`stock`） | 库存查询（`inventory`）/ 库存流水（`stockMovements`）/ 库存盘点（`stockTakes`）/ 调拨单（`transfers`）/ 批次管理（`batches`） | `014` / `019` / `020` / `039` / `040` |
 | 资金（`fund`） | 收付款（`settlements`）/ 往来对账（`reconciliation`）/ 发票登记（`invoices`）/ 客户价格（`partnerPrices`） | `023` / `032` / `036` |
 | 报表（`report`） | 进销存报表（`inventoryFlowReport`）/ 库存余额表（`stockBalanceReport`）/ 采购汇总（`purchaseSummaryReport`）/ 销售汇总（`salesSummaryReport`）/ 成本与毛利（`costProfitReport`，`026`） | `025` / `026` |
-| 系统（`system`） | 用户管理（`users`）/ 登录日志（`loginLogs`）/ 角色权限（`roles`）/ 操作日志（`auditLogs`）/ 单据审批（`approvals`）/ 站内消息（`notifications`，`041` 落地后入口为**顶栏铃铛**、不进侧边菜单，见 `specs/041-erp-stock-alert/design.md` §4.3） | `009` / `028` / `029` / `042` / `041` |
+| 系统（`system`） | 用户管理（`users`）/ 登录日志（`loginLogs`）/ 角色权限（`roles`）/ 操作日志（`auditLogs`）/ 部门管理（`departments`）/ 岗位管理（`positions`）/ 员工档案（`employees`）/ 单据审批（`approvals`）/ 站内消息（`notifications`，`041` 落地后入口为**顶栏铃铛**、不进侧边菜单，见 `specs/041-erp-stock-alert/design.md` §4.3） | `009` / `028` / `029` / `030` / `042` / `041` |
 
 - 分组与子项均**默认折叠**，仅当前路由所属分组自动展开（`005` 既有交互不变，`watch(route.name, { immediate: true })` 只增不减）。
 - 分组顺序即上表顺序；子项顺序即行内顺序（「商品管理 → 分类管理 → …」）。

@@ -10,6 +10,7 @@ updated: 2026-09-22
 > **演进（erp-report）**：「用户管理」「登录日志」已归入侧边菜单「系统」分组，分组结构唯一来源见 `specs/025-erp-report/design.md` §0.2；路由与页面不变。
 > **演进（erp-rbac）**：用户新增 / 编辑支持 `roleIds`（全量替换、至少一个），列表与详情返回 `roles`；登录响应追加 `permissions`，并新增 `GET /api/users/me/permissions` 用于刷新。角色域与权限点清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-audit-log）**：本域用户的创建 / 编辑 / 启停 / 重置密码 / 角色变更已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）；「登录日志」（`UserLoginLogs`，登录行为）与「操作日志」（`AuditLogs`，业务写操作）职责不同、互不替代。
+> **演进（erp-org-employee）**：账号与「人」分离——员工档案经 `Employees.UserId`（可空、非空时唯一）**绑定**一个账号，绑定关系由员工侧维护（`specs/030-erp-org-employee/design.md` §0.3）；本域接口与页面不变，登录仍只走 `Users`，不存在「员工登录」。
 
 ## 1. 总体设计
 

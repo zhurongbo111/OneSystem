@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # 需求规格：组织架构与员工档案（erp-org-employee）

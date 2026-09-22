@@ -48,6 +48,9 @@ updated: 2026-09-22
 | 登录日志 | `loginLogs` | `view` | `/api/login-logs`、`/login-logs` |
 | 角色权限 | `roles` | `view` / `create` / `update` / `delete` | `/api/roles*`、`/roles` |
 | 操作日志（`029`） | `auditLogs` | `view` | `/api/audit-logs*`、`/audit-logs` |
+| 部门（`030`） | `departments` | `view` / `create` / `update` / `delete` / `status` | `/api/departments*`、`/departments` |
+| 岗位（`030`） | `positions` | `view` / `create` / `update` / `delete` / `status` | `/api/positions*`、`/positions` |
+| 员工（`030`） | `employees` | `view` / `create` / `update` / `status` / `export` | `/api/employees*`、`/employees` |
 | 站内消息（`041`） | `notifications` | `view` | `/api/notifications*`、顶栏铃铛 |
 | 单据审批（`042`） | `approvals` | `view` / `approve` | `/api/approvals*`、审批页 |
 
@@ -291,7 +294,7 @@ src/
 | 角色权限 / 用户角色全量替换 | 先删后插 | 语义简单、无差异计算；集合量小（≤ 200），性能无虞 |
 | 既有用户回填 `Staff` | 迁移 + 幂等种子 | 升级后老用户立即可用（符合 `ROADMAP` §6.5「先跑起来」的平滑要求） |
 | 前端权限仅作体验 | 后端为唯一安全边界 | 前端集合可被篡改，不能作为安全依据；两者职责分离 |
-| 不做行级 / 数据范围权限 | 范围外 | 需要组织模型与查询层注入范围，属独立工程；本期先把「入口级」权限补齐 |
+| 不做行级 / 数据范围权限 | 范围外 | 需要组织模型与查询层注入范围，属独立工程；本期先把「入口级」权限补齐。**演进（`030`）**：组织 / 部门 / 岗位 / 员工主数据已由 `specs/030-erp-org-employee/` 提供，但**数据级权限（按部门 / 数据范围过滤）仍不做**，查询层范围注入未变 |
 | 打印复用 `.view` | 不设 `.print` | 打印是只读展示，单独设点会让权限树冗余；若后续需要「可看不可打」再拆分 |
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
