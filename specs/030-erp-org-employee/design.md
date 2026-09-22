@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # 设计规格：组织架构与员工档案（erp-org-employee）
@@ -127,7 +127,7 @@ updated: 2026-09-20
 
 | 常量类 | 常量 |
 |---|---|
-| `DepartmentFieldConstraints` | `CodeMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` |
+| `DepartmentFieldConstraints` | `CodeMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` / `SortOrderMinValue = 0` / `SortOrderMaxValue = 9999` |
 | `PositionFieldConstraints` | `CodeMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` |
 | `EmployeeFieldConstraints` | `NoMaxLength = 20` / `NameMaxLength = 50` / `PhoneMaxLength = 20` / `EmailMaxLength = 100` / `RemarkMaxLength = 200` |
 
@@ -144,7 +144,8 @@ updated: 2026-09-20
 |---|---|
 | `IDepartmentRepository.GetTreeAsync()` | 取全量部门（`AsNoTracking`）由 Handler 组装树，或直接返回 `DepartmentTreeNode` 读模型 |
 | `IDepartmentRepository.GetByIdAsync(id)` / `ExistsByCodeAsync(code, excludeId)` / `ExistsByNameAsync(name, parentId, excludeId)` | 存在性与唯一性 |
-| `IDepartmentRepository.HasChildrenAsync(id)` / `CountEmployeesAsync(id)`（或批量 `GetEmployeeCountsAsync()`） | 删除保护 / 树节点员工数 |
+| `IDepartmentRepository.HasChildrenAsync(id)` / `CountEmployeesAsync(id)` | 删除保护（`CountEmployeesAsync` **含离职员工**：员工表对部门建的是 Restrict 外键，残留引用同样会阻止删除） |
+| `IDepartmentRepository.GetEmployeeCountsAsync()` | 树节点「在职人数」（仅统计在职员工） |
 | `IDepartmentRepository.AddAsync` / `UpdateAsync` / `DeleteAsync` | |
 | `IPositionRepository.GetPagedAsync(...)` / `GetByIdAsync` / `ExistsByCodeAsync` / `ExistsByNameAsync` / `AddAsync` / `UpdateAsync` / `DeleteAsync` / `CountEmployeesAsync(positionId)` / `GetPickListAsync()` | |
 | `IEmployeeRepository.GetPagedAsync(...)` / `GetByIdAsync` / `ExistsByNoAsync` / `ExistsByPhoneAsync` / `ExistsByEmailAsync` / `ExistsByUserIdAsync` / `AddAsync` / `UpdateAsync` / `GetAvailableUsersAsync(employeeId)` / `GetAllForExportAsync(...)` | |
@@ -208,12 +209,12 @@ updated: 2026-09-20
 
 - **CreateDepartment**：`ExistsByCodeAsync` → `40138`；`ParentId` 非空 → 目标存在（否则 `40400`）；同级重名 `ExistsByNameAsync(name, parentId, null)` → `40139`；`IsAncestor(parentId, newId)` 无需（新建无后代）；落库。
 - **UpdateDepartment**：取部门（不存在 `40400`）→ 编码唯一（排除自身）→ `ParentId` 变更时：目标存在（`40400`）、**不得为自身或自身后代**（沿 `ParentId` 上溯，命中即 `40141`）→ 同级重名（排除自身）→ 更新。
-- **DeleteDepartment**：取部门（`40400`）→ `HasChildrenAsync` 或 `CountEmployeesAsync > 0` → `40140` → 删除。
+- **DeleteDepartment**：取部门（`40400`）→ `HasChildrenAsync` 或 `CountEmployeesAsync > 0`（含离职员工）→ `40140` → 删除。
 - **CreatePosition / UpdatePosition**：编码 / 名称唯一（更新排除自身）。
 - **DeletePosition**：`CountEmployeesAsync(positionId) > 0` → `40144` → 删除。
 - **CreateEmployee**：工号唯一 `40145`；手机 / 邮箱非空唯一 `40147` / `40148`；`DepartmentId` / `PositionId` 非空时存在性（`40400`）；`UserId` 非空 → 账号存在（`40400`）+ 未绑定（`40146`）；`HireDate` 必填；落库。
 - **UpdateEmployee**：工号不可改（请求体不含 `employeeNo`，`AGENTS.md` §4.5 不可改字段）→ 唯一性检查针对手机 / 邮箱 / 账号（排除自身）→ `Status` 与 `ResignDate` 一致性：切「离职」时若 `ResignDate` 为空则置为当天（Handler 推导，见 §5 决策）。
-- **UpdateEmployeeStatus**：切换 `Active` / `Resigned`；置离职时补 `ResignDate`。
+- **UpdateEmployeeStatus**：切换 `Active` / `Resigned`；置离职时补 `ResignDate`，**回到在职时清空 `ResignDate`**（在职却有离职日期自相矛盾，推导集中在 `EmployeeInputNormalizer.ResolveResignDate`）。
 - **GetAvailableUsers**：返回"启用用户中未被绑定者"∪"当前员工（编辑时）已绑定的用户"。
 
 ### 3.5 校验规则（FluentValidation，仅格式层，引用 `*FieldConstraints`）
@@ -317,7 +318,7 @@ src/
 | 手机 / 邮箱 / 账号"非空唯一" | PG 部分唯一索引（`HasFilter`） | `NULL` 可多条共存，避免"空值冲突"；比应用层校验更可靠 |
 | 入职 / 离职用 `DateOnly` | `date` 列 | 纯日期无时区语义；后端规则 §5.2 约束的是**时间点**字段，日期型用 `DateOnly` 规避 `DateTime` 的 Kind 缺陷；`027` 导出组件已支持 |
 | 账号绑定冲突在提交时校验 | `ExistsByUserIdAsync` | 前端下拉过滤只是体验，后端唯一索引 + Handler 校验才是边界 |
-| 离职补 `ResignDate` | Handler 推导（空则置当天） | 保证"离职"状态有日期，避免列表出现"离职但无日期"的歧义 |
+| 离职补 `ResignDate` | Handler 推导（空则置当天；回到在职则清空） | 保证"离职"状态有日期、且不出现"在职却有离职日期"的歧义，避免列表展示矛盾 |
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
 
