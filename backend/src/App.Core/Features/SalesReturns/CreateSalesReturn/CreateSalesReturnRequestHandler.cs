@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Finance;
 
 namespace App.Core.Features.SalesReturns.CreateSalesReturn;
 
@@ -27,6 +28,10 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IVoucherRepository _voucherRepository;
+    private readonly IAccountMappingRepository _accountMappingRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
+    private readonly IAccountRepository _accountRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
@@ -40,6 +45,10 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
+        IVoucherRepository voucherRepository,
+        IAccountMappingRepository accountMappingRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
+        IAccountRepository accountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger)
@@ -49,6 +58,10 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
+        _voucherRepository = voucherRepository;
+        _accountMappingRepository = accountMappingRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
+        _accountRepository = accountRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
@@ -158,6 +171,8 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                 await _salesReturnRepository.AddAsync(salesReturn, items, cancellationToken);
 
                 // 库存回增 + 库存流水：销售退货入库无上限校验（design.md §5），与流水同事务逐行 1:1
+                // 成本转回金额 = Σ 本次退货入库成本（作为自动凭证的成本转回分录金额）
+                var costAmount = 0m;
                 foreach (var item in items)
                 {
                     await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
@@ -168,6 +183,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                         salesReturn.Id, item.ProductId, StockMovementType.SalesOutbound, cancellationToken)
                         ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, cancellationToken);
                     var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
+                    costAmount += totalCost;
                     await _inventoryRepository.ApplyInboundCostAsync(item.ProductId, item.Quantity, unitCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
@@ -184,6 +200,24 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                         CreatedBy = operatorId,
                     }, cancellationToken);
                 }
+
+                // 总账（erp-general-ledger）：同事务生成自动凭证（借主营业务收入 / 贷应收账款，
+                // 并附成本转回分录：借库存商品 / 贷主营业务成本）；
+                // 科目映射缺失（40158）或期间不可记账（40154 / 40159）会阻断整单，随事务回滚
+                await VoucherWriter.AppendAutoAsync(
+                    VoucherSourceType.SalesReturn,
+                    salesReturn.Id,
+                    salesReturn.ReturnNo,
+                    salesReturn.ReturnDate,
+                    salesReturn.TotalAmount,
+                    costAmount,
+                    null,
+                    _voucherRepository,
+                    _accountMappingRepository,
+                    _accountingPeriodRepository,
+                    _accountRepository,
+                    operatorId,
+                    cancellationToken);
 
                 // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
                 var createdSalesReturnChangeBuilder = new AuditChangeBuilder()

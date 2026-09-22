@@ -55,8 +55,8 @@ public sealed class AccountRepository : IAccountRepository
 
     /// <inheritdoc />
     public Task<bool> IsReferencedByVoucherAsync(Guid id, CancellationToken cancellationToken = default)
-        // 凭证分录表由 033-erp-general-ledger 落地；当前无凭证表，删除保护恒不命中，033 落地后改为真实查询
-        => Task.FromResult(false);
+        // 凭证分录表由 033-erp-general-ledger 落地：科目一旦被分录引用即禁止删除
+        => _dbContext.VoucherEntries.AnyAsync(e => e.AccountId == id, cancellationToken);
 
     /// <inheritdoc />
     public async Task AddAsync(Account account, CancellationToken cancellationToken = default)

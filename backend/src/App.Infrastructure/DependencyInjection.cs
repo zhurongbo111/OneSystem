@@ -80,6 +80,12 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IInvoiceQueryRepository, InvoiceQueryRepository>();
 
+        // 总账（erp-general-ledger）：会计期间 / 凭证 / 科目映射 / 财务报表只读聚合
+        services.AddScoped<IAccountingPeriodRepository, AccountingPeriodRepository>();
+        services.AddScoped<IVoucherRepository, VoucherRepository>();
+        services.AddScoped<IAccountMappingRepository, AccountMappingRepository>();
+        services.AddScoped<IFinancialReportQueryRepository, FinancialReportQueryRepository>();
+
         // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();

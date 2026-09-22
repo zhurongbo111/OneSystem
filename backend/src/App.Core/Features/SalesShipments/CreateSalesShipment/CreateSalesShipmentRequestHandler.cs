@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Finance;
 
 namespace App.Core.Features.SalesShipments.CreateSalesShipment;
 
@@ -28,6 +29,10 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IVoucherRepository _voucherRepository;
+    private readonly IAccountMappingRepository _accountMappingRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
+    private readonly IAccountRepository _accountRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
@@ -42,6 +47,10 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
+        IVoucherRepository voucherRepository,
+        IAccountMappingRepository accountMappingRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
+        IAccountRepository accountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger)
@@ -52,6 +61,10 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
+        _voucherRepository = voucherRepository;
+        _accountMappingRepository = accountMappingRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
+        _accountRepository = accountRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
@@ -231,11 +244,14 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                 await _salesShipmentRepository.AddAsync(order, items, cancellationToken);
 
                 // 库存流水：销售出库，与库存扣减同事务（逐行 TryDecrementAsync 已全部成功后才走到这里）
+                // 成本结转金额 = Σ 本次出库流水成本（作为自动凭证的成本结转分录金额）
+                var costAmount = 0m;
                 foreach (var item in items)
                 {
                     // 成本：按变动前均价结转（均价不变 —— 按均价出库不改变均值）
                     var unitCost = outboundUnitCosts[item.ProductId];
                     var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
+                    costAmount += totalCost;
                     await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
@@ -264,6 +280,24 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                     var flowStatus = DeriveFlowStatus(orderItems, request.Items);
                     await _salesOrderRepository.UpdateFlowStatusAsync(linkedOrder.Id, flowStatus, operatorId, cancellationToken);
                 }
+
+                // 总账（erp-general-ledger）：同事务生成自动凭证（借应收账款 / 贷主营业务收入，
+                // 并附成本结转分录：借主营业务成本 / 贷库存商品）；
+                // 科目映射缺失（40158）或期间不可记账（40154 / 40159）会阻断整单，随事务回滚
+                await VoucherWriter.AppendAutoAsync(
+                    VoucherSourceType.SalesOutbound,
+                    order.Id,
+                    order.ShipmentNo,
+                    order.OrderDate,
+                    order.TotalAmount,
+                    costAmount,
+                    null,
+                    _voucherRepository,
+                    _accountMappingRepository,
+                    _accountingPeriodRepository,
+                    _accountRepository,
+                    operatorId,
+                    cancellationToken);
 
                 // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
                 var createdShipmentChangeBuilder = new AuditChangeBuilder()

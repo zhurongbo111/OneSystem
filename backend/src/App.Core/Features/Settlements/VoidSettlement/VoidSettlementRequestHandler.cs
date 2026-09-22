@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Finance;
 
 namespace App.Core.Features.Settlements.VoidSettlement;
 
@@ -17,6 +18,8 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
     private readonly ISalesShipmentRepository _salesShipmentRepository;
     private readonly IPurchaseReturnRepository _purchaseReturnRepository;
     private readonly ISalesReturnRepository _salesReturnRepository;
+    private readonly IVoucherRepository _voucherRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
@@ -30,6 +33,8 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
         ISalesShipmentRepository salesShipmentRepository,
         IPurchaseReturnRepository purchaseReturnRepository,
         ISalesReturnRepository salesReturnRepository,
+        IVoucherRepository voucherRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger)
@@ -39,6 +44,8 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
         _salesShipmentRepository = salesShipmentRepository;
         _purchaseReturnRepository = purchaseReturnRepository;
         _salesReturnRepository = salesReturnRepository;
+        _voucherRepository = voucherRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
@@ -77,6 +84,16 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
             }
 
             await _settlementRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, operatorId, cancellationToken);
+
+            // 总账（erp-general-ledger）：同事务作废其自动凭证；期间已结账（40154）会阻断作废，随事务回滚
+            await VoucherWriter.VoidAutoVouchersAsync(
+                settlement.Type == SettlementType.Receipt ? VoucherSourceType.Receipt : VoucherSourceType.Payment,
+                settlement.Id,
+                settlement.SettlementDate,
+                _voucherRepository,
+                _accountingPeriodRepository,
+                operatorId,
+                cancellationToken);
 
             // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
             var voidedSettlementChangeBuilder = new AuditChangeBuilder()

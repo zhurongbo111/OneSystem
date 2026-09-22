@@ -161,8 +161,27 @@ public static class ErrorCode
     /// <summary>税率名称已存在</summary>
     public const int TaxRateNameExists = 40152;
 
-    /// <summary>科目已被凭证引用，禁止删除（`033` 落地后生效）</summary>
+    /// <summary>科目已被凭证引用，禁止删除</summary>
     public const int AccountReferencedByVoucher = 40153;
+
+    // ===== 总账（specs/033-erp-general-ledger/design.md §3.3） =====
+    /// <summary>会计期间已结账，禁止记账（新增 / 作废凭证）</summary>
+    public const int PeriodClosed = 40154;
+
+    /// <summary>凭证借贷不平衡</summary>
+    public const int VoucherUnbalanced = 40155;
+
+    /// <summary>凭证无分录</summary>
+    public const int VoucherNoEntries = 40156;
+
+    /// <summary>分录科目非末级或已停用</summary>
+    public const int VoucherAccountInvalid = 40157;
+
+    /// <summary>自动凭证所需科目映射缺失</summary>
+    public const int AccountMappingMissing = 40158;
+
+    /// <summary>记账日期所在会计期间不存在</summary>
+    public const int PeriodNotOpened = 40159;
 
     // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
     /// <summary>角色名称已存在（忽略大小写）</summary>

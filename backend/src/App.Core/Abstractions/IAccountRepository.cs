@@ -40,8 +40,7 @@ public interface IAccountRepository
     Task<bool> HasChildrenAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 科目是否已被凭证分录引用（删除保护）；凭证表由 `033-erp-general-ledger` 落地，
-    /// 当前无凭证表，固定返回 <c>false</c>，`033` 落地后改为真实查询
+    /// 科目是否已被凭证分录引用（删除保护）；凭证分录表由 `033-erp-general-ledger` 落地
     /// </summary>
     /// <param name="id">科目 id</param>
     /// <param name="cancellationToken">取消令牌</param>

@@ -1,6 +1,7 @@
 using App.Core;
 using App.Core.Auth;
 using App.Core.Entities;
+using App.Core.Finance;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,6 +67,99 @@ public static class DatabaseInitializer
 
         await SeedRolesAndUserRolesAsync(dbContext, logger, cancellationToken);
         await SeedPresetAccountsAsync(dbContext, logger, cancellationToken);
+        await SeedAccountingPeriodsAsync(dbContext, logger, cancellationToken);
+        await SeedAccountMappingsAsync(dbContext, logger, cancellationToken);
+    }
+
+    /// <summary>
+    /// 幂等预置会计期间：补齐**当年** 1–12 月（<c>Open</c>），只补不删，可重复执行
+    /// （specs/033-erp-general-ledger/design.md §2.6）。
+    /// </summary>
+    /// <param name="dbContext">数据库上下文</param>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private static async Task SeedAccountingPeriodsAsync(
+        AppDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        var year = DateTimeOffset.UtcNow.Year;
+        var existingMonths = await dbContext.AccountingPeriods
+            .Where(p => p.Year == year)
+            .Select(p => p.Month)
+            .ToListAsync(cancellationToken);
+        var existing = new HashSet<int>(existingMonths);
+
+        var missing = Enumerable.Range(1, 12).Where(month => !existing.Contains(month)).ToList();
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        dbContext.AccountingPeriods.AddRange(missing.Select(month => new AccountingPeriod
+        {
+            Id = Guid.NewGuid(),
+            Year = year,
+            Month = month,
+            Status = PeriodStatus.Open,
+        }));
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        logger?.LogInformation("已预置 {Year} 年会计期间 {Count} 个（已存在 {Skipped} 个跳过）", year, missing.Count, 12 - missing.Count);
+    }
+
+    /// <summary>
+    /// 幂等预置科目映射（<see cref="AccountMappingKeys.All"/> 8 个键 → `031` 预置科目，按编码查）：
+    /// 只补不删，可重复执行；预置科目被删除时该键跳过（缺失映射会让自动凭证拒绝生成 40158）
+    /// （specs/033-erp-general-ledger/design.md §2.6）。
+    /// </summary>
+    /// <param name="dbContext">数据库上下文</param>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private static async Task SeedAccountMappingsAsync(
+        AppDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        var existingKeys = await dbContext.AccountMappings
+            .Select(m => m.Key)
+            .ToListAsync(cancellationToken);
+        var existing = new HashSet<string>(existingKeys, StringComparer.Ordinal);
+
+        var definitions = AccountMappingKeys.All.Where(d => !existing.Contains(d.Key)).ToList();
+        if (definitions.Count == 0)
+        {
+            return;
+        }
+
+        var codes = definitions.Select(d => d.PresetAccountCode).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var accounts = await dbContext.Accounts
+            .Where(a => codes.Contains(a.Code))
+            .Select(a => new { a.Id, a.Code })
+            .ToListAsync(cancellationToken);
+        var accountIdsByCode = accounts.ToDictionary(a => a.Code, a => a.Id, StringComparer.OrdinalIgnoreCase);
+
+        var now = DateTimeOffset.UtcNow;
+        var mappings = definitions
+            .Where(d => accountIdsByCode.ContainsKey(d.PresetAccountCode))
+            .Select(d => new AccountMapping
+            {
+                Id = Guid.NewGuid(),
+                Key = d.Key,
+                AccountId = accountIdsByCode[d.PresetAccountCode],
+                CreatedAt = now,
+                UpdatedAt = now,
+            })
+            .ToList();
+
+        if (mappings.Count == 0)
+        {
+            return;
+        }
+
+        dbContext.AccountMappings.AddRange(mappings);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        logger?.LogInformation("已预置科目映射 {Count} 条（跳过 {Skipped} 条）", mappings.Count, definitions.Count - mappings.Count);
     }
 
     /// <summary>
