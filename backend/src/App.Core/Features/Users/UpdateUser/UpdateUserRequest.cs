@@ -18,4 +18,7 @@ public sealed class UpdateUserRequest : IRequest<UserDetailDto>
 
     /// <summary>手机号，可空；非空时唯一（排除自身）</summary>
     public string? Phone { get; init; }
+
+    /// <summary>角色 id 集合（全量覆盖，必填非空）</summary>
+    public IReadOnlyList<Guid> RoleIds { get; init; } = [];
 }

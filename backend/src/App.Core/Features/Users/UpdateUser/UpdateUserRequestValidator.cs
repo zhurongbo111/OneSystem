@@ -34,5 +34,11 @@ public sealed class UpdateUserRequestValidator : AbstractValidator<UpdateUserReq
             .WithMessage($"手机号长度不能超过 {UserFieldConstraints.PhoneMaxLength}")
             .Matches(UserFieldConstraints.PhonePattern).WithMessage("手机号格式不正确")
             .When(x => !string.IsNullOrWhiteSpace(x.Phone));
+
+        // 角色：全量覆盖提交，至少一个（用户不可处于无角色状态）
+        RuleFor(x => x.RoleIds)
+            .NotEmpty().WithMessage("请至少选择一个角色")
+            .Must(ids => ids.Count <= RoleFieldConstraints.RolesPerUserMaxCount)
+            .WithMessage($"角色数量不能超过 {RoleFieldConstraints.RolesPerUserMaxCount} 个");
     }
 }

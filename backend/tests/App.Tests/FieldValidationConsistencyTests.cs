@@ -40,6 +40,9 @@ public class FieldValidationConsistencyTests
     private static int GetMaxLength<TEntity>(AppDbContext dbContext, string propertyName)
         => dbContext.Model.FindEntityType(typeof(TEntity))!.FindProperty(propertyName)!.GetMaxLength()!.Value;
 
+    /// <summary>用户必须绑定至少一个角色，故校验用请求统一携带一个角色 id</summary>
+    private static IReadOnlyList<Guid> ValidRoleIds => [Guid.NewGuid()];
+
     private static string BuildEmail(int totalLength)
     {
         const string suffix = "@example.com";
@@ -91,7 +94,7 @@ public class FieldValidationConsistencyTests
                 .Validate(new LoginRequest { Username = "admin", Password = password })
                 .IsValid;
             var createValid = new CreateUserRequestValidator()
-                .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Password = password })
+                .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Password = password, RoleIds = ValidRoleIds })
                 .IsValid;
             var resetValid = new ResetPasswordRequestValidator()
                 .Validate(new ResetPasswordRequest { Id = Guid.NewGuid(), NewPassword = password })
@@ -112,14 +115,14 @@ public class FieldValidationConsistencyTests
         var tooLong = new string('名', UserFieldConstraints.DisplayNameMaxLength + 1);
 
         Assert.True(new CreateUserRequestValidator()
-            .Validate(new CreateUserRequest { Username = "user1", DisplayName = ok, Password = "user123" }).IsValid);
+            .Validate(new CreateUserRequest { Username = "user1", DisplayName = ok, Password = "user123", RoleIds = ValidRoleIds }).IsValid);
         Assert.True(new UpdateUserRequestValidator()
-            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), DisplayName = ok }).IsValid);
+            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), RoleIds = ValidRoleIds, DisplayName = ok }).IsValid);
 
         Assert.False(new CreateUserRequestValidator()
-            .Validate(new CreateUserRequest { Username = "user1", DisplayName = tooLong, Password = "user123" }).IsValid);
+            .Validate(new CreateUserRequest { Username = "user1", DisplayName = tooLong, Password = "user123", RoleIds = ValidRoleIds }).IsValid);
         Assert.False(new UpdateUserRequestValidator()
-            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), DisplayName = tooLong }).IsValid);
+            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), RoleIds = ValidRoleIds, DisplayName = tooLong }).IsValid);
     }
 
     [Fact]
@@ -129,14 +132,14 @@ public class FieldValidationConsistencyTests
         var tooLong = BuildEmail(UserFieldConstraints.EmailMaxLength + 1);
 
         Assert.True(new CreateUserRequestValidator()
-            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Email = ok, Password = "user123" }).IsValid);
+            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Email = ok, Password = "user123", RoleIds = ValidRoleIds }).IsValid);
         Assert.True(new UpdateUserRequestValidator()
-            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), DisplayName = "用户一", Email = ok }).IsValid);
+            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), RoleIds = ValidRoleIds, DisplayName = "用户一", Email = ok }).IsValid);
 
         Assert.False(new CreateUserRequestValidator()
-            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Email = tooLong, Password = "user123" }).IsValid);
+            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Email = tooLong, Password = "user123", RoleIds = ValidRoleIds }).IsValid);
         Assert.False(new UpdateUserRequestValidator()
-            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), DisplayName = "用户一", Email = tooLong }).IsValid);
+            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), RoleIds = ValidRoleIds, DisplayName = "用户一", Email = tooLong }).IsValid);
     }
 
     [Fact]
@@ -146,19 +149,19 @@ public class FieldValidationConsistencyTests
         var tooLong = new string('1', UserFieldConstraints.PhoneMaxLength + 1);
 
         Assert.True(new CreateUserRequestValidator()
-            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Phone = legal, Password = "user123" }).IsValid);
+            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Phone = legal, Password = "user123", RoleIds = ValidRoleIds }).IsValid);
         Assert.True(new UpdateUserRequestValidator()
-            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), DisplayName = "用户一", Phone = legal }).IsValid);
+            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), RoleIds = ValidRoleIds, DisplayName = "用户一", Phone = legal }).IsValid);
 
         // 长度上限虽为 PhoneMaxLength，但格式正则已把合法值限定为 11 位；超长与非法格式都必须被拒绝
         Assert.False(new CreateUserRequestValidator()
-            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Phone = tooLong, Password = "user123" }).IsValid);
+            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Phone = tooLong, Password = "user123", RoleIds = ValidRoleIds }).IsValid);
         Assert.False(new UpdateUserRequestValidator()
-            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), DisplayName = "用户一", Phone = tooLong }).IsValid);
+            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), RoleIds = ValidRoleIds, DisplayName = "用户一", Phone = tooLong }).IsValid);
         Assert.False(new CreateUserRequestValidator()
-            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Phone = "12345", Password = "user123" }).IsValid);
+            .Validate(new CreateUserRequest { Username = "user1", DisplayName = "用户一", Phone = "12345", Password = "user123", RoleIds = ValidRoleIds }).IsValid);
         Assert.False(new UpdateUserRequestValidator()
-            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), DisplayName = "用户一", Phone = "12345" }).IsValid);
+            .Validate(new UpdateUserRequest { Id = Guid.NewGuid(), RoleIds = ValidRoleIds, DisplayName = "用户一", Phone = "12345" }).IsValid);
     }
 
     // ============================== 用户名规则 ==============================
@@ -718,5 +721,6 @@ public class FieldValidationConsistencyTests
             Username = username,
             DisplayName = "用户一",
             Password = "user123",
+            RoleIds = ValidRoleIds,
         }).IsValid;
 }

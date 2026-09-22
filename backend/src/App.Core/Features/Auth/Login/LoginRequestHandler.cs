@@ -19,6 +19,7 @@ public sealed class LoginRequestHandler : IRequestHandler<LoginRequest, LoginRes
     private readonly PasswordHasher _passwordHasher;
     private readonly TokenService _tokenService;
     private readonly IClientInfo _clientInfo;
+    private readonly IPermissionResolver _permissionResolver;
 
     /// <summary>
     /// 初始化登录用例处理器
@@ -29,7 +30,8 @@ public sealed class LoginRequestHandler : IRequestHandler<LoginRequest, LoginRes
         IUnitOfWork unitOfWork,
         PasswordHasher passwordHasher,
         TokenService tokenService,
-        IClientInfo clientInfo)
+        IClientInfo clientInfo,
+        IPermissionResolver permissionResolver)
     {
         _userRepository = userRepository;
         _userLoginLogRepository = userLoginLogRepository;
@@ -37,6 +39,7 @@ public sealed class LoginRequestHandler : IRequestHandler<LoginRequest, LoginRes
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _clientInfo = clientInfo;
+        _permissionResolver = permissionResolver;
     }
 
     /// <summary>
@@ -87,6 +90,15 @@ public sealed class LoginRequestHandler : IRequestHandler<LoginRequest, LoginRes
         }
 
         var user = UserDtoMapper.ToUserDto(account);
-        return new LoginResponse { Token = _tokenService.Issue(user), User = user };
+
+        // 权限集合随登录返回：用户登录后立即具备可用菜单与按钮，无需二次请求
+        var permissions = await _permissionResolver.GetPermissionsAsync(account.Id, cancellationToken);
+
+        return new LoginResponse
+        {
+            Token = _tokenService.Issue(user),
+            User = user,
+            Permissions = permissions.ToList(),
+        };
     }
 }

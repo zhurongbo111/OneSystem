@@ -28,4 +28,7 @@ public sealed class UserListItemDto
 
     /// <summary>创建时间</summary>
     public DateTimeOffset CreatedAt { get; init; }
+
+    /// <summary>用户绑定的角色（按名称升序，供列表展示与筛选）</summary>
+    public IReadOnlyList<UserRoleDto> Roles { get; init; } = [];
 }

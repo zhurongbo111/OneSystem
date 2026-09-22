@@ -5,7 +5,7 @@ using FluentValidation;
 namespace App.Core.Features.Users.CreateUser;
 
 /// <summary>
-/// 新增用户请求格式校验：只做数据格式检查；用户名 / 邮箱 / 手机号是否重复等查库约束在 Handler 内
+/// 新增用户请求格式校验：只做数据格式检查；用户名 / 邮箱 / 手机号是否重复与角色是否存在等查库约束在 Handler 内
 /// </summary>
 public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 {
@@ -41,5 +41,11 @@ public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserReq
             .NotEmpty().WithMessage("密码不能为空")
             .Length(UserFieldConstraints.PasswordMinLength, UserFieldConstraints.PasswordMaxLength)
             .WithMessage($"密码长度必须在 {UserFieldConstraints.PasswordMinLength} 到 {UserFieldConstraints.PasswordMaxLength} 之间");
+
+        // 角色：至少一个（避免"无角色黑洞"），上限取自 RoleFieldConstraints
+        RuleFor(x => x.RoleIds)
+            .NotEmpty().WithMessage("请至少选择一个角色")
+            .Must(ids => ids.Count <= RoleFieldConstraints.RolesPerUserMaxCount)
+            .WithMessage($"角色数量不能超过 {RoleFieldConstraints.RolesPerUserMaxCount} 个");
     }
 }

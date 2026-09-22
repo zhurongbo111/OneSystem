@@ -10,14 +10,19 @@ namespace App.Core.Features.Users.UpdateUserStatus;
 public sealed class UpdateUserStatusRequestHandler : IRequestHandler<UpdateUserStatusRequest, UserDetailDto>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
     private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化启用 / 禁用用户用例处理器
     /// </summary>
-    public UpdateUserStatusRequestHandler(IUserRepository userRepository, ICurrentUser currentUser)
+    public UpdateUserStatusRequestHandler(
+        IUserRepository userRepository,
+        IUserRoleRepository userRoleRepository,
+        ICurrentUser currentUser)
     {
         _userRepository = userRepository;
+        _userRoleRepository = userRoleRepository;
         _currentUser = currentUser;
     }
 
@@ -46,6 +51,10 @@ public sealed class UpdateUserStatusRequestHandler : IRequestHandler<UpdateUserS
         user.UpdatedBy = _currentUser.UserId();
 
         await _userRepository.UpdateAsync(user, cancellationToken);
-        return UserDtoMapper.ToUserDetailDto(user);
+
+        var rolesByUser = await _userRoleRepository.GetRolesByUserIdsAsync([user.Id], cancellationToken);
+        var roles = rolesByUser.TryGetValue(user.Id, out var items) ? UserDtoMapper.ToUserRoleDtos(items) : [];
+
+        return UserDtoMapper.ToUserDetailDto(user, roles);
     }
 }

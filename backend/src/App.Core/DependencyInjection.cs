@@ -30,6 +30,8 @@ using App.Core.Features.Products.GetProductPickList;
 using App.Core.Features.Products.GetProducts;
 using App.Core.Features.Products.UpdateProduct;
 using App.Core.Features.Products.UpdateProductStatus;
+using App.Core.Features.Permissions;
+using App.Core.Features.Permissions.GetPermissions;
 using App.Core.Features.PurchaseOrders;
 using App.Core.Features.PurchaseOrders.ClosePurchaseOrder;
 using App.Core.Features.PurchaseOrders.CreatePurchaseOrder;
@@ -53,6 +55,12 @@ using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
 using App.Core.Features.Reports;
 using App.Core.Features.Reports.ExportCostProfit;
+using App.Core.Features.Roles;
+using App.Core.Features.Roles.CreateRole;
+using App.Core.Features.Roles.DeleteRole;
+using App.Core.Features.Roles.GetRoleById;
+using App.Core.Features.Roles.GetRoles;
+using App.Core.Features.Roles.UpdateRole;
 using App.Core.Features.Reports.ExportInventoryFlow;
 using App.Core.Features.Reports.ExportPurchaseSummary;
 using App.Core.Features.Reports.ExportSalesSummary;
@@ -103,6 +111,7 @@ using App.Core.Features.StockTakes.GetStockTakes;
 using App.Core.Features.Users;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.GetCurrentUser;
+using App.Core.Features.Users.GetMyPermissions;
 using App.Core.Features.Users.GetUserById;
 using App.Core.Features.Users.GetUsers;
 using App.Core.Features.Users.ResetPassword;
@@ -149,9 +158,18 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<UpdateUserRequest, UserDetailDto>, UpdateUserRequestHandler>();
         services.AddScoped<IRequestHandler<UpdateUserStatusRequest, UserDetailDto>, UpdateUserStatusRequestHandler>();
         services.AddScoped<IRequestHandler<ResetPasswordRequest, object?>, ResetPasswordRequestHandler>();
+        services.AddScoped<IRequestHandler<GetMyPermissionsRequest, IReadOnlyList<string>>, GetMyPermissionsRequestHandler>();
 
         // 用户登录日志用例（user-management）
         services.AddScoped<IRequestHandler<GetLoginLogsRequest, PagedResult<LoginLogListItemDto>>, GetLoginLogsRequestHandler>();
+
+        // 角色与权限用例（erp-rbac：角色维护 + 权限点清单）
+        services.AddScoped<IRequestHandler<GetRolesRequest, PagedResult<RoleListItemDto>>, GetRolesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateRoleRequest, RoleDetailDto>, CreateRoleRequestHandler>();
+        services.AddScoped<IRequestHandler<GetRoleByIdRequest, RoleDetailDto>, GetRoleByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateRoleRequest, RoleDetailDto>, UpdateRoleRequestHandler>();
+        services.AddScoped<IRequestHandler<DeleteRoleRequest, object?>, DeleteRoleRequestHandler>();
+        services.AddScoped<IRequestHandler<GetPermissionsRequest, IReadOnlyList<PermissionGroupDto>>, GetPermissionsRequestHandler>();
 
         // 商品管理用例（erp-product）
         services.AddScoped<IRequestHandler<GetProductsRequest, PagedResult<ProductDto>>, GetProductsRequestHandler>();
@@ -280,6 +298,9 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdateUserStatusRequest>, UpdateUserStatusRequestValidator>();
         services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordRequestValidator>();
         services.AddScoped<IValidator<GetLoginLogsRequest>, GetLoginLogsRequestValidator>();
+        services.AddScoped<IValidator<GetRolesRequest>, GetRolesRequestValidator>();
+        services.AddScoped<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
+        services.AddScoped<IValidator<UpdateRoleRequest>, UpdateRoleRequestValidator>();
         services.AddScoped<IValidator<GetProductsRequest>, GetProductsRequestValidator>();
         services.AddScoped<IValidator<CreateProductRequest>, CreateProductRequestValidator>();
         services.AddScoped<IValidator<UpdateProductRequest>, UpdateProductRequestValidator>();

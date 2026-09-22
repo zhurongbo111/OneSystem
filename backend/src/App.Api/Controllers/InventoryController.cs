@@ -1,6 +1,8 @@
+using App.Api.Authorization;
 using App.Api.Http;
 
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.Inventory;
 using App.Core.Features.Inventory.ExportInventory;
 using App.Core.Features.Inventory.GetInventory;
@@ -34,6 +36,7 @@ public class InventoryController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<InventoryItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.InventoryView)]
     public async Task<ApiResponse<PagedResult<InventoryItemDto>>> GetInventory([FromQuery] GetInventoryRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -42,6 +45,7 @@ public class InventoryController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.InventoryExport)]
     public async Task<IActionResult> Export([FromQuery] ExportInventoryRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);

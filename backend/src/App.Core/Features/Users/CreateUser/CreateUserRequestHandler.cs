@@ -6,11 +6,15 @@ using App.Core.Errors;
 namespace App.Core.Features.Users.CreateUser;
 
 /// <summary>
-/// 新增用户用例：校验唯一性（用户名 / 邮箱 / 手机号）→ 哈希密码 → 写入审计字段 → 落库
+/// 新增用户用例：校验唯一性（用户名 / 邮箱 / 手机号）→ 校验角色存在性 → 哈希密码 → 写入审计字段
+/// → 同一事务内落库用户并全量替换其角色绑定
 /// </summary>
 public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest, UserDetailDto>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IRoleRepository _roleRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly PasswordHasher _passwordHasher;
     private readonly ICurrentUser _currentUser;
 
@@ -19,10 +23,16 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
     /// </summary>
     public CreateUserRequestHandler(
         IUserRepository userRepository,
+        IRoleRepository roleRepository,
+        IUserRoleRepository userRoleRepository,
+        IUnitOfWork unitOfWork,
         PasswordHasher passwordHasher,
         ICurrentUser currentUser)
     {
         _userRepository = userRepository;
+        _roleRepository = roleRepository;
+        _userRoleRepository = userRoleRepository;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _currentUser = currentUser;
     }
@@ -54,6 +64,14 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
             throw new BusinessException(ErrorCode.PhoneExists, "手机号已被使用");
         }
 
+        // 查库约束：角色必须全部存在（去重后比对数量，避免部分命中被静默忽略）
+        var roleIds = request.RoleIds.Distinct().ToList();
+        var roles = await _roleRepository.GetByIdsAsync(roleIds, cancellationToken);
+        if (roles.Count != roleIds.Count)
+        {
+            throw new BusinessException(ErrorCode.NotFound, "角色不存在");
+        }
+
         var now = DateTimeOffset.UtcNow;
         var operatorId = _currentUser.UserId();
         var user = new User
@@ -71,7 +89,21 @@ public sealed class CreateUserRequestHandler : IRequestHandler<CreateUserRequest
             UpdatedBy = operatorId,
         };
 
-        await _userRepository.AddAsync(user, cancellationToken);
-        return UserDtoMapper.ToUserDetailDto(user);
+        // 用户与其角色绑定必须同时成功，故由工作单元显式界定事务边界
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await _userRepository.AddAsync(user, cancellationToken);
+            await _userRoleRepository.ReplaceUserRolesAsync(user.Id, roleIds, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
+
+        var roleItems = roles.Select(r => new UserRoleItem { Id = r.Id, Name = r.Name }).ToList();
+        return UserDtoMapper.ToUserDetailDto(user, UserDtoMapper.ToUserRoleDtos(roleItems));
     }
 }

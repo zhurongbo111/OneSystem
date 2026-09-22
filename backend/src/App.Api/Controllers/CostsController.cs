@@ -1,4 +1,6 @@
+using App.Api.Authorization;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.Costs;
 using App.Core.Features.Costs.RecalculateCosts;
 using App.Core.Responses;
@@ -34,6 +36,7 @@ public class CostsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<CostRecalculateResultDto>))]
     [HttpPost("recalculate")]
+    [RequirePermission(Permissions.CostsRecalculate)]
     public async Task<ApiResponse<CostRecalculateResultDto>> Recalculate(
         [FromQuery] RecalculateCostsRequest request,
         CancellationToken cancellationToken)

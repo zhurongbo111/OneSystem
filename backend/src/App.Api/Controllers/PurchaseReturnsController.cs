@@ -1,5 +1,7 @@
+using App.Api.Authorization;
 using App.Api.Http;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.PurchaseReturns;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.ExportPurchaseReturns;
@@ -40,6 +42,7 @@ public sealed class PurchaseReturnsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<PurchaseReturnListItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.PurchaseReturnsView)]
     public async Task<ApiResponse<PagedResult<PurchaseReturnListItemDto>>> GetPaged([FromQuery] GetPurchaseReturnsRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -52,6 +55,7 @@ public sealed class PurchaseReturnsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.PurchaseReturnsExport)]
     public async Task<IActionResult> Export([FromQuery] ExportPurchaseReturnsRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);
@@ -65,6 +69,7 @@ public sealed class PurchaseReturnsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseReturnDetailDto>))]
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.PurchaseReturnsView)]
     public async Task<ApiResponse<PurchaseReturnDetailDto>> GetDetail(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetPurchaseReturnByIdRequest { Id = id }, cancellationToken));
 
@@ -75,6 +80,7 @@ public sealed class PurchaseReturnsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseReturnDetailDto>))]
     [HttpPost]
+    [RequirePermission(Permissions.PurchaseReturnsCreate)]
     public async Task<ApiResponse<PurchaseReturnDetailDto>> Create([FromBody] CreatePurchaseReturnRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -85,6 +91,7 @@ public sealed class PurchaseReturnsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseReturnDetailDto>))]
     [HttpPut("{id:guid}/void")]
+    [RequirePermission(Permissions.PurchaseReturnsVoid)]
     public async Task<ApiResponse<PurchaseReturnDetailDto>> Void(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new VoidPurchaseReturnRequest { Id = id }, cancellationToken));
 

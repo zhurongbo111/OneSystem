@@ -12,4 +12,10 @@ public sealed class LoginResponse
 
     /// <summary>当前登录用户</summary>
     public UserDto User { get; init; } = new();
+
+    /// <summary>
+    /// 当前用户的权限点 key 集合（登录即返回，前端据此过滤菜单与按钮；
+    /// 后续可由 <c>GET /api/users/me/permissions</c> 刷新，避免重新登录）
+    /// </summary>
+    public IReadOnlyList<string> Permissions { get; init; } = [];
 }

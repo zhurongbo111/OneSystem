@@ -1,5 +1,7 @@
+using App.Api.Authorization;
 using App.Api.Http;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.Settlements;
 using App.Core.Features.Settlements.CreateSettlement;
 using App.Core.Features.Settlements.ExportSettlements;
@@ -41,6 +43,7 @@ public sealed class SettlementsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<SettlementListItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.SettlementsView)]
     public async Task<ApiResponse<PagedResult<SettlementListItemDto>>> GetPaged([FromQuery] GetSettlementsRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -51,6 +54,7 @@ public sealed class SettlementsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.SettlementsExport)]
     public async Task<IActionResult> Export([FromQuery] ExportSettlementsRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);
@@ -64,6 +68,7 @@ public sealed class SettlementsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SettlementDetailDto>))]
     [HttpPost]
+    [RequirePermission(Permissions.SettlementsCreate)]
     public async Task<ApiResponse<SettlementDetailDto>> Create([FromBody] CreateSettlementRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -74,6 +79,7 @@ public sealed class SettlementsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<SettlementCandidateDto>>))]
     [HttpGet("unsettled-orders")]
+    [RequirePermission(Permissions.SettlementsView)]
     public async Task<ApiResponse<PagedResult<SettlementCandidateDto>>> GetUnsettledOrders([FromQuery] GetUnsettledOrdersRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -84,6 +90,7 @@ public sealed class SettlementsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SettlementDetailDto>))]
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.SettlementsView)]
     public async Task<ApiResponse<SettlementDetailDto>> GetDetail(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetSettlementByIdRequest { Id = id }, cancellationToken));
 
@@ -94,6 +101,7 @@ public sealed class SettlementsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SettlementDetailDto>))]
     [HttpPut("{id:guid}/void")]
+    [RequirePermission(Permissions.SettlementsVoid)]
     public async Task<ApiResponse<SettlementDetailDto>> Void(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new VoidSettlementRequest { Id = id }, cancellationToken));
 
@@ -104,6 +112,7 @@ public sealed class SettlementsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<ReconciliationListItemDto>>))]
     [HttpGet("/api/reconciliation")]
+    [RequirePermission(Permissions.ReconciliationView)]
     public async Task<ApiResponse<PagedResult<ReconciliationListItemDto>>> GetReconciliation([FromQuery] GetReconciliationRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 }

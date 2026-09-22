@@ -21,4 +21,7 @@ public sealed class CreateUserRequest : IRequest<UserDetailDto>
 
     /// <summary>初始密码（明文，仅用于入参；服务端哈希后入库）</summary>
     public string Password { get; init; } = string.Empty;
+
+    /// <summary>角色 id 集合（必填非空，去重后生效；用户至少一个角色）</summary>
+    public IReadOnlyList<Guid> RoleIds { get; init; } = [];
 }

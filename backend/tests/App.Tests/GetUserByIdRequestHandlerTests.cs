@@ -17,7 +17,7 @@ public class GetUserByIdRequestHandlerTests
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync();
 
-        var result = await new GetUserByIdRequestHandler(new UserRepository(dbContext))
+        var result = await new GetUserByIdRequestHandler(new UserRepository(dbContext), new UserRoleRepository(dbContext))
             .HandleAsync(new GetUserByIdRequest { Id = user.Id });
 
         Assert.Equal(user.Id.ToString(), result.Id);
@@ -26,6 +26,25 @@ public class GetUserByIdRequestHandlerTests
         Assert.Equal("alice@example.com", result.Email);
         Assert.Equal("13800000001", result.Phone);
         Assert.Equal(1, result.Status);
+        Assert.Empty(result.Roles);
+    }
+
+    [Fact]
+    public async Task HandleAsync_用户绑定角色_详情应带回角色()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        var user = TestSupport.NewUser("alice", "张三");
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync();
+        var role = TestSupport.SeedRole(dbContext, "操作角色");
+        TestSupport.BindRole(dbContext, user, role);
+
+        var result = await new GetUserByIdRequestHandler(new UserRepository(dbContext), new UserRoleRepository(dbContext))
+            .HandleAsync(new GetUserByIdRequest { Id = user.Id });
+
+        Assert.Single(result.Roles);
+        Assert.Equal(role.Id.ToString(), result.Roles[0].Id);
+        Assert.Equal("操作角色", result.Roles[0].Name);
     }
 
     [Fact]
@@ -34,7 +53,7 @@ public class GetUserByIdRequestHandlerTests
         await using var dbContext = TestSupport.CreateDbContext();
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => new GetUserByIdRequestHandler(new UserRepository(dbContext))
+            () => new GetUserByIdRequestHandler(new UserRepository(dbContext), new UserRoleRepository(dbContext))
                 .HandleAsync(new GetUserByIdRequest { Id = Guid.NewGuid() }));
 
         Assert.Equal(ErrorCode.NotFound, ex.Code);

@@ -1,5 +1,7 @@
+using App.Api.Authorization;
 using App.Api.Http;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.SalesShipments;
 using App.Core.Features.SalesShipments.CreateSalesShipment;
 using App.Core.Features.SalesShipments.ExportSalesShipments;
@@ -42,6 +44,7 @@ public sealed class SalesShipmentsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<SalesShipmentListItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.SalesView)]
     public async Task<ApiResponse<PagedResult<SalesShipmentListItemDto>>> GetPaged([FromQuery] GetSalesShipmentsRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -52,6 +55,7 @@ public sealed class SalesShipmentsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<SalesOrderPickDto>>))]
     [HttpGet("pick-orders")]
+    [RequirePermission(Permissions.SalesView)]
     public async Task<ApiResponse<IReadOnlyList<SalesOrderPickDto>>> PickOrders([FromQuery] GetSalesOrderPicksRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -62,6 +66,7 @@ public sealed class SalesShipmentsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SalesOrderLinesDto>))]
     [HttpGet("order-lines")]
+    [RequirePermission(Permissions.SalesView)]
     public async Task<ApiResponse<SalesOrderLinesDto>> OrderLines([FromQuery] GetSalesOrderLinesRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -74,6 +79,7 @@ public sealed class SalesShipmentsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.SalesExport)]
     public async Task<IActionResult> Export([FromQuery] ExportSalesShipmentsRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);
@@ -87,6 +93,7 @@ public sealed class SalesShipmentsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SalesShipmentDetailDto>))]
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.SalesView)]
     public async Task<ApiResponse<SalesShipmentDetailDto>> GetDetail(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetSalesShipmentByIdRequest { Id = id }, cancellationToken));
 
@@ -97,6 +104,7 @@ public sealed class SalesShipmentsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SalesShipmentDetailDto>))]
     [HttpPost]
+    [RequirePermission(Permissions.SalesCreate)]
     public async Task<ApiResponse<SalesShipmentDetailDto>> Create([FromBody] CreateSalesShipmentRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -107,6 +115,7 @@ public sealed class SalesShipmentsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<SalesShipmentDetailDto>))]
     [HttpPut("{id:guid}/void")]
+    [RequirePermission(Permissions.SalesVoid)]
     public async Task<ApiResponse<SalesShipmentDetailDto>> Void(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new VoidSalesShipmentRequest { Id = id }, cancellationToken));
 

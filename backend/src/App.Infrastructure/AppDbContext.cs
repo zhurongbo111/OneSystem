@@ -86,6 +86,15 @@ public class AppDbContext : DbContext
     /// <summary>收付款单核销明细表</summary>
     public DbSet<SettlementItem> SettlementItems => Set<SettlementItem>();
 
+    /// <summary>角色表</summary>
+    public DbSet<Role> Roles => Set<Role>();
+
+    /// <summary>角色权限关联表</summary>
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    /// <summary>用户角色关联表</summary>
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

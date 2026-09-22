@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Infrastructure.Auth;
 using App.Infrastructure.Exports;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
@@ -42,6 +43,13 @@ public static class DependencyInjection
         // EF Core 仓储实现（首个业务功能起替换脚手架的内存实现）
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserLoginLogRepository, UserLoginLogRepository>();
+
+        // 权限解析（erp-rbac）：Scoped + 单请求内缓存，用户 → 角色 → 权限点并集
+        services.AddScoped<IPermissionResolver, PermissionResolver>();
+
+        // 角色与用户角色关联仓储（erp-rbac）
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();

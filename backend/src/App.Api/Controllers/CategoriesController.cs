@@ -1,4 +1,6 @@
+using App.Api.Authorization;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.Categories;
 using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Categories.DeleteCategory;
@@ -35,6 +37,7 @@ public class CategoriesController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<CategoryDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.CategoriesView)]
     public async Task<ApiResponse<IReadOnlyList<CategoryDto>>> GetCategories(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetCategoriesRequest(), cancellationToken));
 
@@ -43,6 +46,7 @@ public class CategoriesController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<CategoryDto>>))]
     [HttpGet("paged")]
+    [RequirePermission(Permissions.CategoriesView)]
     public async Task<ApiResponse<PagedResult<CategoryDto>>> GetCategoriesPaged(
         [FromQuery] int page,
         [FromQuery] int pageSize,
@@ -57,6 +61,7 @@ public class CategoriesController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<CategoryDto>))]
     [HttpPost]
+    [RequirePermission(Permissions.CategoriesCreate)]
     public async Task<ApiResponse<CategoryDto>> CreateCategory([FromBody] CreateCategoryRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -65,6 +70,7 @@ public class CategoriesController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<CategoryDto>))]
     [HttpPut("{id:guid}")]
+    [RequirePermission(Permissions.CategoriesUpdate)]
     public async Task<ApiResponse<CategoryDto>> UpdateCategory(
         [FromRoute] Guid id,
         [FromBody] UpdateCategoryRequest request,
@@ -80,6 +86,7 @@ public class CategoriesController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<object>))]
     [HttpDelete("{id:guid}")]
+    [RequirePermission(Permissions.CategoriesDelete)]
     public async Task<ApiResponse<object?>> DeleteCategory([FromRoute] Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new DeleteCategoryRequest { Id = id }, cancellationToken));
 }
