@@ -23,8 +23,8 @@ backend/
 
 **命名规律**（据此定位，不逐一列举）：
 
-- `App.Core/Abstractions/`：仓储（`I<实体>Repository`）、`IUnitOfWork`、中介（`IMediator` / `IRequest` / `IRequestHandler`）、`ICurrentUser`(Extensions)、`IClientInfo`、`IExcelExporter`、审计写入 `IAuditLogger` 与 `IAuditLogRepository` 等接口，以及跨用例**读模型**（命名 `<实体><用途>`，创建判据见后端规则 §4.3；`030` 组织人事读模型 `DepartmentTreeNode` / `PositionListItem` / `PositionPickItem` / `EmployeeListItem` / `EmployeeDetail` / `EmployeePickUserItem`）；完整清单用目录列表获取。
-- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）/ `OrderFlowStatus`（024，订单流转状态：待收货 / 部分收货 / 已完成 / 已关闭 / 已作废）/ `AuditResource` / `AuditAction`（029，操作日志的资源类型 / 动作；实体 `AuditLog` 为**纯追加表**，无 `UpdatedAt` / `UpdatedBy`）/ `DepartmentStatus` / `PositionStatus` / `EmployeeStatus` / `Gender`（030，组织主数据与员工档案；实体 `Department`（`ParentId` 自引用树）/ `Position` / `Employee`）。
+- `App.Core/Abstractions/`：仓储（`I<实体>Repository`）、`IUnitOfWork`、中介（`IMediator` / `IRequest` / `IRequestHandler`）、`ICurrentUser`(Extensions)、`IClientInfo`、`IExcelExporter`、审计写入 `IAuditLogger` 与 `IAuditLogRepository` 等接口，以及跨用例**读模型**（命名 `<实体><用途>`，创建判据见后端规则 §4.3；`030` 组织人事读模型 `DepartmentTreeNode` / `PositionListItem` / `PositionPickItem` / `EmployeeListItem` / `EmployeeDetail` / `EmployeePickUserItem`，`031` 财务主数据读模型 `AccountTreeNode` / `TaxRateListItem`，`032` 发票读模型 `InvoicableOrderItem` / `InvoiceListItem`）；完整清单用目录列表获取。
+- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）/ `OrderFlowStatus`（024，订单流转状态：待收货 / 部分收货 / 已完成 / 已关闭 / 已作废）/ `AuditResource` / `AuditAction`（029，操作日志的资源类型 / 动作；实体 `AuditLog` 为**纯追加表**，无 `UpdatedAt` / `UpdatedBy`）/ `DepartmentStatus` / `PositionStatus` / `EmployeeStatus` / `Gender`（030，组织主数据与员工档案；实体 `Department`（`ParentId` 自引用树）/ `Position` / `Employee`）；`AccountCategory`（5 值）/ `AccountDirection` / `AccountStatus` / `TaxRateStatus`（031，财务主数据；实体 `Account`（`ParentId` 自引用树 + `IsPreset` 预置不可删）/ `TaxRate`）；`InvoiceType`（032，发票登记；实体 `Invoice` / `InvoiceItem`，关联单据类型复用 023 的 `SettlementOrderType`）。
 - 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）、`Audit/`（029：`AuditEntry` / `AuditChangeBuilder`（只记变化 + 敏感字段黑名单 + 超长截断）/ `AuditSummary`（金额 / 数量 / 日期 / 集合格式化）/ `AuditText`（枚举中文文案））。
 - `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
 - `AppDbContext`：DbSet 与实体一一对应，单据明细表为 `<单据>Items` 独立 DbSet（八张）；**完整清单以 `AppDbContext` 为准**（用目录 / 文件查看获取）。
@@ -58,6 +58,19 @@ backend/
 - 用例：`Features/Departments/`（树 + CRUD + 启停，6）、`Features/Positions/`（CRUD + 启停 + picks，7）、`Features/Employees/`（列表 / CRUD / 在职离职 / available-users / 导出，7）；端点 `DepartmentsController` / `PositionsController` / `EmployeesController`；权限点 `departments.*` / `positions.*` / `employees.*`；错误码 `40138`–`40148`（区间内下一个可用 `40149`，见 `specs/ROADMAP.md` §6）。
 - 员工导出复用 `027`（`IExcelExporter`，列 = 列表列 + 创建人）；全部写用例已接入操作日志（`029` §0.1 续行）；前端域 `OrgManagement/`。
 
+**财务主数据（erp-finance-master，`031`）**（后端 + 前端已交付）：
+
+- 实体 `Account`（`ParentId` 自引用树 + `IsPreset` 预置科目不可删）/ `TaxRate`（`Rate` 为百分比数值，`numeric(9,4)`）+ 2 个字段约束常量类；仓储 `IAccountRepository`（`GetAllAsync` 取全量、`HasChildrenAsync` / `IsReferencedByVoucherAsync` 供删除保护，后者待 `033` 落地后生效）/ `ITaxRateRepository`。
+- 用例：`Features/Accounts/`（树 + CRUD + 启停，6）、`Features/TaxRates/`（列表 + CRUD + 启停，6）；端点 `AccountsController` / `TaxRatesController`；权限点 `accounts.*` / `taxRates.*`；错误码 `40149`–`40153`（该区间内下一个可用 `40154`，见 `specs/ROADMAP.md` §6）；科目树防环复用 `030` 的 `40141`。
+- 预置标准科目由 `DatabaseInitializer` 幂等种子写入（`IsPreset = true`，15 条，见 `specs/031-erp-finance-master/design.md` §2.4）；全部写用例已接入操作日志（`029` §0.1 续行）；前端域 `FinanceManagement/`。
+
+**发票登记（erp-invoice，`032`）**（后端 + 前端已交付）：
+
+- 实体 `Invoice`（发票号唯一 + 往来名称快照 + 税额 / 价税合计后端重算）/ `InvoiceItem`（单据号 / 日期 / 总额快照，`(OrderType, OrderId)` 复合索引服务已开票金额聚合）；关联单据类型复用 `SettlementOrderType`（语义已泛化为「可关联单据类型」）。
+- 仓储 `IInvoiceRepository`（分页含关联单据号 EXISTS 检索与「关联单据」摘要拼接 / 详情 / 唯一性 / 新增 / 作废 / 批量取明细）与 `IInvoiceQueryRepository`（可开票候选 + 已开票金额聚合，跨四表只读）；**已开票金额按聚合推导、不落单据列**，作废即自动释放。
+- 用例：`Features/Invoices/`（列表 + 登记 + 详情 + 作废 + 可开票候选 + 导出）；端点 `InvoicesController`（含 `GET /api/invoices/export` 文件流契约例外）；权限点 `invoices.view/create/void/export`；错误码 `40132`–`40135`（`40104` / `40108` / `40109` / `40110` / `40400` 复用）。
+- 导出已登记 `027` §0.1 范围表（发票 + 关联明细两个工作表）；写用例已接入操作日志（`029` §0.1 续行）；前端域 `InvoiceManagement/`。
+
 **基准参照**：
 
 - 后端用例脚手架：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（无参用例形态）；分发与全局校验见 `Core/Mediation/Mediator.cs`。
@@ -83,8 +96,8 @@ frontend/
 ├── e2e/        # 每功能域一个或多个 <域名>.spec.ts（kebab-case 功能短名，命名判据见前端规则 §10）+ helpers/（菜单点击 / 表格搜索 / 重试点击 / 登录 loginAs / 消息断言 expectMessage，判据见前端规则 §10.1）+ global-setup.ts（冷启动预热，见前端规则 §10）；权限用例见 `rbac.spec.ts`（最小权限角色经接口构造 fixture）
 └── src/
     ├── main.ts / App.vue / env.d.ts
-    ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流；`40300` 与 `40000` 同处置：统一 `Message.error`）+ 按业务域拆分 <entity>.ts（`030` 起组织人事拆 department.ts / position.ts / employee.ts）+ export.ts（11 个列表导出）+ role.ts（角色 CRUD 与权限点分组清单，中文名由后端返回）+ auditLog.ts（操作日志查询 + 资源 / 动作文案与着色常量，`029`）
-    ├── components/  # AppLayout.vue（侧边菜单多顶级分组：示例页面 / 基础档案 / 采购 / 销售 / 库存 / 资金 / 报表 / 系统；子菜单默认折叠、仅当前分组自动展开；菜单项按 `MENU_PERMISSIONS` 权限过滤，分组内无可见子项则整组隐藏，`028`）、SettlementRecords.vue（四类单据详情「收付款明细」只读反查，`023`）
+    ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流；`40300` 与 `40000` 同处置：统一 `Message.error`）+ 按业务域拆分 <entity>.ts（`030` 起组织人事拆 department.ts / position.ts / employee.ts，`031` 财务主数据拆 account.ts / taxRate.ts，`032` 发票拆 invoice.ts）+ export.ts（12 个列表导出）+ role.ts（角色 CRUD 与权限点分组清单，中文名由后端返回）+ auditLog.ts（操作日志查询 + 资源 / 动作文案与着色常量，`029`）
+    ├── components/  # AppLayout.vue（侧边菜单多顶级分组：示例页面 / 基础档案 / 采购 / 销售 / 库存 / 资金（含发票登记）/ 财务 / 报表 / 系统；子菜单默认折叠、仅当前分组自动展开；菜单项按 `MENU_PERMISSIONS` 权限过滤，分组内无可见子项则整组隐藏，`028`）、SettlementRecords.vue（四类单据详情「收付款明细」只读反查，`023`）
     ├── composables/ # useOrderStore.ts（演示用）
     ├── router/ stores/ utils/   # index.ts（路由懒加载；`ROUTE_PERMISSIONS` 集中登记「路由名 → 权限点」并注入 `meta.permission`，守卫未登录跳登录页、无权限跳 `/403`；另含 6 条顶层 `print/...` 打印路由与顶层 `/403`，均不进 AppLayout）/ auth.ts（Pinia：token / user / permissions + `hasPermission` / `hasAnyPermission` / `fetchPermissions`）/ datetime.ts / settlement.ts（结算状态文案与颜色）
     └── views/       # 按功能域分目录（域内文件平铺，不套子目录）；无功能域归属的 `ForbiddenView.vue`（顶层 `/403`）平铺在 views/ 根
@@ -103,6 +116,8 @@ frontend/
   - `RoleManagement/` 为角色权限域（`028`）：列表 + 抽屉表单（权限树勾选），无独立详情页；权限点中文名由 `GET /api/permissions` 返回，前端不硬编码；无权限页 `ForbiddenView.vue` 不在任何功能域内。
   - `AuditLogManagement/` 为操作日志域（`029`）：只读列表 + 详情抽屉（字段级差异表），无新建 / 编辑 / 删除入口（日志不可改）。
   - `OrgManagement/` 为组织人事域（`030`）：部门树（树形表格 + 抽屉表单）/ 岗位列表 / 员工列表三页平铺在同一域目录；员工抽屉内可选部门（`a-tree-select`，仅启用）/ 岗位（`getPositionPicks`）/ 关联账号（`getAvailableUsers`）。
+  - `FinanceManagement/` 为财务主数据域（`031`）：会计科目（树形表格，名称列含「预置」标记 + 抽屉表单）/ 税率列表（抽屉表单）两页平铺在同一域目录。
+  - `InvoiceManagement/` 为发票域（`032`）：列表 / 新建（独立页，含可开票单据子表格 + 金额一致性提示）/ 详情（含关联单据只读表 + 作废）三页平铺在同一域目录。
 
 **图标选型**：业务图标（侧边菜单、列表工具条、操作列）统一 Tabler（`@tabler/icons-vue`）；仅「图标」示例页为演示保留三套并存；优先级见前端规则 §4.7。
 
@@ -138,7 +153,7 @@ frontend/
 
 ## 6. 现有功能规格（specs/）
 
-`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。范围规律：工程与前端交互模式为 `001`–`011`、`018`，业务为 `009`，ERP 为 `012`–`030`（已实现）与 `031`–`045`（已起草未实现，**无待起草模块**）。`028` 为**横向改造**（角色域 + 为 `012`–`027` 全部动作补权限点），权限点清单唯一来源 `specs/028-erp-rbac/design.md` §0.2、白名单 §0.4；各域 `design.md` 均带「演进（erp-rbac）」指针注记。`029` 为**横向能力**（为 `012`–`028` 各写路径追加操作日志 + 2 个只读查询接口 + 只读日志页），覆盖范围表唯一来源 `specs/029-erp-audit-log/design.md` §0.1；受影响各域 `design.md` 带「演进（erp-audit-log）」指针注记。
+`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。范围规律：工程与前端交互模式为 `001`–`011`、`018`，业务为 `009`，ERP 为 `012`–`032`（已实现）与 `033`–`045`（已起草未实现，**无待起草模块**）。`028` 为**横向改造**（角色域 + 为 `012`–`027` 全部动作补权限点），权限点清单唯一来源 `specs/028-erp-rbac/design.md` §0.2、白名单 §0.4；各域 `design.md` 均带「演进（erp-rbac）」指针注记。`029` 为**横向能力**（为 `012`–`028` 各写路径追加操作日志 + 2 个只读查询接口 + 只读日志页），覆盖范围表唯一来源 `specs/029-erp-audit-log/design.md` §0.1；受影响各域 `design.md` 带「演进（erp-audit-log）」指针注记。
 
 `specs/ROADMAP.md` 是 ERP **全域**（内核 + 外围系统）的**路线索引**（单文件，非 spec 目录、无三件套）：记录模块边界（§1）、模块地图（§2）、覆盖矩阵（§3）、阶段路线 P1–P6（§4.2），并写明跨功能前置决策（多仓 / 结算 / 权限 / 组织等）。接续 ERP 功能前先读它，再进具体规格。
 
