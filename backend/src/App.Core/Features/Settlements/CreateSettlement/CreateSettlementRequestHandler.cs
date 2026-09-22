@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Finance;
 
 namespace App.Core.Features.Settlements.CreateSettlement;
 
@@ -22,6 +23,10 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     private readonly IPurchaseReturnRepository _purchaseReturnRepository;
     private readonly ISalesReturnRepository _salesReturnRepository;
     private readonly IPartnerRepository _partnerRepository;
+    private readonly IVoucherRepository _voucherRepository;
+    private readonly IAccountMappingRepository _accountMappingRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
+    private readonly IAccountRepository _accountRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
@@ -36,6 +41,10 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         IPurchaseReturnRepository purchaseReturnRepository,
         ISalesReturnRepository salesReturnRepository,
         IPartnerRepository partnerRepository,
+        IVoucherRepository voucherRepository,
+        IAccountMappingRepository accountMappingRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
+        IAccountRepository accountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger)
@@ -46,6 +55,10 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         _purchaseReturnRepository = purchaseReturnRepository;
         _salesReturnRepository = salesReturnRepository;
         _partnerRepository = partnerRepository;
+        _voucherRepository = voucherRepository;
+        _accountMappingRepository = accountMappingRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
+        _accountRepository = accountRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
@@ -164,6 +177,24 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
                     // 按被核销单据类型分派到对应单据仓储，原子累加已结算金额（同一事务）
                     await AddSettledAmountAsync(line.OrderType, line.OrderId, line.Amount, operatorId, cancellationToken);
                 }
+
+                // 总账（erp-general-ledger）：同事务生成自动凭证
+                // （收款：借现金 / 银行存款、贷应收账款；付款：借应付账款、贷现金 / 银行存款，按结算方式选科目）；
+                // 科目映射缺失（40158）或期间不可记账（40154 / 40159）会阻断整单，随事务回滚
+                await VoucherWriter.AppendAutoAsync(
+                    request.Type == SettlementType.Receipt ? VoucherSourceType.Receipt : VoucherSourceType.Payment,
+                    settlement.Id,
+                    settlement.SettlementNo,
+                    settlement.SettlementDate,
+                    settlement.TotalAmount,
+                    0m,
+                    settlement.Method,
+                    _voucherRepository,
+                    _accountMappingRepository,
+                    _accountingPeriodRepository,
+                    _accountRepository,
+                    operatorId,
+                    cancellationToken);
 
                 // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
                 var createdSettlementChangeBuilder = new AuditChangeBuilder()

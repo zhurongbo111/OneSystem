@@ -370,6 +370,26 @@ public static class Permissions
     /// <summary>启用 / 停用税率</summary>
     public const string TaxRatesStatus = "taxRates.status";
 
+    // ===== 总账凭证（033） =====
+    /// <summary>查看凭证 / 会计期间</summary>
+    public const string VouchersView = "vouchers.view";
+
+    /// <summary>录入手工凭证</summary>
+    public const string VouchersCreate = "vouchers.create";
+
+    /// <summary>作废凭证</summary>
+    public const string VouchersVoid = "vouchers.void";
+
+    /// <summary>会计期间结账 / 反结账</summary>
+    public const string VouchersClose = "vouchers.close";
+
+    /// <summary>维护科目映射</summary>
+    public const string VouchersUpdateMapping = "vouchers.updateMapping";
+
+    // ===== 财务报表（033） =====
+    /// <summary>查看科目余额表 / 资产负债表 / 利润表</summary>
+    public const string FinancialReportsView = "financialReports.view";
+
     // ===== 站内消息（041） =====
     /// <summary>查看站内消息</summary>
     public const string NotificationsView = "notifications.view";
@@ -417,6 +437,8 @@ public static class Permissions
         EmployeesView, EmployeesCreate, EmployeesUpdate, EmployeesStatus, EmployeesExport,
         AccountsView, AccountsCreate, AccountsUpdate, AccountsDelete, AccountsStatus,
         TaxRatesView, TaxRatesCreate, TaxRatesUpdate, TaxRatesDelete, TaxRatesStatus,
+        VouchersView, VouchersCreate, VouchersVoid, VouchersClose, VouchersUpdateMapping,
+        FinancialReportsView,
         NotificationsView,
         ApprovalsView, ApprovalsApprove,
     ];
@@ -468,6 +490,8 @@ public static class Permissions
         new("员工档案", [new PermissionItem(EmployeesView, "查看"), new PermissionItem(EmployeesCreate, "新增"), new PermissionItem(EmployeesUpdate, "编辑"), new PermissionItem(EmployeesStatus, "在职 / 离职"), new PermissionItem(EmployeesExport, "导出")]),
         new("会计科目", [new PermissionItem(AccountsView, "查看"), new PermissionItem(AccountsCreate, "新增"), new PermissionItem(AccountsUpdate, "编辑"), new PermissionItem(AccountsDelete, "删除"), new PermissionItem(AccountsStatus, "启用 / 停用")]),
         new("税率", [new PermissionItem(TaxRatesView, "查看"), new PermissionItem(TaxRatesCreate, "新增"), new PermissionItem(TaxRatesUpdate, "编辑"), new PermissionItem(TaxRatesDelete, "删除"), new PermissionItem(TaxRatesStatus, "启用 / 停用")]),
+        new("凭证", [new PermissionItem(VouchersView, "查看"), new PermissionItem(VouchersCreate, "录入"), new PermissionItem(VouchersVoid, "作废"), new PermissionItem(VouchersClose, "结账 / 反结账"), new PermissionItem(VouchersUpdateMapping, "科目映射")]),
+        new("财务报表", [new PermissionItem(FinancialReportsView, "查看")]),
         new("站内消息", [new PermissionItem(NotificationsView, "查看")]),
         new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批")]),
     ];

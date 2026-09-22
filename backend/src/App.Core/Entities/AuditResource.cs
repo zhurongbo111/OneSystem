@@ -77,4 +77,13 @@ public enum AuditResource
 
     /// <summary>税率（031）</summary>
     TaxRate = 23,
+
+    /// <summary>会计期间（033）</summary>
+    AccountingPeriod = 24,
+
+    /// <summary>记账凭证（033）</summary>
+    Voucher = 25,
+
+    /// <summary>科目映射（033）</summary>
+    AccountMapping = 26,
 }

@@ -1,6 +1,11 @@
 using App.Core.Abstractions;
 using App.Core.Auth;
 using App.Core.Exports;
+using App.Core.Features.AccountingPeriods.ClosePeriod;
+using App.Core.Features.AccountingPeriods.GetPeriods;
+using App.Core.Features.AccountingPeriods.ReversePeriod;
+using App.Core.Features.AccountMappings.GetAccountMappings;
+using App.Core.Features.AccountMappings.UpdateAccountMappings;
 using App.Core.Features.Accounts;
 using App.Core.Features.Accounts.CreateAccount;
 using App.Core.Features.Accounts.DeleteAccount;
@@ -20,6 +25,10 @@ using App.Core.Features.Categories.GetCategoriesPaged;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Core.Features.Costs;
 using App.Core.Features.Costs.RecalculateCosts;
+using App.Core.Features.FinancialReports.GetAccountBalance;
+using App.Core.Features.FinancialReports.GetBalanceSheet;
+using App.Core.Features.FinancialReports.GetIncomeStatement;
+using App.Core.Features.GeneralLedger;
 using App.Core.Features.Invoices;
 using App.Core.Features.Invoices.CreateInvoice;
 using App.Core.Features.Invoices.ExportInvoices;
@@ -164,6 +173,10 @@ using App.Core.Features.Users.GetUsers;
 using App.Core.Features.Users.ResetPassword;
 using App.Core.Features.Users.UpdateUser;
 using App.Core.Features.Users.UpdateUserStatus;
+using App.Core.Features.Vouchers.CreateVoucher;
+using App.Core.Features.Vouchers.GetVoucherById;
+using App.Core.Features.Vouchers.GetVouchers;
+using App.Core.Features.Vouchers.VoidVoucher;
 using App.Core.Mediation;
 using App.Core.Responses;
 
@@ -251,6 +264,20 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidInvoiceRequest, InvoiceDetailDto>, VoidInvoiceRequestHandler>();
         services.AddScoped<IRequestHandler<GetInvoicableOrdersRequest, PagedResult<InvoicableOrderDto>>, GetInvoicableOrdersRequestHandler>();
         services.AddScoped<IRequestHandler<ExportInvoicesRequest, ExportResultDto>, ExportInvoicesRequestHandler>();
+
+        // 总账用例（erp-general-ledger：会计期间 + 凭证 + 科目映射 + 财务报表）
+        services.AddScoped<IRequestHandler<GetPeriodsRequest, IReadOnlyList<PeriodDto>>, GetPeriodsRequestHandler>();
+        services.AddScoped<IRequestHandler<ClosePeriodRequest, PeriodDto>, ClosePeriodRequestHandler>();
+        services.AddScoped<IRequestHandler<ReversePeriodRequest, PeriodDto>, ReversePeriodRequestHandler>();
+        services.AddScoped<IRequestHandler<GetVouchersRequest, PagedResult<VoucherListItemDto>>, GetVouchersRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateVoucherRequest, VoucherDetailDto>, CreateVoucherRequestHandler>();
+        services.AddScoped<IRequestHandler<GetVoucherByIdRequest, VoucherDetailDto>, GetVoucherByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidVoucherRequest, VoucherDetailDto>, VoidVoucherRequestHandler>();
+        services.AddScoped<IRequestHandler<GetAccountMappingsRequest, IReadOnlyList<AccountMappingDto>>, GetAccountMappingsRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateAccountMappingsRequest, IReadOnlyList<AccountMappingDto>>, UpdateAccountMappingsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetAccountBalanceRequest, IReadOnlyList<AccountBalanceItemDto>>, GetAccountBalanceRequestHandler>();
+        services.AddScoped<IRequestHandler<GetBalanceSheetRequest, BalanceSheetDto>, GetBalanceSheetRequestHandler>();
+        services.AddScoped<IRequestHandler<GetIncomeStatementRequest, IncomeStatementDto>, GetIncomeStatementRequestHandler>();
 
         // 财务主数据用例（erp-finance-master：会计科目树 + 税率字典）
         services.AddScoped<IRequestHandler<GetAccountsRequest, IReadOnlyList<AccountTreeNodeDto>>, GetAccountsRequestHandler>();
@@ -477,6 +504,15 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CreateInvoiceRequest>, CreateInvoiceRequestValidator>();
         services.AddScoped<IValidator<GetInvoicableOrdersRequest>, GetInvoicableOrdersRequestValidator>();
         services.AddScoped<IValidator<ExportInvoicesRequest>, ExportInvoicesRequestValidator>();
+        services.AddScoped<IValidator<GetPeriodsRequest>, GetPeriodsRequestValidator>();
+        services.AddScoped<IValidator<ClosePeriodRequest>, ClosePeriodRequestValidator>();
+        services.AddScoped<IValidator<ReversePeriodRequest>, ReversePeriodRequestValidator>();
+        services.AddScoped<IValidator<GetVouchersRequest>, GetVouchersRequestValidator>();
+        services.AddScoped<IValidator<CreateVoucherRequest>, CreateVoucherRequestValidator>();
+        services.AddScoped<IValidator<UpdateAccountMappingsRequest>, UpdateAccountMappingsRequestValidator>();
+        services.AddScoped<IValidator<GetAccountBalanceRequest>, GetAccountBalanceRequestValidator>();
+        services.AddScoped<IValidator<GetBalanceSheetRequest>, GetBalanceSheetRequestValidator>();
+        services.AddScoped<IValidator<GetIncomeStatementRequest>, GetIncomeStatementRequestValidator>();
 
         return services;
     }

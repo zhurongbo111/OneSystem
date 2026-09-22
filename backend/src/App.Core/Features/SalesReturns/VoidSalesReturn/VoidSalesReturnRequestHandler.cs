@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Finance;
 
 namespace App.Core.Features.SalesReturns.VoidSalesReturn;
 
@@ -16,6 +17,8 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
     private readonly ISalesReturnRepository _salesReturnRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IVoucherRepository _voucherRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
@@ -27,6 +30,8 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
         ISalesReturnRepository salesReturnRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
+        IVoucherRepository voucherRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger)
@@ -34,6 +39,8 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
         _salesReturnRepository = salesReturnRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
+        _voucherRepository = voucherRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
@@ -101,6 +108,16 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
             }
 
             await _salesReturnRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, operatorId, cancellationToken);
+
+            // 总账（erp-general-ledger）：同事务作废其自动凭证；期间已结账（40154）会阻断作废，随事务回滚
+            await VoucherWriter.VoidAutoVouchersAsync(
+                VoucherSourceType.SalesReturn,
+                salesReturn.Id,
+                salesReturn.ReturnDate,
+                _voucherRepository,
+                _accountingPeriodRepository,
+                operatorId,
+                cancellationToken);
 
             // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
             var voidedSalesReturnChangeBuilder = new AuditChangeBuilder()

@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Finance;
 
 namespace App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 
@@ -26,6 +27,10 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IVoucherRepository _voucherRepository;
+    private readonly IAccountMappingRepository _accountMappingRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
+    private readonly IAccountRepository _accountRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
@@ -39,6 +44,10 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
+        IVoucherRepository voucherRepository,
+        IAccountMappingRepository accountMappingRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
+        IAccountRepository accountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger)
@@ -48,6 +57,10 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
+        _voucherRepository = voucherRepository;
+        _accountMappingRepository = accountMappingRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
+        _accountRepository = accountRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
@@ -200,6 +213,23 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
                         CreatedBy = operatorId,
                     }, cancellationToken);
                 }
+
+                // 总账（erp-general-ledger）：同事务生成自动凭证（借应付账款 / 贷存货）；
+                // 科目映射缺失（40158）或期间不可记账（40154 / 40159）会阻断整单，随事务回滚
+                await VoucherWriter.AppendAutoAsync(
+                    VoucherSourceType.PurchaseReturn,
+                    purchaseReturn.Id,
+                    purchaseReturn.ReturnNo,
+                    purchaseReturn.ReturnDate,
+                    purchaseReturn.TotalAmount,
+                    0m,
+                    null,
+                    _voucherRepository,
+                    _accountMappingRepository,
+                    _accountingPeriodRepository,
+                    _accountRepository,
+                    operatorId,
+                    cancellationToken);
 
                 // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
                 var createdReturnChangeBuilder = new AuditChangeBuilder()
