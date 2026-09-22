@@ -1,6 +1,13 @@
 using App.Core.Abstractions;
 using App.Core.Auth;
 using App.Core.Exports;
+using App.Core.Features.Accounts;
+using App.Core.Features.Accounts.CreateAccount;
+using App.Core.Features.Accounts.DeleteAccount;
+using App.Core.Features.Accounts.GetAccountById;
+using App.Core.Features.Accounts.GetAccounts;
+using App.Core.Features.Accounts.UpdateAccount;
+using App.Core.Features.Accounts.UpdateAccountStatus;
 using App.Core.Features.AuditLogs;
 using App.Core.Features.AuditLogs.GetAuditLogById;
 using App.Core.Features.AuditLogs.GetAuditLogs;
@@ -13,6 +20,13 @@ using App.Core.Features.Categories.GetCategoriesPaged;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Core.Features.Costs;
 using App.Core.Features.Costs.RecalculateCosts;
+using App.Core.Features.Invoices;
+using App.Core.Features.Invoices.CreateInvoice;
+using App.Core.Features.Invoices.ExportInvoices;
+using App.Core.Features.Invoices.GetInvoiceById;
+using App.Core.Features.Invoices.GetInvoices;
+using App.Core.Features.Invoices.GetInvoicableOrders;
+using App.Core.Features.Invoices.VoidInvoice;
 using App.Core.Features.Departments;
 using App.Core.Features.Departments.CreateDepartment;
 using App.Core.Features.Departments.DeleteDepartment;
@@ -134,6 +148,13 @@ using App.Core.Features.StockTakes.ExportStockTakes;
 using App.Core.Features.StockTakes.GetStockTakeById;
 using App.Core.Features.StockTakes.GetStockTakePickProducts;
 using App.Core.Features.StockTakes.GetStockTakes;
+using App.Core.Features.TaxRates;
+using App.Core.Features.TaxRates.CreateTaxRate;
+using App.Core.Features.TaxRates.DeleteTaxRate;
+using App.Core.Features.TaxRates.GetTaxRateById;
+using App.Core.Features.TaxRates.GetTaxRates;
+using App.Core.Features.TaxRates.UpdateTaxRate;
+using App.Core.Features.TaxRates.UpdateTaxRateStatus;
 using App.Core.Features.Users;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.GetCurrentUser;
@@ -222,6 +243,28 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<UpdateEmployeeStatusRequest, EmployeeDetailDto>, UpdateEmployeeStatusRequestHandler>();
         services.AddScoped<IRequestHandler<GetAvailableUsersRequest, IReadOnlyList<EmployeePickUserDto>>, GetAvailableUsersRequestHandler>();
         services.AddScoped<IRequestHandler<ExportEmployeesRequest, ExportResultDto>, ExportEmployeesRequestHandler>();
+
+        // 发票登记用例（erp-invoice：登记 + 关联单据 + 作废 + 可开票候选 + 导出）
+        services.AddScoped<IRequestHandler<GetInvoicesRequest, PagedResult<InvoiceListItemDto>>, GetInvoicesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateInvoiceRequest, InvoiceDetailDto>, CreateInvoiceRequestHandler>();
+        services.AddScoped<IRequestHandler<GetInvoiceByIdRequest, InvoiceDetailDto>, GetInvoiceByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidInvoiceRequest, InvoiceDetailDto>, VoidInvoiceRequestHandler>();
+        services.AddScoped<IRequestHandler<GetInvoicableOrdersRequest, PagedResult<InvoicableOrderDto>>, GetInvoicableOrdersRequestHandler>();
+        services.AddScoped<IRequestHandler<ExportInvoicesRequest, ExportResultDto>, ExportInvoicesRequestHandler>();
+
+        // 财务主数据用例（erp-finance-master：会计科目树 + 税率字典）
+        services.AddScoped<IRequestHandler<GetAccountsRequest, IReadOnlyList<AccountTreeNodeDto>>, GetAccountsRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateAccountRequest, AccountDetailDto>, CreateAccountRequestHandler>();
+        services.AddScoped<IRequestHandler<GetAccountByIdRequest, AccountDetailDto>, GetAccountByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateAccountRequest, AccountDetailDto>, UpdateAccountRequestHandler>();
+        services.AddScoped<IRequestHandler<DeleteAccountRequest, object?>, DeleteAccountRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateAccountStatusRequest, AccountDetailDto>, UpdateAccountStatusRequestHandler>();
+        services.AddScoped<IRequestHandler<GetTaxRatesRequest, PagedResult<TaxRateListItemDto>>, GetTaxRatesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateTaxRateRequest, TaxRateDetailDto>, CreateTaxRateRequestHandler>();
+        services.AddScoped<IRequestHandler<GetTaxRateByIdRequest, TaxRateDetailDto>, GetTaxRateByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateTaxRateRequest, TaxRateDetailDto>, UpdateTaxRateRequestHandler>();
+        services.AddScoped<IRequestHandler<DeleteTaxRateRequest, object?>, DeleteTaxRateRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateTaxRateStatusRequest, TaxRateDetailDto>, UpdateTaxRateStatusRequestHandler>();
 
         // 商品管理用例（erp-product）
         services.AddScoped<IRequestHandler<GetProductsRequest, PagedResult<ProductDto>>, GetProductsRequestHandler>();
@@ -423,6 +466,17 @@ public static class DependencyInjection
         services.AddScoped<IValidator<ExportPurchaseSummaryRequest>, ExportPurchaseSummaryRequestValidator>();
         services.AddScoped<IValidator<ExportSalesSummaryRequest>, ExportSalesSummaryRequestValidator>();
         services.AddScoped<IValidator<ExportCostProfitRequest>, ExportCostProfitRequestValidator>();
+        services.AddScoped<IValidator<CreateAccountRequest>, CreateAccountRequestValidator>();
+        services.AddScoped<IValidator<UpdateAccountRequest>, UpdateAccountRequestValidator>();
+        services.AddScoped<IValidator<UpdateAccountStatusRequest>, UpdateAccountStatusRequestValidator>();
+        services.AddScoped<IValidator<GetTaxRatesRequest>, GetTaxRatesRequestValidator>();
+        services.AddScoped<IValidator<CreateTaxRateRequest>, CreateTaxRateRequestValidator>();
+        services.AddScoped<IValidator<UpdateTaxRateRequest>, UpdateTaxRateRequestValidator>();
+        services.AddScoped<IValidator<UpdateTaxRateStatusRequest>, UpdateTaxRateStatusRequestValidator>();
+        services.AddScoped<IValidator<GetInvoicesRequest>, GetInvoicesRequestValidator>();
+        services.AddScoped<IValidator<CreateInvoiceRequest>, CreateInvoiceRequestValidator>();
+        services.AddScoped<IValidator<GetInvoicableOrdersRequest>, GetInvoicableOrdersRequestValidator>();
+        services.AddScoped<IValidator<ExportInvoicesRequest>, ExportInvoicesRequestValidator>();
 
         return services;
     }

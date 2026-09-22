@@ -54,6 +54,9 @@ public static class ExportDomainNames
     /// <summary>员工档案</summary>
     public const string Employees = "员工档案";
 
+    /// <summary>发票登记</summary>
+    public const string Invoices = "发票";
+
     /// <summary>单据类导出的「单据」工作表名（明细表见 <see cref="DetailSheet"/>）</summary>
     public const string DocumentSheet = "单据";
 

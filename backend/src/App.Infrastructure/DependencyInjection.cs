@@ -72,6 +72,14 @@ public static class DependencyInjection
         services.AddScoped<IPositionRepository, PositionRepository>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 
+        // 财务主数据（erp-finance-master）：会计科目 / 税率
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<ITaxRateRepository, TaxRateRepository>();
+
+        // 发票登记（erp-invoice）：发票 + 关联明细 + 跨四表只读查询
+        services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IInvoiceQueryRepository, InvoiceQueryRepository>();
+
         // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();

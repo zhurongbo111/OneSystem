@@ -65,7 +65,81 @@ public static class DatabaseInitializer
         }
 
         await SeedRolesAndUserRolesAsync(dbContext, logger, cancellationToken);
+        await SeedPresetAccountsAsync(dbContext, logger, cancellationToken);
     }
+
+    /// <summary>
+    /// 幂等预置标准会计科目（<c>IsPreset = true</c>，预置科目不可删除、可改名 / 停用）：
+    /// 按 <c>Code</c> 判定是否已存在，只补不删，可重复执行
+    /// （specs/031-erp-finance-master/design.md §2.4）。
+    /// </summary>
+    /// <param name="dbContext">数据库上下文</param>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private static async Task SeedPresetAccountsAsync(
+        AppDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        var existingCodes = await dbContext.Accounts
+            .Select(a => a.Code)
+            .ToListAsync(cancellationToken);
+        var existing = new HashSet<string>(existingCodes, StringComparer.OrdinalIgnoreCase);
+
+        var all = PresetAccounts();
+        var presets = all
+            .Select((preset, index) => (Preset: preset, SortOrder: index + 1))
+            .Where(item => !existing.Contains(item.Preset.Code))
+            .ToList();
+
+        if (presets.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        dbContext.Accounts.AddRange(presets.Select(item => new Account
+        {
+            Id = Guid.NewGuid(),
+            Code = item.Preset.Code,
+            Name = item.Preset.Name,
+            Category = item.Preset.Category,
+            Direction = item.Preset.Direction,
+            ParentId = null,
+            SortOrder = item.SortOrder,
+            IsPreset = true,
+            Status = AccountStatus.Enabled,
+            CreatedAt = now,
+            UpdatedAt = now,
+        }));
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        logger?.LogInformation("已预置标准会计科目 {Count} 条（已存在 {Skipped} 条跳过）", presets.Count, all.Count - presets.Count);
+    }
+
+    /// <summary>
+    /// 最小标准科目表（顺序即一级科目排序）：
+    /// 资产 / 成本默认借方，负债 / 权益 / 损益默认贷方（specs/031-erp-finance-master/design.md §2.4）
+    /// </summary>
+    private static IReadOnlyList<(string Code, string Name, AccountCategory Category, AccountDirection Direction)> PresetAccounts()
+        =>
+        [
+            ("1001", "库存现金", AccountCategory.Asset, AccountDirection.Debit),
+            ("1002", "银行存款", AccountCategory.Asset, AccountDirection.Debit),
+            ("1122", "应收账款", AccountCategory.Asset, AccountDirection.Debit),
+            ("1405", "库存商品", AccountCategory.Asset, AccountDirection.Debit),
+            ("1403", "原材料", AccountCategory.Asset, AccountDirection.Debit),
+            ("2202", "应付账款", AccountCategory.Liability, AccountDirection.Credit),
+            ("2221", "应交税费", AccountCategory.Liability, AccountDirection.Credit),
+            ("4001", "实收资本", AccountCategory.Equity, AccountDirection.Credit),
+            ("4103", "本年利润", AccountCategory.Equity, AccountDirection.Credit),
+            ("4104", "利润分配", AccountCategory.Equity, AccountDirection.Credit),
+            ("5001", "生产成本", AccountCategory.Cost, AccountDirection.Debit),
+            ("6001", "主营业务收入", AccountCategory.ProfitLoss, AccountDirection.Credit),
+            ("6401", "主营业务成本", AccountCategory.ProfitLoss, AccountDirection.Credit),
+            ("6602", "管理费用", AccountCategory.ProfitLoss, AccountDirection.Credit),
+            ("6603", "财务费用", AccountCategory.ProfitLoss, AccountDirection.Credit),
+        ];
 
     /// <summary>
     /// 幂等创建内置角色并补齐用户角色绑定：

@@ -24,6 +24,10 @@ public static class AuditSummary
     public static string Count(int? value)
         => value?.ToString(CultureInfo.InvariantCulture) ?? Empty;
 
+    /// <summary>税率百分比格式（去尾零，如 13 / 13.5 / 9）</summary>
+    public static string Rate(decimal? value)
+        => value?.ToString("0.####", CultureInfo.InvariantCulture) ?? Empty;
+
     /// <summary>文本格式（空 / 空白均为占位符）</summary>
     public static string Text(string? value)
         => string.IsNullOrWhiteSpace(value) ? Empty : value.Trim();

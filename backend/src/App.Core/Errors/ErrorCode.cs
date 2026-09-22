@@ -111,7 +111,7 @@ public static class ErrorCode
     /// <summary>部门存在子部门或员工，禁止删除</summary>
     public const int DepartmentInUse = 40140;
 
-    /// <summary>上级部门不能是自身或其下级（防环）</summary>
+    /// <summary>上级不能是自身或其下级（防环）；树形自引用域共用（`031` 会计科目环检查复用同一码）</summary>
     public const int DepartmentCycle = 40141;
 
     /// <summary>岗位编码已存在</summary>
@@ -134,6 +134,35 @@ public static class ErrorCode
 
     /// <summary>邮箱已存在</summary>
     public const int EmployeeEmailExists = 40148;
+
+    // ===== 发票登记（specs/032-erp-invoice/design.md §3.2） =====
+    /// <summary>发票号已存在</summary>
+    public const int InvoiceNoExists = 40132;
+
+    /// <summary>开票金额超过单据未开票金额（message 含单据号与未开票金额）</summary>
+    public const int InvoiceAmountExceeded = 40133;
+
+    /// <summary>发票类型与单据类型不匹配（如销项票关联采购入库单）</summary>
+    public const int InvoiceDirectionMismatch = 40134;
+
+    /// <summary>发票往来单位与单据往来单位不一致</summary>
+    public const int InvoicePartnerMismatch = 40135;
+
+    // ===== 财务主数据（specs/031-erp-finance-master/design.md §3.2） =====
+    /// <summary>科目编码已存在</summary>
+    public const int AccountCodeExists = 40149;
+
+    /// <summary>科目有子科目或为预置科目，禁止删除</summary>
+    public const int AccountInUse = 40150;
+
+    /// <summary>税率编码已存在</summary>
+    public const int TaxRateCodeExists = 40151;
+
+    /// <summary>税率名称已存在</summary>
+    public const int TaxRateNameExists = 40152;
+
+    /// <summary>科目已被凭证引用，禁止删除（`033` 落地后生效）</summary>
+    public const int AccountReferencedByVoucher = 40153;
 
     // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
     /// <summary>角色名称已存在（忽略大小写）</summary>
