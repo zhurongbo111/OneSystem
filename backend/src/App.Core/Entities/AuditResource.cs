@@ -62,4 +62,13 @@ public enum AuditResource
 
     /// <summary>销售订单（024）</summary>
     SalesOrder = 18,
+
+    /// <summary>部门（030）</summary>
+    Department = 19,
+
+    /// <summary>岗位（030）</summary>
+    Position = 20,
+
+    /// <summary>员工（030）</summary>
+    Employee = 21,
 }

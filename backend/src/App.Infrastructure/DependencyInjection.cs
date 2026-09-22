@@ -67,6 +67,11 @@ public static class DependencyInjection
         services.AddScoped<ISettlementQueryRepository, SettlementQueryRepository>();
         services.AddScoped<IReportQueryRepository, ReportQueryRepository>();
 
+        // 组织人事（erp-org-employee）：部门 / 岗位 / 员工
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IPositionRepository, PositionRepository>();
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+
         // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();

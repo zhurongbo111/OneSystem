@@ -32,6 +32,10 @@ public static class AuditSummary
     public static string Date(DateTimeOffset? value)
         => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? Empty;
 
+    /// <summary>纯日期格式（yyyy-MM-dd，DateOnly 字段用：入职 / 离职日期）</summary>
+    public static string Date(DateOnly? value)
+        => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? Empty;
+
     /// <summary>
     /// 集合快照文本（如角色集合、单据明细编号集合）；空集合返回占位符
     /// </summary>

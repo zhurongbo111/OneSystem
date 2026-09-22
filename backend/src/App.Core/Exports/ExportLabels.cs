@@ -30,6 +30,18 @@ public static class ExportLabels
     public static string ToText(OrderStatus status)
         => status == OrderStatus.Normal ? "正常" : "已作废";
 
+    /// <summary>员工在职状态：在职 / 离职</summary>
+    public static string ToText(EmployeeStatus status)
+        => status == EmployeeStatus.Active ? "在职" : "离职";
+
+    /// <summary>性别：男 / 女（未填输出占位符）</summary>
+    public static string ToText(Gender? gender) => gender switch
+    {
+        Entities.Gender.Male => "男",
+        Entities.Gender.Female => "女",
+        _ => OrDash(null),
+    };
+
     /// <summary>库存变动类型文案（specs/019-erp-stock-movement/design.md §0）</summary>
     public static string ToText(StockMovementType type)
         => type switch

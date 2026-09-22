@@ -91,4 +91,29 @@ public static class AuditText
         Entities.SettlementState.Settled => "已结算",
         _ => AuditSummary.Empty,
     };
+
+    /// <summary>部门状态文案</summary>
+    /// <param name="status">状态</param>
+    public static string DepartmentStatus(DepartmentStatus status)
+        => status == Entities.DepartmentStatus.Enabled ? "启用" : "停用";
+
+    /// <summary>岗位状态文案</summary>
+    /// <param name="status">状态</param>
+    public static string PositionStatus(PositionStatus status)
+        => status == Entities.PositionStatus.Enabled ? "启用" : "停用";
+
+    /// <summary>员工在职状态文案</summary>
+    /// <param name="status">状态</param>
+    public static string EmployeeStatus(EmployeeStatus status)
+        => status == Entities.EmployeeStatus.Active ? "在职" : "离职";
+
+    /// <summary>性别文案（未填输出空值占位）</summary>
+    /// <param name="gender">性别，可空</param>
+    public static string Gender(Gender? gender) => gender switch
+    {
+        Entities.Gender.Male => "男",
+        Entities.Gender.Female => "女",
+        Entities.Gender.Unknown => AuditSummary.Empty,
+        _ => AuditSummary.Empty,
+    };
 }

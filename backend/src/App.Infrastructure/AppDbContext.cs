@@ -98,6 +98,15 @@ public class AppDbContext : DbContext
     /// <summary>业务操作审计日志表（纯追加）</summary>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    /// <summary>部门表（树形，ParentId 自引用）</summary>
+    public DbSet<Department> Departments => Set<Department>();
+
+    /// <summary>岗位表（独立字典）</summary>
+    public DbSet<Position> Positions => Set<Position>();
+
+    /// <summary>员工档案表</summary>
+    public DbSet<Employee> Employees => Set<Employee>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
