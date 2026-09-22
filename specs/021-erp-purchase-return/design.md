@@ -11,6 +11,7 @@ updated: 2026-09-22
 > **演进（`023-erp-settlement` / `024-erp-order-flow` / `026-erp-cost`）**：退货单结算已金额化（`SettledAmount` + 推导状态，手工切换端点移除，已核销禁作废，核销取数只查主表）；其消费的采购入库单表已重命名（`PurchaseOrders` → `PurchaseReceipts`，路径 `/api/purchase-receipts`，前缀 `GR`）；流水写入同时回填成本列。**本正文已按现行为准**，决策与判据见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6、`specs/024-erp-order-flow/design.md` §3 与 `specs/026-erp-cost/design.md` §3。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `purchaseReturns.view` / `create` / `void` / `settle` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-audit-log）**：本域采购退货（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
+> **演进（erp-general-ledger）**：本域采购退货单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（借「应付账款」、贷「库存商品」，为采购入库的反向分录）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
 
 ## 0. 退货单域共用约定（erp-sale-return 继承）
 

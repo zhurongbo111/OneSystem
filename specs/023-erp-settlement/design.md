@@ -12,6 +12,7 @@ updated: 2026-09-22
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `settlements.view` / `create` / `void` / `export`，往来对账为 `reconciliation.view`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-audit-log）**：本域收付款单（创建核销 / 作废）的写操作已接入操作日志；被核销单据的结算态变更由收付款单日志体现，不单独记录（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-invoice）**：`SettlementOrderType` 语义已泛化为「**可关联单据类型**」并被 `specs/032-erp-invoice/design.md` §0.2 复用（发票关联单据共用该枚举，不新建同形枚举）；取值与命名不变，后续若改名（如 `BusinessOrderType`）两规格同步。
+> **演进（erp-general-ledger）**：本域收付款单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（收款：借现金 / 银行存款、贷「应收账款」；付款：借「应付账款」、贷现金 / 银行存款，现金科目按结算方式选取）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
 
 ## 0. 结算口径约定（唯一事实源）
 

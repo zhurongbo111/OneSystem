@@ -53,6 +53,8 @@ updated: 2026-09-22
 | 员工（`030`） | `employees` | `view` / `create` / `update` / `status` / `export` | `/api/employees*`、`/employees` |
 | 会计科目（`031`） | `accounts` | `view` / `create` / `update` / `delete` / `status` | `/api/accounts*`、`/accounts` |
 | 税率（`031`） | `taxRates` | `view` / `create` / `update` / `delete` / `status` | `/api/tax-rates*`、`/tax-rates` |
+| 凭证（`033`） | `vouchers` | `view` / `create` / `void` / `close` / `updateMapping` | `/api/vouchers*`、`/api/accounting-periods*`、`/api/account-mappings*`、`/vouchers`、`/vouchers/new`、`/vouchers/detail/:id` |
+| 财务报表（`033`） | `financialReports` | `view` | `/api/reports/account-balance`、`/api/reports/balance-sheet`、`/api/reports/income-statement`、`/financial-reports` |
 | 站内消息（`041`） | `notifications` | `view` | `/api/notifications*`、顶栏铃铛 |
 | 单据审批（`042`） | `approvals` | `view` / `approve` | `/api/approvals*`、审批页 |
 
