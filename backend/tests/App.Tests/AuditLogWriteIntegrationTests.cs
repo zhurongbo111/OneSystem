@@ -259,6 +259,8 @@ public class AuditLogWriteIntegrationTests
             new FakePurchaseOrderRepository(calls),
             inventory,
             new FakeStockMovementRepository(calls),
+            GeneralLedgerStubs.NewVouchers(),
+            GeneralLedgerStubs.NewPeriods(),
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),
             audit).HandleAsync(new VoidPurchaseReceiptRequest { Id = receipt.Id });
@@ -309,6 +311,8 @@ public class AuditLogWriteIntegrationTests
             shipments,
             new FakePurchaseReturnRepository(calls),
             new FakeSalesReturnRepository(calls),
+            GeneralLedgerStubs.NewVouchers(),
+            GeneralLedgerStubs.NewPeriods(),
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),
             audit).HandleAsync(new VoidSettlementRequest { Id = settlement.Id });
@@ -461,6 +465,7 @@ public class AuditLogWriteIntegrationTests
         var inventory = new FakeInventoryRepository(calls);
         inventory.Seed(product.Id, 5);
         var audit = new RecordingAuditLogger();
+        var gl = GeneralLedgerStubs.Create();
         var handler = new CreateSalesShipmentRequestHandler(
             new FakeSalesShipmentRepository(calls),
             new FakeSalesOrderRepository(calls),
@@ -468,6 +473,7 @@ public class AuditLogWriteIntegrationTests
             new ProductRepository(context),
             inventory,
             new FakeStockMovementRepository(calls),
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),
             audit);
@@ -524,6 +530,8 @@ public class AuditLogWriteIntegrationTests
             new FakePurchaseOrderRepository(calls),
             inventory,
             new FakeStockMovementRepository(calls),
+            GeneralLedgerStubs.NewVouchers(),
+            GeneralLedgerStubs.NewPeriods(),
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),
             audit);

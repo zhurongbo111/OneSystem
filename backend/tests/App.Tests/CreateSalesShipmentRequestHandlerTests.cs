@@ -29,6 +29,7 @@ public class CreateSalesShipmentRequestHandlerTests
         var inventory = new FakeInventoryRepository(calls);
         var movements = new FakeStockMovementRepository(calls);
         var uow = new RecordingUnitOfWork(calls);
+        var gl = GeneralLedgerStubs.Create();
         var handler = new CreateSalesShipmentRequestHandler(
             orders,
             new FakeSalesOrderRepository(calls),
@@ -36,6 +37,7 @@ public class CreateSalesShipmentRequestHandlerTests
             new ProductRepository(context),
             inventory,
             movements,
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             uow,
             user, TestSupport.AuditLogger);
         return (context, user, orders, inventory, movements, uow, handler, calls);

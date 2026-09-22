@@ -28,6 +28,7 @@ public class CreatePurchaseReceiptRequestHandlerTests
         var inventory = new FakeInventoryRepository(calls);
         var movements = new FakeStockMovementRepository(calls);
         var uow = new RecordingUnitOfWork(calls);
+        var gl = GeneralLedgerStubs.Create();
         var handler = new CreatePurchaseReceiptRequestHandler(
             orders,
             new FakePurchaseOrderRepository(calls),
@@ -35,6 +36,7 @@ public class CreatePurchaseReceiptRequestHandlerTests
             new ProductRepository(context),
             inventory,
             movements,
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             uow,
             user, TestSupport.AuditLogger);
         return (context, user, orders, inventory, movements, uow, handler, calls);

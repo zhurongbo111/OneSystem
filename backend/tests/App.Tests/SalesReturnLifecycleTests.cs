@@ -72,7 +72,7 @@ public class SalesReturnLifecycleTests
     {
         var (returns, inventory, uow, user, salesReturn, p1, p2, calls) = SeedNormal();
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidSalesReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
+        var handler = new VoidSalesReturnRequestHandler(returns, inventory, movements, GeneralLedgerStubs.NewVouchers(), GeneralLedgerStubs.NewPeriods(), uow, user, TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new VoidSalesReturnRequest { Id = salesReturn.Id });
 
@@ -109,7 +109,7 @@ public class SalesReturnLifecycleTests
         // 退回入库的货已被再次卖出：库存低于退货数量
         inventory.Seed(p1.Id, 1);
         inventory.Seed(p2.Id, 0);
-        var handler = new VoidSalesReturnRequestHandler(returns, inventory, new FakeStockMovementRepository(), uow, user, TestSupport.AuditLogger);
+        var handler = new VoidSalesReturnRequestHandler(returns, inventory, new FakeStockMovementRepository(), GeneralLedgerStubs.NewVouchers(), GeneralLedgerStubs.NewPeriods(), uow, user, TestSupport.AuditLogger);
 
         await handler.HandleAsync(new VoidSalesReturnRequest { Id = salesReturn.Id });
 
@@ -122,7 +122,7 @@ public class SalesReturnLifecycleTests
     public async Task 作废销售退货单_不存在_应报NotFound()
     {
         var (returns, inventory, uow, user, _, _, _, _) = SeedNormal();
-        var handler = new VoidSalesReturnRequestHandler(returns, inventory, new FakeStockMovementRepository(), uow, user, TestSupport.AuditLogger);
+        var handler = new VoidSalesReturnRequestHandler(returns, inventory, new FakeStockMovementRepository(), GeneralLedgerStubs.NewVouchers(), GeneralLedgerStubs.NewPeriods(), uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesReturnRequest { Id = Guid.NewGuid() }));
@@ -137,7 +137,7 @@ public class SalesReturnLifecycleTests
         await returns.UpdateStatusAsync(salesReturn.Id, OrderStatus.Voided, null);
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidSalesReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
+        var handler = new VoidSalesReturnRequestHandler(returns, inventory, movements, GeneralLedgerStubs.NewVouchers(), GeneralLedgerStubs.NewPeriods(), uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesReturnRequest { Id = salesReturn.Id }));
@@ -157,7 +157,7 @@ public class SalesReturnLifecycleTests
         salesReturn.SettledAmount = 10m; // 已被付款单核销（部分）
 
         var movements = new FakeStockMovementRepository(calls);
-        var handler = new VoidSalesReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
+        var handler = new VoidSalesReturnRequestHandler(returns, inventory, movements, GeneralLedgerStubs.NewVouchers(), GeneralLedgerStubs.NewPeriods(), uow, user, TestSupport.AuditLogger);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new VoidSalesReturnRequest { Id = salesReturn.Id }));
@@ -295,13 +295,14 @@ public class SalesReturnLifecycleTests
         var returns = new FakeSalesReturnRepository(calls);
 
         // 先入库 5（期初），再销售出库 2、退货 2、退货作废 2
+        var gl = GeneralLedgerStubs.Create();
         var salesCreate = new CreateSalesShipmentRequestHandler(
             salesShipments, new FakeSalesOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, uow, user, TestSupport.AuditLogger);
+            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         var returnCreate = new CreateSalesReturnRequestHandler(
             returns, new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, uow, user, TestSupport.AuditLogger);
-        var returnVoid = new VoidSalesReturnRequestHandler(returns, inventory, movements, uow, user, TestSupport.AuditLogger);
+            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+        var returnVoid = new VoidSalesReturnRequestHandler(returns, inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
 
         inventory.Seed(product.Id, 5); // 期初库存（无流水，模拟开账前已存在）
 

@@ -55,16 +55,23 @@ public class SettlementCreateAndVoidTests
     }
 
     private static CreateSettlementRequestHandler CreateHandler(Harness harness)
-        => new(
+    {
+        var gl = GeneralLedgerStubs.Create();
+        return new(
             harness.Settlements,
             harness.PurchaseReceipts,
             harness.SalesShipments,
             harness.PurchaseReturns,
             harness.SalesReturns,
             new PartnerRepository(harness.Context),
+            gl.Vouchers,
+            gl.Mappings,
+            gl.Periods,
+            gl.Accounts,
             harness.Uow,
             harness.User,
             TestSupport.AuditLogger);
+    }
 
     private static VoidSettlementRequestHandler CreateVoidHandler(Harness harness)
         => new(
@@ -73,6 +80,8 @@ public class SettlementCreateAndVoidTests
             harness.SalesShipments,
             harness.PurchaseReturns,
             harness.SalesReturns,
+            GeneralLedgerStubs.NewVouchers(),
+            GeneralLedgerStubs.NewPeriods(),
             harness.Uow,
             harness.User,
             TestSupport.AuditLogger);

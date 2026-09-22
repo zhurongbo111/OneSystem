@@ -54,9 +54,13 @@ public class CostWritePathTests
         var partnerRepository = new PartnerRepository(context);
         var productRepository = new ProductRepository(context);
 
+        // 总账桩：自动凭证在本用例中只要求不阻断业务
+        var gl = GeneralLedgerStubs.Create();
+
         // ① 采购入库 10 件 × 20 元 → 数量 20、金额 300、均价 15
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, inventory, movements, uow, user, TestSupport.AuditLogger);
+            orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, inventory, movements,
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
         {
             PartnerId = supplier.Id,
@@ -74,7 +78,8 @@ public class CostWritePathTests
 
         // ② 销售出库 5 件 → 按变动前均价 15 结转，成本 75、金额 225、均价仍 15
         var createSale = new CreateSalesShipmentRequestHandler(
-            sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, inventory, movements, uow, user, TestSupport.AuditLogger);
+            sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, inventory, movements,
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         await createSale.HandleAsync(new CreateSalesShipmentRequest
         {
             PartnerId = customer.Id,
@@ -93,7 +98,7 @@ public class CostWritePathTests
 
         // ③ 采购作废（回冲 −10 件）→ 按原入库单价 20 结转 −200，金额 25
         var voidPurchase = new VoidPurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), inventory, movements, uow, user, TestSupport.AuditLogger);
+            orders, new FakePurchaseOrderRepository(), inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
         var receipt = Assert.Single(orders.Orders);
         await voidPurchase.HandleAsync(new VoidPurchaseReceiptRequest { Id = receipt.Id });
 
@@ -138,8 +143,9 @@ public class CostWritePathTests
         inventory.CostAmounts[product.Id] = 200m;
         inventory.AverageCosts[product.Id] = 20m;
 
+        var gl = GeneralLedgerStubs.Create();
         var handler = new VoidPurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), inventory, movements, uow, user, TestSupport.AuditLogger);
+            orders, new FakePurchaseOrderRepository(), inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
         await handler.HandleAsync(new VoidPurchaseReceiptRequest { Id = receipt.Id });
 
         var reversal = Assert.Single(movements.Appended);
