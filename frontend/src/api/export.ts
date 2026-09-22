@@ -1,3 +1,4 @@
+import type { GetEmployeesParams } from './employee'
 import type { InventoryListQuery } from './inventory'
 import type { GetPartnersParams } from './partner'
 import type { ProductListQuery } from './product'
@@ -66,4 +67,9 @@ export function exportSettlements(params: Omit<SettlementQuery, 'page' | 'pageSi
 /** 导出库存盘点单（工作表：单据 + 明细） */
 export function exportStockTakes(params: Omit<StockTakeQuery, 'page' | 'pageSize'>): Promise<void> {
   return downloadBlob('/stock-takes/export', params)
+}
+
+/** 导出员工档案列表 */
+export function exportEmployees(params: Omit<GetEmployeesParams, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/employees/export', params)
 }

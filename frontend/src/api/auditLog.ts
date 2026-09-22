@@ -22,6 +22,9 @@ export type AuditResource =
   | 16
   | 17
   | 18
+  | 19
+  | 20
+  | 21
 
 /** 动作枚举值（对应后端 AuditAction） */
 export type AuditAction = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
@@ -86,6 +89,9 @@ export const AUDIT_RESOURCE_LABELS: Record<number, string> = {
   16: '单据审批',
   17: '采购订单',
   18: '销售订单',
+  19: '部门',
+  20: '岗位',
+  21: '员工',
 }
 
 /** 资源类型标签颜色（specs/006-list-showcase §0：枚举字段用 a-tag 着色展示） */
@@ -109,6 +115,9 @@ export const AUDIT_RESOURCE_COLORS: Record<number, string> = {
   16: 'purple',
   17: 'orange',
   18: 'green',
+  19: 'arcoblue',
+  20: 'cyan',
+  21: 'purple',
 }
 
 /** 动作中文文案（与后端 AuditAction 一一对应） */

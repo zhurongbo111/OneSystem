@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import {
   IconApps,
   IconArrowsExchange,
+  IconBriefcase,
   IconBuildingWarehouse,
   IconCash,
   IconChartBar,
@@ -19,6 +20,7 @@ import {
   IconFileText,
   IconHistory,
   IconHome,
+  IconIdBadge2,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconList,
@@ -31,6 +33,7 @@ import {
   IconShieldLock,
   IconShoppingBag,
   IconShoppingCart,
+  IconSitemap,
   IconStack2,
   IconTags,
   IconTruckDelivery,
@@ -81,7 +84,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
-  system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles'],
+  system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees'],
 }
 
 /**
@@ -112,6 +115,9 @@ const MENU_PERMISSIONS: Record<string, string> = {
   loginLogs: 'loginLogs.view',
   auditLogs: 'auditLogs.view',
   roles: 'roles.view',
+  departments: 'departments.view',
+  positions: 'positions.view',
+  employees: 'employees.view',
 }
 
 // —— reactive state ——
@@ -508,6 +514,33 @@ function onLogout(): void {
               <IconShieldLock />
             </template>
             <span>角色权限</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('departments')"
+            key="departments"
+          >
+            <template #icon>
+              <IconSitemap />
+            </template>
+            <span>部门管理</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('positions')"
+            key="positions"
+          >
+            <template #icon>
+              <IconBriefcase />
+            </template>
+            <span>岗位管理</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('employees')"
+            key="employees"
+          >
+            <template #icon>
+              <IconIdBadge2 />
+            </template>
+            <span>员工档案</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>
