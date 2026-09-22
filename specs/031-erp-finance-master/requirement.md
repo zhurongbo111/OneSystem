@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # 需求规格：财务主数据（erp-finance-master）

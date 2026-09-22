@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # 设计规格：财务主数据（erp-finance-master）
@@ -97,8 +97,8 @@ updated: 2026-09-20
 
 | 常量类 | 常量 |
 |---|---|
-| `AccountFieldConstraints` | `CodeMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` / `SortOrderMax = 9999` |
-| `TaxRateFieldConstraints` | `CodeMaxLength = 20` / `NameMaxLength = 50` / `RateMin = 0` / `RateMax = 100` / `RemarkMaxLength = 200` |
+| `AccountFieldConstraints` | `CodeMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` / `SortOrderMinValue = 0` / `SortOrderMaxValue = 9999` |
+| `TaxRateFieldConstraints` | `CodeMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` / `RateMin = 0` / `RateMax = 100` / `RatePrecision = 9` / `RateDecimalPlaces = 4` |
 
 ### 2.4 迁移与种子
 
@@ -155,7 +155,7 @@ updated: 2026-09-20
 | `/api/tax-rates/{id:guid}` | DELETE | `TaxRates/DeleteTaxRate` | `null` | `taxRates.delete` / 40400 |
 | `/api/tax-rates/{id:guid}/status` | PUT | `TaxRates/UpdateTaxRateStatus` | `TaxRateDetailDto` | `taxRates.status` / 40400 |
 
-- 科目树的防环（`ParentId` 不得为自身或后代）复用 `030` 的 `40141`（`DepartmentCycle`）语义；本规格**新增通用码** `40141` 已被 `030` 占用——**本规格改用 `AccountCodeExists` 之外的环检查复用同一 `40141`**（跨域共用同一"树形环"码，避免撞码；在 `028`/`030` 注记）。
+- 科目树的防环（`ParentId` 不得为自身或下级）**复用 `030` 的 `40141`（`ErrorCode.DepartmentCycle`）**：跨域共用同一「树形环」码，不另立同义码（`ErrorCode` 定义处已注明共用）。
 
 ### 3.4 校验规则（FluentValidation）
 
@@ -193,7 +193,7 @@ src/
 
 ### 4.3 页面交互
 
-- **`AccountsView.vue`**：树形表格（同 `030` 部门树形态）；工具条「新增科目」/ 展开收起 / 刷新；列：科目编码、名称（树列）、类别（`a-tag`）、方向、状态、操作列（新增下级 / 编辑 / 启停 / 删除）。
+- **`AccountsView.vue`**：树形表格（同 `030` 部门树形态，名称列必须为第 1 列——Arco 展开图标只渲染在第 1 列）；工具条「新增一级科目」/ 展开收起 / 刷新；列：科目名称（树列，预置科目跟「预置」标记）、科目编码、类别（`a-tag`）、方向、状态、备注、操作列（新增下级 / 编辑 / 启停 / 删除）。
 - **`AccountFormDrawer.vue`**：编码 / 名称 / 类别（`a-select`）/ 方向（`a-radio`）/ 上级（`a-tree-select`，编辑排除自身及后代）/ 排序 / 状态 / 备注。
 - **`TaxRatesView.vue`**：标准列表（筛选：关键词 / 状态）；列：编码、名称、税率（`%`）、状态、备注、操作列。
 - **`TaxRateFormDrawer.vue`**：编码 / 名称 / 税率（`a-input-number`，精度 4）/ 状态 / 备注。

@@ -40,7 +40,7 @@ updated: 2026-09-22
 | 批次（`040`） | `batches` | `view` / `create` / `update` | `/api/batches*`、`/batches` |
 | 收付款 | `settlements` | `view` / `create` / `void` / `export` | `/api/settlements*`、`/settlements` |
 | 往来对账 | `reconciliation` | `view` | `/api/reconciliation`、`/reconciliation` |
-| 发票（`032`） | `invoices` | `view` / `create` / `void` | `/api/invoices*`、`/invoices` |
+| 发票（`032`） | `invoices` | `view` / `create` / `void` / `export` | `/api/invoices*`、`/invoices` |
 | 客户价格（`036`） | `partnerPrices` | `view` / `create` / `update` / `delete` | `/api/partner-prices*`、`/partner-prices` |
 | 报表 | `reports` | `view` / `export` | `/api/reports/*`、`/reports/*`（5 个报表页共用） |
 | 成本重算 | `costs` | `recalculate` | `/api/costs/recalculate`、成本报表页操作行 |
@@ -51,6 +51,8 @@ updated: 2026-09-22
 | 部门（`030`） | `departments` | `view` / `create` / `update` / `delete` / `status` | `/api/departments*`、`/departments` |
 | 岗位（`030`） | `positions` | `view` / `create` / `update` / `delete` / `status` | `/api/positions*`、`/positions` |
 | 员工（`030`） | `employees` | `view` / `create` / `update` / `status` / `export` | `/api/employees*`、`/employees` |
+| 会计科目（`031`） | `accounts` | `view` / `create` / `update` / `delete` / `status` | `/api/accounts*`、`/accounts` |
+| 税率（`031`） | `taxRates` | `view` / `create` / `update` / `delete` / `status` | `/api/tax-rates*`、`/tax-rates` |
 | 站内消息（`041`） | `notifications` | `view` | `/api/notifications*`、顶栏铃铛 |
 | 单据审批（`042`） | `approvals` | `view` / `approve` | `/api/approvals*`、审批页 |
 

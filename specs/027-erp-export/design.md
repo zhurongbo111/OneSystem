@@ -43,6 +43,7 @@ updated: 2026-09-22
 | 销售退货 | `GET /api/sales-returns/export` | `SalesReturns/ExportSalesReturns` | 2 张 |
 | 收付款单 | `GET /api/settlements/export` | `Settlements/ExportSettlements` | 2 张（单据 + 核销明细） |
 | 库存盘点 | `GET /api/stock-takes/export` | `StockTakes/ExportStockTakes` | 2 张（单据 + 明细） |
+| 发票登记（`032` 续行） | `GET /api/invoices/export` | `Invoices/ExportInvoices` | 2 张（单据 + 关联明细） |
 | 进销存报表 | `GET /api/reports/inventory-flow/export` | `Reports/ExportInventoryFlow` | 1 张（含合计行） |
 | 库存余额表 | `GET /api/reports/stock-balance/export` | `Reports/ExportStockBalance` | 1 张（含合计行） |
 | 采购汇总 | `GET /api/reports/purchase-summary/export` | `Reports/ExportPurchaseSummary` | 1 张（含合计行） |
@@ -58,6 +59,7 @@ updated: 2026-09-22
   - 枚举列统一输出**中文文案**（`App.Core/Exports/ExportLabels`），与页面一致：商品 / 往来状态「启用 / 停用」、往来类型「供应商 / 客户 / 两者」、单据状态「正常 / 已作废」、变动类型取 `019` §0 十项文案、盘点类型「期初建账 / 库存盘点」、收付款「收款 / 付款」与方式「现金 / 银行转账 / 其他」、核销单据类型「采购入库单 / 销售出库单 / 采购退货单 / 销售退货单」。
   - 单据「结算状态」与列表同口径：`未结算` / `部分结算（未结 X.00）` / `已结算`（由 `SettlementStateCalculator` 推导）。
   - 比率列输出为**百分比文本**（保留 2 位，如 `25.00%`）：库存余额表「库存占比」= `QuantityRatio × 100`；成本毛利表「毛利率」= `GrossProfitRate × 100`，其值为 `null` 时输出**空单元格**。
+  - 发票「税率」列输出百分比文本且**去尾零**（`0.13` → `13%`、`0.135` → `13.5%`，`ExportLabels.ToPercentage`；与页面 `formatTaxRate` 同口径）。
   - 标记列按页面文案：库存余额表「成本异常」→ `成本异常` / `-`；成本毛利表「成本完整性」→ `成本不完整` / `-`。
   - **合计行只对可加总列求和**（数量 / 件数 / 金额），比率、均价与标记列留空；首列固定为 `合计`。
   - **汇总类报表「单位」列始终输出且不留空**：xlsx 保持固定列集便于二次处理；**商品维度输出商品单位；「往来单位 / 客户」维度聚合的是多种商品、无单一单位，一律输出占位符 `-`**（合计行同为 `-`），空值占位统一走 `ExportLabels.OrDash`，不允许出现无从辨识的空白单元格。页面行为按 `025` §4.4 不变（该维度不显示单位列）。
