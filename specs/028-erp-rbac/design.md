@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-22
 ---
 
 # 设计规格：角色与权限体系（erp-rbac）
@@ -57,7 +57,7 @@ updated: 2026-09-17
 
 | 角色 | `IsBuiltin` | 权限 | 可否编辑 / 删除 |
 |---|---|---|---|
-| `SuperAdmin`（超级管理员） | 是 | **全部权限点**（解析时直接放行，不逐点存储） | 不可（`40121`）；不可取消用户绑定 |
+| `SuperAdmin`（超级管理员） | 是 | **全部权限点**（解析时直接放行，不逐点存储） | 不可（`40175`）；不可取消用户绑定 |
 | `Staff`（普通员工，默认角色） | 是 | 全部业务权限，**排除** `users.*` / `roles.*` / `auditLogs.*` / `costs.recalculate` | 权限可编辑（可增减），不可删除 |
 
 - 新增用户默认绑定 `Staff`（用户表单可改）；迁移时既有用户全部绑定 `Staff`。
@@ -162,22 +162,23 @@ updated: 2026-09-17
 
 | code | 常量 | 含义 |
 |---:|---|---|
-| 40119 | `RoleNameExists` | 角色名称已存在 |
-| 40120 | `RoleInUse` | 角色已被用户绑定，禁止删除 |
-| 40121 | `RoleBuiltinImmutable` | 内置角色不可编辑（`SuperAdmin`）/ 不可删除 |
+| 40173 | `RoleNameExists` | 角色名称已存在 |
+| 40174 | `RoleInUse` | 角色已被用户绑定，禁止删除 |
+| 40175 | `RoleBuiltinImmutable` | 内置角色不可编辑（`SuperAdmin`）/ 不可删除 |
 | 40300 | `Forbidden` | 无权限（**由预留码转为生产码**，`AGENTS.md` §4.2 同步） |
 
 > `40000` / `40400` 复用全局；`40300` 前端处置同 `40000`（统一 `Message.error`）。
+> **演进（错误码改值，`2026-09-22`）**：初稿分配 `40119`–`40121`，与 `013`（`40119` 往来单位类型收窄）/ `023`（`40120` 已核销禁止作废）已占用码冲突；按 `specs/ROADMAP.md` §6「下一个可用」改取 `40173`–`40175`，`028` 占用后下一个可用为 `40176`。
 
 ### 3.3 用例与接口（每 API 一个用例，均经 `IMediator.Send`）
 
 | 接口 | 方法 | 用例目录 | `data` 响应 | 权限点 / 错误码 |
 |---|---|---|---|---|
 | `/api/roles` | GET | `Roles/GetRoles` | `PagedResult<RoleListItemDto>` | `roles.view` / 40000 |
-| `/api/roles` | POST | `Roles/CreateRole` | `RoleDetailDto` | `roles.create` / 40000 / 40119 |
+| `/api/roles` | POST | `Roles/CreateRole` | `RoleDetailDto` | `roles.create` / 40000 / 40173 |
 | `/api/roles/{id:guid}` | GET | `Roles/GetRoleById` | `RoleDetailDto` | `roles.view` / 40400 |
-| `/api/roles/{id:guid}` | PUT | `Roles/UpdateRole` | `RoleDetailDto` | `roles.update` / 40000 / 40119 / 40121 / 40400 |
-| `/api/roles/{id:guid}` | DELETE | `Roles/DeleteRole` | `null` | `roles.delete` / 40120 / 40121 / 40400 |
+| `/api/roles/{id:guid}` | PUT | `Roles/UpdateRole` | `RoleDetailDto` | `roles.update` / 40000 / 40173 / 40175 / 40400 |
+| `/api/roles/{id:guid}` | DELETE | `Roles/DeleteRole` | `null` | `roles.delete` / 40174 / 40175 / 40400 |
 | `/api/permissions` | GET | `Permissions/GetPermissions` | `IReadOnlyList<PermissionGroupDto>`（分组 + key + 名称） | `roles.view` |
 | `/api/users/me/permissions` | GET | `Users/GetMyPermissions` | `IReadOnlyList<string>` | `[SkipPermissionCheck]` |
 
@@ -186,11 +187,11 @@ updated: 2026-09-17
 
 ### 3.4 关键用例流程（Handler）
 
-**CreateRole**：`ExistsByNameAsync(name, null)` → `40119`；组 `Role`（`IsBuiltin = false`）+ 权限点集合（**校验每个 key ∈ `Permissions.All`**，非法 → `40000`）→ `IUnitOfWork`：插角色 + 全量插 `RolePermissions` → `CommitAsync`。
+**CreateRole**：`ExistsByNameAsync(name, null)` → `40173`；组 `Role`（`IsBuiltin = false`）+ 权限点集合（**校验每个 key ∈ `Permissions.All`**，非法 → `40000`）→ `IUnitOfWork`：插角色 + 全量插 `RolePermissions` → `CommitAsync`。
 
-**UpdateRole**：取角色（不存在 → `40400`）→ `IsBuiltin && Name == SuperAdmin` → `40121`（`Staff` 可改名 / 改权限，但不可删）→ 名称唯一（排除自身）→ 权限点合法性校验 → 同一事务内**全量替换** `RolePermissions` + 更新审计。
+**UpdateRole**：取角色（不存在 → `40400`）→ `IsBuiltin && Name == SuperAdmin` → `40175`（`Staff` 可改名 / 改权限，但不可删）→ 名称唯一（排除自身）→ 权限点合法性校验 → 同一事务内**全量替换** `RolePermissions` + 更新审计。
 
-**DeleteRole**：取角色（不存在 → `40400`）→ `IsBuiltin` → `40121` → 有用户绑定（`IUserRoleRepository.CountByRoleAsync`）→ `40120`；否则删除角色 + 其权限行（同一事务）。
+**DeleteRole**：取角色（不存在 → `40400`）→ `IsBuiltin` → `40175` → 有用户绑定（`IUserRoleRepository.CountByRoleAsync`）→ `40174`；否则删除角色 + 其权限行（同一事务）。
 
 **GetMyPermissions**：`IPermissionResolver` 求当前用户权限集合（`SuperAdmin` → 全量）。
 
@@ -296,7 +297,7 @@ src/
 
 > Mock 仓储接口与 `IPermissionResolver`；`TestCurrentUser` 同既有约定。
 
-- **角色用例**：`CreateRole` 成功（断言角色 + 权限行同时入 `IUnitOfWork`）/ 重名 `40119` / 非法权限 key `40000`；`UpdateRole` 成功（全量替换断言）/ `SuperAdmin` → `40121` / 重名排除自身；`DeleteRole` 成功 / 有用户绑定 `40120` / 内置 `40121` / 不存在 `40400`；`GetRoles` 筛选与分页映射；`GetPermissions` 分组清单与 `Permissions.All` 一致。
+- **角色用例**：`CreateRole` 成功（断言角色 + 权限行同时入 `IUnitOfWork`）/ 重名 `40173` / 非法权限 key `40000`；`UpdateRole` 成功（全量替换断言）/ `SuperAdmin` → `40175` / 重名排除自身；`DeleteRole` 成功 / 有用户绑定 `40174` / 内置 `40175` / 不存在 `40400`；`GetRoles` 筛选与分页映射；`GetPermissions` 分组清单与 `Permissions.All` 一致。
 - **权限解析**：`SuperAdmin` → 返回 `Permissions.All`；多角色 → 并集；无角色 → 空集；单请求内只查库一次（假实现计数断言）。
 - **过滤器**：有权限放行；无权限 → `40300`（HTTP 200）；未标注 `[RequirePermission]` → `40300`；`[SkipPermissionCheck]` 放行；未登录不进入本过滤器（`40100` 由认证管道产生）。
 - **用户角色**：`CreateUser` / `UpdateUser` 的 `roleIds` 全量替换与存在性校验（不存在 → `40400`）、去重；`UserListItemDto.roles` 映射。

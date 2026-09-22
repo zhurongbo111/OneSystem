@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-17
+updated: 2026-09-22
 ---
 
 # 任务清单：库存查询（erp-inventory-query）

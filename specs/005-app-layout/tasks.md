@@ -1,6 +1,6 @@
 ---
 created: 2026-09-10
-updated: 2026-09-16
+updated: 2026-09-22
 ---
 
 # 任务清单：全局页面布局（app-layout）

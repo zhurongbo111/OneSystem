@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 需求规格：收付款与应收应付（erp-settlement）

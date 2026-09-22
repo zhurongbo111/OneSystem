@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 设计规格：销售退货（erp-sale-return）
@@ -9,6 +9,7 @@ updated: 2026-09-21
 > **本规格继承 `specs/021-erp-purchase-return/design.md` §0「退货单域共用约定」**：`SalesReturns` / `SalesReturnItems` 与 `PurchaseReturns` / `PurchaseReturnItems` 结构完全同构，实现时照抄 `erp-purchase-return` 模板并按 §1 替换规则做差异替换；共用枚举、常量、仓储方法结构、校验结构、页面结构**均不重复定义**。本规格只定义销售特化差异。
 > 变动类型的文案与颜色见 `specs/019-erp-stock-movement/design.md` §0（唯一事实源），本文件不重复该表。
 > **演进（`023-erp-settlement` / `024-erp-order-flow` / `026-erp-cost`）**：退货单结算已金额化（`SettledAmount` + 推导状态，手工切换端点移除，已核销禁作废，核销取数只查主表）；其消费的销售出库单表已重命名（`SalesOrders` → `SalesShipments`，路径 `/api/sales-shipments`，前缀 `GI`）；流水写入同时回填成本列。**本正文已按现行为准**，决策与判据见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6、`specs/024-erp-order-flow/design.md` §3 与 `specs/026-erp-cost/design.md` §3。
+> **演进（erp-rbac）**：本域动作接入权限校验，权限点 `salesReturns.view` / `create` / `void` / `settle` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 1. 相对 erp-purchase-return 的替换规则
 

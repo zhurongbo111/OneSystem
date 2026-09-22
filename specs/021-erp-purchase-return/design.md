@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 设计规格：采购退货（erp-purchase-return）
@@ -9,6 +9,7 @@ updated: 2026-09-21
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase` / `erp-sale` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格为其消费方 `erp-purchase`（单据域共用约定 §0）、`erp-product`（商品与库存）、`erp-stock-movement`（流水）的**新增单据类型**，不修改既有用例语义。
 > **演进（`023-erp-settlement` / `024-erp-order-flow` / `026-erp-cost`）**：退货单结算已金额化（`SettledAmount` + 推导状态，手工切换端点移除，已核销禁作废，核销取数只查主表）；其消费的采购入库单表已重命名（`PurchaseOrders` → `PurchaseReceipts`，路径 `/api/purchase-receipts`，前缀 `GR`）；流水写入同时回填成本列。**本正文已按现行为准**，决策与判据见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6、`specs/024-erp-order-flow/design.md` §3 与 `specs/026-erp-cost/design.md` §3。
+> **演进（erp-rbac）**：本域动作接入权限校验，权限点 `purchaseReturns.view` / `create` / `void` / `settle` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 0. 退货单域共用约定（erp-sale-return 继承）
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-16
+updated: 2026-09-22
 ---
 
 # 设计规格：商品管理（erp-product）
@@ -8,6 +8,7 @@ updated: 2026-09-16
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格为进销存功能组商品域底座，库存台账与开单商品选择接口的消费方为 erp-inventory-query / erp-purchase / erp-sale。
+> **演进（erp-rbac）**：本域动作接入权限校验，权限点 `products.view` / `create` / `update` / `status` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 1. 总体设计
 

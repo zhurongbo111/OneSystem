@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 设计规格：收付款与应收应付（erp-settlement）
@@ -9,6 +9,7 @@ updated: 2026-09-21
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase`（单据域模板）为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > **本规格改造既有单据的结算语义**：`015` / `016` / `021` / `022` 的 `SettlementStatus` 与手工切换接口在本规格落地时一并替换（等价于 `specs/ROADMAP.md` §6.3 预留的迁移路径），各规格需留演进注记。
 > **演进（`024-erp-order-flow`）**：本规格核销的两类单据表 / 路由 / 单号前缀已重命名（`PurchaseOrders` → `PurchaseReceipts`、`SalesOrders` → `SalesShipments`），跨仓储累加的目标仓储随之改名（`IPurchaseReceiptRepository` / `ISalesShipmentRepository`）；`SettlementOrderType` 取值与结算 / 核销语义不变。**本正文已按现行为准**，重命名细节见 `specs/024-erp-order-flow/design.md` §3。
+> **演进（erp-rbac）**：本域动作接入权限校验，权限点 `settlements.view` / `create` / `void` / `export`，往来对账为 `reconciliation.view`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 0. 结算口径约定（唯一事实源）
 

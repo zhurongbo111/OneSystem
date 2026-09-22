@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-17
+updated: 2026-09-22
 ---
 
 # 设计规格：库存查询（erp-inventory-query）
@@ -9,6 +9,7 @@ updated: 2026-09-17
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照。
 > 本规格消费 erp-product 建立的 `Inventory` / `Products` / `Categories` 表与 `IInventoryRepository`，**不引入新表 / 新实体 / 新迁移**。
 > 库存的「分类汇总视图」（库存余额表：按分类聚合 + 占比 + 低库存 / 零库存计数）由 `specs/025-erp-report/` 提供，本页仍是「逐商品明细操作视图」；报表「查看明细」下钻本页时经 `query.categoryId` 预置分类筛选。
+> **演进（erp-rbac）**：本域动作接入权限校验，权限点 `inventory.view` / `export`（`export` 由 `027` 的导出动作标注）；本页只读，无写操作权限点。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 1. 总体设计
 

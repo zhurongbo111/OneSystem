@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 设计规格：两段式单据（erp-order-flow）
@@ -9,6 +9,7 @@ updated: 2026-09-21
 > **实施前置**：§5 中标注「需用户确认」的两项（既有单据表重命名、历史单号前缀改写）涉及不可逆的命名与数据变更，**须先经用户确认再开工**；未确认前先实现其余部分无意义（改动面互相耦合），故整体置于确认后。
 > 本规格改造既有 `erp-purchase` / `erp-sale`（重命名 + 关联订单 + 状态回写），并消费 `erp-stock-movement`（流水）与 `erp-settlement`（结算端点已在其中改造完毕）。
 > **演进（erp-settlement，已核销禁作废）**：入库单 / 出库单被核销（`SettledAmount > 0`）后**禁止作废**（`40120`，须先作废对应收付款单回退金额）；`VoidPurchaseReceipt` / `VoidSalesShipment` 在既有「已作废 `40104`」校验后追加该校验（§3.3），判据见 `specs/023-erp-settlement/design.md` §0 / §3.6。
+> **演进（erp-rbac）**：订单域动作接入权限校验，权限点 `purchaseOrders.view` / `create` / `update` / `void` / `close` 与 `salesOrders.view` / `create` / `update` / `void` / `close`（与出入库单 `purchases.*` / `sales.*` 分属独立域）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 0. 订单状态与展示约定（唯一事实源）
 

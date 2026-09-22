@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # 需求规格：列表导出 Excel 与单据打印（erp-export）
