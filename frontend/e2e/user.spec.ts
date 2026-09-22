@@ -60,6 +60,14 @@ async function createUser(page: Page, username: string, displayName: string): Pr
   await page.getByPlaceholder('3-50 位字母、数字或下划线').fill(username)
   await page.getByPlaceholder('请输入显示名').fill(displayName)
   await page.getByPlaceholder('6-32 位密码').fill('initPass123')
+  // 角色必选（specs/028-erp-rbac）：展开多选下拉勾选第一个角色后关闭，再提交
+  // 选项按 :visible 过滤：弹层 DOM 会残留（同域其它下拉的旧选项仍隐藏在 DOM 中）
+  const roleSelect = page.locator('.arco-select').filter({ hasText: '请选择角色（至少一个）' })
+  await roleSelect.click()
+  const firstRole = page.locator('.arco-select-option:visible').first()
+  await expect(firstRole).toBeVisible()
+  await firstRole.click()
+  await page.keyboard.press('Escape')
   await page.getByRole('button', { name: '提交' }).click()
   await expectMessage(page, '用户已创建')
   await expect(page.getByText('新增用户')).toHaveCount(0)
@@ -172,7 +180,8 @@ test.describe('用户管理（集成）', () => {
     await goUsers(page)
     await createUser(page, username, 'E2E 启停')
     const row = await openUserRow(page, username)
-    await expect(row.locator('.arco-tag')).toHaveText('启用')
+    // 行内有角色 tag（specs/028-erp-rbac 新增角色列），按文本过滤取状态 tag
+    await expect(row.locator('.arco-tag', { hasText: '启用' })).toBeVisible()
 
     // 禁用
     await row.getByRole('button', { name: '禁用' }).click()
@@ -180,14 +189,14 @@ test.describe('用户管理（集成）', () => {
     await expect(page.getByText('已禁用')).toBeVisible()
 
     const disabledRow = await openUserRow(page, username)
-    await expect(disabledRow.locator('.arco-tag')).toHaveText('禁用')
+    await expect(disabledRow.locator('.arco-tag', { hasText: '禁用' })).toBeVisible()
 
     // 启用
     await disabledRow.getByRole('button', { name: '启用' }).click()
     await page.getByRole('button', { name: /确\s*定/ }).click()
     await expect(page.getByText('已启用')).toBeVisible()
     const enabledRow = await openUserRow(page, username)
-    await expect(enabledRow.locator('.arco-tag')).toHaveText('启用')
+    await expect(enabledRow.locator('.arco-tag', { hasText: '启用' })).toBeVisible()
   })
 
   test('重置密码后可用新密码登录', async ({ page }) => {
@@ -261,6 +270,6 @@ test.describe('用户管理（集成）', () => {
     // 请求进行中：该行按钮处于 loading；完成后状态标签变为禁用
     await expect(toggleButton).toHaveClass(/arco-btn-loading/)
     await expect(page.getByText('已禁用')).toBeVisible()
-    await expect(row.locator('.arco-tag')).toHaveText('禁用')
+    await expect(row.locator('.arco-tag', { hasText: '禁用' })).toBeVisible()
   })
 })

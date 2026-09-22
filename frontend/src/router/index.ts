@@ -77,6 +77,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'roles',
+        name: 'roles',
+        component: () => import('@/views/RoleManagement/RolesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'products',
         name: 'products',
         component: () => import('@/views/ProductManagement/ProductsView.vue'),
@@ -337,11 +343,88 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/StockTakeManagement/StockTakePrintView.vue'),
     meta: { requiresAuth: true },
   },
+  // 无权限页（specs/028-erp-rbac §4.3）：顶层路由，不进 AppLayout（无侧边栏 / 工具条），不进侧边菜单
+  {
+    path: '/403',
+    name: 'forbidden',
+    component: () => import('@/views/ForbiddenView.vue'),
+    meta: { requiresAuth: true },
+  },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },
 ]
+
+/**
+ * 路由名 → 权限点（唯一事实源 `specs/028-erp-rbac/design.md` §0.2）。
+ * 集中登记后统一注入 `meta.permission`，避免逐条散写造成漏配；
+ * 未登记的路由（首页 / 示例页面）不做权限拦截。
+ */
+const ROUTE_PERMISSIONS: Record<string, string> = {
+  roles: 'roles.view',
+  users: 'users.view',
+  userDetail: 'users.view',
+  loginLogs: 'loginLogs.view',
+  products: 'products.view',
+  categories: 'categories.view',
+  partners: 'partners.view',
+  inventory: 'inventory.view',
+  stockMovements: 'stockMovements.view',
+  stockTakes: 'stockTakes.view',
+  stockTakeNew: 'stockTakes.create',
+  stockTakeDetail: 'stockTakes.view',
+  purchaseOrders: 'purchaseOrders.view',
+  purchaseOrderNew: 'purchaseOrders.create',
+  purchaseOrderEdit: 'purchaseOrders.update',
+  purchaseOrderDetail: 'purchaseOrders.view',
+  purchases: 'purchases.view',
+  purchaseNew: 'purchases.create',
+  purchaseDetail: 'purchases.view',
+  purchaseReturns: 'purchaseReturns.view',
+  purchaseReturnNew: 'purchaseReturns.create',
+  purchaseReturnDetail: 'purchaseReturns.view',
+  salesOrders: 'salesOrders.view',
+  salesOrderNew: 'salesOrders.create',
+  salesOrderEdit: 'salesOrders.update',
+  salesOrderDetail: 'salesOrders.view',
+  sales: 'sales.view',
+  salesNew: 'sales.create',
+  salesDetail: 'sales.view',
+  salesReturns: 'salesReturns.view',
+  saleReturnNew: 'salesReturns.create',
+  saleReturnDetail: 'salesReturns.view',
+  settlements: 'settlements.view',
+  settlementNew: 'settlements.create',
+  settlementDetail: 'settlements.view',
+  reconciliation: 'reconciliation.view',
+  inventoryFlowReport: 'reports.view',
+  stockBalanceReport: 'reports.view',
+  purchaseSummaryReport: 'reports.view',
+  salesSummaryReport: 'reports.view',
+  costProfitReport: 'reports.view',
+  // 打印为只读展示，复用所属域的 `.view`（`specs/028-erp-rbac` §5 决策）
+  purchasePrint: 'purchases.view',
+  purchaseReturnPrint: 'purchaseReturns.view',
+  salePrint: 'sales.view',
+  saleReturnPrint: 'salesReturns.view',
+  settlementPrint: 'settlements.view',
+  stockTakePrint: 'stockTakes.view',
+}
+
+/** 把登记的权限点写入路由 `meta`（含子路由） */
+function applyRoutePermissions(records: RouteRecordRaw[]): void {
+  records.forEach((record) => {
+    const name = typeof record.name === 'string' ? record.name : ''
+    const permission = ROUTE_PERMISSIONS[name]
+    if (name && permission) {
+      record.meta = { ...record.meta, permission }
+    }
+    if (record.children) applyRoutePermissions(record.children)
+  })
+}
+
+applyRoutePermissions(routes)
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -360,8 +443,8 @@ setUnauthorizedHandler(() => {
   })
 })
 
-// 全局前置守卫：未登录访问受保护路由 → 跳转登录页
-router.beforeEach((to) => {
+// 全局前置守卫：未登录 → 登录页；无该路由权限点 → 403 页
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
@@ -369,6 +452,14 @@ router.beforeEach((to) => {
   // 已登录访问登录页 → 跳首页
   if (to.name === 'login' && auth.isLoggedIn) {
     return { name: 'home' }
+  }
+  // 刷新后权限集合为空（只有 token 持久化）：先拉取再判定，避免误判为无权限
+  if (auth.isLoggedIn && auth.permissions.length === 0) {
+    await auth.fetchPermissions()
+  }
+  const permission = typeof to.meta.permission === 'string' ? to.meta.permission : ''
+  if (permission && !auth.hasPermission(permission)) {
+    return { name: 'forbidden' }
   }
   return true
 })

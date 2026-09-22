@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
+import { getRoles } from '@/api/role'
 import { createUser, getUser, updateUser } from '@/api/user'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance } from '@arco-design/web-vue'
@@ -12,6 +13,8 @@ interface UserFormState {
   email: string
   phone: string
   password: string
+  /** 角色 id 集合（全量提交，至少一个） */
+  roleIds: string[]
 }
 
 // —— props/emits ——
@@ -31,7 +34,7 @@ const emit = defineEmits<{
 
 // —— helpers ——
 function emptyForm(): UserFormState {
-  return { username: '', displayName: '', email: '', phone: '', password: '' }
+  return { username: '', displayName: '', email: '', phone: '', password: '', roleIds: [] }
 }
 
 /** 邮箱：选填；填写时校验格式 */
@@ -62,11 +65,23 @@ function validatePhone(value: unknown, callback: (error?: string) => void): void
   callback()
 }
 
+/** 角色：必选且至少一个（后端 CreateUser / UpdateUser 全量覆盖语义） */
+function validateRoles(value: unknown, callback: (error?: string) => void): void {
+  const list = Array.isArray(value) ? value : []
+  if (list.length === 0) {
+    callback('请至少选择一个角色')
+    return
+  }
+  callback()
+}
+
 // —— reactive state ——
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
 const detailLoading = ref(false)
 const form = reactive<UserFormState>(emptyForm())
+/** 角色下拉选项（用户必选至少一个角色，故一次性拉取较大分页） */
+const roleOptions = ref<{ label: string; value: string }[]>([])
 
 // —— computed ——
 /** 校验规则：密码仅新增时必填（编辑不渲染该字段） */
@@ -81,6 +96,7 @@ const rules = computed<Record<string, FieldRule[]>>(() => ({
   ],
   email: [{ validator: validateEmail }],
   phone: [{ validator: validatePhone }],
+  roleIds: [{ validator: validateRoles }],
   password:
     props.mode === 'create'
       ? [
@@ -103,7 +119,23 @@ watch(
   },
 )
 
+// —— lifecycle ——
+onMounted(() => {
+  void loadRoleOptions()
+})
+
 // —— methods ——
+/** 加载角色下拉选项 */
+async function loadRoleOptions(): Promise<void> {
+  if (roleOptions.value.length > 0) return
+  try {
+    const result = await getRoles({ page: 1, pageSize: 100 })
+    roleOptions.value = result.items.map((item) => ({ label: item.name, value: item.id }))
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
+}
+
 /** 加载待编辑用户详情并回填 */
 async function loadUser(id: string): Promise<void> {
   detailLoading.value = true
@@ -114,6 +146,7 @@ async function loadUser(id: string): Promise<void> {
     form.email = detail.email ?? ''
     form.phone = detail.phone ?? ''
     form.password = ''
+    form.roleIds = detail.roles.map((role) => role.id)
   } catch {
     // 错误提示已由请求层统一处理
     onClose()
@@ -141,6 +174,7 @@ async function onSubmit(): Promise<void> {
         displayName: form.displayName.trim(),
         email,
         phone,
+        roleIds: [...form.roleIds],
       })
       Message.success('用户已更新')
     } else {
@@ -150,6 +184,7 @@ async function onSubmit(): Promise<void> {
         email,
         phone,
         password: form.password,
+        roleIds: [...form.roleIds],
       })
       Message.success('用户已创建')
     }
@@ -203,6 +238,19 @@ async function onSubmit(): Promise<void> {
             v-model="form.displayName"
             placeholder="请输入显示名"
             :disabled="detailLoading"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item
+          label="角色"
+          field="roleIds"
+        >
+          <a-select
+            v-model="form.roleIds"
+            :options="roleOptions"
+            :disabled="detailLoading"
+            placeholder="请选择角色（至少一个）"
+            multiple
             allow-clear
           />
         </a-form-item>

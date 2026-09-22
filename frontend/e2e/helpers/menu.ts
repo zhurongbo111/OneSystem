@@ -26,6 +26,7 @@ const MENU_GROUP_MAP: Record<string, string> = {
   成本与毛利: '报表',
   用户管理: '系统',
   登录日志: '系统',
+  角色权限: '系统',
 }
 
 /** 侧边菜单叶子项 */
@@ -39,15 +40,20 @@ export function menuGroup(page: Page, name: string): Locator {
 }
 
 /**
- * 点击侧边菜单项：子菜单默认折叠，所属分组处于折叠态时先点分组标题展开
- * （Arco 折叠态下子项 `display: none`，直接 click 会等待可见超时）
+ * 确保菜单项处于展开可见态：子菜单默认折叠，折叠态子项 `display: none`
+ * （直接断言可见会失败，需先点开所属分组；分组已在 MENU_GROUP_MAP 登记）
  */
-export async function clickMenuItem(page: Page, name: string): Promise<void> {
+export async function ensureMenuItemVisible(page: Page, name: string): Promise<void> {
   const item = menuItem(page, name)
   const group = MENU_GROUP_MAP[name]
   if (group && !(await item.isVisible())) {
     await menuGroup(page, group).click()
   }
   await expect(item).toBeVisible()
-  await item.click()
+}
+
+/** 点击侧边菜单项（先确保展开可见） */
+export async function clickMenuItem(page: Page, name: string): Promise<void> {
+  await ensureMenuItemVisible(page, name)
+  await menuItem(page, name).click()
 }

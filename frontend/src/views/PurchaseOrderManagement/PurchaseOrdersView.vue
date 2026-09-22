@@ -11,6 +11,7 @@ import {
   voidPurchaseOrder,
   type PurchaseOrderListItem,
 } from '@/api/purchaseOrder'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import { orderFlowStatusColor, orderFlowStatusLabel, orderFlowStatusOptions } from '@/utils/orderFlow'
 import { Message, Modal } from '@arco-design/web-vue'
@@ -27,6 +28,8 @@ import {
   IconSearch,
   IconSettings,
 } from '@tabler/icons-vue'
+
+const auth = useAuthStore()
 
 // —— constants ——
 /** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
@@ -370,6 +373,7 @@ function confirmVoid(row: PurchaseOrderListItem): void {
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
+              v-if="auth.hasPermission('purchaseOrders.create')"
               type="primary"
               size="small"
               @click="onCreate"

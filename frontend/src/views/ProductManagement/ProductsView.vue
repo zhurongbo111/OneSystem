@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { exportProducts } from '@/api/export'
 import { getCategories, getProducts, updateProductStatus } from '@/api/product'
 import type { Category, Product, ProductStatus } from '@/api/product'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
@@ -21,6 +22,8 @@ import {
 } from '@tabler/icons-vue'
 
 import ProductFormDrawer from './ProductFormDrawer.vue'
+
+const auth = useAuthStore()
 
 // —— constants ——
 const statusOptions = [
@@ -366,6 +369,7 @@ function formatAmount(v: number): string {
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
+              v-if="auth.hasPermission('products.create')"
               type="primary"
               size="small"
               @click="onCreate"

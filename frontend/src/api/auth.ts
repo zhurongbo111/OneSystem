@@ -13,10 +13,12 @@ export interface UserDto {
   displayName: string
 }
 
-/** 登录结果（对应后端 LoginResult） */
+/** 登录结果（对应后端 LoginResponse） */
 export interface LoginResult {
   token: string
   user: UserDto
+  /** 当前用户权限点 key 集合（超级管理员由后端返回全量，前端不做特例） */
+  permissions: string[]
 }
 
 /**
@@ -31,4 +33,11 @@ export function login(request: LoginRequest): Promise<LoginResult> {
  */
 export function getCurrentUser(): Promise<UserDto> {
   return get<UserDto>('/users/me')
+}
+
+/**
+ * 刷新当前用户权限点集合（角色变更后无需重新登录即可生效）
+ */
+export function getMyPermissions(): Promise<string[]> {
+  return get<string[]>('/users/me/permissions')
 }
