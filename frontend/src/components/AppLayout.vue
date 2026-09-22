@@ -11,6 +11,7 @@ import {
   IconChartBar,
   IconClipboardCheck,
   IconClipboardList,
+  IconClipboardText,
   IconCoin,
   IconComponents,
   IconDatabase,
@@ -80,7 +81,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
-  system: ['users', 'userDetail', 'loginLogs', 'roles'],
+  system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles'],
 }
 
 /**
@@ -109,6 +110,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   costProfitReport: 'reports.view',
   users: 'users.view',
   loginLogs: 'loginLogs.view',
+  auditLogs: 'auditLogs.view',
   roles: 'roles.view',
 }
 
@@ -488,6 +490,15 @@ function onLogout(): void {
               <IconHistory />
             </template>
             <span>登录日志</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('auditLogs')"
+            key="auditLogs"
+          >
+            <template #icon>
+              <IconClipboardText />
+            </template>
+            <span>操作日志</span>
           </a-menu-item>
           <a-menu-item
             v-if="isMenuVisible('roles')"

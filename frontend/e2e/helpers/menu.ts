@@ -26,6 +26,7 @@ const MENU_GROUP_MAP: Record<string, string> = {
   成本与毛利: '报表',
   用户管理: '系统',
   登录日志: '系统',
+  操作日志: '系统',
   角色权限: '系统',
 }
 

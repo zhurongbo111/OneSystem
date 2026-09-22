@@ -83,6 +83,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'audit-logs',
+        name: 'auditLogs',
+        component: () => import('@/views/AuditLogManagement/AuditLogsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'products',
         name: 'products',
         component: () => import('@/views/ProductManagement/ProductsView.vue'),
@@ -366,6 +372,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   users: 'users.view',
   userDetail: 'users.view',
   loginLogs: 'loginLogs.view',
+  auditLogs: 'auditLogs.view',
   products: 'products.view',
   categories: 'categories.view',
   partners: 'partners.view',
