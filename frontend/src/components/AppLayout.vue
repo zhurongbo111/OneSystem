@@ -32,6 +32,7 @@ import {
   IconPercentage,
   IconReceipt,
   IconReceiptRefund,
+  IconReportAnalytics,
   IconScale,
   IconSettings,
   IconShieldLock,
@@ -58,6 +59,8 @@ const collapsed = ref<boolean>(false)
 const MENU_ROUTE_MAP: Record<string, string> = {
   userDetail: 'users',
   invoiceDetail: 'invoices',
+  voucherNew: 'vouchers',
+  voucherDetail: 'vouchers',
   purchaseOrderEdit: 'purchaseOrders',
   purchaseOrderDetail: 'purchaseOrders',
   purchaseDetail: 'purchases',
@@ -88,7 +91,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   sale: ['salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'invoices', 'invoiceNew', 'invoiceDetail'],
-  finance: ['accounts', 'taxRates'],
+  finance: ['accounts', 'taxRates', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
   system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees'],
 }
@@ -115,6 +118,8 @@ const MENU_PERMISSIONS: Record<string, string> = {
   invoices: 'invoices.view',
   accounts: 'accounts.view',
   taxRates: 'taxRates.view',
+  vouchers: 'vouchers.view',
+  financialReports: 'financialReports.view',
   inventoryFlowReport: 'reports.view',
   stockBalanceReport: 'reports.view',
   purchaseSummaryReport: 'reports.view',
@@ -458,6 +463,24 @@ function onLogout(): void {
               <IconPercentage />
             </template>
             <span>税率</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('vouchers')"
+            key="vouchers"
+          >
+            <template #icon>
+              <IconBook2 />
+            </template>
+            <span>凭证</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('financialReports')"
+            key="financialReports"
+          >
+            <template #icon>
+              <IconReportAnalytics />
+            </template>
+            <span>财务报表</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu
