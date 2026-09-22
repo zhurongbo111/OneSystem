@@ -1,6 +1,6 @@
 ---
 created: 2026-09-10
-updated: 2026-09-17
+updated: 2026-09-22
 ---
 
 # 设计规格：用户管理（user-management）
@@ -8,6 +8,7 @@ updated: 2026-09-17
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 本功能是脚手架后**首个接入真实 PostgreSQL** 的功能，按后端规则 §4"每 API 一个用例"组织。
 > **演进（erp-report）**：「用户管理」「登录日志」已归入侧边菜单「系统」分组，分组结构唯一来源见 `specs/025-erp-report/design.md` §0.2；路由与页面不变。
+> **演进（erp-rbac）**：用户新增 / 编辑支持 `roleIds`（全量替换、至少一个），列表与详情返回 `roles`；登录响应追加 `permissions`，并新增 `GET /api/users/me/permissions` 用于刷新。角色域与权限点清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 1. 总体设计
 

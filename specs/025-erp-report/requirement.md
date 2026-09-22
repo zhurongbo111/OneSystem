@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 需求规格：进销存报表（erp-report）

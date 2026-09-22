@@ -1,6 +1,6 @@
 ---
 created: 2026-09-10
-updated: 2026-09-16
+updated: 2026-09-22
 ---
 
 # 需求规格：用户管理（user-management）

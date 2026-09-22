@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-18
+updated: 2026-09-22
 ---
 
 # 设计规格：库存流水（erp-stock-movement）
@@ -8,6 +8,7 @@ updated: 2026-09-18
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格消费 `erp-product` 的 `Products` 表与 `IInventoryRepository` 的原子增减（`IncrementAsync` / `TryDecrementAsync`），并改造 `erp-purchase` / `erp-sale` 的四个既有用例（**不改变其业务语义**，只在其既有事务内追加流水）。
+> **演进（erp-rbac）**：本域动作接入权限校验，权限点 `stockMovements.view` / `export`（`export` 由 `027` 的导出动作标注）；本页只读，无写操作权限点。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 
 ## 0. 库存流水展示约定（唯一事实源）
 

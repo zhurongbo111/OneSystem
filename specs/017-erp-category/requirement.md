@@ -1,6 +1,6 @@
 ---
 created: 2026-09-15
-updated: 2026-09-16
+updated: 2026-09-22
 ---
 
 # 需求规格：商品分类管理页（erp-category）
