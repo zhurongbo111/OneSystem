@@ -1,7 +1,13 @@
 using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
+using App.Core.Features.Accounts.CreateAccount;
+using App.Core.Features.Accounts.DeleteAccount;
+using App.Core.Features.Accounts.UpdateAccount;
+using App.Core.Features.Accounts.UpdateAccountStatus;
 using App.Core.Features.Categories.CreateCategory;
+using App.Core.Features.Invoices.CreateInvoice;
+using App.Core.Features.Invoices.VoidInvoice;
 using App.Core.Features.Categories.DeleteCategory;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Core.Features.Costs.RecalculateCosts;
@@ -44,6 +50,10 @@ using App.Core.Features.SalesShipments.VoidSalesShipment;
 using App.Core.Features.Settlements.CreateSettlement;
 using App.Core.Features.Settlements.VoidSettlement;
 using App.Core.Features.StockTakes.CreateStockTake;
+using App.Core.Features.TaxRates.CreateTaxRate;
+using App.Core.Features.TaxRates.DeleteTaxRate;
+using App.Core.Features.TaxRates.UpdateTaxRate;
+using App.Core.Features.TaxRates.UpdateTaxRateStatus;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.ResetPassword;
 using App.Core.Features.Users.UpdateUser;
@@ -109,6 +119,16 @@ public class AuditLogScopeGuardTests
             { typeof(CreateEmployeeRequestHandler), AuditResource.Employee, AuditAction.Create },
             { typeof(UpdateEmployeeRequestHandler), AuditResource.Employee, AuditAction.Update },
             { typeof(UpdateEmployeeStatusRequestHandler), AuditResource.Employee, AuditAction.StatusChange },
+            { typeof(CreateAccountRequestHandler), AuditResource.Account, AuditAction.Create },
+            { typeof(UpdateAccountRequestHandler), AuditResource.Account, AuditAction.Update },
+            { typeof(DeleteAccountRequestHandler), AuditResource.Account, AuditAction.Delete },
+            { typeof(UpdateAccountStatusRequestHandler), AuditResource.Account, AuditAction.StatusChange },
+            { typeof(CreateTaxRateRequestHandler), AuditResource.TaxRate, AuditAction.Create },
+            { typeof(UpdateTaxRateRequestHandler), AuditResource.TaxRate, AuditAction.Update },
+            { typeof(DeleteTaxRateRequestHandler), AuditResource.TaxRate, AuditAction.Delete },
+            { typeof(UpdateTaxRateStatusRequestHandler), AuditResource.TaxRate, AuditAction.StatusChange },
+            { typeof(CreateInvoiceRequestHandler), AuditResource.Invoice, AuditAction.Create },
+            { typeof(VoidInvoiceRequestHandler), AuditResource.Invoice, AuditAction.Void },
         };
 
     [Theory]
