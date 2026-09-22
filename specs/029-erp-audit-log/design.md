@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-22
 ---
 
 # 设计规格：业务操作审计日志（erp-audit-log）
@@ -24,15 +24,17 @@ updated: 2026-09-17
 | 客户价格（`036`） `PartnerPrice` | 创建 / 更新 / 删除 | `PartnerPrices/*` | 「设置客户价 甲客户 / A001 = 8.80」 |
 | 用户 `User` | 创建 / 更新 / 启停 / 重置密码 / 角色变更 | `Users/*`（`028` 的 `roleIds`） | 「新增用户 zhangsan（张三）」/「重置用户 zhangsan 密码」/「调整用户 zhangsan 角色：Staff → 仓管,财务」 |
 | 角色 `Role` | 创建 / 更新 / 删除 | `Roles/*` | 「新增角色 仓管（12 项权限）」/「修改角色 仓管 权限：+库存盘点.创建」/「删除角色 仓管」 |
+| 采购订单 `PurchaseOrder` | 创建 / 更新 / 作废 / 关闭 | `PurchaseOrders/CreatePurchaseOrder` / `UpdatePurchaseOrder` / `VoidPurchaseOrder` / `ClosePurchaseOrder` | 「创建采购订单 PO…（供应商 甲，3 行，金额 1200.00）」/「关闭采购订单 PO…」 |
+| 销售订单 `SalesOrder` | 创建 / 更新 / 作废 / 关闭 | `SalesOrders/CreateSalesOrder` / `UpdateSalesOrder` / `VoidSalesOrder` / `CloseSalesOrder` | 「创建销售订单 SO…（客户 乙，2 行，金额 500.00）」/「作废销售订单 SO…」 |
 | 采购入库单 `PurchaseReceipt` | 创建 / 作废 | `Purchases/CreatePurchaseOrder` / `VoidPurchaseOrder` | 「开具采购入库单 GR202609170001（供应商 甲，金额 1000.00）」/「作废采购入库单 GR202609170001」 |
 | 销售出库单 `SalesShipment` | 创建 / 作废 | `Sales/*` | 「开具销售出库单 GI202609170001（客户 乙，金额 500.00）」/「作废销售出库单 GI…」 |
-| 采购退货单 `PurchaseReturn` | 创建 / 作废 / 结算 | `PurchaseReturns/*` | 「开具采购退货单 PR…（金额 300.00）」/「采购退货单 PR… 结算状态：未结算 → 已结算」 |
-| 销售退货单 `SalesReturn` | 创建 / 作废 / 结算 | `SalesReturns/*` | 同采购退货（客户维度） |
+| 采购退货单 `PurchaseReturn` | 创建 / 作废（结算态变更由「收付款单」记录） | `PurchaseReturns/*` | 「创建采购退货单 PR…（供应商 甲，金额 300.00）」/「作废采购退货单 PR…」 |
+| 销售退货单 `SalesReturn` | 创建 / 作废（结算态变更由「收付款单」记录） | `SalesReturns/*` | 同采购退货（客户维度） |
 | 收付款单 `Settlement` | 创建（核销）/ 作废 | `Settlements/CreateSettlement` / `VoidSettlement` | 「登记收款单 RC…（甲客户，金额 400.00，核销 GI…）」/「作废收款单 RC…」 |
-| 库存盘点单 `StockTake` | 创建（期初 / 盘点） | `StockTakes/CreateStockTake` | 「期初建账 ST…（3 个商品，金额 1200.00）」/「库存盘点 ST…（差异 2 行）」 |
+| 库存盘点单 `StockTake` | 创建（期初 / 盘点，动作 `Adjust`） | `StockTakes/CreateStockTake` | 「期初建账 ST…（3 行，差异 2 行，涉及 螺丝、螺母）」/「库存盘点 ST…（差异 2 行）」 |
 | 调拨单（`039`） `Transfer` | 创建 / 作废 | `Transfers/*` | 「开具调拨单 TR…（上海仓 → 北京仓）」 |
 | 发票（`032`） `Invoice` | 创建 / 作废 | `Invoices/*` | 「登记销项发票 12345678（乙客户，金额 500.00）」 |
-| 成本重算 `Cost` | 重算 | `Costs/RecalculateCosts` | 「重算成本：流水 320 条，缺价 2 条」 |
+| 成本重算 `Cost` | 重算（`Recalculate`，无明确业务对象 → `ResourceId` 为空） | `Costs/RecalculateCosts` | 「成本重算 2026-09-01 ~ 2026-09-30：流水 320 条、12 个商品、缺价 2 条」 |
 | 单据审批（`042`） `Approval` | 通过 / 驳回 | `Approvals/*` | 「审批通过 采购入库单 GR…（金额 12000.00）」 |
 
 - **范围外动作**：登录（`009` 已有）、查询 / 打印 / 导出（读操作）、密码哈希值本身、任何系统内部任务（如预警扫描生成站内信——属系统动作，`041` 自记）。
@@ -46,7 +48,7 @@ updated: 2026-09-17
   - 集合类字段（角色、权限点、单据明细）记 `before` / `after` 的**集合快照文本**（如 `Staff` → `仓管,财务`；权限点用「+ / -」差异文本），不逐项展开明细行。
 - **敏感字段白名单（永不记录）**：`password`、`newPassword`、`passwordHash`、任何 `token` / `secret` / `key` 字段；实现上由 `AuditChangeBuilder` 的字段名黑名单统一拦截（不依赖各域自觉）。
 - **不入库的字段**：`UpdatedAt` / `UpdatedBy`（审计噪音）、自增序号类展示字段。
-- 金额 / 数量格式统一 `ToString("0.##")`；日期 `yyyy-MM-dd`；枚举输出**中文文案**（取该域 §0 文案表，如结算状态「未结算 / 已结算」）。
+- **金额**统一 `ToString("0.00")`（摘要与差异一致，保证详情页呈现 `10.00 → 8.80`）、**数量**统一 `ToString("0.##")`；日期 `yyyy-MM-dd`；枚举输出**中文文案**（统一取 `App.Core/Audit/AuditText.cs`，如结算状态「未结算 / 已结算」、订单状态「待收货 / 已完成收货」）。
 
 ### 0.3 动作枚举（`AuditAction`）
 
@@ -116,7 +118,7 @@ updated: 2026-09-17
 | 类型 | 位置 | 说明 |
 |---|---|---|
 | `AuditEntry` | `App.Core/Audit/` | 写入模型：`Resource` / `Action` / `ResourceId` / `ResourceNo` / `Summary` / `Changes?`（由 `AuditChangeBuilder` 产出）；操作人与时间由 `IAuditLogger` 实现自行填充（经 `ICurrentUser`） |
-| `AuditChangeBuilder` | `App.Core/Audit/` | 链式构建：`Add(field, label, before, after)`（值相同不记录）、`AddSensitiveGuard()`（敏感字段黑名单拦截）、`Build()` → JSON 文本；`sealed` 无状态 |
+| `AuditChangeBuilder` | `App.Core/Audit/` | 链式构建：`Add(field, label, before, after)`（值相同不记录）、`Build()` → JSON 文本（超长从尾部丢弃并置 `Truncated`）；敏感字段黑名单（见 §0.2）**内置在 `Add` 中**兜底拦截（对外另暴露 `IsSensitive(field)` 便于单测守护），确保不遗漏不依赖各域自觉 |
 | `IAuditLogger` | `App.Core/Abstractions/` | `Task RecordAsync(AuditEntry entry, CancellationToken ct)`；实现 `App.Infrastructure/Audit/AuditLogger.cs`（`Add` + `SaveChangesAsync`，随调用方事务提交；`CreatedAt` 由调用方传入或实现内取 `DateTimeOffset.UtcNow`，规格要求**由调用方传 `utcNow`** 以保持单测可注入） |
 | 摘要构造辅助 | `App.Core/Audit/AuditSummary.cs` | 静态格式化方法（金额 / 数量 / 日期 / 枚举文案），供各域拼摘要，避免格式散落 |
 

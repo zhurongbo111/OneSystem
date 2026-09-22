@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-22
 ---
 
 # 需求规格：业务操作审计日志（erp-audit-log）

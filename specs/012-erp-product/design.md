@@ -9,6 +9,7 @@ updated: 2026-09-22
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `user-management` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格为进销存功能组商品域底座，库存台账与开单商品选择接口的消费方为 erp-inventory-query / erp-purchase / erp-sale。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `products.view` / `create` / `update` / `status` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-audit-log）**：本域商品（创建 / 更新 / 启停）与分类（创建 / 更新 / 删除）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 
 ## 1. 总体设计
 

@@ -9,6 +9,7 @@ updated: 2026-09-22
 > 后端新增分页查询接口（搜索 + 分页），前端 `CategoriesView` 升级为「搜索 + 分页」标准列表页，编辑改为抽屉（`CategoryFormDrawer`）。
 > 列表页结构参照 `src/views/ProductManagement/ProductsView.vue`（同目录，搜索 + 分页模式）；按钮 loading 遵循前端规则 §4.6；分页契约遵循 `AGENTS.md` §4.3。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `categories.view` / `create` / `update` / `delete`；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-audit-log）**：本域分类（创建 / 更新 / 删除）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 
 ## 1. 总体设计
 
