@@ -11,6 +11,7 @@ updated: 2026-09-22
 > **演进（`023-erp-settlement` / `024-erp-order-flow`）**：本规格单据域已被两者改写（结算金额化 + 已核销禁作废 + 核销取数只查主表；表 / 路由 / 单号前缀重命名 + 可关联销售订单 + 列表数量合计）。**本正文已按现行为准**，决策与判据分别见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6 与 `specs/024-erp-order-flow/design.md` §3 / §4。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `sales.view` / `create` / `void` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮（新增 / 作废 / 导出）由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-audit-log）**：本域销售出库（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
+> **演进（erp-general-ledger）**：本域销售出库单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（收入分录借「应收账款」、贷「主营业务收入」，成本结转分录借「主营业务成本」、贷「库存商品」，同凭证呈现）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
 
 ## 1. 相对 erp-purchase 的替换规则
 

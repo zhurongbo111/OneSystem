@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # 设计规格：frontend-e2e（前端集成测试自动化）
@@ -47,6 +47,8 @@ Playwright（`@playwright/test`，已在 `frontend` devDependencies）。
 
 > 目标：每轮 e2e 使用全新数据库，跑完自动清理。用例本身自带数据且唯一命名，数据累积不影响正确性，但会让后续运行明显变慢、失败现场被历史数据污染。
 > 实现：`frontend/scripts/e2e-run.ps1`（Windows PowerShell），由 `frontend/package.json` 的 `e2e:run` 调用。
+> **过滤运行**：`npm run e2e:run -- -Spec e2e/<功能>.spec.ts`（按文件，可重复给多个）/ `-Grep <关键字>`（按标题），两者可组合；**过滤不改变数据隔离策略**，仍用本轮独立库、跑完自动删库，脚本不支持指向开发库。
+> **禁止**为图快手工起后端 / 前端连开发库跑用例：用例数据（供应商、商品、单据、凭证、流水等）会落进开发库，清理只能重建开发库。
 
 ### 6.1 依赖的后端既有能力（无需改后端代码）
 

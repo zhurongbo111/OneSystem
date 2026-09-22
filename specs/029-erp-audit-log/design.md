@@ -38,6 +38,7 @@ updated: 2026-09-22
 | 部门 / 岗位 / 员工（`030`） `Department` / `Position` / `Employee` | 创建 / 更新 / 删除 / 启停 | `Departments/*`、`Positions/*`、`Employees/*` | 「新增部门 财务部（FIN）」/「新增岗位 出纳（P010）」/「新增员工 张三（E0001）」 |
 | 会计科目 / 税率（`031`） `Account` / `TaxRate` | 创建 / 更新 / 删除 / 启停 | `Accounts/*`、`TaxRates/*` | 「新增科目 库存现金（1001）」/「新增税率 增值税 13%（VAT13）」 |
 | 单据审批（`042`） `Approval` | 通过 / 驳回 | `Approvals/*` | 「审批通过 采购入库单 GR…（金额 12000.00）」 |
+| 记账凭证 / 会计期间（`033`） `Voucher` / `AccountingPeriod` | 创建（录入手工凭证）/ 作废 / 结账 / 反结账 / 映射维护（`Update`） | `Vouchers/CreateVoucher` / `VoidVoucher`、`AccountingPeriods/ClosePeriod` / `ReversePeriod`、`UpdateAccountMappings` | 「记账凭证 记-202609-0001（摘要，借贷合计 20.00）」/「作废记账凭证 记-…」/「结账期间 2026-09」/「反结账期间 2026-09」/「维护科目映射 8 项」 |
 
 - **范围外动作**：登录（`009` 已有）、查询 / 打印 / 导出（读操作）、密码哈希值本身、任何系统内部任务（如预警扫描生成站内信——属系统动作，`041` 自记）。
 
