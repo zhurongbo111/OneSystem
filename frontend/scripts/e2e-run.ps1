@@ -20,8 +20,20 @@
 .PARAMETER BackendTimeoutSeconds
   等待后端就绪的超时秒数，默认 120。
 
+.PARAMETER Spec
+  只跑指定的用例文件（可多个，路径相对 e2e/，如 `e2e/general-ledger.spec.ts`）。
+  与 -Grep 可组合；两者都不给时为全量。**过滤不改变数据库策略**：仍用本轮独立库，跑完自动删库。
+
+.PARAMETER Grep
+  按用例标题过滤（`playwright --grep`）。
+
 .NOTES
   约定与失败处理见 specs/002-frontend-e2e/design.md §6。
+  **无论全量还是过滤，都必须经本脚本运行**（临时库 + 跑完删库）；为图快手工起服务连开发库会污染开发库。
+  过滤运行示例：
+    npm run e2e:run -- -Spec e2e/general-ledger.spec.ts
+    npm run e2e:run -- -Grep 总账
+    npm run e2e:run -- -Spec e2e/general-ledger.spec.ts -KeepDatabase
   仅支持 Windows PowerShell（如需 Linux CI 需另写等价脚本）。
 #>
 [CmdletBinding()]
@@ -30,7 +42,9 @@ param(
     [switch]$SkipResidualCleanup,
     [switch]$ReuseFrontend,
     [int]$BackendTimeoutSeconds = 120,
-    [string]$DbPrefix = 'app_e2e_'
+    [string]$DbPrefix = 'app_e2e_',
+    [string[]]$Spec = @(),
+    [string]$Grep = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -282,11 +296,22 @@ try {
     }
 
     # 5. 运行用例：产物固定落 test-results/e2e-run，避免与手工运行互相覆盖
-    Write-Step '运行 Playwright 全量用例'
+    #    过滤（-Spec / -Grep）只改变用例范围，数据库仍为本轮独立库（见 .NOTES）
+    $filterText = ''
+    if ($Spec.Count -gt 0) { $filterText += "文件：$($Spec -join '、')" }
+    if ($Grep) { $filterText += "$(if ($filterText) { '；' })标题：$Grep" }
+    if ($filterText) {
+        Write-Step "运行 Playwright 用例（过滤：$filterText）"
+    } else {
+        Write-Step '运行 Playwright 全量用例'
+    }
     if (Test-Path $outputDir) { Remove-Item $outputDir -Recurse -Force -ErrorAction SilentlyContinue }
     Push-Location $frontendDir
     try {
-        & npx playwright test --output=$outputDir
+        $playwrightArgs = @('test', "--output=$outputDir")
+        if ($Grep) { $playwrightArgs += @('--grep', $Grep) }
+        if ($Spec.Count -gt 0) { $playwrightArgs += $Spec }
+        & npx playwright @playwrightArgs
         $exitCode = $LASTEXITCODE
     } finally {
         Pop-Location
