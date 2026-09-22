@@ -33,9 +33,10 @@ updated: 2026-09-22
 | 收付款单 `Settlement` | 创建（核销）/ 作废 | `Settlements/CreateSettlement` / `VoidSettlement` | 「登记收款单 RC…（甲客户，金额 400.00，核销 GI…）」/「作废收款单 RC…」 |
 | 库存盘点单 `StockTake` | 创建（期初 / 盘点，动作 `Adjust`） | `StockTakes/CreateStockTake` | 「期初建账 ST…（3 行，差异 2 行，涉及 螺丝、螺母）」/「库存盘点 ST…（差异 2 行）」 |
 | 调拨单（`039`） `Transfer` | 创建 / 作废 | `Transfers/*` | 「开具调拨单 TR…（上海仓 → 北京仓）」 |
-| 发票（`032`） `Invoice` | 创建 / 作废 | `Invoices/*` | 「登记销项发票 12345678（乙客户，金额 500.00）」 |
+| 发票（`032`） `Invoice` | 创建 / 作废 | `Invoices/CreateInvoice` / `VoidInvoice` | 「登记销项发票 12345678（乙客户，金额 1017.00，关联 GI…）」/「作废销项发票 12345678（乙客户、金额 1017.00）」 |
 | 成本重算 `Cost` | 重算（`Recalculate`，无明确业务对象 → `ResourceId` 为空） | `Costs/RecalculateCosts` | 「成本重算 2026-09-01 ~ 2026-09-30：流水 320 条、12 个商品、缺价 2 条」 |
 | 部门 / 岗位 / 员工（`030`） `Department` / `Position` / `Employee` | 创建 / 更新 / 删除 / 启停 | `Departments/*`、`Positions/*`、`Employees/*` | 「新增部门 财务部（FIN）」/「新增岗位 出纳（P010）」/「新增员工 张三（E0001）」 |
+| 会计科目 / 税率（`031`） `Account` / `TaxRate` | 创建 / 更新 / 删除 / 启停 | `Accounts/*`、`TaxRates/*` | 「新增科目 库存现金（1001）」/「新增税率 增值税 13%（VAT13）」 |
 | 单据审批（`042`） `Approval` | 通过 / 驳回 | `Approvals/*` | 「审批通过 采购入库单 GR…（金额 12000.00）」 |
 
 - **范围外动作**：登录（`009` 已有）、查询 / 打印 / 导出（读操作）、密码哈希值本身、任何系统内部任务（如预警扫描生成站内信——属系统动作，`041` 自记）。
@@ -49,7 +50,7 @@ updated: 2026-09-22
   - 集合类字段（角色、权限点、单据明细）记 `before` / `after` 的**集合快照文本**（如 `Staff` → `仓管,财务`；权限点用「+ / -」差异文本），不逐项展开明细行。
 - **敏感字段白名单（永不记录）**：`password`、`newPassword`、`passwordHash`、任何 `token` / `secret` / `key` 字段；实现上由 `AuditChangeBuilder` 的字段名黑名单统一拦截（不依赖各域自觉）。
 - **不入库的字段**：`UpdatedAt` / `UpdatedBy`（审计噪音）、自增序号类展示字段。
-- **金额**统一 `ToString("0.00")`（摘要与差异一致，保证详情页呈现 `10.00 → 8.80`）、**数量**统一 `ToString("0.##")`；日期 `yyyy-MM-dd`；枚举输出**中文文案**（统一取 `App.Core/Audit/AuditText.cs`，如结算状态「未结算 / 已结算」、订单状态「待收货 / 已完成收货」）。
+- **金额**统一 `ToString("0.00")`（摘要与差异一致，保证详情页呈现 `10.00 → 8.80`）、**数量**统一 `ToString("0.##")`、**税率百分比**统一 `ToString("0.####")`（如 `13` / `13.5`）；日期 `yyyy-MM-dd`；枚举输出**中文文案**（统一取 `App.Core/Audit/AuditText.cs`，如结算状态「未结算 / 已结算」、订单状态「待收货 / 已完成收货」）。
 
 ### 0.3 动作枚举（`AuditAction`）
 

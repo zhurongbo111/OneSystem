@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-22
 ---
 
 # 设计规格：发票登记（erp-invoice）
@@ -20,6 +20,8 @@ updated: 2026-09-17
 | 税额 | `TaxAmount = Round(AmountExcludingTax × TaxRate, 2)`（`MidpointRounding.AwayFromZero`，与 `026` 舍入口径一致） |
 | 价税合计 | `TotalAmount = AmountExcludingTax + TaxAmount`（后端重算，**不信任前端**） |
 | 精度 | 存储与展示均 2 位小数（`numeric(18,2)`） |
+
+- **演进（`031-erp-finance-master`）**：`031` 已交付税率字典（`TaxRates`，百分比数值 `0–100`）。本规格落地时税率可由手填改为**优先从字典取值**（本表 `TaxRate` 仍存 `0–1` 小数，取值时 `/100` 换算），「自定义」入口保留给字典外税率。属**可选演进**，不改变本节校验与计算口径。
 
 ### 0.2 方向与往来
 
@@ -115,8 +117,9 @@ updated: 2026-09-17
 
 ### 2.4 迁移与字段约束
 
-- 迁移：`dotnet ef migrations add AddErpInvoice -p src/App.Infrastructure -s src/App.Api`（增量迁移，两张表 + 索引；外键不级联删除）。
-- **不新建常量类**：`InvoiceNo` 长度 50（本域定义于 `InvoiceFieldConstraints.InvoiceNoMaxLength`，无既有同源常量）；查询 `keyword` 50（对齐 `InvoiceNo` 与 `PartnerName` 的最大匹配列长）；`Remark` 200 引用 `OrderFieldConstraints.RemarkMaxLength`；明细行数上限 100 引用 `OrderFieldConstraints.ItemsMaxCount`；金额上下界引用 `ProductFieldConstraints.PriceMinValue/PriceMaxValue`。
+- 迁移：`dotnet ef migrations add AddErpInvoice -p src/App.Infrastructure -s src/App.Api`（增量迁移，两张表 + 索引；外键不级联删除；作废明细的金额聚合走 `(OrderType, OrderId)` 复合索引）。
+- **字段约束单一来源**（后端规则 §5.3）：只新建本域常量类 `InvoiceFieldConstraints`，且只登记**无既有同源常量**的项——`InvoiceNoMaxLength = 50`、`KeywordMaxLength = 50`（对齐 `InvoiceNo` / `PartnerName` 的最大匹配列长）、`AmountPrecision = 18` / `AmountDecimalPlaces = 2`（金额列口径）、`TaxRateMinValue = 0` / `TaxRateMaxValue = 1` / `TaxRatePrecision = 5` / `TaxRateDecimalPlaces = 4`（税率列 `numeric(5,4)` 与校验区间同源）。
+  其余复用既有常量：`Remark` 200 引用 `OrderFieldConstraints.RemarkMaxLength`；明细行数上限 100 引用 `OrderFieldConstraints.ItemsMaxCount`；金额上下界引用 `ProductFieldConstraints.PriceMinValue` / `PriceMaxValue`。
 
 ## 3. 后端设计
 
@@ -129,8 +132,9 @@ updated: 2026-09-17
 | `Task AddAsync(Invoice, IReadOnlyList<InvoiceItem>, ...)` | 发票 + 明细（同一仓储内一次 `SaveChangesAsync`） |
 | `Task<(IReadOnlyList<InvoiceListItem> Items, int Total)> GetPagedAsync(string? keyword, InvoiceType? type, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end, int page, int pageSize, ...)` | 列表（`keyword` 匹配 `InvoiceNo` / 往来名称 / **关联单据号**（EXISTS 子查询）；`InvoiceDate` 闭区间；`CreatedAt DESC`；含作废） |
 | `Task<(Invoice? Invoice, IReadOnlyList<InvoiceItem> Items)> GetDetailAsync(Guid id, ...)` | 详情（主表 + 明细，按插入顺序） |
-| `Task<bool> ExistsByInvoiceNoAsync(string invoiceNo, ...)` | 发票号唯一 |
-| `Task UpdateStatusAsync(Guid id, OrderStatus s, ...)` | 作废 |
+| `Task<bool> ExistsByInvoiceNoAsync(string invoiceNo, ...)` | 发票号唯一（**忽略大小写**判定；唯一索引为并发兜底，冲突时抛 `40132`） |
+| `Task UpdateStatusAsync(Guid id, OrderStatus s, ...)` | 作废（加载主表 → 置状态 + 审计字段 → `SaveChanges`） |
+| `Task<IReadOnlyList<InvoiceItem>> GetItemsByInvoiceIdsAsync(IReadOnlyCollection<Guid> invoiceIds, ...)` | 按发票 id 批量取明细（列表「关联单据」摘要与导出共用，一次查询避免逐单 N+1；按明细 Id 升序即插入顺序） |
 
 `IInvoiceQueryRepository`（新增，跨四表只读）：
 
@@ -140,8 +144,9 @@ updated: 2026-09-17
 | `Task<decimal> GetInvoicedAmountAsync(SettlementOrderType orderType, Guid orderId, ...)` | 某单据已开票金额（未作废发票的明细聚合） |
 
 - 读模型（`App.Core/Abstractions/`，`sealed record` + `required` + `init`）：
-  - `InvoicableOrderItem`：`OrderType` / `OrderId` / `OrderNo` / `OrderDate` / `TotalAmount` / `InvoicedAmount` / `UninvoicedAmount`；
-  - `InvoiceListItem`（列表）：`Id` / `InvoiceNo` / `Type` / `PartnerName` / `InvoiceDate` / `AmountExcludingTax` / `TaxAmount` / `TotalAmount` / `Status` / `CreatedAt` / `OrderNoSummary`（关联单据号拼接，列表展示用）。
+  - `InvoicableOrderItem`：`OrderType` / `OrderId` / `OrderNo` / `OrderDate` / `TotalAmount` / `InvoicedAmount` / `UninvoicedAmount`（未开票金额为推导属性）；
+  - `InvoiceListItem`（列表）：`Id` / `InvoiceNo` / `Type` / `PartnerName` / `InvoiceDate` / `AmountExcludingTax` / `TaxRate` / `TaxAmount` / `TotalAmount` / `Status` / `CreatedAt` / `OrderNoSummary`（关联单据号拼接，列表展示用；`TaxRate` 为列表「税率」列所需）。
+  - `OrderNoSummary` 的拼接分隔符取中文顿号（同 `AuditSummary.Join`）；仓库内一次批量取本页明细后按 `InvoiceId` 分组拼装。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 
@@ -159,6 +164,7 @@ updated: 2026-09-17
 | 接口 | 方法 | 用例目录 | `data` 响应 | 权限点 / 错误码 |
 |---|---|---|---|---|
 | `/api/invoices` | GET | `Invoices/GetInvoices` | `PagedResult<InvoiceListItemDto>` | `invoices.view` / 40000 |
+| `/api/invoices/export` | GET | `Invoices/ExportInvoices` | 文件流（xlsx，工作表：单据 + 明细，`027` 续行） | `invoices.export` / 40000（契约例外见 `AGENTS.md` §4.1） |
 | `/api/invoices` | POST | `Invoices/CreateInvoice` | `InvoiceDetailDto` | `invoices.create` / 40000 / 40104 / 40110 / 40132 / 40133 / 40134 / 40135 / 40400 |
 | `/api/invoices/{id:guid}` | GET | `Invoices/GetInvoiceById` | `InvoiceDetailDto` | `invoices.view` / 40400 |
 | `/api/invoices/{id:guid}/void` | PUT | `Invoices/VoidInvoice` | `InvoiceDetailDto` | `invoices.void` / 40104 / 40400 |
@@ -215,8 +221,10 @@ src/
 
 ### 4.2 接口层
 
-- `src/api/invoice.ts`：类型与后端 DTO 一一对应；`getInvoices` / `createInvoice` / `getInvoiceById` / `voidInvoice` / `getInvoicableOrders`。
-- 日期范围参数转 UTC ISO（同既有约定）；金额展示 `toFixed(2)`、税率展示百分比（`13%`）。
+- `src/api/invoice.ts`：类型与后端 DTO 一一对应；`getInvoices` / `createInvoice` / `getInvoice` / `voidInvoice` / `getInvoicableOrders`；并集中本域展示常量与纯函数——`INVOICE_TYPE_META`（类型文案 / 颜色，§0.4）、`INVOICE_TYPE_OPTIONS`、`TAX_RATE_OPTIONS`（0/1/3/6/9/13%）、`CUSTOM_TAX_RATE`、`formatTaxRate`（0.13 → `13%`）、`allowedPartnerTypes`（方向 → 可交往来档案类型，§3.4）。
+- 导出函数并入 `api/export.ts`（`exportInvoices`；列表类导出集中文件，归属理由见该文件头注释与前端规则 §3）。
+- 日期范围参数转 UTC ISO（同既有约定，本域自带 `toDateRange` / `toUtcMidnight`，与其它单据域同形）；金额展示 `toFixed(2)`、税率展示 `formatTaxRate`。
+- 单据类型文案与详情路由复用 `utils/settlement.ts` 的 `settlementOrderTypeLabel` / `settlementOrderTypeRouteName`（同一枚举，不重复定义映射）。
 
 ### 4.3 路由与菜单
 
