@@ -5,6 +5,13 @@ using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Categories.DeleteCategory;
 using App.Core.Features.Categories.UpdateCategory;
 using App.Core.Features.Costs.RecalculateCosts;
+using App.Core.Features.Departments.CreateDepartment;
+using App.Core.Features.Departments.DeleteDepartment;
+using App.Core.Features.Departments.UpdateDepartment;
+using App.Core.Features.Departments.UpdateDepartmentStatus;
+using App.Core.Features.Employees.CreateEmployee;
+using App.Core.Features.Employees.UpdateEmployee;
+using App.Core.Features.Employees.UpdateEmployeeStatus;
 using App.Core.Features.Partners.CreatePartner;
 using App.Core.Features.Partners.UpdatePartner;
 using App.Core.Features.Partners.UpdatePartnerStatus;
@@ -17,6 +24,10 @@ using App.Core.Features.PurchaseOrders.UpdatePurchaseOrder;
 using App.Core.Features.PurchaseOrders.VoidPurchaseOrder;
 using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
 using App.Core.Features.PurchaseReceipts.VoidPurchaseReceipt;
+using App.Core.Features.Positions.CreatePosition;
+using App.Core.Features.Positions.DeletePosition;
+using App.Core.Features.Positions.UpdatePosition;
+using App.Core.Features.Positions.UpdatePositionStatus;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
 using App.Core.Features.Roles.CreateRole;
@@ -87,6 +98,17 @@ public class AuditLogScopeGuardTests
             { typeof(VoidSettlementRequestHandler), AuditResource.Settlement, AuditAction.Void },
             { typeof(CreateStockTakeRequestHandler), AuditResource.StockTake, AuditAction.Adjust },
             { typeof(RecalculateCostsRequestHandler), AuditResource.Cost, AuditAction.Recalculate },
+            { typeof(CreateDepartmentRequestHandler), AuditResource.Department, AuditAction.Create },
+            { typeof(UpdateDepartmentRequestHandler), AuditResource.Department, AuditAction.Update },
+            { typeof(DeleteDepartmentRequestHandler), AuditResource.Department, AuditAction.Delete },
+            { typeof(UpdateDepartmentStatusRequestHandler), AuditResource.Department, AuditAction.StatusChange },
+            { typeof(CreatePositionRequestHandler), AuditResource.Position, AuditAction.Create },
+            { typeof(UpdatePositionRequestHandler), AuditResource.Position, AuditAction.Update },
+            { typeof(DeletePositionRequestHandler), AuditResource.Position, AuditAction.Delete },
+            { typeof(UpdatePositionStatusRequestHandler), AuditResource.Position, AuditAction.StatusChange },
+            { typeof(CreateEmployeeRequestHandler), AuditResource.Employee, AuditAction.Create },
+            { typeof(UpdateEmployeeRequestHandler), AuditResource.Employee, AuditAction.Update },
+            { typeof(UpdateEmployeeStatusRequestHandler), AuditResource.Employee, AuditAction.StatusChange },
         };
 
     [Theory]
