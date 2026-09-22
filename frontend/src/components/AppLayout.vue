@@ -6,8 +6,10 @@ import { useAuthStore } from '@/stores/auth'
 import {
   IconApps,
   IconArrowsExchange,
+  IconBook2,
   IconBriefcase,
   IconBuildingWarehouse,
+  IconCalculator,
   IconCash,
   IconChartBar,
   IconClipboardCheck,
@@ -21,11 +23,13 @@ import {
   IconHistory,
   IconHome,
   IconIdBadge2,
+  IconInvoice,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconList,
   IconPackage,
   IconPackages,
+  IconPercentage,
   IconReceipt,
   IconReceiptRefund,
   IconScale,
@@ -53,6 +57,7 @@ const collapsed = ref<boolean>(false)
 /** 详情等子路由归属到所属一级菜单，保证侧边栏高亮正确 */
 const MENU_ROUTE_MAP: Record<string, string> = {
   userDetail: 'users',
+  invoiceDetail: 'invoices',
   purchaseOrderEdit: 'purchaseOrders',
   purchaseOrderDetail: 'purchaseOrders',
   purchaseDetail: 'purchases',
@@ -82,7 +87,8 @@ const MENU_GROUPS: Record<string, string[]> = {
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
   sale: ['salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
-  fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation'],
+  fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'invoices', 'invoiceNew', 'invoiceDetail'],
+  finance: ['accounts', 'taxRates'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
   system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees'],
 }
@@ -106,6 +112,9 @@ const MENU_PERMISSIONS: Record<string, string> = {
   stockTakes: 'stockTakes.view',
   settlements: 'settlements.view',
   reconciliation: 'reconciliation.view',
+  invoices: 'invoices.view',
+  accounts: 'accounts.view',
+  taxRates: 'taxRates.view',
   inventoryFlowReport: 'reports.view',
   stockBalanceReport: 'reports.view',
   purchaseSummaryReport: 'reports.view',
@@ -411,6 +420,44 @@ function onLogout(): void {
               <IconScale />
             </template>
             <span>往来对账</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('invoices')"
+            key="invoices"
+          >
+            <template #icon>
+              <IconInvoice />
+            </template>
+            <span>发票登记</span>
+          </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu
+          v-if="isGroupVisible('finance')"
+          key="finance"
+        >
+          <template #icon>
+            <IconCalculator />
+          </template>
+          <template #title>
+            <span>财务</span>
+          </template>
+          <a-menu-item
+            v-if="isMenuVisible('accounts')"
+            key="accounts"
+          >
+            <template #icon>
+              <IconBook2 />
+            </template>
+            <span>会计科目</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('taxRates')"
+            key="taxRates"
+          >
+            <template #icon>
+              <IconPercentage />
+            </template>
+            <span>税率</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu
