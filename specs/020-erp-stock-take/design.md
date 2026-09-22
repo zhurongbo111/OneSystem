@@ -9,6 +9,7 @@ updated: 2026-09-22
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase`（单据域模板）为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 变动类型的**文案与颜色**见 `specs/019-erp-stock-movement/design.md` §0（唯一事实源，本规格新增两行）；本文件不重复该表。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `stockTakes.view` / `create` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-audit-log）**：本域库存盘点（期初建账 / 盘点，动作 `Adjust`）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 
 ## 1. 总体设计
 

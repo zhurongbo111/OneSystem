@@ -10,6 +10,7 @@ updated: 2026-09-22
 > **本规格继承 erp-purchase design §0「单据域共用约定」**：`SalesShipments` / `SalesShipmentItems` 与 `PurchaseReceipts` / `PurchaseReceiptItems` 结构完全同构，实现时照抄 erp-purchase 模板并按 §1 替换规则替换差异点；共用枚举（`OrderStatus`）、常量（`OrderFieldConstraints` + `ProductFieldConstraints` 的 quantity / unitPrice 边界）、单号生成（`GenerateOrderNoAsync`，前缀参数化）、校验结构**均不重复定义**。本规格只定义销售特有差异。
 > **演进（`023-erp-settlement` / `024-erp-order-flow`）**：本规格单据域已被两者改写（结算金额化 + 已核销禁作废 + 核销取数只查主表；表 / 路由 / 单号前缀重命名 + 可关联销售订单 + 列表数量合计）。**本正文已按现行为准**，决策与判据分别见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6 与 `specs/024-erp-order-flow/design.md` §3 / §4。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `sales.view` / `create` / `void` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮（新增 / 作废 / 导出）由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-audit-log）**：本域销售出库（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 
 ## 1. 相对 erp-purchase 的替换规则
 

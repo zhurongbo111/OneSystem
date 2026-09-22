@@ -10,6 +10,7 @@ updated: 2026-09-22
 > **本规格改造既有单据的结算语义**：`015` / `016` / `021` / `022` 的 `SettlementStatus` 与手工切换接口在本规格落地时一并替换（等价于 `specs/ROADMAP.md` §6.3 预留的迁移路径），各规格需留演进注记。
 > **演进（`024-erp-order-flow`）**：本规格核销的两类单据表 / 路由 / 单号前缀已重命名（`PurchaseOrders` → `PurchaseReceipts`、`SalesOrders` → `SalesShipments`），跨仓储累加的目标仓储随之改名（`IPurchaseReceiptRepository` / `ISalesShipmentRepository`）；`SettlementOrderType` 取值与结算 / 核销语义不变。**本正文已按现行为准**，重命名细节见 `specs/024-erp-order-flow/design.md` §3。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `settlements.view` / `create` / `void` / `export`，往来对账为 `reconciliation.view`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-audit-log）**：本域收付款单（创建核销 / 作废）的写操作已接入操作日志；被核销单据的结算态变更由收付款单日志体现，不单独记录（`specs/029-erp-audit-log/design.md` §0.1）。
 
 ## 0. 结算口径约定（唯一事实源）
 

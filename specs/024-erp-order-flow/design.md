@@ -10,6 +10,7 @@ updated: 2026-09-22
 > 本规格改造既有 `erp-purchase` / `erp-sale`（重命名 + 关联订单 + 状态回写），并消费 `erp-stock-movement`（流水）与 `erp-settlement`（结算端点已在其中改造完毕）。
 > **演进（erp-settlement，已核销禁作废）**：入库单 / 出库单被核销（`SettledAmount > 0`）后**禁止作废**（`40120`，须先作废对应收付款单回退金额）；`VoidPurchaseReceipt` / `VoidSalesShipment` 在既有「已作废 `40104`」校验后追加该校验（§3.3），判据见 `specs/023-erp-settlement/design.md` §0 / §3.6。
 > **演进（erp-rbac）**：订单域动作接入权限校验，权限点 `purchaseOrders.view` / `create` / `update` / `void` / `close` 与 `salesOrders.view` / `create` / `update` / `void` / `close`（与出入库单 `purchases.*` / `sales.*` 分属独立域）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-audit-log）**：采购 / 销售订单（创建 / 更新 / 作废 / 关闭）的写操作已接入操作日志；关联收发货对订单累计量的回写属系统动作，不单独记录（`specs/029-erp-audit-log/design.md` §0.1）。
 
 ## 0. 订单状态与展示约定（唯一事实源）
 
