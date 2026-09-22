@@ -229,6 +229,9 @@ public static class Permissions
     /// <summary>作废发票</summary>
     public const string InvoicesVoid = "invoices.void";
 
+    /// <summary>导出发票</summary>
+    public const string InvoicesExport = "invoices.export";
+
     // ===== 客户价格（036） =====
     /// <summary>查看客户价格</summary>
     public const string PartnerPricesView = "partnerPrices.view";
@@ -336,6 +339,37 @@ public static class Permissions
     /// <summary>导出员工档案</summary>
     public const string EmployeesExport = "employees.export";
 
+    // ===== 财务主数据（031） =====
+    /// <summary>查看会计科目</summary>
+    public const string AccountsView = "accounts.view";
+
+    /// <summary>新增会计科目</summary>
+    public const string AccountsCreate = "accounts.create";
+
+    /// <summary>编辑会计科目</summary>
+    public const string AccountsUpdate = "accounts.update";
+
+    /// <summary>删除会计科目</summary>
+    public const string AccountsDelete = "accounts.delete";
+
+    /// <summary>启用 / 停用会计科目</summary>
+    public const string AccountsStatus = "accounts.status";
+
+    /// <summary>查看税率</summary>
+    public const string TaxRatesView = "taxRates.view";
+
+    /// <summary>新增税率</summary>
+    public const string TaxRatesCreate = "taxRates.create";
+
+    /// <summary>编辑税率</summary>
+    public const string TaxRatesUpdate = "taxRates.update";
+
+    /// <summary>删除税率</summary>
+    public const string TaxRatesDelete = "taxRates.delete";
+
+    /// <summary>启用 / 停用税率</summary>
+    public const string TaxRatesStatus = "taxRates.status";
+
     // ===== 站内消息（041） =====
     /// <summary>查看站内消息</summary>
     public const string NotificationsView = "notifications.view";
@@ -370,7 +404,7 @@ public static class Permissions
         BatchesView, BatchesCreate, BatchesUpdate,
         SettlementsView, SettlementsCreate, SettlementsVoid, SettlementsExport,
         ReconciliationView,
-        InvoicesView, InvoicesCreate, InvoicesVoid,
+        InvoicesView, InvoicesCreate, InvoicesVoid, InvoicesExport,
         PartnerPricesView, PartnerPricesCreate, PartnerPricesUpdate, PartnerPricesDelete,
         ReportsView, ReportsExport,
         CostsRecalculate,
@@ -381,6 +415,8 @@ public static class Permissions
         DepartmentsView, DepartmentsCreate, DepartmentsUpdate, DepartmentsDelete, DepartmentsStatus,
         PositionsView, PositionsCreate, PositionsUpdate, PositionsDelete, PositionsStatus,
         EmployeesView, EmployeesCreate, EmployeesUpdate, EmployeesStatus, EmployeesExport,
+        AccountsView, AccountsCreate, AccountsUpdate, AccountsDelete, AccountsStatus,
+        TaxRatesView, TaxRatesCreate, TaxRatesUpdate, TaxRatesDelete, TaxRatesStatus,
         NotificationsView,
         ApprovalsView, ApprovalsApprove,
     ];
@@ -419,7 +455,7 @@ public static class Permissions
         new("批次管理", [new PermissionItem(BatchesView, "查看"), new PermissionItem(BatchesCreate, "新增"), new PermissionItem(BatchesUpdate, "编辑")]),
         new("收付款", [new PermissionItem(SettlementsView, "查看"), new PermissionItem(SettlementsCreate, "新增"), new PermissionItem(SettlementsVoid, "作废"), new PermissionItem(SettlementsExport, "导出")]),
         new("往来对账", [new PermissionItem(ReconciliationView, "查看")]),
-        new("发票管理", [new PermissionItem(InvoicesView, "查看"), new PermissionItem(InvoicesCreate, "新增"), new PermissionItem(InvoicesVoid, "作废")]),
+        new("发票管理", [new PermissionItem(InvoicesView, "查看"), new PermissionItem(InvoicesCreate, "新增"), new PermissionItem(InvoicesVoid, "作废"), new PermissionItem(InvoicesExport, "导出")]),
         new("客户价格", [new PermissionItem(PartnerPricesView, "查看"), new PermissionItem(PartnerPricesCreate, "新增"), new PermissionItem(PartnerPricesUpdate, "编辑"), new PermissionItem(PartnerPricesDelete, "删除")]),
         new("报表", [new PermissionItem(ReportsView, "查看"), new PermissionItem(ReportsExport, "导出")]),
         new("成本核算", [new PermissionItem(CostsRecalculate, "成本重算")]),
@@ -430,6 +466,8 @@ public static class Permissions
         new("部门管理", [new PermissionItem(DepartmentsView, "查看"), new PermissionItem(DepartmentsCreate, "新增"), new PermissionItem(DepartmentsUpdate, "编辑"), new PermissionItem(DepartmentsDelete, "删除"), new PermissionItem(DepartmentsStatus, "启用 / 停用")]),
         new("岗位管理", [new PermissionItem(PositionsView, "查看"), new PermissionItem(PositionsCreate, "新增"), new PermissionItem(PositionsUpdate, "编辑"), new PermissionItem(PositionsDelete, "删除"), new PermissionItem(PositionsStatus, "启用 / 停用")]),
         new("员工档案", [new PermissionItem(EmployeesView, "查看"), new PermissionItem(EmployeesCreate, "新增"), new PermissionItem(EmployeesUpdate, "编辑"), new PermissionItem(EmployeesStatus, "在职 / 离职"), new PermissionItem(EmployeesExport, "导出")]),
+        new("会计科目", [new PermissionItem(AccountsView, "查看"), new PermissionItem(AccountsCreate, "新增"), new PermissionItem(AccountsUpdate, "编辑"), new PermissionItem(AccountsDelete, "删除"), new PermissionItem(AccountsStatus, "启用 / 停用")]),
+        new("税率", [new PermissionItem(TaxRatesView, "查看"), new PermissionItem(TaxRatesCreate, "新增"), new PermissionItem(TaxRatesUpdate, "编辑"), new PermissionItem(TaxRatesDelete, "删除"), new PermissionItem(TaxRatesStatus, "启用 / 停用")]),
         new("站内消息", [new PermissionItem(NotificationsView, "查看")]),
         new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批")]),
     ];

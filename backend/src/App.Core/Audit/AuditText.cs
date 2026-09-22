@@ -107,6 +107,38 @@ public static class AuditText
     public static string EmployeeStatus(EmployeeStatus status)
         => status == Entities.EmployeeStatus.Active ? "在职" : "离职";
 
+    /// <summary>发票类型文案</summary>
+    /// <param name="type">发票类型</param>
+    public static string InvoiceType(InvoiceType type)
+        => type == Entities.InvoiceType.Purchase ? "进项" : "销项";
+
+    /// <summary>会计科目类别文案</summary>
+    /// <param name="category">科目类别</param>
+    public static string AccountCategory(AccountCategory category) => category switch
+    {
+        Entities.AccountCategory.Asset => "资产",
+        Entities.AccountCategory.Liability => "负债",
+        Entities.AccountCategory.Equity => "权益",
+        Entities.AccountCategory.Cost => "成本",
+        Entities.AccountCategory.ProfitLoss => "损益",
+        _ => AuditSummary.Empty,
+    };
+
+    /// <summary>会计科目余额方向文案</summary>
+    /// <param name="direction">余额方向</param>
+    public static string AccountDirection(AccountDirection direction)
+        => direction == Entities.AccountDirection.Debit ? "借" : "贷";
+
+    /// <summary>会计科目状态文案</summary>
+    /// <param name="status">状态</param>
+    public static string AccountStatus(AccountStatus status)
+        => status == Entities.AccountStatus.Enabled ? "启用" : "停用";
+
+    /// <summary>税率状态文案</summary>
+    /// <param name="status">状态</param>
+    public static string TaxRateStatus(TaxRateStatus status)
+        => status == Entities.TaxRateStatus.Enabled ? "启用" : "停用";
+
     /// <summary>性别文案（未填输出空值占位）</summary>
     /// <param name="gender">性别，可空</param>
     public static string Gender(Gender? gender) => gender switch

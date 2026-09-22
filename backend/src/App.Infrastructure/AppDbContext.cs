@@ -107,6 +107,18 @@ public class AppDbContext : DbContext
     /// <summary>员工档案表</summary>
     public DbSet<Employee> Employees => Set<Employee>();
 
+    /// <summary>会计科目表（树形，ParentId 自引用）</summary>
+    public DbSet<Account> Accounts => Set<Account>();
+
+    /// <summary>税率字典表</summary>
+    public DbSet<TaxRate> TaxRates => Set<TaxRate>();
+
+    /// <summary>发票主表</summary>
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+
+    /// <summary>发票关联单据明细表</summary>
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

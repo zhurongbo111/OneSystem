@@ -71,4 +71,10 @@ public enum AuditResource
 
     /// <summary>员工（030）</summary>
     Employee = 21,
+
+    /// <summary>会计科目（031）</summary>
+    Account = 22,
+
+    /// <summary>税率（031）</summary>
+    TaxRate = 23,
 }

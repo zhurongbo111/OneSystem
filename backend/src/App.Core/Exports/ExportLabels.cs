@@ -89,6 +89,20 @@ public static class ExportLabels
         };
 
     /// <summary>
+    /// 发票类型：进项 / 销项（specs/032-erp-invoice/design.md §0.4）
+    /// </summary>
+    public static string ToText(InvoiceType type)
+        => type == InvoiceType.Purchase ? "进项" : "销项";
+
+    /// <summary>
+    /// 税率百分比文案：入参为 0–1 小数口径（如 <c>0.13</c>），输出「13%」；
+    /// 由发票导出使用（页面展示同口径，specs/032-erp-invoice/design.md §4.2）。
+    /// </summary>
+    /// <param name="taxRate">税率（0–1 小数口径）</param>
+    public static string ToPercentage(decimal taxRate)
+        => $"{taxRate * 100:0.####}%";
+
+    /// <summary>
     /// 空值单元格的统一占位文案（<c>-</c>）：`null` / 空串 / 纯空白一律输出占位符，
     /// 避免 xlsx 里出现无法辨识的空白单元格（与页面对空值的展示口径一致）。
     /// </summary>
