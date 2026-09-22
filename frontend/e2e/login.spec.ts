@@ -30,9 +30,10 @@ test.describe("登录与路由守卫（集成）", () => {
 
     // 登录成功跳转首页
     await expect(page).toHaveURL(/\/$/);
-    // 首页展示当前用户信息（「管理员」在头部与描述列表各出现一次，取首个）
-    await expect(page.getByText("管理员").first()).toBeVisible();
-    await expect(page.getByText("admin")).toBeVisible();
+    // 首页展示当前用户信息：头部用户名用类名精确定位（getByText 按子串匹配，
+    // 侧边菜单「岗位管理 + 员工档案」相邻文本会命中隐藏的菜单容器，不可用于断言）
+    await expect(page.locator(".user-name")).toHaveText("管理员");
+    await expect(page.getByText("admin", { exact: true })).toBeVisible();
   });
 
   test("退出登录回到登录页", async ({ page }) => {
