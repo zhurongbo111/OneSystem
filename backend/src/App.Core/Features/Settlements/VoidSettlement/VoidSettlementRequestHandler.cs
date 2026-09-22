@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -18,6 +19,7 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
     private readonly ISalesReturnRepository _salesReturnRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化作废收付款单用例处理器
@@ -29,7 +31,8 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
         IPurchaseReturnRepository purchaseReturnRepository,
         ISalesReturnRepository salesReturnRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _settlementRepository = settlementRepository;
         _purchaseReceiptRepository = purchaseReceiptRepository;
@@ -38,6 +41,7 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
         _salesReturnRepository = salesReturnRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -59,6 +63,7 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
         }
 
+        var now = DateTimeOffset.UtcNow;
         var operatorId = _currentUser.UserId();
 
         // 回退与状态变更同一事务（design.md §3.4）
@@ -72,6 +77,22 @@ public sealed class VoidSettlementRequestHandler : IRequestHandler<VoidSettlemen
             }
 
             await _settlementRepository.UpdateStatusAsync(request.Id, OrderStatus.Voided, operatorId, cancellationToken);
+
+            // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+            var voidedSettlementChangeBuilder = new AuditChangeBuilder()
+                .Add("status", "单据状态", AuditText.OrderStatus(OrderStatus.Normal), AuditText.OrderStatus(OrderStatus.Voided));
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.Settlement,
+                Action = AuditAction.Void,
+                ResourceId = settlement.Id,
+                ResourceNo = settlement.SettlementNo,
+                Summary = $"作废{AuditText.SettlementType(settlement.Type)}单 {settlement.SettlementNo}（往来单位：{settlement.PartnerName}、已核销 {AuditSummary.Money(settlement.TotalAmount)}）",
+                Changes = voidedSettlementChangeBuilder.Build(),
+                ChangesTruncated = voidedSettlementChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

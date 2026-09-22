@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -27,6 +28,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增采购退货单用例处理器
@@ -38,7 +40,8 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _purchaseReturnRepository = purchaseReturnRepository;
         _partnerRepository = partnerRepository;
@@ -47,6 +50,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -196,6 +200,25 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
                         CreatedBy = operatorId,
                     }, cancellationToken);
                 }
+
+                // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+                var createdReturnChangeBuilder = new AuditChangeBuilder()
+                    .Add("returnNo", "退货单号", null, purchaseReturn.ReturnNo)
+                    .Add("partnerName", "供应商", null, purchaseReturn.PartnerName)
+                    .Add("returnDate", "退货日期", null, AuditSummary.Date(purchaseReturn.ReturnDate))
+                    .Add("totalAmount", "退货金额", null, AuditSummary.Money(purchaseReturn.TotalAmount))
+                    .Add("remark", "备注", null, purchaseReturn.Remark);
+                await _auditLogger.RecordAsync(new AuditEntry
+                {
+                    Resource = AuditResource.PurchaseReturn,
+                    Action = AuditAction.Create,
+                    ResourceId = purchaseReturn.Id,
+                    ResourceNo = purchaseReturn.ReturnNo,
+                    Summary = $"创建采购退货单 {purchaseReturn.ReturnNo}（供应商：{purchaseReturn.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(purchaseReturn.TotalAmount)}）",
+                    Changes = createdReturnChangeBuilder.Build(),
+                    ChangesTruncated = createdReturnChangeBuilder.Truncated,
+                    UtcNow = now,
+                }, cancellationToken);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 

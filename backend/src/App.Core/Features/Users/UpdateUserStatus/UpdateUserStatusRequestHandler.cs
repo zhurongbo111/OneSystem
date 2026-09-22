@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -12,6 +13,7 @@ public sealed class UpdateUserStatusRequestHandler : IRequestHandler<UpdateUserS
     private readonly IUserRepository _userRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化启用 / 禁用用户用例处理器
@@ -19,11 +21,13 @@ public sealed class UpdateUserStatusRequestHandler : IRequestHandler<UpdateUserS
     public UpdateUserStatusRequestHandler(
         IUserRepository userRepository,
         IUserRoleRepository userRoleRepository,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _userRepository = userRepository;
         _userRoleRepository = userRoleRepository;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -46,11 +50,28 @@ public sealed class UpdateUserStatusRequestHandler : IRequestHandler<UpdateUserS
             throw new BusinessException(ErrorCode.CannotDisableSelf, "不能禁用当前登录账号");
         }
 
+        var beforeStatus = user.Status;
+        var now = DateTimeOffset.UtcNow;
+
         user.Status = targetStatus;
-        user.UpdatedAt = DateTimeOffset.UtcNow;
+        user.UpdatedAt = now;
         user.UpdatedBy = _currentUser.UserId();
 
         await _userRepository.UpdateAsync(user, cancellationToken);
+
+        var statusChangeBuilder = new AuditChangeBuilder()
+            .Add("status", "状态", AuditText.UserStatus(beforeStatus), AuditText.UserStatus(user.Status));
+        await _auditLogger.RecordAsync(new AuditEntry
+        {
+            Resource = AuditResource.User,
+            Action = AuditAction.StatusChange,
+            ResourceId = user.Id,
+            ResourceNo = user.Username,
+            Summary = $"{(user.Status == UserStatus.Enabled ? "启用" : "禁用")}用户 {user.DisplayName}（{user.Username}）",
+            Changes = statusChangeBuilder.Build(),
+            ChangesTruncated = statusChangeBuilder.Truncated,
+            UtcNow = now,
+        }, cancellationToken);
 
         var rolesByUser = await _userRoleRepository.GetRolesByUserIdsAsync([user.Id], cancellationToken);
         var roles = rolesByUser.TryGetValue(user.Id, out var items) ? UserDtoMapper.ToUserRoleDtos(items) : [];

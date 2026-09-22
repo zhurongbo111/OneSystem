@@ -32,7 +32,7 @@ public class UpdatePartnerRequestHandlerTests
         };
         context.Partners.Add(partner);
         await context.SaveChangesAsync();
-        var handler = new UpdatePartnerRequestHandler(new PartnerRepository(context), user);
+        var handler = new UpdatePartnerRequestHandler(new PartnerRepository(context), user, TestSupport.AuditLogger);
         return (context, handler, user, partner);
     }
 

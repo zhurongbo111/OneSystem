@@ -31,7 +31,7 @@ public class CreateStockTakeRequestHandlerTests
             inventory,
             movements,
             uow,
-            new StubCurrentUser(Guid.NewGuid()));
+            new StubCurrentUser(Guid.NewGuid()), TestSupport.AuditLogger);
         return (products, takes, inventory, movements, uow, handler, calls);
     }
 

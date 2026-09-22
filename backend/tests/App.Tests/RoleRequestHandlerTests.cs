@@ -28,20 +28,23 @@ public class RoleRequestHandlerTests
         => new(
             new RoleRepository(dbContext),
             new UnitOfWork(dbContext),
-            new StubCurrentUser(OperatorId));
+            new StubCurrentUser(OperatorId),
+            TestSupport.AuditLogger);
 
     private static UpdateRoleRequestHandler CreateUpdateRoleHandler(AppDbContext dbContext)
         => new(
             new RoleRepository(dbContext),
             new UserRoleRepository(dbContext),
             new UnitOfWork(dbContext),
-            new StubCurrentUser(OperatorId));
+            new StubCurrentUser(OperatorId),
+            TestSupport.AuditLogger);
 
     private static DeleteRoleRequestHandler CreateDeleteRoleHandler(AppDbContext dbContext)
         => new(
             new RoleRepository(dbContext),
             new UserRoleRepository(dbContext),
-            new UnitOfWork(dbContext));
+            new UnitOfWork(dbContext),
+            TestSupport.AuditLogger);
 
     private static CreateRoleRequest NewCreateRoleRequest(
         string name = "仓库主管",

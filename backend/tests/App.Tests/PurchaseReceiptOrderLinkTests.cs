@@ -84,7 +84,7 @@ public class PurchaseReceiptOrderLinkTests
 
         var handler = new CreatePurchaseReceiptRequestHandler(
             receipts, orders, new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, uow, user);
+            inventory, movements, uow, user, TestSupport.AuditLogger);
 
         return new LinkedHarness
         {
@@ -289,7 +289,7 @@ public class PurchaseReceiptOrderLinkTests
     }
 
     private static VoidPurchaseReceiptRequestHandler CreateVoidHandler(LinkedHarness h)
-        => new(h.Receipts, h.Orders, h.Inventory, h.Movements, h.Uow, h.User);
+        => new(h.Receipts, h.Orders, h.Inventory, h.Movements, h.Uow, h.User, TestSupport.AuditLogger);
 
     [Fact]
     public async Task 作废关联入库单_应回退累计已收并回到待收货()

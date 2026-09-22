@@ -12,7 +12,7 @@ namespace App.Tests;
 public class ResetPasswordRequestHandlerTests
 {
     private static ResetPasswordRequestHandler CreateHandler(App.Infrastructure.AppDbContext dbContext, Guid operatorId)
-        => new(new UserRepository(dbContext), TestSupport.PasswordHasher, new StubCurrentUser(operatorId));
+        => new(new UserRepository(dbContext), TestSupport.PasswordHasher, new StubCurrentUser(operatorId), TestSupport.AuditLogger);
 
     [Fact]
     public async Task HandleAsync_重置后_新密码生效且旧密码失效()

@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -29,6 +30,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增销售出库单用例处理器
@@ -41,7 +43,8 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _salesShipmentRepository = salesShipmentRepository;
         _salesOrderRepository = salesOrderRepository;
@@ -51,6 +54,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -260,6 +264,26 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                     var flowStatus = DeriveFlowStatus(orderItems, request.Items);
                     await _salesOrderRepository.UpdateFlowStatusAsync(linkedOrder.Id, flowStatus, operatorId, cancellationToken);
                 }
+
+                // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+                var createdShipmentChangeBuilder = new AuditChangeBuilder()
+                    .Add("shipmentNo", "出库单号", null, order.ShipmentNo)
+                    .Add("partnerName", "客户", null, order.PartnerName)
+                    .Add("orderDate", "出库日期", null, AuditSummary.Date(order.OrderDate))
+                    .Add("orderNo", "关联订单号", null, order.OrderNo)
+                    .Add("totalAmount", "出库金额", null, AuditSummary.Money(order.TotalAmount))
+                    .Add("remark", "备注", null, order.Remark);
+                await _auditLogger.RecordAsync(new AuditEntry
+                {
+                    Resource = AuditResource.SalesShipment,
+                    Action = AuditAction.Create,
+                    ResourceId = order.Id,
+                    ResourceNo = order.ShipmentNo,
+                    Summary = $"创建销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
+                    Changes = createdShipmentChangeBuilder.Build(),
+                    ChangesTruncated = createdShipmentChangeBuilder.Truncated,
+                    UtcNow = now,
+                }, cancellationToken);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 

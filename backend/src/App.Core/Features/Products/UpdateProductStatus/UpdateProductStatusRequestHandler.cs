@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -13,6 +14,7 @@ public sealed class UpdateProductStatusRequestHandler : IRequestHandler<UpdatePr
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IInventoryRepository _inventoryRepository;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化商品停用 / 启用用例处理器
@@ -20,11 +22,13 @@ public sealed class UpdateProductStatusRequestHandler : IRequestHandler<UpdatePr
     public UpdateProductStatusRequestHandler(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
-        IInventoryRepository inventoryRepository)
+        IInventoryRepository inventoryRepository,
+        IAuditLogger auditLogger)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
         _inventoryRepository = inventoryRepository;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -47,12 +51,29 @@ public sealed class UpdateProductStatusRequestHandler : IRequestHandler<UpdatePr
             throw new BusinessException(ErrorCode.NotFound, "商品引用的分类不存在");
         }
 
+        var beforeStatus = product.Status;
+        var now = DateTimeOffset.UtcNow;
+
         product.Status = request.Status == (int)ProductStatus.Disabled
             ? ProductStatus.Disabled
             : ProductStatus.Enabled;
-        product.UpdatedAt = DateTimeOffset.UtcNow;
+        product.UpdatedAt = now;
 
         await _productRepository.UpdateAsync(product, cancellationToken);
+
+        var changeBuilder = new AuditChangeBuilder()
+            .Add("status", "状态", AuditText.ProductStatus(beforeStatus), AuditText.ProductStatus(product.Status));
+        await _auditLogger.RecordAsync(new AuditEntry
+        {
+            Resource = AuditResource.Product,
+            Action = AuditAction.StatusChange,
+            ResourceId = product.Id,
+            ResourceNo = product.Code,
+            Summary = $"{(product.Status == ProductStatus.Enabled ? "启用" : "停用")}商品 {product.Code} {product.Name}",
+            Changes = changeBuilder.Build(),
+            ChangesTruncated = changeBuilder.Truncated,
+            UtcNow = now,
+        }, cancellationToken);
 
         var stockQuantity = await _inventoryRepository.GetQuantityAsync(product.Id, cancellationToken);
         return ProductDtoMapper.ToProductDto(product, category.Name, stockQuantity);

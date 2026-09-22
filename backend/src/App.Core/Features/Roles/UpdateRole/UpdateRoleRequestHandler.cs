@@ -1,5 +1,7 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Auth;
+using App.Core.Entities;
 using App.Core.Errors;
 
 namespace App.Core.Features.Roles.UpdateRole;
@@ -14,6 +16,7 @@ public sealed class UpdateRoleRequestHandler : IRequestHandler<UpdateRoleRequest
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化编辑角色用例处理器
@@ -22,12 +25,14 @@ public sealed class UpdateRoleRequestHandler : IRequestHandler<UpdateRoleRequest
         IRoleRepository roleRepository,
         IUserRoleRepository userRoleRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _roleRepository = roleRepository;
         _userRoleRepository = userRoleRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -56,6 +61,11 @@ public sealed class UpdateRoleRequestHandler : IRequestHandler<UpdateRoleRequest
         var remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
         var now = DateTimeOffset.UtcNow;
 
+        // 权限点是全量替换，需先取原集合才能算出增 / 减差异
+        var beforePermissionKeys = await _roleRepository.GetPermissionKeysAsync(role.Id, cancellationToken);
+        var beforeName = role.Name;
+        var beforeRemark = role.Remark;
+
         role.Name = name;
         role.Remark = remark;
         role.UpdatedAt = now;
@@ -67,6 +77,24 @@ public sealed class UpdateRoleRequestHandler : IRequestHandler<UpdateRoleRequest
         {
             await _roleRepository.ReplacePermissionsAsync(role.Id, permissionKeys, cancellationToken);
             await _roleRepository.UpdateAsync(role, cancellationToken);
+
+            var permissionDiff = AuditSummary.Diff(beforePermissionKeys, permissionKeys, App.Core.Auth.Permissions.LabelOf);
+            var roleChangeBuilder = new AuditChangeBuilder()
+                .Add("name", "角色名称", beforeName, role.Name)
+                .Add("remark", "备注", beforeRemark, role.Remark)
+                .Add("permissionKeys", "权限点", null, permissionDiff);
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.Role,
+                Action = AuditAction.Update,
+                ResourceId = role.Id,
+                ResourceNo = role.Name,
+                Summary = $"编辑角色 {role.Name} 权限变更：{permissionDiff}",
+                Changes = roleChangeBuilder.Build(),
+                ChangesTruncated = roleChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

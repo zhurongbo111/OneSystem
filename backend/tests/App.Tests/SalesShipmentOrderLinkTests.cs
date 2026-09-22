@@ -86,7 +86,7 @@ public class SalesShipmentOrderLinkTests
 
         var handler = new CreateSalesShipmentRequestHandler(
             shipments, orders, new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, uow, user);
+            inventory, movements, uow, user, TestSupport.AuditLogger);
 
         return new LinkedHarness
         {
@@ -273,7 +273,7 @@ public class SalesShipmentOrderLinkTests
     }
 
     private static VoidSalesShipmentRequestHandler CreateVoidHandler(LinkedHarness h)
-        => new(h.Shipments, h.Orders, h.Inventory, h.Movements, h.Uow, h.User);
+        => new(h.Shipments, h.Orders, h.Inventory, h.Movements, h.Uow, h.User, TestSupport.AuditLogger);
 
     [Fact]
     public async Task 作废关联出库单_应回退累计已发并回到待发货()

@@ -13,7 +13,7 @@ namespace App.Tests;
 public class UpdateUserStatusRequestHandlerTests
 {
     private static UpdateUserStatusRequestHandler CreateHandler(App.Infrastructure.AppDbContext dbContext, Guid operatorId)
-        => new(new UserRepository(dbContext), new UserRoleRepository(dbContext), new StubCurrentUser(operatorId));
+        => new(new UserRepository(dbContext), new UserRoleRepository(dbContext), new StubCurrentUser(operatorId), TestSupport.AuditLogger);
 
     [Fact]
     public async Task HandleAsync_禁用其他用户_应更新为禁用()

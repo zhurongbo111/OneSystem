@@ -95,6 +95,9 @@ public class AppDbContext : DbContext
     /// <summary>用户角色关联表</summary>
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
+    /// <summary>业务操作审计日志表（纯追加）</summary>
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

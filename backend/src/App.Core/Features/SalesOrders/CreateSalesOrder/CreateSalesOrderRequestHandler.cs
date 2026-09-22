@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -24,6 +25,7 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增销售订单用例处理器
@@ -33,13 +35,15 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _salesOrderRepository = salesOrderRepository;
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -143,6 +147,26 @@ public sealed class CreateSalesOrderRequestHandler : IRequestHandler<CreateSales
                 }
 
                 await _salesOrderRepository.AddAsync(order, items, cancellationToken);
+
+                var createdOrderChangeBuilder = new AuditChangeBuilder()
+                    .Add("orderNo", "订单号", null, order.OrderNo)
+                    .Add("partnerName", "客户", null, order.PartnerName)
+                    .Add("orderDate", "订单日期", null, AuditSummary.Date(order.OrderDate))
+                    .Add("expectedDate", "预计发货日期", null, AuditSummary.Date(order.ExpectedDate))
+                    .Add("itemCount", "明细行数", null, AuditSummary.Count(items.Count))
+                    .Add("totalAmount", "订单金额", null, AuditSummary.Money(order.TotalAmount))
+                    .Add("remark", "备注", null, order.Remark);
+                await _auditLogger.RecordAsync(new AuditEntry
+                {
+                    Resource = AuditResource.SalesOrder,
+                    Action = AuditAction.Create,
+                    ResourceId = order.Id,
+                    ResourceNo = order.OrderNo,
+                    Summary = $"创建销售订单 {order.OrderNo}（客户：{order.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
+                    Changes = createdOrderChangeBuilder.Build(),
+                    ChangesTruncated = createdOrderChangeBuilder.Truncated,
+                    UtcNow = now,
+                }, cancellationToken);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 

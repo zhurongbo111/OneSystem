@@ -36,7 +36,7 @@ public class CreateSalesReturnRequestHandlerTests
             inventory,
             movements,
             uow,
-            user);
+            user, TestSupport.AuditLogger);
         return (context, user, returns, inventory, movements, uow, handler, calls);
     }
 

@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -17,6 +18,7 @@ public sealed class UpdateSalesOrderRequestHandler : IRequestHandler<UpdateSales
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化编辑销售订单用例处理器
@@ -26,13 +28,15 @@ public sealed class UpdateSalesOrderRequestHandler : IRequestHandler<UpdateSales
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _salesOrderRepository = salesOrderRepository;
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -42,7 +46,7 @@ public sealed class UpdateSalesOrderRequestHandler : IRequestHandler<UpdateSales
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<SalesOrderDetailDto> HandleAsync(UpdateSalesOrderRequest request, CancellationToken cancellationToken = default)
     {
-        var (order, _) = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
+        var (order, beforeOrderItems) = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
         if (order is null)
         {
             throw new BusinessException(ErrorCode.NotFound, "销售订单不存在");
@@ -103,6 +107,14 @@ public sealed class UpdateSalesOrderRequestHandler : IRequestHandler<UpdateSales
         var now = DateTimeOffset.UtcNow;
         var operatorId = _currentUser.UserId();
 
+        // 变更前后快照：明细为全量替换，逐行差异在 Change 明细中以行数呈现
+        var beforePartnerName = order.PartnerName;
+        var beforeOrderDate = order.OrderDate;
+        var beforeExpectedDate = order.ExpectedDate;
+        var beforeTotalAmount = order.TotalAmount;
+        var beforeRemark = order.Remark;
+        var beforeItemCount = beforeOrderItems.Count;
+
         // 主表可改字段（订单号 / 创建审计字段不可改，保持原值）
         order.PartnerId = partner.Id;
         order.PartnerName = partner.Name;
@@ -135,6 +147,26 @@ public sealed class UpdateSalesOrderRequestHandler : IRequestHandler<UpdateSales
         try
         {
             await _salesOrderRepository.UpdateAsync(order, items, cancellationToken);
+
+            var updatedOrderChangeBuilder = new AuditChangeBuilder()
+                .Add("partnerName", "客户", beforePartnerName, order.PartnerName)
+                .Add("orderDate", "订单日期", AuditSummary.Date(beforeOrderDate), AuditSummary.Date(order.OrderDate))
+                .Add("expectedDate", "预计发货日期", AuditSummary.Date(beforeExpectedDate), AuditSummary.Date(order.ExpectedDate))
+                .Add("totalAmount", "订单金额", AuditSummary.Money(beforeTotalAmount), AuditSummary.Money(order.TotalAmount))
+                .Add("itemCount", "明细行数", AuditSummary.Count(beforeItemCount), AuditSummary.Count(items.Count))
+                .Add("remark", "备注", beforeRemark, order.Remark);
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.SalesOrder,
+                Action = AuditAction.Update,
+                ResourceId = order.Id,
+                ResourceNo = order.OrderNo,
+                Summary = $"编辑销售订单 {order.OrderNo}（{AuditSummary.Count(beforeItemCount)} 行 → {AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(beforeTotalAmount)} → {AuditSummary.Money(order.TotalAmount)}）",
+                Changes = updatedOrderChangeBuilder.Build(),
+                ChangesTruncated = updatedOrderChangeBuilder.Truncated,
+                UtcNow = now,
+            }, cancellationToken);
+
             await _unitOfWork.CommitAsync(cancellationToken);
         }
         catch

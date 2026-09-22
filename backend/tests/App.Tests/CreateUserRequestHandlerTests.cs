@@ -21,7 +21,8 @@ public class CreateUserRequestHandlerTests
             new UserRoleRepository(dbContext),
             new UnitOfWork(dbContext),
             TestSupport.PasswordHasher,
-            new StubCurrentUser(operatorId));
+            new StubCurrentUser(operatorId),
+            TestSupport.AuditLogger);
 
     private static CreateUserRequest NewUserRequest(
         string username = "alice",

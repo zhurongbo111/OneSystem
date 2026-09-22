@@ -28,7 +28,7 @@ public class CreateSalesOrderRequestHandlerTests
             new PartnerRepository(context),
             new ProductRepository(context),
             uow,
-            user);
+            user, TestSupport.AuditLogger);
         return (context, user, orders, uow, handler, calls);
     }
 

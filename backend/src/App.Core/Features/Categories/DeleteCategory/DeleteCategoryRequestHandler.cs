@@ -1,4 +1,6 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
+using App.Core.Entities;
 using App.Core.Errors;
 
 namespace App.Core.Features.Categories.DeleteCategory;
@@ -10,13 +12,15 @@ namespace App.Core.Features.Categories.DeleteCategory;
 public sealed class DeleteCategoryRequestHandler : IRequestHandler<DeleteCategoryRequest, object?>
 {
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化删除商品分类用例处理器
     /// </summary>
-    public DeleteCategoryRequestHandler(ICategoryRepository categoryRepository)
+    public DeleteCategoryRequestHandler(ICategoryRepository categoryRepository, IAuditLogger auditLogger)
     {
         _categoryRepository = categoryRepository;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -39,6 +43,21 @@ public sealed class DeleteCategoryRequestHandler : IRequestHandler<DeleteCategor
         }
 
         await _categoryRepository.DeleteAsync(category.Id, cancellationToken);
+
+        var changeBuilder = new AuditChangeBuilder()
+            .Add("name", "分类名称", category.Name, null);
+        await _auditLogger.RecordAsync(new AuditEntry
+        {
+            Resource = AuditResource.Category,
+            Action = AuditAction.Delete,
+            ResourceId = category.Id,
+            ResourceNo = category.Name,
+            Summary = $"删除分类 {category.Name}",
+            Changes = changeBuilder.Build(),
+            ChangesTruncated = changeBuilder.Truncated,
+            UtcNow = DateTimeOffset.UtcNow,
+        }, cancellationToken);
+
         return null;
     }
 }

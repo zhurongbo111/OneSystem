@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -23,6 +24,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     private readonly IPartnerRepository _partnerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增收付款单用例处理器
@@ -35,7 +37,8 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         ISalesReturnRepository salesReturnRepository,
         IPartnerRepository partnerRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _settlementRepository = settlementRepository;
         _purchaseReceiptRepository = purchaseReceiptRepository;
@@ -45,6 +48,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         _partnerRepository = partnerRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -160,6 +164,28 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
                     // 按被核销单据类型分派到对应单据仓储，原子累加已结算金额（同一事务）
                     await AddSettledAmountAsync(line.OrderType, line.OrderId, line.Amount, operatorId, cancellationToken);
                 }
+
+                // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+                var createdSettlementChangeBuilder = new AuditChangeBuilder()
+                    .Add("settlementNo", "收付款单号", null, settlement.SettlementNo)
+                    .Add("type", "收付方向", null, AuditText.SettlementType(settlement.Type))
+                    .Add("partnerName", "往来单位", null, settlement.PartnerName)
+                    .Add("settlementDate", "收付日期", null, AuditSummary.Date(settlement.SettlementDate))
+                    .Add("method", "结算方式", null, AuditText.SettlementMethod(settlement.Method))
+                    .Add("totalAmount", "核销金额", null, AuditSummary.Money(settlement.TotalAmount))
+                    .Add("orderNos", "核销单据", null, AuditSummary.Join(items.Select(i => i.OrderNo)))
+                    .Add("remark", "备注", null, settlement.Remark);
+                await _auditLogger.RecordAsync(new AuditEntry
+                {
+                    Resource = AuditResource.Settlement,
+                    Action = AuditAction.Settle,
+                    ResourceId = settlement.Id,
+                    ResourceNo = settlement.SettlementNo,
+                    Summary = $"{AuditText.SettlementType(settlement.Type)}{settlement.SettlementNo}（往来单位：{settlement.PartnerName}、核销 {AuditSummary.Join(items.Select(i => i.OrderNo))} 共 {AuditSummary.Money(settlement.TotalAmount)}）",
+                    Changes = createdSettlementChangeBuilder.Build(),
+                    ChangesTruncated = createdSettlementChangeBuilder.Truncated,
+                    UtcNow = now,
+                }, cancellationToken);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 

@@ -24,7 +24,7 @@ public class CreateProductRequestHandlerTests
             new CategoryRepository(context),
             new InventoryRepository(context),
             new UnitOfWork(context),
-            user);
+            user, TestSupport.AuditLogger);
         return (context, handler, user);
     }
 

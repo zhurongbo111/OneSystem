@@ -51,7 +51,7 @@ public class RecalculateCostsRequestHandlerTests
 
         var uow = new RecordingUnitOfWork();
         var recalculationLock = new CostRecalculationLock();
-        var handler = new RecalculateCostsRequestHandler(movements, inventory, uow, recalculationLock);
+        var handler = new RecalculateCostsRequestHandler(movements, inventory, uow, recalculationLock, TestSupport.AuditLogger);
 
         return (productId, movements, inventory, uow, recalculationLock, handler);
     }
@@ -115,7 +115,7 @@ public class RecalculateCostsRequestHandlerTests
         var inventory = new FakeInventoryRepository();
         inventory.Seed(productId, 10);
         var handler = new RecalculateCostsRequestHandler(
-            movements, inventory, new RecordingUnitOfWork(), new CostRecalculationLock());
+            movements, inventory, new RecordingUnitOfWork(), new CostRecalculationLock(), TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new RecalculateCostsRequest());
 
@@ -132,7 +132,7 @@ public class RecalculateCostsRequestHandlerTests
         Assert.True(recalculationLock.TryEnter()); // 占住锁，模拟重算进行中
 
         var handler = new RecalculateCostsRequestHandler(
-            new FakeStockMovementRepository(), new FakeInventoryRepository(), new RecordingUnitOfWork(), recalculationLock);
+            new FakeStockMovementRepository(), new FakeInventoryRepository(), new RecordingUnitOfWork(), recalculationLock, TestSupport.AuditLogger);
 
         var exception = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new RecalculateCostsRequest()));
         Assert.Equal(ErrorCode.CostRecalculationRunning, exception.Code);
@@ -157,7 +157,7 @@ public class RecalculateCostsRequestHandlerTests
         var inventory = new FakeInventoryRepository();
         inventory.Seed(productId, 20);
         var handler = new RecalculateCostsRequestHandler(
-            movements, inventory, new RecordingUnitOfWork(), new CostRecalculationLock());
+            movements, inventory, new RecordingUnitOfWork(), new CostRecalculationLock(), TestSupport.AuditLogger);
 
         var result = await handler.HandleAsync(new RecalculateCostsRequest
         {

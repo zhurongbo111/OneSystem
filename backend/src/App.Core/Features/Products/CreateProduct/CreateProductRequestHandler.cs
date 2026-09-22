@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -15,6 +16,7 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化新增商品用例处理器
@@ -24,13 +26,15 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
         ICategoryRepository categoryRepository,
         IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -77,6 +81,16 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
             UpdatedBy = operatorId,
         };
 
+        var changeBuilder = new AuditChangeBuilder()
+            .Add("code", "商品编码", null, product.Code)
+            .Add("name", "商品名称", null, product.Name)
+            .Add("categoryId", "所属分类", null, category.Name)
+            .Add("unit", "单位", null, product.Unit)
+            .Add("purchasePrice", "采购价", null, AuditSummary.Money(product.PurchasePrice))
+            .Add("salePrice", "销售价", null, AuditSummary.Money(product.SalePrice))
+            .Add("safetyStock", "安全库存", null, AuditSummary.Quantity(product.SafetyStock))
+            .Add("remark", "备注", null, product.Remark);
+
         // 商品与库存初始化行在同一事务内落库
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
@@ -89,6 +103,19 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
                 ProductId = product.Id,
                 Quantity = 0,
                 UpdatedAt = now,
+            }, cancellationToken);
+
+            // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
+            await _auditLogger.RecordAsync(new AuditEntry
+            {
+                Resource = AuditResource.Product,
+                Action = AuditAction.Create,
+                ResourceId = product.Id,
+                ResourceNo = product.Code,
+                Summary = $"创建商品 {product.Code} {product.Name}",
+                Changes = changeBuilder.Build(),
+                ChangesTruncated = changeBuilder.Truncated,
+                UtcNow = now,
             }, cancellationToken);
 
             await _unitOfWork.CommitAsync(cancellationToken);

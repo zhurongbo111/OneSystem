@@ -1,5 +1,7 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Auth;
+using App.Core.Entities;
 using App.Core.Errors;
 
 namespace App.Core.Features.Users.ResetPassword;
@@ -12,6 +14,7 @@ public sealed class ResetPasswordRequestHandler : IRequestHandler<ResetPasswordR
     private readonly IUserRepository _userRepository;
     private readonly PasswordHasher _passwordHasher;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化重置密码用例处理器
@@ -19,11 +22,13 @@ public sealed class ResetPasswordRequestHandler : IRequestHandler<ResetPasswordR
     public ResetPasswordRequestHandler(
         IUserRepository userRepository,
         PasswordHasher passwordHasher,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -38,11 +43,24 @@ public sealed class ResetPasswordRequestHandler : IRequestHandler<ResetPasswordR
         var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new BusinessException(ErrorCode.NotFound, "用户不存在");
 
+        var now = DateTimeOffset.UtcNow;
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
-        user.UpdatedAt = DateTimeOffset.UtcNow;
+        user.UpdatedAt = now;
         user.UpdatedBy = _currentUser.UserId();
 
         await _userRepository.UpdateAsync(user, cancellationToken);
+
+        // change 明细为空：新密码与哈希均命中敏感黑名单，只留"谁被谁重置了"的摘要
+        await _auditLogger.RecordAsync(new AuditEntry
+        {
+            Resource = AuditResource.User,
+            Action = AuditAction.Update,
+            ResourceId = user.Id,
+            ResourceNo = user.Username,
+            Summary = $"重置用户密码 {user.DisplayName}（{user.Username}）",
+            UtcNow = now,
+        }, cancellationToken);
+
         return null;
     }
 }

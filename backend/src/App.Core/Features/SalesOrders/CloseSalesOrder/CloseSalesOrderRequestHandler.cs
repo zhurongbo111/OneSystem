@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
 
@@ -13,16 +14,19 @@ public sealed class CloseSalesOrderRequestHandler : IRequestHandler<CloseSalesOr
 {
     private readonly ISalesOrderRepository _salesOrderRepository;
     private readonly ICurrentUser _currentUser;
+    private readonly IAuditLogger _auditLogger;
 
     /// <summary>
     /// 初始化关闭销售订单用例处理器
     /// </summary>
     public CloseSalesOrderRequestHandler(
         ISalesOrderRepository salesOrderRepository,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IAuditLogger auditLogger)
     {
         _salesOrderRepository = salesOrderRepository;
         _currentUser = currentUser;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -48,8 +52,24 @@ public sealed class CloseSalesOrderRequestHandler : IRequestHandler<CloseSalesOr
             throw new BusinessException(ErrorCode.OrderStateInvalid, "订单当前状态不允许关闭");
         }
 
+        var beforeFlowStatus = order.FlowStatus;
+        var now = DateTimeOffset.UtcNow;
         var operatorId = _currentUser.UserId();
         await _salesOrderRepository.UpdateFlowStatusAsync(request.Id, OrderFlowStatus.Closed, operatorId, cancellationToken);
+
+        var closedOrderChangeBuilder = new AuditChangeBuilder()
+            .Add("flowStatus", "订单状态", AuditText.OrderFlowStatus(beforeFlowStatus, isPurchase: false), AuditText.OrderFlowStatus(OrderFlowStatus.Closed, isPurchase: false));
+        await _auditLogger.RecordAsync(new AuditEntry
+        {
+            Resource = AuditResource.SalesOrder,
+            Action = AuditAction.Close,
+            ResourceId = order.Id,
+            ResourceNo = order.OrderNo,
+            Summary = $"关闭销售订单 {order.OrderNo}（客户：{order.PartnerName}、{AuditSummary.Money(order.TotalAmount)}）",
+            Changes = closedOrderChangeBuilder.Build(),
+            ChangesTruncated = closedOrderChangeBuilder.Truncated,
+            UtcNow = now,
+        }, cancellationToken);
 
         var (updatedOrder, updatedItems) = await _salesOrderRepository.GetDetailAsync(request.Id, cancellationToken);
         if (updatedOrder is null)
