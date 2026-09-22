@@ -1,5 +1,7 @@
+using App.Api.Authorization;
 using App.Api.Http;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.PurchaseReceipts;
 using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
 using App.Core.Features.PurchaseReceipts.ExportPurchaseReceipts;
@@ -42,6 +44,7 @@ public sealed class PurchaseReceiptsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<PurchaseReceiptListItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.PurchasesView)]
     public async Task<ApiResponse<PagedResult<PurchaseReceiptListItemDto>>> GetPaged([FromQuery] GetPurchaseReceiptsRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -52,6 +55,7 @@ public sealed class PurchaseReceiptsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<PurchaseOrderPickDto>>))]
     [HttpGet("pick-orders")]
+    [RequirePermission(Permissions.PurchasesView)]
     public async Task<ApiResponse<IReadOnlyList<PurchaseOrderPickDto>>> PickOrders([FromQuery] GetPurchaseOrderPicksRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -62,6 +66,7 @@ public sealed class PurchaseReceiptsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseOrderLinesDto>))]
     [HttpGet("order-lines")]
+    [RequirePermission(Permissions.PurchasesView)]
     public async Task<ApiResponse<PurchaseOrderLinesDto>> OrderLines([FromQuery] GetPurchaseOrderLinesRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -74,6 +79,7 @@ public sealed class PurchaseReceiptsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.PurchasesExport)]
     public async Task<IActionResult> Export([FromQuery] ExportPurchaseReceiptsRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);
@@ -87,6 +93,7 @@ public sealed class PurchaseReceiptsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseReceiptDetailDto>))]
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.PurchasesView)]
     public async Task<ApiResponse<PurchaseReceiptDetailDto>> GetDetail(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetPurchaseReceiptByIdRequest { Id = id }, cancellationToken));
 
@@ -97,6 +104,7 @@ public sealed class PurchaseReceiptsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseReceiptDetailDto>))]
     [HttpPost]
+    [RequirePermission(Permissions.PurchasesCreate)]
     public async Task<ApiResponse<PurchaseReceiptDetailDto>> Create([FromBody] CreatePurchaseReceiptRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -107,6 +115,7 @@ public sealed class PurchaseReceiptsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PurchaseReceiptDetailDto>))]
     [HttpPut("{id:guid}/void")]
+    [RequirePermission(Permissions.PurchasesVoid)]
     public async Task<ApiResponse<PurchaseReceiptDetailDto>> Void(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new VoidPurchaseReceiptRequest { Id = id }, cancellationToken));
 

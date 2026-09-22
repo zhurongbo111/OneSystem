@@ -4,18 +4,20 @@ using App.Core.Errors;
 namespace App.Core.Features.Users.GetUserById;
 
 /// <summary>
-/// 用户详情用例：按 id 查询单个用户，不存在抛 40400
+/// 用户详情用例：按 id 查询单个用户并附带其角色绑定，不存在抛 40400
 /// </summary>
 public sealed class GetUserByIdRequestHandler : IRequestHandler<GetUserByIdRequest, UserDetailDto>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
 
     /// <summary>
     /// 初始化用户详情用例处理器
     /// </summary>
-    public GetUserByIdRequestHandler(IUserRepository userRepository)
+    public GetUserByIdRequestHandler(IUserRepository userRepository, IUserRoleRepository userRoleRepository)
     {
         _userRepository = userRepository;
+        _userRoleRepository = userRoleRepository;
     }
 
     /// <summary>
@@ -29,6 +31,9 @@ public sealed class GetUserByIdRequestHandler : IRequestHandler<GetUserByIdReque
         var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new BusinessException(ErrorCode.NotFound, "用户不存在");
 
-        return UserDtoMapper.ToUserDetailDto(user);
+        var rolesByUser = await _userRoleRepository.GetRolesByUserIdsAsync([user.Id], cancellationToken);
+        var roles = rolesByUser.TryGetValue(user.Id, out var items) ? UserDtoMapper.ToUserRoleDtos(items) : [];
+
+        return UserDtoMapper.ToUserDetailDto(user, roles);
     }
 }

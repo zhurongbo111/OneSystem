@@ -102,6 +102,36 @@ internal static class TestSupport
         };
     }
 
+    /// <summary>构建角色实体（角色行与其权限点一并落库）</summary>
+    public static Role SeedRole(
+        AppDbContext dbContext,
+        string name = "操作角色",
+        bool isBuiltin = false,
+        params string[] permissionKeys)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var role = new Role
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            IsBuiltin = isBuiltin,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        dbContext.Roles.Add(role);
+        dbContext.RolePermissions.AddRange(
+            permissionKeys.Select(key => new RolePermission { RoleId = role.Id, PermissionKey = key }));
+        dbContext.SaveChanges();
+        return role;
+    }
+
+    /// <summary>将用户绑定到角色</summary>
+    public static void BindRole(AppDbContext dbContext, User user, Role role)
+    {
+        dbContext.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
+        dbContext.SaveChanges();
+    }
+
     /// <summary>构建 TokenService（单测用固定密钥）</summary>
     public static TokenService CreateTokenService()
     {
@@ -143,4 +173,24 @@ internal sealed class StubClientInfo : IClientInfo
     public string? IpAddress { get; init; }
 
     public string? UserAgent { get; init; }
+}
+
+/// <summary>权限解析器桩：返回固定权限点集合，并记录解析次数（校验是否被重复解析）</summary>
+internal sealed class StubPermissionResolver : IPermissionResolver
+{
+    private readonly IReadOnlySet<string> _permissions;
+
+    public StubPermissionResolver(params string[] permissions)
+    {
+        _permissions = new HashSet<string>(permissions, StringComparer.Ordinal);
+    }
+
+    /// <summary>解析调用次数（用于验证单请求内缓存行为）</summary>
+    public int CallCount { get; private set; }
+
+    public Task<IReadOnlySet<string>> GetPermissionsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        CallCount++;
+        return Task.FromResult(_permissions);
+    }
 }

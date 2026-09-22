@@ -1,5 +1,7 @@
-﻿using App.Api.Http;
+﻿using App.Api.Authorization;
+using App.Api.Http;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.Products;
 using App.Core.Features.Products.CreateProduct;
 using App.Core.Features.Products.ExportProducts;
@@ -38,6 +40,7 @@ public class ProductsController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<ProductDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.ProductsView)]
     public async Task<ApiResponse<PagedResult<ProductDto>>> GetProducts([FromQuery] GetProductsRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -48,6 +51,7 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<ProductPickDto>>))]
 
     [HttpGet("pick")]
+    [RequirePermission(Permissions.ProductsView)]
     public async Task<ApiResponse<IReadOnlyList<ProductPickDto>>> GetProductPickList(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetProductPickListRequest(), cancellationToken));
 
@@ -60,6 +64,7 @@ public class ProductsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.ProductsExport)]
     public async Task<IActionResult> Export([FromQuery] ExportProductsRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);
@@ -72,6 +77,7 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ProductDto>))]
 
     [HttpPost]
+    [RequirePermission(Permissions.ProductsCreate)]
     public async Task<ApiResponse<ProductDto>> CreateProduct([FromBody] CreateProductRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -81,6 +87,7 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ProductDto>))]
 
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.ProductsView)]
     public async Task<ApiResponse<ProductDto>> GetProductById([FromRoute] Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetProductByIdRequest { Id = id }, cancellationToken));
 
@@ -90,6 +97,7 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ProductDto>))]
 
     [HttpPut("{id:guid}")]
+    [RequirePermission(Permissions.ProductsUpdate)]
     public async Task<ApiResponse<ProductDto>> UpdateProduct(
         [FromRoute] Guid id,
         [FromBody] UpdateProductRequest request,
@@ -116,6 +124,7 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ProductDto>))]
 
     [HttpPut("{id:guid}/status")]
+    [RequirePermission(Permissions.ProductsStatus)]
     public async Task<ApiResponse<ProductDto>> UpdateProductStatus(
         [FromRoute] Guid id,
         [FromBody] UpdateProductStatusRequest request,

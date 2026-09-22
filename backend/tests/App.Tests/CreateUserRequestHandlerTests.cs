@@ -1,6 +1,8 @@
+using App.Core.Auth;
 using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.Users.CreateUser;
+using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
 
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +15,28 @@ namespace App.Tests;
 public class CreateUserRequestHandlerTests
 {
     private static CreateUserRequestHandler CreateHandler(App.Infrastructure.AppDbContext dbContext, Guid operatorId)
-        => new(new UserRepository(dbContext), TestSupport.PasswordHasher, new StubCurrentUser(operatorId));
+        => new(
+            new UserRepository(dbContext),
+            new RoleRepository(dbContext),
+            new UserRoleRepository(dbContext),
+            new UnitOfWork(dbContext),
+            TestSupport.PasswordHasher,
+            new StubCurrentUser(operatorId));
+
+    private static CreateUserRequest NewUserRequest(
+        string username = "alice",
+        string email = "alice@example.com",
+        string? phone = "13800000001",
+        IReadOnlyList<Guid>? roleIds = null)
+        => new()
+        {
+            Username = username,
+            DisplayName = "张三",
+            Email = email,
+            Phone = phone,
+            Password = "alice123",
+            RoleIds = roleIds ?? [],
+        };
 
     [Fact]
     public async Task HandleAsync_合法请求_应创建启用用户并哈希密码()
@@ -115,5 +138,46 @@ public class CreateUserRequestHandlerTests
             }));
 
         Assert.Equal(ErrorCode.PhoneExists, ex.Code);
+    }
+
+    [Fact]
+    public async Task HandleAsync_传入角色_应写入用户角色绑定并在详情返回()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        var role = TestSupport.SeedRole(dbContext, "操作角色", false, Permissions.ProductsView);
+
+        var result = await CreateHandler(dbContext, Guid.NewGuid()).HandleAsync(NewUserRequest(roleIds: [role.Id]));
+
+        var userId = Guid.Parse(result.Id);
+        Assert.Equal([role.Id], await dbContext.UserRoles.Where(ur => ur.UserId == userId).Select(ur => ur.RoleId).ToListAsync());
+        Assert.Single(result.Roles);
+        Assert.Equal(role.Id.ToString(), result.Roles[0].Id);
+        Assert.Equal("操作角色", result.Roles[0].Name);
+    }
+
+    [Fact]
+    public async Task HandleAsync_角色不存在_应抛业务异常40400且不落用户()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        TestSupport.SeedRole(dbContext, "操作角色");
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => CreateHandler(dbContext, Guid.NewGuid()).HandleAsync(NewUserRequest(roleIds: [Guid.NewGuid()])));
+
+        Assert.Equal(ErrorCode.NotFound, ex.Code);
+        Assert.Empty(await dbContext.Users.ToListAsync());
+        Assert.Empty(await dbContext.UserRoles.ToListAsync());
+    }
+
+    [Fact]
+    public async Task HandleAsync_角色id重复_应去重后只绑定一次()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        var role = TestSupport.SeedRole(dbContext, "操作角色");
+
+        var result = await CreateHandler(dbContext, Guid.NewGuid()).HandleAsync(NewUserRequest(roleIds: [role.Id, role.Id]));
+
+        Assert.Single(await dbContext.UserRoles.ToListAsync());
+        Assert.Single(result.Roles);
     }
 }

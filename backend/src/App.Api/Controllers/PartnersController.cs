@@ -1,6 +1,8 @@
+using App.Api.Authorization;
 using App.Api.Http;
 
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.Partners;
 using App.Core.Features.Partners.CreatePartner;
 using App.Core.Features.Partners.ExportPartners;
@@ -38,6 +40,7 @@ public class PartnersController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<PartnerDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.PartnersView)]
     public async Task<ApiResponse<PagedResult<PartnerDto>>> GetPartners([FromQuery] GetPartnersRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -46,6 +49,7 @@ public class PartnersController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
     [HttpPost]
+    [RequirePermission(Permissions.PartnersCreate)]
     public async Task<ApiResponse<PartnerDto>> CreatePartner([FromBody] CreatePartnerRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -54,6 +58,7 @@ public class PartnersController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.PartnersView)]
     public async Task<ApiResponse<PartnerDto>> GetPartnerById([FromRoute] Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetPartnerByIdRequest { Id = id }, cancellationToken));
 
@@ -62,6 +67,7 @@ public class PartnersController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
     [HttpPut("{id:guid}")]
+    [RequirePermission(Permissions.PartnersUpdate)]
     public async Task<ApiResponse<PartnerDto>> UpdatePartner(
         [FromRoute] Guid id,
         [FromBody] UpdatePartnerRequest request,
@@ -85,6 +91,7 @@ public class PartnersController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PartnerDto>))]
     [HttpPut("{id:guid}/status")]
+    [RequirePermission(Permissions.PartnersStatus)]
     public async Task<ApiResponse<PartnerDto>> UpdatePartnerStatus(
         [FromRoute] Guid id,
         [FromBody] UpdatePartnerStatusRequest request,
@@ -99,6 +106,7 @@ public class PartnersController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.PartnersExport)]
     public async Task<IActionResult> Export([FromQuery] ExportPartnersRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);

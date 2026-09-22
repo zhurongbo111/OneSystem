@@ -1,4 +1,6 @@
+using App.Api.Authorization;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.LoginLogs;
 using App.Core.Features.LoginLogs.GetLoginLogs;
 using App.Core.Responses;
@@ -31,6 +33,7 @@ public class LoginLogsController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<LoginLogListItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.LoginLogsView)]
     public async Task<ApiResponse<PagedResult<LoginLogListItemDto>>> GetLoginLogs(
         [FromQuery] GetLoginLogsRequest request,
         CancellationToken cancellationToken)

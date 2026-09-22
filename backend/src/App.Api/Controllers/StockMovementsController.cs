@@ -1,6 +1,8 @@
+using App.Api.Authorization;
 using App.Api.Http;
 
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.StockMovements;
 using App.Core.Features.StockMovements.ExportStockMovements;
 using App.Core.Features.StockMovements.GetStockMovements;
@@ -34,6 +36,7 @@ public class StockMovementsController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<StockMovementListItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.StockMovementsView)]
     public async Task<ApiResponse<PagedResult<StockMovementListItemDto>>> GetStockMovements(
         [FromQuery] GetStockMovementsRequest request,
         CancellationToken cancellationToken)
@@ -44,6 +47,7 @@ public class StockMovementsController : ControllerBase
     /// </summary>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.StockMovementsExport)]
     public async Task<IActionResult> Export([FromQuery] ExportStockMovementsRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);

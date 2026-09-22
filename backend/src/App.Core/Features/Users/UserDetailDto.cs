@@ -31,4 +31,7 @@ public sealed class UserDetailDto
 
     /// <summary>更新时间</summary>
     public DateTimeOffset UpdatedAt { get; init; }
+
+    /// <summary>用户绑定的角色（按名称升序；至少一个角色，见 specs/028-erp-rbac §0.3）</summary>
+    public IReadOnlyList<UserRoleDto> Roles { get; init; } = [];
 }

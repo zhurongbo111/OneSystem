@@ -1,5 +1,7 @@
+using App.Core.Auth;
 using App.Core.Errors;
 using App.Core.Features.Users.UpdateUser;
+using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
 
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +14,12 @@ namespace App.Tests;
 public class UpdateUserRequestHandlerTests
 {
     private static UpdateUserRequestHandler CreateHandler(App.Infrastructure.AppDbContext dbContext, Guid operatorId)
-        => new(new UserRepository(dbContext), new StubCurrentUser(operatorId));
+        => new(
+            new UserRepository(dbContext),
+            new RoleRepository(dbContext),
+            new UserRoleRepository(dbContext),
+            new UnitOfWork(dbContext),
+            new StubCurrentUser(operatorId));
 
     [Fact]
     public async Task HandleAsync_合法请求_应更新展示字段与审计字段()
@@ -112,5 +119,51 @@ public class UpdateUserRequestHandlerTests
             }));
 
         Assert.Equal(ErrorCode.PhoneExists, ex.Code);
+    }
+
+    [Fact]
+    public async Task HandleAsync_更换角色_应全量替换用户角色绑定()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        var alice = TestSupport.NewUser("alice", "张三");
+        dbContext.Users.Add(alice);
+        await dbContext.SaveChangesAsync();
+        var oldRole = TestSupport.SeedRole(dbContext, "旧角色");
+        var newRole = TestSupport.SeedRole(dbContext, "新角色");
+        var anotherRole = TestSupport.SeedRole(dbContext, "再加一个");
+        TestSupport.BindRole(dbContext, alice, oldRole);
+
+        var result = await CreateHandler(dbContext, Guid.NewGuid()).HandleAsync(new UpdateUserRequest
+        {
+            Id = alice.Id,
+            DisplayName = "张三",
+            RoleIds = [newRole.Id, anotherRole.Id],
+        });
+
+        Assert.Equal([newRole.Id, anotherRole.Id], await dbContext.UserRoles.Where(ur => ur.UserId == alice.Id).Select(ur => ur.RoleId).ToListAsync());
+        Assert.Equal(2, result.Roles.Count);
+        Assert.Equal("新角色", result.Roles[0].Name);
+    }
+
+    [Fact]
+    public async Task HandleAsync_角色不存在_应抛业务异常40400且不改写绑定()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        var alice = TestSupport.NewUser("alice", "张三");
+        dbContext.Users.Add(alice);
+        await dbContext.SaveChangesAsync();
+        var role = TestSupport.SeedRole(dbContext, "操作角色", false, Permissions.UsersView);
+        TestSupport.BindRole(dbContext, alice, role);
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => CreateHandler(dbContext, Guid.NewGuid()).HandleAsync(new UpdateUserRequest
+            {
+                Id = alice.Id,
+                DisplayName = "张三",
+                RoleIds = [Guid.NewGuid()],
+            }));
+
+        Assert.Equal(ErrorCode.NotFound, ex.Code);
+        Assert.Equal([role.Id], await dbContext.UserRoles.Where(ur => ur.UserId == alice.Id).Select(ur => ur.RoleId).ToListAsync());
     }
 }

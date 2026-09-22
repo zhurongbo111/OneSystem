@@ -1,4 +1,5 @@
 using App.Api.Authentication;
+using App.Api.Authorization;
 using App.Api.Http;
 using App.Api.Middleware;
 using App.Api.Observability;
@@ -37,7 +38,12 @@ builder.Services.AddCore();
 builder.Services.AddInfrastructure(builder.Configuration);
 // 关闭 [ApiController] 自动 400（RFC problem-details，破坏统一响应契约），改由 ModelStateValidationFilter 抛 BusinessException，
 // 经 GlobalExceptionMiddleware 返回统一响应；业务校验仍由 Mediator 统一执行 FluentValidation，不在此重复
-builder.Services.AddControllers(options => options.Filters.Add<ModelStateValidationFilter>())
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<ModelStateValidationFilter>();
+        // 权限校验（erp-rbac）：所有动作统一在此校验，未标注 [RequirePermission] 且不在白名单内的动作会被拒绝（40300）
+        options.Filters.Add<PermissionAuthorizationFilter>();
+    })
     .ConfigureApiBehaviorOptions(options => options.SuppressModelStateInvalidFilter = true);
 builder.Services.AddEndpointsApiExplorer();
 

@@ -100,4 +100,14 @@ public static class ErrorCode
 
     /// <summary>单据已被收付款单核销，禁止作废（erp-settlement 功能业务码；message 含单号与已结金额）</summary>
     public const int OrderSettledCannotVoid = 40120;
+
+    // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
+    /// <summary>角色名称已存在（忽略大小写）</summary>
+    public const int RoleNameExists = 40173;
+
+    /// <summary>角色已被用户绑定，禁止删除</summary>
+    public const int RoleInUse = 40174;
+
+    /// <summary>内置角色不可编辑 / 不可删除</summary>
+    public const int RoleBuiltinImmutable = 40175;
 }

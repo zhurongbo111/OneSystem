@@ -1,7 +1,10 @@
+using App.Core;
+using App.Core.Auth;
 using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.Auth.Login;
 using App.Infrastructure;
+using App.Infrastructure.Auth;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
 
@@ -26,7 +29,8 @@ public class LoginRequestHandlerTests
             new UnitOfWork(dbContext),
             TestSupport.PasswordHasher,
             TestSupport.CreateTokenService(),
-            new StubClientInfo { IpAddress = "127.0.0.1", UserAgent = "xunit-agent" });
+            new StubClientInfo { IpAddress = "127.0.0.1", UserAgent = "xunit-agent" },
+            new PermissionResolver(dbContext));
 
         return (handler, dbContext);
     }
@@ -41,6 +45,37 @@ public class LoginRequestHandlerTests
         Assert.False(string.IsNullOrEmpty(result.Token));
         Assert.Equal("admin", result.User.Username);
         Assert.Equal("管理员", result.User.DisplayName);
+        // 未绑定角色的用户权限集合为空，登录不报错
+        Assert.Empty(result.Permissions);
+    }
+
+    [Fact]
+    public async Task HandleAsync_用户绑定角色_应返回该角色的权限点()
+    {
+        var (handler, dbContext) = CreateHandler();
+        var admin = await dbContext.Users.SingleAsync();
+        var role = TestSupport.SeedRole(dbContext, "操作角色", false, Permissions.ProductsView, Permissions.PartnersView);
+        TestSupport.BindRole(dbContext, admin, role);
+
+        var result = await handler.HandleAsync(new LoginRequest { Username = "admin", Password = "admin123" });
+
+        Assert.Equal(2, result.Permissions.Count);
+        Assert.Contains(Permissions.ProductsView, result.Permissions);
+        Assert.Contains(Permissions.PartnersView, result.Permissions);
+    }
+
+    [Fact]
+    public async Task HandleAsync_超级管理员_应返回全量权限点()
+    {
+        var (handler, dbContext) = CreateHandler();
+        var admin = await dbContext.Users.SingleAsync();
+        var superAdmin = TestSupport.SeedRole(dbContext, BuiltinRoles.SuperAdmin, true);
+        TestSupport.BindRole(dbContext, admin, superAdmin);
+
+        var result = await handler.HandleAsync(new LoginRequest { Username = "admin", Password = "admin123" });
+
+        // 超级管理员不逐点存储权限，解析时直接返回全量清单
+        Assert.Equal(Permissions.All.Count, result.Permissions.Count);
     }
 
     [Fact]
@@ -79,7 +114,8 @@ public class LoginRequestHandlerTests
             new UnitOfWork(dbContext),
             TestSupport.PasswordHasher,
             TestSupport.CreateTokenService(),
-            new StubClientInfo());
+            new StubClientInfo(),
+            new PermissionResolver(dbContext));
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new LoginRequest { Username = "blocked", Password = "user123" }));
@@ -130,7 +166,8 @@ public class LoginRequestHandlerTests
             new UnitOfWork(dbContext),
             TestSupport.PasswordHasher,
             TestSupport.CreateTokenService(),
-            new StubClientInfo());
+            new StubClientInfo(),
+            new PermissionResolver(dbContext));
 
         await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new LoginRequest { Username = "blocked", Password = "user123" }));

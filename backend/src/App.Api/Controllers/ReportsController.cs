@@ -1,5 +1,7 @@
+using App.Api.Authorization;
 using App.Api.Http;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.Reports;
 using App.Core.Features.Reports.ExportCostProfit;
 using App.Core.Features.Reports.ExportInventoryFlow;
@@ -44,6 +46,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ReportPageDto<InventoryFlowItemDto, InventoryFlowSummaryDto>>))]
     [HttpGet("inventory-flow")]
+    [RequirePermission(Permissions.ReportsView)]
     public async Task<ApiResponse<ReportPageDto<InventoryFlowItemDto, InventoryFlowSummaryDto>>> GetInventoryFlow(
         [FromQuery] GetInventoryFlowRequest request,
         CancellationToken cancellationToken)
@@ -56,6 +59,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ReportPageDto<StockBalanceItemDto, StockBalanceSummaryDto>>))]
     [HttpGet("stock-balance")]
+    [RequirePermission(Permissions.ReportsView)]
     public async Task<ApiResponse<ReportPageDto<StockBalanceItemDto, StockBalanceSummaryDto>>> GetStockBalance(
         [FromQuery] GetStockBalanceRequest request,
         CancellationToken cancellationToken)
@@ -68,6 +72,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ReportPageDto<PurchaseSummaryItemDto, PurchaseSummaryTotalDto>>))]
     [HttpGet("purchase-summary")]
+    [RequirePermission(Permissions.ReportsView)]
     public async Task<ApiResponse<ReportPageDto<PurchaseSummaryItemDto, PurchaseSummaryTotalDto>>> GetPurchaseSummary(
         [FromQuery] GetPurchaseSummaryRequest request,
         CancellationToken cancellationToken)
@@ -80,6 +85,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ReportPageDto<SalesSummaryItemDto, SalesSummaryTotalDto>>))]
     [HttpGet("sales-summary")]
+    [RequirePermission(Permissions.ReportsView)]
     public async Task<ApiResponse<ReportPageDto<SalesSummaryItemDto, SalesSummaryTotalDto>>> GetSalesSummary(
         [FromQuery] GetSalesSummaryRequest request,
         CancellationToken cancellationToken)
@@ -92,6 +98,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<ReportPageDto<CostProfitItemDto, CostProfitTotalDto>>))]
     [HttpGet("cost-profit")]
+    [RequirePermission(Permissions.ReportsView)]
     public async Task<ApiResponse<ReportPageDto<CostProfitItemDto, CostProfitTotalDto>>> GetCostProfitReport(
         [FromQuery] GetCostProfitReportRequest request,
         CancellationToken cancellationToken)
@@ -104,6 +111,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("inventory-flow/export")]
+    [RequirePermission(Permissions.ReportsExport)]
     public async Task<IActionResult> ExportInventoryFlow(
         [FromQuery] ExportInventoryFlowRequest request,
         CancellationToken cancellationToken)
@@ -119,6 +127,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("stock-balance/export")]
+    [RequirePermission(Permissions.ReportsExport)]
     public async Task<IActionResult> ExportStockBalance(
         [FromQuery] ExportStockBalanceRequest request,
         CancellationToken cancellationToken)
@@ -134,6 +143,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("purchase-summary/export")]
+    [RequirePermission(Permissions.ReportsExport)]
     public async Task<IActionResult> ExportPurchaseSummary(
         [FromQuery] ExportPurchaseSummaryRequest request,
         CancellationToken cancellationToken)
@@ -149,6 +159,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("sales-summary/export")]
+    [RequirePermission(Permissions.ReportsExport)]
     public async Task<IActionResult> ExportSalesSummary(
         [FromQuery] ExportSalesSummaryRequest request,
         CancellationToken cancellationToken)
@@ -164,6 +175,7 @@ public class ReportsController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("cost-profit/export")]
+    [RequirePermission(Permissions.ReportsExport)]
     public async Task<IActionResult> ExportCostProfit(
         [FromQuery] ExportCostProfitRequest request,
         CancellationToken cancellationToken)

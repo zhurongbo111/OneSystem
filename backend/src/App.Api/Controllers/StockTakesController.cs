@@ -1,5 +1,7 @@
+using App.Api.Authorization;
 using App.Api.Http;
 using App.Core.Abstractions;
+using App.Core.Auth;
 using App.Core.Features.StockTakes;
 using App.Core.Features.StockTakes.CreateStockTake;
 using App.Core.Features.StockTakes.ExportStockTakes;
@@ -40,6 +42,7 @@ public sealed class StockTakesController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<PagedResult<StockTakeListItemDto>>))]
     [HttpGet]
+    [RequirePermission(Permissions.StockTakesView)]
     public async Task<ApiResponse<PagedResult<StockTakeListItemDto>>> GetPaged([FromQuery] GetStockTakesRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
@@ -50,6 +53,7 @@ public sealed class StockTakesController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
     [HttpGet("export")]
+    [RequirePermission(Permissions.StockTakesExport)]
     public async Task<IActionResult> Export([FromQuery] ExportStockTakesRequest request, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(request, cancellationToken);
@@ -63,6 +67,7 @@ public sealed class StockTakesController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<StockTakeProductPickDto>>))]
     [HttpGet("pick-products")]
+    [RequirePermission(Permissions.StockTakesView)]
     public async Task<ApiResponse<IReadOnlyList<StockTakeProductPickDto>>> GetPickProducts(CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetStockTakePickProductsRequest(), cancellationToken));
 
@@ -73,6 +78,7 @@ public sealed class StockTakesController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<StockTakeDetailDto>))]
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.StockTakesView)]
     public async Task<ApiResponse<StockTakeDetailDto>> GetDetail(Guid id, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(new GetStockTakeByIdRequest { Id = id }, cancellationToken));
 
@@ -83,6 +89,7 @@ public sealed class StockTakesController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<StockTakeDetailDto>))]
     [HttpPost]
+    [RequirePermission(Permissions.StockTakesCreate)]
     public async Task<ApiResponse<StockTakeDetailDto>> Create([FromBody] CreateStockTakeRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 }

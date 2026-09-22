@@ -4,8 +4,14 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
+using App.Core.Auth;
+using App.Core.Errors;
 using App.Core.Features.Auth.Login;
 using App.Core.Features.LoginLogs;
+using App.Core.Features.Permissions;
+using App.Core.Features.Roles;
+using App.Core.Features.Roles.CreateRole;
+using App.Core.Features.Roles.UpdateRole;
 using App.Core.Features.Users;
 using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.ResetPassword;
@@ -76,10 +82,13 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
     private readonly HttpClient _client;
     private readonly JsonSerializerOptions _jsonOptions;
 
+    /// <summary>内置员工角色 id（登录时查询得到）</summary>
+    private Guid _staffRoleId;
+
     /// <summary>生成不重复的用户名（用户名规则：3-50 位字母 / 数字 / 下划线）</summary>
     private static string UniqueUsername() => "u" + Guid.NewGuid().ToString("N")[..12];
 
-    private static CreateUserRequest NewUserRequest(string username, string password = "user123", string? email = null, string? phone = null)
+    private CreateUserRequest NewUserRequest(string username, string password = "user123", string? email = null, string? phone = null)
         => new()
         {
             Username = username,
@@ -87,6 +96,8 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
             Email = email,
             Phone = phone,
             Password = password,
+            // 用户必须绑定至少一个角色（避免"无角色用户"黑洞）
+            RoleIds = [_staffRoleId],
         };
 
     /// <summary>用内置管理员登录并写入 Authorization 头</summary>
@@ -95,6 +106,12 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
         var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest { Username = "admin", Password = "admin123" });
         var login = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(_jsonOptions);
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login!.Data!.Token);
+
+        // 登录后即有 roles.view 权限，可查内置员工角色，供后续"新增 / 编辑用户"绑定使用
+        var roles = await _client.GetFromJsonAsync<ApiResponse<PagedResult<RoleListItemDto>>>(
+            "/api/roles?keyword=Staff",
+            _jsonOptions);
+        _staffRoleId = Guid.Parse(roles!.Data!.Items[0].Id);
     }
 
     /// <summary>新增用户并断言成功</summary>
@@ -104,6 +121,19 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<UserDetailDto>>(_jsonOptions);
         Assert.Equal(0, result!.Code);
         return result.Data!;
+    }
+
+    /// <summary>分页结构简单钩子（角色列表集成断言复用）</summary>
+    private async Task<ApiResponse<PagedResult<RoleListItemDto>>> GetRolesAsync(string query)
+        => (await _client.GetFromJsonAsync<ApiResponse<PagedResult<RoleListItemDto>>>($"/api/roles{query}", _jsonOptions))!;
+
+    /// <summary>GET 并解包统一响应（断言业务成功）</summary>
+    private async Task<ApiResponse<T>> GetAsync<T>(string url)
+    {
+        var response = await _client.GetAsync(url);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<T>>(_jsonOptions);
+        Assert.Equal(0, result!.Code);
+        return result;
     }
 
     [Fact]
@@ -126,6 +156,8 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
         Assert.Equal(0, result!.Code);
         Assert.False(string.IsNullOrEmpty(result.Data!.Token));
         Assert.Equal("admin", result.Data.User.Username);
+        // 内置管理员为超级管理员：登录即返回全量权限点
+        Assert.Equal(App.Core.Auth.Permissions.All.Count, result.Data.Permissions.Count);
     }
 
     [Fact]
@@ -243,6 +275,188 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
     }
 
     [Fact]
+    public async Task 内置数据_应创建内置角色并为管理员绑定超级管理员()
+    {
+        await LoginAsAdminAsync();
+
+        var roles = await GetRolesAsync(string.Empty);
+
+        Assert.True(roles.Data!.Total >= 2);
+        Assert.Contains(roles.Data.Items, item => item.Name == App.Core.BuiltinRoles.SuperAdmin && item.IsBuiltin);
+        Assert.Contains(roles.Data.Items, item => item.Name == App.Core.BuiltinRoles.Staff && item.IsBuiltin);
+
+        var me = await GetAsync<UserDto>("/api/users/me");
+        var meDetail = await GetAsync<UserDetailDto>($"/api/users/{me.Data!.Id}");
+        Assert.Equal(App.Core.BuiltinRoles.SuperAdmin, meDetail.Data!.Roles[0].Name);
+    }
+
+    [Fact]
+    public async Task 权限清单_应返回分组且覆盖全部权限点()
+    {
+        await LoginAsAdminAsync();
+
+        var result = await GetAsync<IReadOnlyList<PermissionGroupDto>>("/api/permissions");
+
+        Assert.Equal(App.Core.Auth.Permissions.Groups.Count, result.Data!.Count);
+        Assert.Equal(App.Core.Auth.Permissions.All.Count, result.Data.Sum(group => group.Items.Count));
+    }
+
+    [Fact]
+    public async Task 当前用户权限_应返回该用户的权限点()
+    {
+        await LoginAsAdminAsync();
+
+        var result = await GetAsync<IReadOnlyList<string>>("/api/users/me/permissions");
+
+        Assert.Equal(App.Core.Auth.Permissions.All.Count, result.Data!.Count);
+    }
+
+    [Fact]
+    public async Task 新增角色_名称重复_返回40173()
+    {
+        await LoginAsAdminAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/roles", new CreateRoleRequest
+        {
+            Name = App.Core.BuiltinRoles.Staff,
+            Remark = null,
+            PermissionKeys = [Permissions.PurchasesView],
+        });
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<RoleDetailDto>>(_jsonOptions);
+
+        Assert.Equal(ErrorCode.RoleNameExists, result!.Code);
+    }
+
+    [Fact]
+    public async Task 新增角色_权限点非法_返回40000()
+    {
+        await LoginAsAdminAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/roles", new CreateRoleRequest
+        {
+            Name = "测试角色" + UniqueUsername()[..6],
+            PermissionKeys = ["products.fly"],
+        });
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<RoleDetailDto>>(_jsonOptions);
+
+        Assert.Equal(ErrorCode.Validation, result!.Code);
+    }
+
+    [Fact]
+    public async Task 角色增删改查_应全链路可用()
+    {
+        await LoginAsAdminAsync();
+        var name = "ROLE" + Guid.NewGuid().ToString("N")[..8];
+
+        var created = await _client.PostAsJsonAsync("/api/roles", new CreateRoleRequest
+        {
+            Name = name,
+            Remark = "集成测试角色",
+            PermissionKeys = [Permissions.PurchasesView, Permissions.PurchasesExport],
+        });
+        var createdResult = await created.Content.ReadFromJsonAsync<ApiResponse<RoleDetailDto>>(_jsonOptions);
+        Assert.Equal(0, createdResult!.Code);
+        Assert.Equal(2, createdResult.Data!.PermissionKeys.Count);
+
+        var detail = await GetAsync<RoleDetailDto>($"/api/roles/{createdResult.Data.Id}");
+        Assert.Equal(name, detail.Data!.Name);
+        Assert.Equal(0, detail.Data.UserCount);
+
+        var updated = await _client.PutAsJsonAsync($"/api/roles/{createdResult.Data.Id}", new UpdateRoleRequest
+        {
+            Name = name,
+            Remark = "改过备注",
+            PermissionKeys = [Permissions.PurchasesView],
+        });
+        var updatedResult = await updated.Content.ReadFromJsonAsync<ApiResponse<RoleDetailDto>>(_jsonOptions);
+        Assert.Equal(0, updatedResult!.Code);
+        Assert.Single(updatedResult.Data!.PermissionKeys);
+        Assert.Equal("改过备注", updatedResult.Data.Remark);
+
+        var deleted = await _client.DeleteAsync($"/api/roles/{createdResult.Data.Id}");
+        var deletedResult = await deleted.Content.ReadFromJsonAsync<ApiResponse<object?>>(_jsonOptions);
+        Assert.Equal(0, deletedResult!.Code);
+    }
+
+    [Fact]
+    public async Task 删除内置角色_返回40175()
+    {
+        await LoginAsAdminAsync();
+        var staffRoleId = (await GetRolesAsync("?keyword=Staff")).Data!.Items[0].Id;
+
+        var response = await _client.DeleteAsync($"/api/roles/{staffRoleId}");
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<object?>>(_jsonOptions);
+
+        Assert.Equal(ErrorCode.RoleBuiltinImmutable, result!.Code);
+    }
+
+    [Fact]
+    public async Task 删除已绑定用户的角色_返回40174()
+    {
+        await LoginAsAdminAsync();
+
+        // 新建一个非内置角色并绑定给用户，删除应因占用被拒
+        var createdRole = await _client.PostAsJsonAsync("/api/roles", new CreateRoleRequest
+        {
+            Name = "USED" + Guid.NewGuid().ToString("N")[..8],
+            PermissionKeys = [Permissions.PurchasesView],
+        });
+        var roleResult = await createdRole.Content.ReadFromJsonAsync<ApiResponse<RoleDetailDto>>(_jsonOptions);
+        await CreateUserAsync(new CreateUserRequest
+        {
+            Username = UniqueUsername(),
+            DisplayName = "占位用户",
+            Password = "usedrole123",
+            RoleIds = [Guid.Parse(roleResult!.Data!.Id)],
+        });
+
+        var response = await _client.DeleteAsync($"/api/roles/{roleResult.Data.Id}");
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<object?>>(_jsonOptions);
+
+        Assert.Equal(ErrorCode.RoleInUse, result!.Code);
+    }
+
+    [Fact]
+    public async Task 无权限角色_访问用户列表_返回HTTP200且code40300()
+    {
+        await LoginAsAdminAsync();
+
+        // 新建一个只有 staff 查看权限的角色，用它创建一个新用户
+        var roleResponse = await _client.PostAsJsonAsync("/api/roles", new CreateRoleRequest
+        {
+            Name = "NOROLE" + Guid.NewGuid().ToString("N")[..8],
+            PermissionKeys = [Permissions.PurchasesView],
+        });
+        var roleResult = await roleResponse.Content.ReadFromJsonAsync<ApiResponse<RoleDetailDto>>(_jsonOptions);
+        var username = UniqueUsername();
+        await _client.PostAsJsonAsync("/api/users", new CreateUserRequest
+        {
+            Username = username,
+            DisplayName = "受限用户",
+            Password = "limited123",
+            RoleIds = [Guid.Parse(roleResult!.Data!.Id)],
+        });
+
+        // 以受限用户登录
+        var loginResponse = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest { Username = username, Password = "limited123" });
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(_jsonOptions);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult!.Data!.Token);
+
+        // 无权限：HTTP 200 + code 40300（不返回 401 / 403）
+        var response = await _client.GetAsync("/api/users?keyword=");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<UserListItemDto>>>(_jsonOptions);
+        Assert.Equal(ErrorCode.Forbidden, result!.Code);
+
+        // 仍可访问白名单接口（未返回 40300）
+        var whitelist = await GetAsync<IReadOnlyList<string>>("/api/users/me/permissions");
+        Assert.Equal(0, whitelist.Code);
+        Assert.Equal([Permissions.PurchasesView], whitelist.Data!);
+    }
+
+    [Fact]
     public async Task 新增用户_用户名重复_返回40002()
     {
         await LoginAsAdminAsync();
@@ -290,6 +504,7 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
         {
             DisplayName = "已改名",
             Email = $"{UniqueUsername()}@example.com",
+            RoleIds = [_staffRoleId],
         });
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<UserDetailDto>>(_jsonOptions);
 
@@ -297,6 +512,7 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
         Assert.Equal(username, result.Data!.Username);
         Assert.Equal("已改名", result.Data.DisplayName);
         Assert.NotNull(result.Data.Email);
+        Assert.Single(result.Data.Roles);
     }
 
     [Fact]
@@ -304,7 +520,9 @@ public class ApiIntegrationTests : IClassFixture<ApiIntegrationTests.Factory>
     {
         await LoginAsAdminAsync();
 
-        var response = await _client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}", new UpdateUserRequest { DisplayName = "任意" });
+        var response = await _client.PutAsJsonAsync(
+            $"/api/users/{Guid.NewGuid()}",
+            new UpdateUserRequest { DisplayName = "任意", RoleIds = [_staffRoleId] });
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<JsonElement>>(_jsonOptions);
 
         Assert.Equal(40400, result!.Code);

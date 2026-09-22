@@ -10,7 +10,7 @@ namespace App.Tests;
 public class GetUsersRequestHandlerTests
 {
     private static GetUsersRequestHandler CreateHandler(App.Infrastructure.AppDbContext dbContext)
-        => new(new UserRepository(dbContext));
+        => new(new UserRepository(dbContext), new UserRoleRepository(dbContext));
 
     [Fact]
     public async Task HandleAsync_无筛选_应返回全部并按创建时间倒序()
@@ -88,5 +88,36 @@ public class GetUsersRequestHandlerTests
         Assert.Equal(2, result.Items.Count);
         Assert.Equal(2, result.Page);
         Assert.Equal(2, result.PageSize);
+    }
+
+    [Fact]
+    public async Task HandleAsync_用户绑定角色_列表项应带回角色并按名称升序()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        var alice = TestSupport.NewUser("alice", "张三");
+        dbContext.Users.Add(alice);
+        await dbContext.SaveChangesAsync();
+        var secondRole = TestSupport.SeedRole(dbContext, "乙角色");
+        var firstRole = TestSupport.SeedRole(dbContext, "甲角色");
+        TestSupport.BindRole(dbContext, alice, secondRole);
+        TestSupport.BindRole(dbContext, alice, firstRole);
+
+        var result = await CreateHandler(dbContext).HandleAsync(new GetUsersRequest());
+
+        Assert.Equal(2, result.Items[0].Roles.Count);
+        Assert.Equal("甲角色", result.Items[0].Roles[0].Name);
+        Assert.Equal("乙角色", result.Items[0].Roles[1].Name);
+    }
+
+    [Fact]
+    public async Task HandleAsync_用户无角色_列表项应返回空角色集合()
+    {
+        await using var dbContext = TestSupport.CreateDbContext();
+        dbContext.Users.Add(TestSupport.NewUser("alice", "张三"));
+        await dbContext.SaveChangesAsync();
+
+        var result = await CreateHandler(dbContext).HandleAsync(new GetUsersRequest());
+
+        Assert.Empty(result.Items[0].Roles);
     }
 }
