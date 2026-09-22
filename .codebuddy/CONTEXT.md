@@ -15,10 +15,10 @@
 backend/
 ├── App.sln / .editorconfig
 ├── src/
-│   ├── App.Api/             # Program.cs；Authentication/、Controllers/、Http/、Middleware/、Swagger/、appsettings*.json、nlog.config
+│   ├── App.Api/             # Program.cs；Authentication/、Authorization/（权限特性与过滤器）、Controllers/、Http/、Middleware/、Swagger/、appsettings*.json、nlog.config
 │   ├── App.Core/            # DependencyInjection.cs（AddCore）；Abstractions/、Auth/、Entities/、Errors/、Exports/、Mediation/、Features/
 │   └── App.Infrastructure/  # DependencyInjection.cs（AddInfrastructure）、AppDbContext.cs、Migrations/、Persistence/、Repositories/、Exports/
-└── tests/App.Tests/         # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport
+└── tests/App.Tests/         # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport + 横切守卫（ApiPermissionMatrix：全部 Controller 动作权限标注守卫）
 ```
 
 **命名规律**（据此定位，不逐一列举）：
@@ -39,6 +39,13 @@ backend/
 完整清单用目录列表获取；命名规律为 Feature 用资源名（可数用复数，不可数 / 集合概念保留单数，如 `Products` / `Inventory`）、`<Action>` 用动词短语，用例既有形态照下方「基准参照」与同域已有 `<Action>/` 一比一组织。`Reports` 各用例为只读聚合（经 `IReportQueryRepository` 跨表，不新增写路径）。
 
 **成本能力（erp-cost，`026`）**：成本写入见各单据 `Create*/Void*` Handler，重算入口 `Costs/RecalculateCosts`（并发拒绝 `40118`），报表 `Reports/GetCostProfitReport`；仓储方法、读模型与错误码明细见 `specs/026-erp-cost/design.md`。
+
+**权限能力（erp-rbac，`028`）**（后端 + 前端已交付，e2e 待环境跑通）：
+
+- 权限点常量 `App.Core/Auth/Permissions.cs`（`PermissionKeys` / `Permissions.All` / 分组元数据），**唯一事实源** `specs/028-erp-rbac/design.md` §0.2；内置角色常量 `App.Core/BuiltinRoles.cs`（`SuperAdmin` / `Staff`）。
+- 实体 `Role` / `RolePermission` / `UserRole` + `Entities/RoleFieldConstraints.cs`；解析 `Abstractions/IPermissionResolver` → `App.Infrastructure/Auth/PermissionResolver`（SuperAdmin 全量、多角色并集、单请求缓存）。
+- 强制校验 `App.Api/Authorization/`：`RequirePermissionAttribute` / `SkipPermissionCheckAttribute` / `PermissionAuthorizationFilter`——**默认拒绝**（未标注权限点的动作与无权限均返回 `40300`，HTTP 200；白名单见 `specs/028-erp-rbac/design.md` §0.4）。
+- 用例：`Features/Roles/`（CRUD 5 个）、`Features/Permissions/GetPermissions`、`Features/Users/GetMyPermissions`；业务码 `40173`–`40175`，下一个可用 `40176`（见 `specs/ROADMAP.md` §6）。
 
 **基准参照**：
 
@@ -62,14 +69,14 @@ backend/
 ```
 frontend/
 ├── index.html / vite.config.ts / playwright.config.ts / eslint.config.js
-├── e2e/        # 每功能域一个或多个 <域名>.spec.ts（kebab-case 功能短名，命名判据见前端规则 §10）+ helpers/（菜单点击 / 表格搜索 / 重试点击 / 登录 loginAs / 消息断言 expectMessage，判据见前端规则 §10.1）+ global-setup.ts（冷启动预热，见前端规则 §10）
+├── e2e/        # 每功能域一个或多个 <域名>.spec.ts（kebab-case 功能短名，命名判据见前端规则 §10）+ helpers/（菜单点击 / 表格搜索 / 重试点击 / 登录 loginAs / 消息断言 expectMessage，判据见前端规则 §10.1）+ global-setup.ts（冷启动预热，见前端规则 §10）；权限用例见 `rbac.spec.ts`（最小权限角色经接口构造 fixture）
 └── src/
     ├── main.ts / App.vue / env.d.ts
-    ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流）+ 按业务域拆分 <entity>.ts + export.ts（10 个列表导出）
-    ├── components/  # AppLayout.vue（侧边菜单：「示例页面」「进销存」两组，子菜单默认折叠、仅当前分组自动展开；`025` 落地后改为多顶级分组，目标结构见 `specs/025-erp-report/design.md` §0.2）、SettlementRecords.vue（四类单据详情「收付款明细」只读反查，`023`）
+    ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流；`40300` 与 `40000` 同处置：统一 `Message.error`）+ 按业务域拆分 <entity>.ts + export.ts（10 个列表导出）+ role.ts（角色 CRUD 与权限点分组清单，中文名由后端返回）
+    ├── components/  # AppLayout.vue（侧边菜单多顶级分组：示例页面 / 基础档案 / 采购 / 销售 / 库存 / 资金 / 报表 / 系统；子菜单默认折叠、仅当前分组自动展开；菜单项按 `MENU_PERMISSIONS` 权限过滤，分组内无可见子项则整组隐藏，`028`）、SettlementRecords.vue（四类单据详情「收付款明细」只读反查，`023`）
     ├── composables/ # useOrderStore.ts（演示用）
-    ├── router/ stores/ utils/   # index.ts（路由懒加载；另含 6 条顶层 `print/...` 打印路由，不进 AppLayout）/ auth.ts（Pinia）/ datetime.ts / settlement.ts（结算状态文案与颜色）
-    └── views/       # 按功能域分目录（域内文件平铺，不套子目录）
+    ├── router/ stores/ utils/   # index.ts（路由懒加载；`ROUTE_PERMISSIONS` 集中登记「路由名 → 权限点」并注入 `meta.permission`，守卫未登录跳登录页、无权限跳 `/403`；另含 6 条顶层 `print/...` 打印路由与顶层 `/403`，均不进 AppLayout）/ auth.ts（Pinia：token / user / permissions + `hasPermission` / `hasAnyPermission` / `fetchPermissions`）/ datetime.ts / settlement.ts（结算状态文案与颜色）
+    └── views/       # 按功能域分目录（域内文件平铺，不套子目录）；无功能域归属的 `ForbiddenView.vue`（顶层 `/403`）平铺在 views/ 根
 ```
 
 **功能域目录**（`views/`，与后端 `Features/<Feature>`、路由前缀、e2e spec 四者对齐，约定见前端规则 §4.1）：
@@ -82,6 +89,7 @@ frontend/
   - `InventoryManagement/` 与 `StockMovementManagement/`（库存流水）均为只读页，前者操作列「流水」下钻后者；
   - `PurchaseManagement/`（采购入库）与 `SalesManagement/`（销售出库）开单页可关联上游订单，见 `specs/024-erp-order-flow/design.md`；
   - `SettlementManagement/` 含往来对账页；`ReportManagement/` 含成本毛利报表（库存余额表与库存流水页也含成本列）；报表 API 集中 `api/report.ts`，成本重算在 `api/cost.ts`。
+  - `RoleManagement/` 为角色权限域（`028`）：列表 + 抽屉表单（权限树勾选），无独立详情页；权限点中文名由 `GET /api/permissions` 返回，前端不硬编码；无权限页 `ForbiddenView.vue` 不在任何功能域内。
 
 **图标选型**：业务图标（侧边菜单、列表工具条、操作列）统一 Tabler（`@tabler/icons-vue`）；仅「图标」示例页为演示保留三套并存；优先级见前端规则 §4.7。
 
@@ -117,7 +125,7 @@ frontend/
 
 ## 6. 现有功能规格（specs/）
 
-`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。范围规律：工程与前端交互模式为 `001`–`011`、`018`，业务为 `009`，ERP 为 `012`–`027`（已实现）与 `028`–`045`（已起草未实现，**无待起草模块**）。
+`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。范围规律：工程与前端交互模式为 `001`–`011`、`018`，业务为 `009`，ERP 为 `012`–`028`（已实现）与 `029`–`045`（已起草未实现，**无待起草模块**）。`028` 为**横向改造**（角色域 + 为 `012`–`027` 全部动作补权限点），权限点清单唯一来源 `specs/028-erp-rbac/design.md` §0.2、白名单 §0.4；各域 `design.md` 均带「演进（erp-rbac）」指针注记。
 
 `specs/ROADMAP.md` 是 ERP **全域**（内核 + 外围系统）的**路线索引**（单文件，非 spec 目录、无三件套）：记录模块边界（§1）、模块地图（§2）、覆盖矩阵（§3）、阶段路线 P1–P6（§4.2），并写明跨功能前置决策（多仓 / 结算 / 权限 / 组织等）。接续 ERP 功能前先读它，再进具体规格。
 
