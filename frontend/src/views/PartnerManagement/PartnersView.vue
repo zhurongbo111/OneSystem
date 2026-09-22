@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { exportPartners } from '@/api/export'
 import { getPartners, updatePartnerStatus } from '@/api/partner'
 import type { Partner, PartnerStatus, PartnerType } from '@/api/partner'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
@@ -21,6 +22,8 @@ import {
 } from '@tabler/icons-vue'
 
 import PartnerFormDrawer from './PartnerFormDrawer.vue'
+
+const auth = useAuthStore()
 
 // —— constants ——
 const typeOptions = [
@@ -343,6 +346,7 @@ async function onToggleStatus(row: Partner): Promise<void> {
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
+              v-if="auth.hasPermission('partners.create')"
               type="primary"
               size="small"
               @click="onCreate"

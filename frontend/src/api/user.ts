@@ -11,6 +11,12 @@ export interface PagedResult<T> {
   pageSize: number
 }
 
+/** 用户所属角色（对应后端 UserRoleDto） */
+export interface UserRole {
+  id: string
+  name: string
+}
+
 /** 用户列表行（对应后端 UserListItemDto） */
 export interface UserListItem {
   id: string
@@ -19,6 +25,8 @@ export interface UserListItem {
   email: string | null
   phone: string | null
   status: UserStatus
+  /** 所属角色（列表 / 详情共用，至少一个） */
+  roles: UserRole[]
   lastLoginAt: string | null
   createdAt: string
 }
@@ -43,6 +51,8 @@ export interface CreateUserPayload {
   email?: string
   phone?: string
   password: string
+  /** 角色 id 集合（全量替换，至少一个） */
+  roleIds: string[]
 }
 
 /** 编辑用户入参（对应后端 UpdateUserRequest，用户名不可改） */
@@ -50,6 +60,8 @@ export interface UpdateUserPayload {
   displayName: string
   email?: string
   phone?: string
+  /** 角色 id 集合（全量替换，至少一个） */
+  roleIds: string[]
 }
 
 /** 分页查询用户列表 */

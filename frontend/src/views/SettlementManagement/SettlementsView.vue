@@ -13,6 +13,7 @@ import {
   type SettlementMethod,
   type SettlementType,
 } from '@/api/settlement'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import { settlementOrderTypeLabel } from '@/utils/settlement'
 import { Message } from '@arco-design/web-vue'
@@ -28,6 +29,8 @@ import {
   IconSearch,
   IconSettings,
 } from '@tabler/icons-vue'
+
+const auth = useAuthStore()
 
 // —— types ——
 type SettlementTypeFilter = SettlementType | undefined
@@ -404,6 +407,7 @@ async function onVoid(row: SettlementListItem): Promise<void> {
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
+              v-if="auth.hasPermission('settlements.create')"
               type="primary"
               size="small"
               @click="onCreate"

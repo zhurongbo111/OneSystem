@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 
 import { getUsers, resetUserPassword, updateUserStatus } from '@/api/user'
 import type { UserListItem, UserStatus } from '@/api/user'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { FieldRule, FormInstance, TableColumnData } from '@arco-design/web-vue'
@@ -39,6 +40,7 @@ const columnOptions = [
   { label: '显示名', value: 'displayName' },
   { label: '邮箱', value: 'email' },
   { label: '手机号', value: 'phone' },
+  { label: '角色', value: 'roles' },
   { label: '状态', value: 'status' },
   { label: '最近登录时间', value: 'lastLoginAt' },
   { label: '创建时间', value: 'createdAt' },
@@ -52,6 +54,7 @@ const resetRules: Record<string, FieldRule[]> = {
 }
 
 const router = useRouter()
+const auth = useAuthStore()
 
 /** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
 let fetchSeq = 0
@@ -77,6 +80,7 @@ const visibleColumns = ref<string[]>([
   'displayName',
   'email',
   'phone',
+  'roles',
   'status',
   'lastLoginAt',
   'createdAt',
@@ -123,6 +127,9 @@ const columns = computed<TableColumnData[]>(() => {
   }
   if (visibleColumns.value.includes('phone')) {
     cols.push({ title: '手机号', dataIndex: 'phone', width: 130 })
+  }
+  if (visibleColumns.value.includes('roles')) {
+    cols.push({ title: '角色', slotName: 'roles', width: 160, ellipsis: true, tooltip: true })
   }
   if (visibleColumns.value.includes('status')) {
     cols.push({ title: '状态', dataIndex: 'status', width: 90, slotName: 'status' })
@@ -201,6 +208,12 @@ function onPageSizeChange(size: number): void {
   pageSize.value = size
   page.value = 1
   void fetchList()
+}
+
+/** 表单保存后：刷新列表 + 刷新权限集合（改到自己所属角色时即时生效） */
+function onUserSaved(): void {
+  void fetchList()
+  void auth.fetchPermissions()
 }
 
 /** 新增（抽屉） */
@@ -334,6 +347,7 @@ async function onSubmitResetPassword(): Promise<void> {
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
+              v-if="auth.hasPermission('users.create')"
               type="primary"
               size="small"
               @click="onCreate"
@@ -395,6 +409,20 @@ async function onSubmitResetPassword(): Promise<void> {
       >
         <template #seq="{ rowIndex }">
           {{ (page - 1) * pageSize + rowIndex + 1 }}
+        </template>
+        <template #roles="{ record }">
+          <a-space
+            :size="4"
+            wrap
+          >
+            <a-tag
+              v-for="role in (record as UserListItem).roles"
+              :key="role.id"
+              size="small"
+            >
+              {{ role.name }}
+            </a-tag>
+          </a-space>
         </template>
         <template #status="{ record }">
           <a-tag :color="(record as UserListItem).status === 1 ? 'green' : 'red'">
@@ -483,7 +511,7 @@ async function onSubmitResetPassword(): Promise<void> {
       v-model:visible="drawerVisible"
       :mode="drawerMode"
       :edit-id="drawerEditId"
-      @saved="fetchList"
+      @saved="onUserSaved"
     />
 
     <a-modal

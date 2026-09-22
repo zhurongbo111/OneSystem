@@ -4,10 +4,13 @@ import { useRouter } from 'vue-router'
 
 import { exportStockTakes } from '@/api/export'
 import { getStockTakes, toDateRange, type StockTakeListItem, type StockTakeType } from '@/api/stockTake'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { IconDownload, IconListDetails, IconPlus, IconPrinter, IconRefresh, IconRestore, IconSearch, IconSettings } from '@tabler/icons-vue'
+
+const auth = useAuthStore()
 
 // —— constants ——
 const typeOptions: { label: string; value: StockTakeType }[] = [
@@ -313,6 +316,7 @@ function onPrint(row: Record<string, unknown>): void {
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
+              v-if="auth.hasPermission('stockTakes.create')"
               type="primary"
               size="small"
               @click="onCreate"

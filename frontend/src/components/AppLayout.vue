@@ -27,6 +27,7 @@ import {
   IconReceiptRefund,
   IconScale,
   IconSettings,
+  IconShieldLock,
   IconShoppingBag,
   IconShoppingCart,
   IconStack2,
@@ -79,7 +80,36 @@ const MENU_GROUPS: Record<string, string[]> = {
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
-  system: ['users', 'userDetail', 'loginLogs'],
+  system: ['users', 'userDetail', 'loginLogs', 'roles'],
+}
+
+/**
+ * 菜单项 key → 权限点（唯一事实源 `specs/028-erp-rbac/design.md` §0.2）。
+ * 未登记的菜单项（首页 / 示例页面）恒可见；分组可见性 = 组内已登记菜单项任一可见。
+ */
+const MENU_PERMISSIONS: Record<string, string> = {
+  products: 'products.view',
+  categories: 'categories.view',
+  partners: 'partners.view',
+  purchaseOrders: 'purchaseOrders.view',
+  purchases: 'purchases.view',
+  purchaseReturns: 'purchaseReturns.view',
+  salesOrders: 'salesOrders.view',
+  sales: 'sales.view',
+  salesReturns: 'salesReturns.view',
+  inventory: 'inventory.view',
+  stockMovements: 'stockMovements.view',
+  stockTakes: 'stockTakes.view',
+  settlements: 'settlements.view',
+  reconciliation: 'reconciliation.view',
+  inventoryFlowReport: 'reports.view',
+  stockBalanceReport: 'reports.view',
+  purchaseSummaryReport: 'reports.view',
+  salesSummaryReport: 'reports.view',
+  costProfitReport: 'reports.view',
+  users: 'users.view',
+  loginLogs: 'loginLogs.view',
+  roles: 'roles.view',
 }
 
 // —— reactive state ——
@@ -113,6 +143,20 @@ onMounted(() => {
 })
 
 // —— methods ——
+
+/** 菜单项是否可见：未登记权限点（首页 / 示例页面）恒可见，否则需命中权限点 */
+function isMenuVisible(key: string): boolean {
+  const permission = MENU_PERMISSIONS[key] ?? ''
+  return !permission || auth.hasPermission(permission)
+}
+
+/** 分组是否可见：组内已登记菜单项任一可见即展示（示例页面分组无登记项，恒可见） */
+function isGroupVisible(group: string): boolean {
+  const items = (MENU_GROUPS[group] ?? []).filter((key) => key in MENU_PERMISSIONS)
+  if (items.length === 0) return true
+  return items.some((key) => isMenuVisible(key))
+}
+
 function onMenuItemClick(key: string): void {
   void router.push({ name: key })
 }
@@ -180,186 +224,279 @@ function onLogout(): void {
             <span>表单与详情示例</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="basedata">
+        <a-sub-menu
+          v-if="isGroupVisible('basedata')"
+          key="basedata"
+        >
           <template #icon>
             <IconDatabase />
           </template>
           <template #title>
             <span>基础档案</span>
           </template>
-          <a-menu-item key="products">
+          <a-menu-item
+            v-if="isMenuVisible('products')"
+            key="products"
+          >
             <template #icon>
               <IconPackage />
             </template>
             <span>商品管理</span>
           </a-menu-item>
-          <a-menu-item key="categories">
+          <a-menu-item
+            v-if="isMenuVisible('categories')"
+            key="categories"
+          >
             <template #icon>
               <IconTags />
             </template>
             <span>分类管理</span>
           </a-menu-item>
-          <a-menu-item key="partners">
+          <a-menu-item
+            v-if="isMenuVisible('partners')"
+            key="partners"
+          >
             <template #icon>
               <IconUsers />
             </template>
             <span>往来单位</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="purchase">
+        <a-sub-menu
+          v-if="isGroupVisible('purchase')"
+          key="purchase"
+        >
           <template #icon>
             <IconShoppingCart />
           </template>
           <template #title>
             <span>采购</span>
           </template>
-          <a-menu-item key="purchaseOrders">
+          <a-menu-item
+            v-if="isMenuVisible('purchaseOrders')"
+            key="purchaseOrders"
+          >
             <template #icon>
               <IconClipboardList />
             </template>
             <span>采购订单</span>
           </a-menu-item>
-          <a-menu-item key="purchases">
+          <a-menu-item
+            v-if="isMenuVisible('purchases')"
+            key="purchases"
+          >
             <template #icon>
               <IconTruckDelivery />
             </template>
             <span>采购入库</span>
           </a-menu-item>
-          <a-menu-item key="purchaseReturns">
+          <a-menu-item
+            v-if="isMenuVisible('purchaseReturns')"
+            key="purchaseReturns"
+          >
             <template #icon>
               <IconReceiptRefund />
             </template>
             <span>采购退货</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="sale">
+        <a-sub-menu
+          v-if="isGroupVisible('sale')"
+          key="sale"
+        >
           <template #icon>
             <IconShoppingBag />
           </template>
           <template #title>
             <span>销售</span>
           </template>
-          <a-menu-item key="salesOrders">
+          <a-menu-item
+            v-if="isMenuVisible('salesOrders')"
+            key="salesOrders"
+          >
             <template #icon>
               <IconFileInvoice />
             </template>
             <span>销售订单</span>
           </a-menu-item>
-          <a-menu-item key="sales">
+          <a-menu-item
+            v-if="isMenuVisible('sales')"
+            key="sales"
+          >
             <template #icon>
               <IconReceipt />
             </template>
             <span>销售出库</span>
           </a-menu-item>
-          <a-menu-item key="salesReturns">
+          <a-menu-item
+            v-if="isMenuVisible('salesReturns')"
+            key="salesReturns"
+          >
             <template #icon>
               <IconTruckReturn />
             </template>
             <span>销售退货</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="stock">
+        <a-sub-menu
+          v-if="isGroupVisible('stock')"
+          key="stock"
+        >
           <template #icon>
             <IconBuildingWarehouse />
           </template>
           <template #title>
             <span>库存</span>
           </template>
-          <a-menu-item key="inventory">
+          <a-menu-item
+            v-if="isMenuVisible('inventory')"
+            key="inventory"
+          >
             <template #icon>
               <IconPackages />
             </template>
             <span>库存查询</span>
           </a-menu-item>
-          <a-menu-item key="stockMovements">
+          <a-menu-item
+            v-if="isMenuVisible('stockMovements')"
+            key="stockMovements"
+          >
             <template #icon>
               <IconStack2 />
             </template>
             <span>库存流水</span>
           </a-menu-item>
-          <a-menu-item key="stockTakes">
+          <a-menu-item
+            v-if="isMenuVisible('stockTakes')"
+            key="stockTakes"
+          >
             <template #icon>
               <IconClipboardCheck />
             </template>
             <span>库存盘点</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="fund">
+        <a-sub-menu
+          v-if="isGroupVisible('fund')"
+          key="fund"
+        >
           <template #icon>
             <IconWallet />
           </template>
           <template #title>
             <span>资金</span>
           </template>
-          <a-menu-item key="settlements">
+          <a-menu-item
+            v-if="isMenuVisible('settlements')"
+            key="settlements"
+          >
             <template #icon>
               <IconCash />
             </template>
             <span>收付款</span>
           </a-menu-item>
-          <a-menu-item key="reconciliation">
+          <a-menu-item
+            v-if="isMenuVisible('reconciliation')"
+            key="reconciliation"
+          >
             <template #icon>
               <IconScale />
             </template>
             <span>往来对账</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="report">
+        <a-sub-menu
+          v-if="isGroupVisible('report')"
+          key="report"
+        >
           <template #icon>
             <IconChartBar />
           </template>
           <template #title>
             <span>报表</span>
           </template>
-          <a-menu-item key="inventoryFlowReport">
+          <a-menu-item
+            v-if="isMenuVisible('inventoryFlowReport')"
+            key="inventoryFlowReport"
+          >
             <template #icon>
               <IconArrowsExchange />
             </template>
             <span>进销存报表</span>
           </a-menu-item>
-          <a-menu-item key="stockBalanceReport">
+          <a-menu-item
+            v-if="isMenuVisible('stockBalanceReport')"
+            key="stockBalanceReport"
+          >
             <template #icon>
               <IconStack2 />
             </template>
             <span>库存余额表</span>
           </a-menu-item>
-          <a-menu-item key="purchaseSummaryReport">
+          <a-menu-item
+            v-if="isMenuVisible('purchaseSummaryReport')"
+            key="purchaseSummaryReport"
+          >
             <template #icon>
               <IconShoppingCart />
             </template>
             <span>采购汇总</span>
           </a-menu-item>
-          <a-menu-item key="salesSummaryReport">
+          <a-menu-item
+            v-if="isMenuVisible('salesSummaryReport')"
+            key="salesSummaryReport"
+          >
             <template #icon>
               <IconShoppingBag />
             </template>
             <span>销售汇总</span>
           </a-menu-item>
-          <a-menu-item key="costProfitReport">
+          <a-menu-item
+            v-if="isMenuVisible('costProfitReport')"
+            key="costProfitReport"
+          >
             <template #icon>
               <IconCoin />
             </template>
             <span>成本与毛利</span>
           </a-menu-item>
         </a-sub-menu>
-        <a-sub-menu key="system">
+        <a-sub-menu
+          v-if="isGroupVisible('system')"
+          key="system"
+        >
           <template #icon>
             <IconSettings />
           </template>
           <template #title>
             <span>系统</span>
           </template>
-          <a-menu-item key="users">
+          <a-menu-item
+            v-if="isMenuVisible('users')"
+            key="users"
+          >
             <template #icon>
               <IconUser />
             </template>
             <span>用户管理</span>
           </a-menu-item>
-          <a-menu-item key="loginLogs">
+          <a-menu-item
+            v-if="isMenuVisible('loginLogs')"
+            key="loginLogs"
+          >
             <template #icon>
               <IconHistory />
             </template>
             <span>登录日志</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('roles')"
+            key="roles"
+          >
+            <template #icon>
+              <IconShieldLock />
+            </template>
+            <span>角色权限</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>

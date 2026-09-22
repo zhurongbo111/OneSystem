@@ -11,6 +11,7 @@ import {
   voidSalesReturn,
   type SalesReturnListItem,
 } from '@/api/saleReturn'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import {
   SETTLEMENT_STATE_OPTIONS,
@@ -36,6 +37,8 @@ import {
   IconSearch,
   IconSettings,
 } from '@tabler/icons-vue'
+
+const auth = useAuthStore()
 
 // —— constants ——
 /** 列表请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新数据 */
@@ -376,6 +379,7 @@ function onGoSettlement(row: SalesReturnListItem): void {
         <div class="toolbar-actions">
           <div class="toolbar-actions__left">
             <a-button
+              v-if="auth.hasPermission('salesReturns.create')"
               type="primary"
               size="small"
               @click="onCreate"
