@@ -1,5 +1,6 @@
 import type { GetEmployeesParams } from './employee'
 import type { InventoryListQuery } from './inventory'
+import type { InvoiceQuery } from './invoice'
 import type { GetPartnersParams } from './partner'
 import type { ProductListQuery } from './product'
 import type { PurchaseReceiptQuery } from './purchase'
@@ -22,6 +23,11 @@ import type { StockTakeQuery } from './stockTake'
 /** 导出商品列表 */
 export function exportProducts(params: Omit<ProductListQuery, 'page' | 'pageSize'>): Promise<void> {
   return downloadBlob('/products/export', params)
+}
+
+/** 导出发票（工作表：发票 + 关联明细） */
+export function exportInvoices(params: Omit<InvoiceQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/invoices/export', params)
 }
 
 /** 导出往来单位列表 */
