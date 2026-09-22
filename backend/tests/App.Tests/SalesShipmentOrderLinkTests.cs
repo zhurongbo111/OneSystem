@@ -84,9 +84,10 @@ public class SalesShipmentOrderLinkTests
 
         inventory.Seed(product.Id, 100); // 保证默认库存充足，扣减不失败
 
+        var gl = GeneralLedgerStubs.Create();
         var handler = new CreateSalesShipmentRequestHandler(
             shipments, orders, new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, uow, user, TestSupport.AuditLogger);
+            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
 
         return new LinkedHarness
         {
@@ -273,7 +274,7 @@ public class SalesShipmentOrderLinkTests
     }
 
     private static VoidSalesShipmentRequestHandler CreateVoidHandler(LinkedHarness h)
-        => new(h.Shipments, h.Orders, h.Inventory, h.Movements, h.Uow, h.User, TestSupport.AuditLogger);
+        => new(h.Shipments, h.Orders, h.Inventory, h.Movements, GeneralLedgerStubs.NewVouchers(), GeneralLedgerStubs.NewPeriods(), h.Uow, h.User, TestSupport.AuditLogger);
 
     [Fact]
     public async Task 作废关联出库单_应回退累计已发并回到待发货()
