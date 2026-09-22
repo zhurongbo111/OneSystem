@@ -101,6 +101,40 @@ public static class ErrorCode
     /// <summary>单据已被收付款单核销，禁止作废（erp-settlement 功能业务码；message 含单号与已结金额）</summary>
     public const int OrderSettledCannotVoid = 40120;
 
+    // ===== 组织架构与员工档案（specs/030-erp-org-employee/design.md §3.2） =====
+    /// <summary>部门编码已存在</summary>
+    public const int DepartmentCodeExists = 40138;
+
+    /// <summary>同一上级下部门名称已存在</summary>
+    public const int DepartmentNameExists = 40139;
+
+    /// <summary>部门存在子部门或员工，禁止删除</summary>
+    public const int DepartmentInUse = 40140;
+
+    /// <summary>上级部门不能是自身或其下级（防环）</summary>
+    public const int DepartmentCycle = 40141;
+
+    /// <summary>岗位编码已存在</summary>
+    public const int PositionCodeExists = 40142;
+
+    /// <summary>岗位名称已存在</summary>
+    public const int PositionNameExists = 40143;
+
+    /// <summary>岗位已被员工引用，禁止删除</summary>
+    public const int PositionInUse = 40144;
+
+    /// <summary>工号已存在</summary>
+    public const int EmployeeNoExists = 40145;
+
+    /// <summary>该账号已绑定其他员工</summary>
+    public const int EmployeeUserBound = 40146;
+
+    /// <summary>手机号已存在</summary>
+    public const int EmployeePhoneExists = 40147;
+
+    /// <summary>邮箱已存在</summary>
+    public const int EmployeeEmailExists = 40148;
+
     // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
     /// <summary>角色名称已存在（忽略大小写）</summary>
     public const int RoleNameExists = 40173;

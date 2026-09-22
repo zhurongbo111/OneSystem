@@ -290,6 +290,52 @@ public static class Permissions
     /// <summary>查看操作日志</summary>
     public const string AuditLogsView = "auditLogs.view";
 
+    // ===== 组织人事（030） =====
+    /// <summary>查看部门</summary>
+    public const string DepartmentsView = "departments.view";
+
+    /// <summary>新增部门</summary>
+    public const string DepartmentsCreate = "departments.create";
+
+    /// <summary>编辑部门</summary>
+    public const string DepartmentsUpdate = "departments.update";
+
+    /// <summary>删除部门</summary>
+    public const string DepartmentsDelete = "departments.delete";
+
+    /// <summary>启用 / 停用部门</summary>
+    public const string DepartmentsStatus = "departments.status";
+
+    /// <summary>查看岗位</summary>
+    public const string PositionsView = "positions.view";
+
+    /// <summary>新增岗位</summary>
+    public const string PositionsCreate = "positions.create";
+
+    /// <summary>编辑岗位</summary>
+    public const string PositionsUpdate = "positions.update";
+
+    /// <summary>删除岗位</summary>
+    public const string PositionsDelete = "positions.delete";
+
+    /// <summary>启用 / 停用岗位</summary>
+    public const string PositionsStatus = "positions.status";
+
+    /// <summary>查看员工档案</summary>
+    public const string EmployeesView = "employees.view";
+
+    /// <summary>新增员工</summary>
+    public const string EmployeesCreate = "employees.create";
+
+    /// <summary>编辑员工</summary>
+    public const string EmployeesUpdate = "employees.update";
+
+    /// <summary>在职 / 离职切换</summary>
+    public const string EmployeesStatus = "employees.status";
+
+    /// <summary>导出员工档案</summary>
+    public const string EmployeesExport = "employees.export";
+
     // ===== 站内消息（041） =====
     /// <summary>查看站内消息</summary>
     public const string NotificationsView = "notifications.view";
@@ -332,6 +378,9 @@ public static class Permissions
         LoginLogsView,
         RolesView, RolesCreate, RolesUpdate, RolesDelete,
         AuditLogsView,
+        DepartmentsView, DepartmentsCreate, DepartmentsUpdate, DepartmentsDelete, DepartmentsStatus,
+        PositionsView, PositionsCreate, PositionsUpdate, PositionsDelete, PositionsStatus,
+        EmployeesView, EmployeesCreate, EmployeesUpdate, EmployeesStatus, EmployeesExport,
         NotificationsView,
         ApprovalsView, ApprovalsApprove,
     ];
@@ -378,6 +427,9 @@ public static class Permissions
         new("登录日志", [new PermissionItem(LoginLogsView, "查看")]),
         new("角色权限", [new PermissionItem(RolesView, "查看"), new PermissionItem(RolesCreate, "新增"), new PermissionItem(RolesUpdate, "编辑"), new PermissionItem(RolesDelete, "删除")]),
         new("操作日志", [new PermissionItem(AuditLogsView, "查看")]),
+        new("部门管理", [new PermissionItem(DepartmentsView, "查看"), new PermissionItem(DepartmentsCreate, "新增"), new PermissionItem(DepartmentsUpdate, "编辑"), new PermissionItem(DepartmentsDelete, "删除"), new PermissionItem(DepartmentsStatus, "启用 / 停用")]),
+        new("岗位管理", [new PermissionItem(PositionsView, "查看"), new PermissionItem(PositionsCreate, "新增"), new PermissionItem(PositionsUpdate, "编辑"), new PermissionItem(PositionsDelete, "删除"), new PermissionItem(PositionsStatus, "启用 / 停用")]),
+        new("员工档案", [new PermissionItem(EmployeesView, "查看"), new PermissionItem(EmployeesCreate, "新增"), new PermissionItem(EmployeesUpdate, "编辑"), new PermissionItem(EmployeesStatus, "在职 / 离职"), new PermissionItem(EmployeesExport, "导出")]),
         new("站内消息", [new PermissionItem(NotificationsView, "查看")]),
         new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批")]),
     ];
