@@ -121,7 +121,6 @@ public class AppDbContext : DbContext
 
     /// <summary>会计期间表（按「年-月」唯一）</summary>
     public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
-
     /// <summary>记账凭证主表</summary>
     public DbSet<Voucher> Vouchers => Set<Voucher>();
 
@@ -130,6 +129,9 @@ public class AppDbContext : DbContext
 
     /// <summary>科目映射表（业务事件 → 会计科目）</summary>
     public DbSet<AccountMapping> AccountMappings => Set<AccountMapping>();
+
+    /// <summary>资金账户表（现金 / 银行存款，034-erp-cash）</summary>
+    public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

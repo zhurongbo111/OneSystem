@@ -17,6 +17,16 @@ using App.Core.Features.AuditLogs;
 using App.Core.Features.AuditLogs.GetAuditLogById;
 using App.Core.Features.AuditLogs.GetAuditLogs;
 using App.Core.Features.Auth.Login;
+using App.Core.Features.BankAccounts;
+using App.Core.Features.BankAccounts.CreateBankAccount;
+using App.Core.Features.BankAccounts.DeleteBankAccount;
+using App.Core.Features.BankAccounts.GetBankAccountById;
+using App.Core.Features.BankAccounts.GetBankAccountSummary;
+using App.Core.Features.BankAccounts.GetBankAccounts;
+using App.Core.Features.BankAccounts.UpdateBankAccount;
+using App.Core.Features.BankAccounts.UpdateBankAccountStatus;
+using App.Core.Features.CashJournals;
+using App.Core.Features.CashJournals.GetCashJournal;
 using App.Core.Features.Categories;
 using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Categories.DeleteCategory;
@@ -293,6 +303,16 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<DeleteTaxRateRequest, object?>, DeleteTaxRateRequestHandler>();
         services.AddScoped<IRequestHandler<UpdateTaxRateStatusRequest, TaxRateDetailDto>, UpdateTaxRateStatusRequestHandler>();
 
+        // 资金出纳用例（erp-cash：资金账户 + 资金日记账只读聚合）
+        services.AddScoped<IRequestHandler<GetBankAccountsRequest, PagedResult<BankAccountListItemDto>>, GetBankAccountsRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateBankAccountRequest, BankAccountDetailDto>, CreateBankAccountRequestHandler>();
+        services.AddScoped<IRequestHandler<GetBankAccountByIdRequest, BankAccountDetailDto>, GetBankAccountByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateBankAccountRequest, BankAccountDetailDto>, UpdateBankAccountRequestHandler>();
+        services.AddScoped<IRequestHandler<DeleteBankAccountRequest, object?>, DeleteBankAccountRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateBankAccountStatusRequest, BankAccountDetailDto>, UpdateBankAccountStatusRequestHandler>();
+        services.AddScoped<IRequestHandler<GetBankAccountSummaryRequest, IReadOnlyList<BankAccountBalanceItemDto>>, GetBankAccountSummaryRequestHandler>();
+        services.AddScoped<IRequestHandler<GetCashJournalRequest, CashJournalDto>, GetCashJournalRequestHandler>();
+
         // 商品管理用例（erp-product）
         services.AddScoped<IRequestHandler<GetProductsRequest, PagedResult<ProductDto>>, GetProductsRequestHandler>();
         services.AddScoped<IRequestHandler<GetProductByIdRequest, ProductDto>, GetProductByIdRequestHandler>();
@@ -454,6 +474,11 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetSalesReturnsRequest>, GetSalesReturnsRequestValidator>();
         services.AddScoped<IValidator<CreateSalesReturnRequest>, CreateSalesReturnRequestValidator>();
         services.AddScoped<IValidator<CreateSettlementRequest>, CreateSettlementRequestValidator>();
+        services.AddScoped<IValidator<GetBankAccountsRequest>, GetBankAccountsRequestValidator>();
+        services.AddScoped<IValidator<CreateBankAccountRequest>, CreateBankAccountRequestValidator>();
+        services.AddScoped<IValidator<UpdateBankAccountRequest>, UpdateBankAccountRequestValidator>();
+        services.AddScoped<IValidator<UpdateBankAccountStatusRequest>, UpdateBankAccountStatusRequestValidator>();
+        services.AddScoped<IValidator<GetCashJournalRequest>, GetCashJournalRequestValidator>();
         services.AddScoped<IValidator<GetSettlementsRequest>, GetSettlementsRequestValidator>();
         services.AddScoped<IValidator<GetUnsettledOrdersRequest>, GetUnsettledOrdersRequestValidator>();
         services.AddScoped<IValidator<GetReconciliationRequest>, GetReconciliationRequestValidator>();

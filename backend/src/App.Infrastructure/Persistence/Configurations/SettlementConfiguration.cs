@@ -44,5 +44,14 @@ internal sealed class SettlementConfiguration : IEntityTypeConfiguration<Settlem
             .WithMany()
             .HasForeignKey(s => s.PartnerId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // 资金账户外键（034-erp-cash，可空；Other 结算方式不关联账户）：
+        // 不级联删除，且资金账户被收付款单引用时禁止删除（业务校验见 UpdateBankAccountStatus / DeleteBankAccount）
+        builder.HasOne<BankAccount>()
+            .WithMany()
+            .HasForeignKey(s => s.BankAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(s => s.BankAccountId);
     }
 }

@@ -25,7 +25,7 @@ public sealed class SettlementRepository : ISettlementRepository
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<Settlement> Items, int Total)> GetPagedAsync(
+    public async Task<(IReadOnlyList<SettlementListItem> Items, int Total)> GetPagedAsync(
         string? keyword,
         SettlementType? type,
         Guid? partnerId,
@@ -88,20 +88,63 @@ public sealed class SettlementRepository : ISettlementRepository
         }
 
         var total = await query.CountAsync(cancellationToken);
-        var items = await query
-            .OrderByDescending(s => s.CreatedAt)
+
+        // 资金账户名称（034-erp-cash）：左连接 BankAccounts 带出，未关联账户时为 null
+        var joined = from s in query
+                     join b in _dbContext.BankAccounts.AsNoTracking() on s.BankAccountId equals b.Id into accounts
+                     from b in accounts.DefaultIfEmpty()
+                     select new { Settlement = s, BankAccountName = (string?)b!.Name };
+
+        var items = await joined
+            .OrderByDescending(x => x.Settlement.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(x => new SettlementListItem
+            {
+                Id = x.Settlement.Id,
+                SettlementNo = x.Settlement.SettlementNo,
+                Type = x.Settlement.Type,
+                PartnerId = x.Settlement.PartnerId,
+                PartnerName = x.Settlement.PartnerName,
+                SettlementDate = x.Settlement.SettlementDate,
+                TotalAmount = x.Settlement.TotalAmount,
+                Method = x.Settlement.Method,
+                BankAccountId = x.Settlement.BankAccountId,
+                BankAccountName = x.BankAccountName,
+                Status = x.Settlement.Status,
+                CreatedBy = x.Settlement.CreatedBy,
+                CreatedAt = x.Settlement.CreatedAt,
+            })
             .ToListAsync(cancellationToken);
 
         return (items, total);
     }
 
     /// <inheritdoc />
-    public async Task<(Settlement? Settlement, IReadOnlyList<SettlementItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<(SettlementDetail? Settlement, IReadOnlyList<SettlementItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var settlement = await _dbContext.Settlements.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+        // 资金账户名称（034-erp-cash）：左连接带出，未关联账户时为 null
+        var settlement = await (from s in _dbContext.Settlements.AsNoTracking().Where(s => s.Id == id)
+                                join b in _dbContext.BankAccounts.AsNoTracking() on s.BankAccountId equals b.Id into accounts
+                                from b in accounts.DefaultIfEmpty()
+                                select new SettlementDetail
+                                {
+                                    Id = s.Id,
+                                    SettlementNo = s.SettlementNo,
+                                    Type = s.Type,
+                                    PartnerId = s.PartnerId,
+                                    PartnerName = s.PartnerName,
+                                    SettlementDate = s.SettlementDate,
+                                    TotalAmount = s.TotalAmount,
+                                    Method = s.Method,
+                                    BankAccountId = s.BankAccountId,
+                                    BankAccountName = (string?)b!.Name,
+                                    Status = s.Status,
+                                    Remark = s.Remark,
+                                    CreatedBy = s.CreatedBy,
+                                    CreatedAt = s.CreatedAt,
+                                })
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (settlement is null)
         {

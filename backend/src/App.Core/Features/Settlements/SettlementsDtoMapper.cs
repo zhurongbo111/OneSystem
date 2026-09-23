@@ -11,7 +11,7 @@ internal static class SettlementsDtoMapper
     /// <summary>
     /// 主表实体 + 核销明细转详情 DTO
     /// </summary>
-    public static SettlementDetailDto ToSettlementDetailDto(Settlement settlement, IReadOnlyList<SettlementItem> items)
+    public static SettlementDetailDto ToSettlementDetailDto(SettlementDetail settlement, IReadOnlyList<SettlementItem> items)
         => new()
         {
             Id = settlement.Id.ToString(),
@@ -22,6 +22,8 @@ internal static class SettlementsDtoMapper
             SettlementDate = settlement.SettlementDate,
             TotalAmount = settlement.TotalAmount,
             Method = (int)settlement.Method,
+            BankAccountId = settlement.BankAccountId,
+            BankAccountName = settlement.BankAccountName,
             Status = (int)settlement.Status,
             Remark = settlement.Remark,
             CreatedBy = settlement.CreatedBy?.ToString(),
@@ -45,7 +47,7 @@ internal static class SettlementsDtoMapper
     /// <param name="orderAmount">本次核销金额（按被核销单据反查时传入；普通列表为 null）</param>
     /// <param name="orderTypes">该单核销明细的被核销单据类型集合（去重升序；无明细时为空集合）</param>
     public static SettlementListItemDto ToSettlementListItemDto(
-        Settlement settlement,
+        SettlementListItem settlement,
         decimal? orderAmount = null,
         IReadOnlyList<int>? orderTypes = null)
         => new()
@@ -58,6 +60,8 @@ internal static class SettlementsDtoMapper
             SettlementDate = settlement.SettlementDate,
             TotalAmount = settlement.TotalAmount,
             Method = (int)settlement.Method,
+            BankAccountId = settlement.BankAccountId,
+            BankAccountName = settlement.BankAccountName,
             Status = (int)settlement.Status,
             CreatedAt = settlement.CreatedAt,
             OrderAmount = orderAmount,

@@ -29,6 +29,12 @@ public sealed class SettlementDetailDto
     /// <summary>方式（0 现金 / 1 银行转账 / 2 其他）</summary>
     public required int Method { get; init; }
 
+    /// <summary>资金账户 id（034-erp-cash，可空：`Other` 结算方式不关联账户）</summary>
+    public Guid? BankAccountId { get; init; }
+
+    /// <summary>资金账户名称（联查带出，可空）</summary>
+    public string? BankAccountName { get; init; }
+
     /// <summary>单据状态（0 已作废 / 1 正常）</summary>
     public required int Status { get; init; }
 
@@ -96,6 +102,12 @@ public sealed class SettlementListItemDto
 
     /// <summary>方式（0 现金 / 1 银行转账 / 2 其他）</summary>
     public required int Method { get; init; }
+
+    /// <summary>资金账户 id（034-erp-cash，可空）</summary>
+    public Guid? BankAccountId { get; init; }
+
+    /// <summary>资金账户名称（联查带出，可空）</summary>
+    public string? BankAccountName { get; init; }
 
     /// <summary>单据状态（0 已作废 / 1 正常）</summary>
     public required int Status { get; init; }

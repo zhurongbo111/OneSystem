@@ -86,6 +86,10 @@ public static class DependencyInjection
         services.AddScoped<IAccountMappingRepository, AccountMappingRepository>();
         services.AddScoped<IFinancialReportQueryRepository, FinancialReportQueryRepository>();
 
+        // 资金出纳（erp-cash）：资金账户 + 资金日记账只读聚合（日记账不落流水表，由收付款单派生）
+        services.AddScoped<IBankAccountRepository, BankAccountRepository>();
+        services.AddScoped<ICashJournalQueryRepository, CashJournalQueryRepository>();
+
         // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();

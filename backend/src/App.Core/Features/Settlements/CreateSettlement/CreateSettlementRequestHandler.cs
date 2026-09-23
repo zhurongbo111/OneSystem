@@ -23,6 +23,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
     private readonly IPurchaseReturnRepository _purchaseReturnRepository;
     private readonly ISalesReturnRepository _salesReturnRepository;
     private readonly IPartnerRepository _partnerRepository;
+    private readonly IBankAccountRepository _bankAccountRepository;
     private readonly IVoucherRepository _voucherRepository;
     private readonly IAccountMappingRepository _accountMappingRepository;
     private readonly IAccountingPeriodRepository _accountingPeriodRepository;
@@ -41,6 +42,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         IPurchaseReturnRepository purchaseReturnRepository,
         ISalesReturnRepository salesReturnRepository,
         IPartnerRepository partnerRepository,
+        IBankAccountRepository bankAccountRepository,
         IVoucherRepository voucherRepository,
         IAccountMappingRepository accountMappingRepository,
         IAccountingPeriodRepository accountingPeriodRepository,
@@ -55,6 +57,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         _purchaseReturnRepository = purchaseReturnRepository;
         _salesReturnRepository = salesReturnRepository;
         _partnerRepository = partnerRepository;
+        _bankAccountRepository = bankAccountRepository;
         _voucherRepository = voucherRepository;
         _accountMappingRepository = accountMappingRepository;
         _accountingPeriodRepository = accountingPeriodRepository;
@@ -89,6 +92,28 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         if (partner.Status == PartnerStatus.Disabled)
         {
             throw new BusinessException(ErrorCode.PartnerDisabled, "往来单位已停用，不可用于开单");
+        }
+
+        // 查库约束（034-erp-cash §0.1）：资金账户存在 / 启用 / 类型与结算方式匹配
+        Guid? bankAccountId = null;
+        var bankAccountName = (string?)null;
+        if (request.BankAccountId is not null)
+        {
+            var bankAccount = await _bankAccountRepository.GetByIdAsync(request.BankAccountId.Value, cancellationToken)
+                ?? throw new BusinessException(ErrorCode.NotFound, "资金账户不存在");
+
+            if (bankAccount.Status == BankAccountStatus.Disabled)
+            {
+                throw new BusinessException(ErrorCode.Validation, "资金账户已停用，不可用于开单");
+            }
+
+            if (!IsAccountTypeMatched(request.Method, bankAccount.Type))
+            {
+                throw new BusinessException(ErrorCode.BankAccountTypeMismatch, "结算方式与资金账户类型不匹配");
+            }
+
+            bankAccountId = bankAccount.Id;
+            bankAccountName = bankAccount.Name;
         }
 
         // 逐行校验被核销单据：类型方向 / 存在 / 未作废 / 往来一致 / 核销金额不超过未结金额
@@ -149,6 +174,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
                     SettlementDate = request.SettlementDate,
                     TotalAmount = totalAmount,
                     Method = request.Method,
+                    BankAccountId = bankAccountId,
                     Status = OrderStatus.Normal,
                     Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
                     CreatedAt = now,
@@ -203,6 +229,7 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
                     .Add("partnerName", "往来单位", null, settlement.PartnerName)
                     .Add("settlementDate", "收付日期", null, AuditSummary.Date(settlement.SettlementDate))
                     .Add("method", "结算方式", null, AuditText.SettlementMethod(settlement.Method))
+                    .Add("bankAccountName", "资金账户", null, bankAccountName)
                     .Add("totalAmount", "核销金额", null, AuditSummary.Money(settlement.TotalAmount))
                     .Add("orderNos", "核销单据", null, AuditSummary.Join(items.Select(i => i.OrderNo)))
                     .Add("remark", "备注", null, settlement.Remark);
@@ -248,6 +275,18 @@ public sealed class CreateSettlementRequestHandler : IRequestHandler<CreateSettl
         => type == SettlementType.Receipt
             ? orderType is SettlementOrderType.SalesOutbound or SettlementOrderType.PurchaseReturn
             : orderType is SettlementOrderType.PurchaseInbound or SettlementOrderType.SalesReturn;
+
+    /// <summary>
+    /// 结算方式与资金账户类型是否匹配（现金 ↔ 现金账户、银行转账 ↔ 银行账户；`Other` 不关联账户）
+    /// （specs/034-erp-cash/design.md §0.1）
+    /// </summary>
+    private static bool IsAccountTypeMatched(SettlementMethod method, BankAccountType accountType)
+        => method switch
+        {
+            SettlementMethod.Cash => accountType == BankAccountType.Cash,
+            SettlementMethod.BankTransfer => accountType == BankAccountType.Bank,
+            _ => false,
+        };
 
     /// <summary>
     /// 按被核销单据类型分派到对应单据仓储，原子累加已结算金额（核销为正、作废回退为负）

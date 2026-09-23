@@ -24,7 +24,7 @@ public interface ISettlementRepository
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<(IReadOnlyList<Settlement> Items, int Total)> GetPagedAsync(
+    Task<(IReadOnlyList<SettlementListItem> Items, int Total)> GetPagedAsync(
         string? keyword,
         SettlementType? type,
         Guid? partnerId,
@@ -42,7 +42,7 @@ public interface ISettlementRepository
     /// </summary>
     /// <param name="id">收付款单 id</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<(Settlement? Settlement, IReadOnlyList<SettlementItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<(SettlementDetail? Settlement, IReadOnlyList<SettlementItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 新增收付款单 + 核销明细并持久化（同一仓储内一次 SaveChanges）
