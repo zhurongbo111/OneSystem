@@ -183,6 +183,16 @@ public static class ErrorCode
     /// <summary>记账日期所在会计期间不存在</summary>
     public const int PeriodNotOpened = 40159;
 
+    // ===== 资金出纳（specs/034-erp-cash/design.md §3.2） =====
+    /// <summary>资金账户编码已存在</summary>
+    public const int BankAccountCodeExists = 40160;
+
+    /// <summary>资金账户已被收付款单引用，禁止删除</summary>
+    public const int BankAccountInUse = 40161;
+
+    /// <summary>结算方式与资金账户类型不匹配（如现金结算挂银行账户）</summary>
+    public const int BankAccountTypeMismatch = 40162;
+
     // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
     /// <summary>角色名称已存在（忽略大小写）</summary>
     public const int RoleNameExists = 40173;

@@ -86,4 +86,7 @@ public enum AuditResource
 
     /// <summary>科目映射（033）</summary>
     AccountMapping = 26,
+
+    /// <summary>资金账户（034）</summary>
+    BankAccount = 27,
 }

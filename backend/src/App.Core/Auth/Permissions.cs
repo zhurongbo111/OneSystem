@@ -386,6 +386,25 @@ public static class Permissions
     /// <summary>维护科目映射</summary>
     public const string VouchersUpdateMapping = "vouchers.updateMapping";
 
+    // ===== 资金出纳（034） =====
+    /// <summary>查看资金账户</summary>
+    public const string BankAccountsView = "bankAccounts.view";
+
+    /// <summary>新增资金账户</summary>
+    public const string BankAccountsCreate = "bankAccounts.create";
+
+    /// <summary>编辑资金账户</summary>
+    public const string BankAccountsUpdate = "bankAccounts.update";
+
+    /// <summary>删除资金账户</summary>
+    public const string BankAccountsDelete = "bankAccounts.delete";
+
+    /// <summary>启用 / 停用资金账户</summary>
+    public const string BankAccountsStatus = "bankAccounts.status";
+
+    /// <summary>查看资金日记账</summary>
+    public const string CashJournalsView = "cashJournals.view";
+
     // ===== 财务报表（033） =====
     /// <summary>查看科目余额表 / 资产负债表 / 利润表</summary>
     public const string FinancialReportsView = "financialReports.view";
@@ -438,6 +457,8 @@ public static class Permissions
         AccountsView, AccountsCreate, AccountsUpdate, AccountsDelete, AccountsStatus,
         TaxRatesView, TaxRatesCreate, TaxRatesUpdate, TaxRatesDelete, TaxRatesStatus,
         VouchersView, VouchersCreate, VouchersVoid, VouchersClose, VouchersUpdateMapping,
+        BankAccountsView, BankAccountsCreate, BankAccountsUpdate, BankAccountsDelete, BankAccountsStatus,
+        CashJournalsView,
         FinancialReportsView,
         NotificationsView,
         ApprovalsView, ApprovalsApprove,
@@ -491,6 +512,8 @@ public static class Permissions
         new("会计科目", [new PermissionItem(AccountsView, "查看"), new PermissionItem(AccountsCreate, "新增"), new PermissionItem(AccountsUpdate, "编辑"), new PermissionItem(AccountsDelete, "删除"), new PermissionItem(AccountsStatus, "启用 / 停用")]),
         new("税率", [new PermissionItem(TaxRatesView, "查看"), new PermissionItem(TaxRatesCreate, "新增"), new PermissionItem(TaxRatesUpdate, "编辑"), new PermissionItem(TaxRatesDelete, "删除"), new PermissionItem(TaxRatesStatus, "启用 / 停用")]),
         new("凭证", [new PermissionItem(VouchersView, "查看"), new PermissionItem(VouchersCreate, "录入"), new PermissionItem(VouchersVoid, "作废"), new PermissionItem(VouchersClose, "结账 / 反结账"), new PermissionItem(VouchersUpdateMapping, "科目映射")]),
+        new("资金账户", [new PermissionItem(BankAccountsView, "查看"), new PermissionItem(BankAccountsCreate, "新增"), new PermissionItem(BankAccountsUpdate, "编辑"), new PermissionItem(BankAccountsDelete, "删除"), new PermissionItem(BankAccountsStatus, "启用 / 停用")]),
+        new("资金日记账", [new PermissionItem(CashJournalsView, "查看")]),
         new("财务报表", [new PermissionItem(FinancialReportsView, "查看")]),
         new("站内消息", [new PermissionItem(NotificationsView, "查看")]),
         new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批")]),

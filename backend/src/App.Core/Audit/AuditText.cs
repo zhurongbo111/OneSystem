@@ -139,6 +139,20 @@ public static class AuditText
     public static string TaxRateStatus(TaxRateStatus status)
         => status == Entities.TaxRateStatus.Enabled ? "启用" : "停用";
 
+    /// <summary>资金账户类型文案</summary>
+    /// <param name="type">账户类型</param>
+    public static string BankAccountType(BankAccountType type) => type switch
+    {
+        Entities.BankAccountType.Cash => "现金",
+        Entities.BankAccountType.Bank => "银行",
+        _ => AuditSummary.Empty,
+    };
+
+    /// <summary>资金账户状态文案</summary>
+    /// <param name="status">状态</param>
+    public static string BankAccountStatus(BankAccountStatus status)
+        => status == Entities.BankAccountStatus.Enabled ? "启用" : "停用";
+
     /// <summary>性别文案（未填输出空值占位）</summary>
     /// <param name="gender">性别，可空</param>
     public static string Gender(Gender? gender) => gender switch

@@ -31,6 +31,12 @@ public sealed class Settlement
     /// <summary>方式（0=现金 1=银行转账 2=其他）</summary>
     public SettlementMethod Method { get; set; }
 
+    /// <summary>
+    /// 资金账户 id（外键 → BankAccounts(Id)，可空；`Other` 结算方式不关联账户）。
+    /// 引入见 specs/034-erp-cash/design.md §2.2，类型匹配规则见同节 §0.1
+    /// </summary>
+    public Guid? BankAccountId { get; set; }
+
     /// <summary>单据状态（1=正常 0=已作废；作废后禁止再操作，作废回退各单据已结算金额）</summary>
     public OrderStatus Status { get; set; } = OrderStatus.Normal;
 

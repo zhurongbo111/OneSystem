@@ -21,6 +21,12 @@ public sealed class CreateSettlementRequest : IRequest<SettlementDetailDto>
     /// <summary>方式（0 现金 / 1 银行转账 / 2 其他）</summary>
     public required SettlementMethod Method { get; init; }
 
+    /// <summary>
+    /// 资金账户 id（034-erp-cash，可空）：现金 ↔ 现金账户、银行转账 ↔ 银行账户，类型不匹配返回 40162；
+    /// `Other` 结算方式不关联账户
+    /// </summary>
+    public Guid? BankAccountId { get; init; }
+
     /// <summary>核销明细行（1–100 行；orderType / orderId / amount）</summary>
     public required IReadOnlyList<CreateSettlementItem> Items { get; init; }
 

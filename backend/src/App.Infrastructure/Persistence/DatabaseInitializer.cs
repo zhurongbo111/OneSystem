@@ -16,6 +16,9 @@ namespace App.Infrastructure.Persistence;
 /// </summary>
 public static class DatabaseInitializer
 {
+    /// <summary>预置现金资金账户编码（specs/034-erp-cash/design.md §2.4）</summary>
+    public const string PresetCashAccountCode = "CASH";
+
     /// <summary>内置管理员登录名</summary>
     public const string DefaultAdminUsername = "admin";
 
@@ -67,6 +70,7 @@ public static class DatabaseInitializer
 
         await SeedRolesAndUserRolesAsync(dbContext, logger, cancellationToken);
         await SeedPresetAccountsAsync(dbContext, logger, cancellationToken);
+        await SeedPresetCashAccountAsync(dbContext, logger, cancellationToken);
         await SeedAccountingPeriodsAsync(dbContext, logger, cancellationToken);
         await SeedAccountMappingsAsync(dbContext, logger, cancellationToken);
     }
@@ -160,6 +164,40 @@ public static class DatabaseInitializer
         dbContext.AccountMappings.AddRange(mappings);
         await dbContext.SaveChangesAsync(cancellationToken);
         logger?.LogInformation("已预置科目映射 {Count} 条（跳过 {Skipped} 条）", mappings.Count, definitions.Count - mappings.Count);
+    }
+
+    /// <summary>
+    /// 幂等预置现金资金账户（`Code = CASH`）：按 <c>Code</c> 判定是否已存在，只补不删，可重复执行。
+    /// 现金收付款开箱即用（specs/034-erp-cash/design.md §2.4）
+    /// </summary>
+    /// <param name="dbContext">数据库上下文</param>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private static async Task SeedPresetCashAccountAsync(
+        AppDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.BankAccounts.AnyAsync(b => b.Code == PresetCashAccountCode, cancellationToken))
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        dbContext.BankAccounts.Add(new BankAccount
+        {
+            Id = Guid.NewGuid(),
+            Code = PresetCashAccountCode,
+            Name = "库存现金",
+            Type = BankAccountType.Cash,
+            InitialBalance = 0m,
+            Status = BankAccountStatus.Enabled,
+            CreatedAt = now,
+            UpdatedAt = now,
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        logger?.LogInformation("已预置现金资金账户 {Code}", PresetCashAccountCode);
     }
 
     /// <summary>
