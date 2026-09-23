@@ -19,6 +19,8 @@ internal static class PartnerDtoMapper
             Address = partner.Address,
             Remark = partner.Remark,
             Status = (int)partner.Status,
+            PaymentTermDays = partner.PaymentTermDays,
+            CreditLimit = partner.CreditLimit,
             CreatedAt = partner.CreatedAt,
             UpdatedAt = partner.UpdatedAt,
         };

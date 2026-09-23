@@ -133,6 +133,9 @@ public class AppDbContext : DbContext
     /// <summary>资金账户表（现金 / 银行存款，034-erp-cash）</summary>
     public DbSet<BankAccount> BankAccounts => Set<BankAccount>();
 
+    /// <summary>客户协议价表（客户 × 商品，036-erp-partner-price）</summary>
+    public DbSet<PartnerPrice> PartnerPrices => Set<PartnerPrice>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

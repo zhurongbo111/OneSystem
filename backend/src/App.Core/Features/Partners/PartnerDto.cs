@@ -30,6 +30,12 @@ public sealed class PartnerDto
     /// <summary>单位状态（0 停用 / 1 启用）</summary>
     public int Status { get; init; }
 
+    /// <summary>账期天数（0 = 现结；`036`）</summary>
+    public int PaymentTermDays { get; init; }
+
+    /// <summary>信用额度（0 = 不限；`036`）</summary>
+    public decimal CreditLimit { get; init; }
+
     /// <summary>创建时间</summary>
     public DateTimeOffset CreatedAt { get; init; }
 

@@ -20,4 +20,7 @@ public sealed class GetReconciliationRequest : IRequest<PagedResult<Reconciliati
 
     /// <summary>往来单位类型（1 供应商 / 2 客户 / 3 两者），可空</summary>
     public PartnerType? Type { get; init; }
+
+    /// <summary>是否只返回存在逾期应收单据的往来单位（`036` 账期能力）</summary>
+    public bool OverdueOnly { get; init; }
 }

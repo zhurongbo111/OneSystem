@@ -38,5 +38,14 @@ public sealed class UpdatePartnerRequestValidator : AbstractValidator<UpdatePart
             .MaximumLength(PartnerFieldConstraints.RemarkMaxLength)
             .WithMessage($"备注长度不能超过 {PartnerFieldConstraints.RemarkMaxLength} 个字符")
             .When(x => x.Remark is not null);
+
+        // 账期与信用额度（036-erp-partner-price）：0 分别表示现结与不限，上限取自单一来源常量
+        RuleFor(x => x.PaymentTermDays)
+            .InclusiveBetween(0, PartnerFieldConstraints.PaymentTermDaysMaxValue)
+            .WithMessage($"账期天数必须在 0 到 {PartnerFieldConstraints.PaymentTermDaysMaxValue} 之间");
+
+        RuleFor(x => x.CreditLimit)
+            .InclusiveBetween(0, PartnerFieldConstraints.CreditLimitMaxValue)
+            .WithMessage($"信用额度必须在 0 到 {PartnerFieldConstraints.CreditLimitMaxValue} 之间");
     }
 }

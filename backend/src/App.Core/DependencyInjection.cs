@@ -73,6 +73,13 @@ using App.Core.Features.Partners.GetPartnerById;
 using App.Core.Features.Partners.GetPartners;
 using App.Core.Features.Partners.UpdatePartner;
 using App.Core.Features.Partners.UpdatePartnerStatus;
+using App.Core.Features.PartnerPrices;
+using App.Core.Features.PartnerPrices.CreatePartnerPrice;
+using App.Core.Features.PartnerPrices.DeletePartnerPrice;
+using App.Core.Features.PartnerPrices.GetEffectivePrices;
+using App.Core.Features.PartnerPrices.GetPartnerPriceById;
+using App.Core.Features.PartnerPrices.GetPartnerPrices;
+using App.Core.Features.PartnerPrices.UpdatePartnerPrice;
 using App.Core.Features.Products;
 using App.Core.Features.Products.CreateProduct;
 using App.Core.Features.Products.ExportProducts;
@@ -335,6 +342,14 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<UpdatePartnerRequest, PartnerDto>, UpdatePartnerRequestHandler>();
         services.AddScoped<IRequestHandler<UpdatePartnerStatusRequest, PartnerDto>, UpdatePartnerStatusRequestHandler>();
 
+        // 客户价格用例（erp-partner-price）
+        services.AddScoped<IRequestHandler<GetPartnerPricesRequest, PagedResult<PartnerPriceListItemDto>>, GetPartnerPricesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreatePartnerPriceRequest, PartnerPriceDetailDto>, CreatePartnerPriceRequestHandler>();
+        services.AddScoped<IRequestHandler<GetPartnerPriceByIdRequest, PartnerPriceDetailDto>, GetPartnerPriceByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdatePartnerPriceRequest, PartnerPriceDetailDto>, UpdatePartnerPriceRequestHandler>();
+        services.AddScoped<IRequestHandler<DeletePartnerPriceRequest, object?>, DeletePartnerPriceRequestHandler>();
+        services.AddScoped<IRequestHandler<GetEffectivePricesRequest, IReadOnlyList<EffectivePriceDto>>, GetEffectivePricesRequestHandler>();
+
         // 库存查询用例（erp-inventory-query）
         services.AddScoped<IRequestHandler<GetInventoryRequest, PagedResult<InventoryItemDto>>, GetInventoryRequestHandler>();
 
@@ -454,6 +469,10 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CreatePartnerRequest>, CreatePartnerRequestValidator>();
         services.AddScoped<IValidator<UpdatePartnerRequest>, UpdatePartnerRequestValidator>();
         services.AddScoped<IValidator<UpdatePartnerStatusRequest>, UpdatePartnerStatusRequestValidator>();
+        services.AddScoped<IValidator<GetPartnerPricesRequest>, GetPartnerPricesRequestValidator>();
+        services.AddScoped<IValidator<CreatePartnerPriceRequest>, CreatePartnerPriceRequestValidator>();
+        services.AddScoped<IValidator<UpdatePartnerPriceRequest>, UpdatePartnerPriceRequestValidator>();
+        services.AddScoped<IValidator<GetEffectivePricesRequest>, GetEffectivePricesRequestValidator>();
         services.AddScoped<IValidator<GetInventoryRequest>, GetInventoryRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseReceiptsRequest>, GetPurchaseReceiptsRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReceiptRequest>, CreatePurchaseReceiptRequestValidator>();

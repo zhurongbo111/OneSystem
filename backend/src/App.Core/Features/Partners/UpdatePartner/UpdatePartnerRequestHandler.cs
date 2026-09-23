@@ -52,6 +52,8 @@ public sealed class UpdatePartnerRequestHandler : IRequestHandler<UpdatePartnerR
         var beforePhone = partner.Phone;
         var beforeAddress = partner.Address;
         var beforeRemark = partner.Remark;
+        var beforePaymentTermDays = partner.PaymentTermDays;
+        var beforeCreditLimit = partner.CreditLimit;
         var now = DateTimeOffset.UtcNow;
 
         // 名称不可修改，保持原值不变
@@ -60,6 +62,8 @@ public sealed class UpdatePartnerRequestHandler : IRequestHandler<UpdatePartnerR
         partner.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
         partner.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
         partner.Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
+        partner.PaymentTermDays = request.PaymentTermDays;
+        partner.CreditLimit = request.CreditLimit;
         partner.UpdatedAt = now;
         partner.UpdatedBy = _currentUser.UserId();
 
@@ -70,7 +74,9 @@ public sealed class UpdatePartnerRequestHandler : IRequestHandler<UpdatePartnerR
             .Add("contact", "联系人", beforeContact, partner.Contact)
             .Add("phone", "联系电话", beforePhone, partner.Phone)
             .Add("address", "地址", beforeAddress, partner.Address)
-            .Add("remark", "备注", beforeRemark, partner.Remark);
+            .Add("remark", "备注", beforeRemark, partner.Remark)
+            .Add("paymentTermDays", "账期天数", AuditSummary.Count(beforePaymentTermDays), AuditSummary.Count(partner.PaymentTermDays))
+            .Add("creditLimit", "信用额度", AuditSummary.Money(beforeCreditLimit), AuditSummary.Money(partner.CreditLimit));
         await _auditLogger.RecordAsync(new AuditEntry
         {
             Resource = AuditResource.Partner,

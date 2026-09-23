@@ -12,6 +12,9 @@ public class SettlementQueryRepositoryTests
 {
     private static readonly DateTimeOffset OrderDate = new(2025, 12, 20, 0, 0, 0, TimeSpan.Zero);
 
+    // 逾期判定基准日固定为 2025-12-25（由用例注入，仓储不读系统时间）
+    private static readonly DateOnly Today = new(2025, 12, 25);
+
     private static DateTimeOffset Now => DateTimeOffset.UtcNow;
 
     private static SalesShipment NewSalesShipment(Guid partnerId, string shipmentNo, decimal total, decimal settled, OrderStatus status = OrderStatus.Normal)
@@ -168,7 +171,7 @@ public class SettlementQueryRepositoryTests
 
         var repository = new SettlementQueryRepository(context);
 
-        var (items, total) = await repository.GetReconciliationAsync(null, null, 1, 20);
+        var (items, total) = await repository.GetReconciliationAsync(null, null, false, Today, 1, 20);
 
         Assert.Equal(1, total);
         var row = Assert.Single(items);
@@ -197,7 +200,7 @@ public class SettlementQueryRepositoryTests
 
         var repository = new SettlementQueryRepository(context);
 
-        var (items, total) = await repository.GetReconciliationAsync(null, null, 1, 20);
+        var (items, total) = await repository.GetReconciliationAsync(null, null, false, Today, 1, 20);
 
         Assert.Equal(2, total);
         var settled = items.Single(i => i.PartnerId == settledSupplier.Id);
@@ -222,11 +225,11 @@ public class SettlementQueryRepositoryTests
 
         var repository = new SettlementQueryRepository(context);
 
-        var (byKeyword, keywordTotal) = await repository.GetReconciliationAsync("北京", null, 1, 20);
+        var (byKeyword, keywordTotal) = await repository.GetReconciliationAsync("北京", null, false, Today, 1, 20);
         Assert.Equal(1, keywordTotal);
         Assert.Equal(customer.Id, Assert.Single(byKeyword).PartnerId);
 
-        var (byType, typeTotal) = await repository.GetReconciliationAsync(null, PartnerType.Supplier, 1, 20);
+        var (byType, typeTotal) = await repository.GetReconciliationAsync(null, PartnerType.Supplier, false, Today, 1, 20);
         Assert.Equal(1, typeTotal);
         Assert.Equal(supplier.Id, Assert.Single(byType).PartnerId);
     }

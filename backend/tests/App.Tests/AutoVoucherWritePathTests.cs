@@ -174,6 +174,7 @@ public class AutoVoucherWritePathTests
             new ProductRepository(a.Context),
             a.Inventory,
             a.Movements,
+            new FakeSettlementQueryRepository(),
             a.Gl.Vouchers,
             a.Gl.Mappings,
             a.Gl.Periods,

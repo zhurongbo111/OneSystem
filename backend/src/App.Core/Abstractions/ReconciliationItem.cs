@@ -24,4 +24,16 @@ public sealed record ReconciliationItem
 
     /// <summary>未结单据数（四类单据中未结金额 &gt; 0 且未作废的合计）</summary>
     public required int UnsettledOrderCount { get; init; }
+
+    /// <summary>账期天数（0 = 现结；036-erp-partner-price 追加，供到期日推导）</summary>
+    public required int PaymentTermDays { get; init; }
+
+    /// <summary>应收侧未结单据的最早到期日（单据日期 + 账期天数）；无未结应收单据时为 null</summary>
+    public DateOnly? EarliestDueDate { get; init; }
+
+    /// <summary>最大逾期天数（仅计未结且已过期的应收单据；无逾期时为 0）</summary>
+    public required int MaxOverdueDays { get; init; }
+
+    /// <summary>逾期应收单据数（未结且已过期）</summary>
+    public required int OverdueOrderCount { get; init; }
 }

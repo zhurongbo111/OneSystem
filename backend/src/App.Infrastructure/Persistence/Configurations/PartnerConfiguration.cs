@@ -35,6 +35,10 @@ internal sealed class PartnerConfiguration : IEntityTypeConfiguration<Partner>
             .HasMaxLength(PartnerFieldConstraints.RemarkMaxLength)
             .HasColumnType("varchar(200)");
         builder.Property(p => p.Status).HasConversion<short>().IsRequired();
+
+        // 账期与信用额度（036-erp-partner-price）：默认 0（现结 / 不限），由迁移给出列默认值
+        builder.Property(p => p.PaymentTermDays).IsRequired().HasDefaultValue(0);
+        builder.Property(p => p.CreditLimit).HasColumnType("numeric(18,2)").IsRequired().HasDefaultValue(0m);
         builder.Property(p => p.CreatedAt).IsRequired();
         builder.Property(p => p.UpdatedAt).IsRequired();
 

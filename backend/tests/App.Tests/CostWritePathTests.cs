@@ -79,6 +79,7 @@ public class CostWritePathTests
         // ② 销售出库 5 件 → 按变动前均价 15 结转，成本 75、金额 225、均价仍 15
         var createSale = new CreateSalesShipmentRequestHandler(
             sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, inventory, movements,
+            new FakeSettlementQueryRepository(),
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         await createSale.HandleAsync(new CreateSalesShipmentRequest
         {

@@ -473,6 +473,7 @@ public class AuditLogWriteIntegrationTests
             new ProductRepository(context),
             inventory,
             new FakeStockMovementRepository(calls),
+            new FakeSettlementQueryRepository(),
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),

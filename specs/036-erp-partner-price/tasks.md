@@ -12,22 +12,22 @@ updated: 2026-09-17
 
 ## 一、后端：数据模型与仓储
 
-- [ ] 1.1 新增实体 `PartnerPrice` + EF 配置（唯一索引 `(PartnerId, ProductId)`、外键）+ `AppDbContext` `DbSet`
-- [ ] 1.2 `Partner` 实体 / 配置追加 `PaymentTermDays` / `CreditLimit`（默认 0）；`PartnerFieldConstraints` 追加 `PaymentTermDaysMaxValue = 3650`
-- [ ] 1.3 增量迁移 `dotnet ef migrations add AddErpPartnerPrice -p src/App.Infrastructure -s src/App.Api`
-- [ ] 1.4 读模型 `PartnerPriceListItem` / `EffectivePriceItem`；`ReconciliationItem` 追加 `PaymentTermDays` / `EarliestDueDate` / `MaxOverdueDays` / `OverdueOrderCount`
-- [ ] 1.5 `IPartnerPriceRepository` + 实现（`GetByIdAsync` / `ExistsAsync` / `GetPagedAsync`（联查客户与商品）/ `GetEffectiveAsync`（批量取价 + 来源）/ `AddAsync` / `UpdateAsync` / `DeleteAsync`）+ 注册
-- [ ] 1.6 `ISettlementQueryRepository` 追加 `GetReceivableAmountAsync(partnerId)`（`023` 口径）+ 实现
-- [ ] 1.7 `ErrorCode.cs` 追加 `40130 CreditLimitExceeded` / `40131 PartnerPriceExists`
+- [x] 1.1 新增实体 `PartnerPrice` + EF 配置（唯一索引 `(PartnerId, ProductId)`、外键）+ `AppDbContext` `DbSet`
+- [x] 1.2 `Partner` 实体 / 配置追加 `PaymentTermDays` / `CreditLimit`（默认 0）；`PartnerFieldConstraints` 追加 `PaymentTermDaysMaxValue = 3650`、`CreditLimitMaxValue`
+- [x] 1.3 增量迁移 `dotnet ef migrations add AddErpPartnerPrice -p src/App.Infrastructure -s src/App.Api`
+- [x] 1.4 读模型 `PartnerPriceListItem` / `EffectivePriceItem`；`ReconciliationItem` 追加 `PaymentTermDays` / `EarliestDueDate` / `MaxOverdueDays` / `OverdueOrderCount`
+- [x] 1.5 `IPartnerPriceRepository` + 实现（`GetByIdAsync` / `ExistsAsync` / `GetPagedAsync`（联查客户与商品）/ `GetEffectiveAsync`（批量取价 + 来源）/ `AddAsync` / `UpdateAsync` / `DeleteAsync`）+ 注册
+- [x] 1.6 `ISettlementQueryRepository` 追加 `GetReceivableAmountAsync(partnerId)`（`023` 口径）+ 实现
+- [x] 1.7 `ErrorCode.cs` 追加 `40130 CreditLimitExceeded` / `40131 PartnerPriceExists`
 
 ## 二、后端：用例与接口
 
-- [ ] 2.1 共享出参 `Features/PartnerPrices/PartnerPriceListItemDto.cs` / `PartnerPriceDetailDto.cs` / `EffectivePriceDto.cs` + `PartnerPricesDtoMapper.cs`
-- [ ] 2.2 新增用例 `PartnerPrices/GetPartnerPrices`、`CreatePartnerPrice`、`GetPartnerPriceById`、`UpdatePartnerPrice`、`DeletePartnerPrice`、`GetEffectivePrices`
-- [ ] 2.3 `PartnerPricesController`（6 端点，`effective` 在 `{id:guid}` 之前）+ DI 注册
-- [ ] 2.4 `Partners/UpdatePartner` + DTO 追加 `paymentTermDays` / `creditLimit`（全量覆盖语义）
-- [ ] 2.5 `Sales/CreateSalesOrder` 追加信用校验（额度 > 0 时校验「应收 + 本单 ≤ 额度」，位置在扣库存之前）
-- [ ] 2.6 `Settlements/GetReconciliation` 追加账期与逾期字段（含 `overdueOnly` 筛选）；`023` 的 `GetReconciliationRequest` 与读模型同步
+- [x] 2.1 共享出参 `Features/PartnerPrices/PartnerPriceListItemDto.cs` / `PartnerPriceDetailDto.cs` / `EffectivePriceDto.cs` + `PartnerPricesDtoMapper.cs`
+- [x] 2.2 新增用例 `PartnerPrices/GetPartnerPrices`、`CreatePartnerPrice`、`GetPartnerPriceById`、`UpdatePartnerPrice`、`DeletePartnerPrice`、`GetEffectivePrices`
+- [x] 2.3 `PartnerPricesController`（6 端点，`effective` 在 `{id:guid}` 之前）+ DI 注册
+- [x] 2.4 `Partners/UpdatePartner` + DTO 追加 `paymentTermDays` / `creditLimit`（全量覆盖语义）
+- [x] 2.5 `Sales/CreateSalesShipment` 追加信用校验（额度 > 0 时校验「应收 + 本单 ≤ 额度」，位置在扣库存之前）
+- [x] 2.6 `Settlements/GetReconciliation` 追加账期与逾期字段（含 `overdueOnly` 筛选）；`023` 的 `GetReconciliationRequest` 与读模型同步
 
 ## 三、单元测试
 

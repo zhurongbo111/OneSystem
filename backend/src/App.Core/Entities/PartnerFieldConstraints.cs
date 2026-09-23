@@ -29,4 +29,10 @@ public static class PartnerFieldConstraints
 
     /// <summary>查询关键词最大长度（对齐 Name 列长，取 50）</summary>
     public const int KeywordMaxLength = 50;
+
+    /// <summary>账期天数上限（≈10 年； paymentsTerms 为 0 时表示现结）</summary>
+    public const int PaymentTermDaysMaxValue = 3650;
+
+    /// <summary>信用额度上限（对齐 Partners.CreditLimit numeric(18,2) 展示上限，与商品价格口径同源）</summary>
+    public const decimal CreditLimitMaxValue = ProductFieldConstraints.PriceMaxValue;
 }
