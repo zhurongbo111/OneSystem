@@ -97,7 +97,12 @@ async function createProduct(page: Page, code: string, name: string, categoryNam
   await expect(catInput).toBeVisible()
   await catInput.fill(categoryName)
   await page.locator('.arco-drawer').getByRole('button', { name: '保存' }).click()
-  await expectMessage(page, '分类已创建')
+  // 成功信号：新建的分类被就地选中（分类下拉显示该分类名）。
+  // 不用「分类已创建」提示判定：上一步新建分类的同类提示仍在展示期时会命中旧节点，
+  // 导致后续步骤跑在创建请求完成之前（分类下拉仍是空值 → 提交被校验拦下）。
+  await expect(page.locator('.arco-drawer .arco-select').first()).toContainText(categoryName, {
+    timeout: 15000,
+  })
   const priceInputs = page.locator('.arco-drawer .arco-input-number input')
   await priceInputs.nth(0).fill('10.50')
   await priceInputs.nth(1).fill('20.00')
