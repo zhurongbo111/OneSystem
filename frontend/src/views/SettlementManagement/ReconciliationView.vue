@@ -38,6 +38,8 @@ const unsettledColumns: TableColumnData[] = [
   { title: '单据总额', slotName: 'totalAmount', width: 120, align: 'right' },
   { title: '已结金额', slotName: 'settledAmount', width: 120, align: 'right' },
   { title: '未结金额', slotName: 'unsettledAmount', width: 120, align: 'right' },
+  // 到期日（036 §4.4）：由后端按「单据日期 + 账期」推导，前端不做日期加减
+  { title: '到期日', slotName: 'dueDate', width: 110, align: 'center' },
 ]
 
 // —— stores/composables ——
@@ -53,11 +55,13 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-/** 关键词 / 类型：输入态与已应用态分离（点搜索才生效） */
+/** 关键词 / 类型 / 仅看逾期：输入态与已应用态分离（点搜索才生效） */
 const keywordInput = ref('')
 const typeInput = ref<PartnerType | undefined>(undefined)
+const overdueOnlyInput = ref(false)
 const appliedKeyword = ref('')
 const appliedType = ref<PartnerType | undefined>(undefined)
+const appliedOverdueOnly = ref(false)
 
 /** 未结单据抽屉 */
 const drawerVisible = ref(false)
@@ -70,7 +74,9 @@ const payableOrders = ref<SettlementCandidate[]>([])
 
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
-const tableKey = computed(() => `${appliedKeyword.value}|${appliedType.value ?? ''}`)
+const tableKey = computed(
+  () => `${appliedKeyword.value}|${appliedType.value ?? ''}|${appliedOverdueOnly.value}`,
+)
 
 /** 服务端分页配置 */
 const pagination = computed(() => ({
@@ -90,6 +96,10 @@ const columns = computed<TableColumnData[]>(() => [
   { title: '应收余额', slotName: 'receivableAmount', width: 140, align: 'right' },
   { title: '应付余额', slotName: 'payableAmount', width: 140, align: 'right' },
   { title: '未结单据数', slotName: 'unsettledOrderCount', width: 120, align: 'right' },
+  // 账期与逾期（036 §4.4）：到期日与逾期天数由后端推导，前端不做日期加减
+  { title: '账期（天）', slotName: 'paymentTermDays', width: 110, align: 'right' },
+  { title: '最早到期日', slotName: 'earliestDueDate', width: 130, align: 'center' },
+  { title: '最大逾期天数', slotName: 'maxOverdueDays', width: 130, align: 'right' },
   { title: '操作', slotName: 'action', width: 130, bodyCellClass: 'action-cell' },
 ])
 
@@ -110,6 +120,7 @@ async function fetchList(): Promise<void> {
     const result = await getReconciliation({
       keyword: appliedKeyword.value.trim() || undefined,
       type: appliedType.value,
+      overdueOnly: appliedOverdueOnly.value ? true : undefined,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -127,6 +138,7 @@ async function fetchList(): Promise<void> {
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedType.value = typeInput.value
+  appliedOverdueOnly.value = overdueOnlyInput.value
   page.value = 1
   void fetchList()
 }
@@ -135,8 +147,10 @@ function onSearch(): void {
 function onReset(): void {
   keywordInput.value = ''
   typeInput.value = undefined
+  overdueOnlyInput.value = false
   appliedKeyword.value = ''
   appliedType.value = undefined
+  appliedOverdueOnly.value = false
   page.value = 1
   void fetchList()
 }
@@ -227,6 +241,14 @@ function onOrderDetail(candidate: SettlementCandidate): void {
               allow-clear
             />
           </a-col>
+          <a-col :span="4">
+            <a-checkbox
+              v-model="overdueOnlyInput"
+              class="filter-bar__overdue"
+            >
+              仅看逾期
+            </a-checkbox>
+          </a-col>
           <a-col :span="6">
             <div class="toolbar-filter__actions">
               <a-button
@@ -295,6 +317,18 @@ function onOrderDetail(candidate: SettlementCandidate): void {
         <template #unsettledOrderCount="{ record }">
           {{ (record as ReconciliationListItem).unsettledOrderCount }}
         </template>
+        <template #paymentTermDays="{ record }">
+          {{ (record as ReconciliationListItem).paymentTermDays }}
+        </template>
+        <template #earliestDueDate="{ record }">
+          {{ (record as ReconciliationListItem).earliestDueDate ?? '-' }}
+        </template>
+        <!-- 逾期天数 > 0 标红 -->
+        <template #maxOverdueDays="{ record }">
+          <span :class="(record as ReconciliationListItem).maxOverdueDays > 0 ? 'overdue' : 'amount'">
+            {{ (record as ReconciliationListItem).maxOverdueDays }}
+          </span>
+        </template>
         <template #action="{ record }">
           <a-button
             type="text"
@@ -354,6 +388,9 @@ function onOrderDetail(candidate: SettlementCandidate): void {
           <template #unsettledAmount="{ record }">
             ¥ {{ (record as SettlementCandidate).unsettledAmount.toFixed(2) }}
           </template>
+          <template #dueDate="{ record }">
+            {{ (record as SettlementCandidate).dueDate }}
+          </template>
         </a-table>
         <a-empty
           v-if="!candidatesLoading && receivableOrders.length === 0"
@@ -392,6 +429,9 @@ function onOrderDetail(candidate: SettlementCandidate): void {
           </template>
           <template #unsettledAmount="{ record }">
             ¥ {{ (record as SettlementCandidate).unsettledAmount.toFixed(2) }}
+          </template>
+          <template #dueDate="{ record }">
+            {{ (record as SettlementCandidate).dueDate }}
           </template>
         </a-table>
         <a-empty
@@ -466,6 +506,13 @@ function onOrderDetail(candidate: SettlementCandidate): void {
 }
 
 .amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 逾期标红（036 §4.4） */
+.overdue {
+  color: rgb(var(--red-6));
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 

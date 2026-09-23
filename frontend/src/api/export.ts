@@ -2,6 +2,7 @@ import type { GetEmployeesParams } from './employee'
 import type { InventoryListQuery } from './inventory'
 import type { InvoiceQuery } from './invoice'
 import type { GetPartnersParams } from './partner'
+import type { PartnerPriceQuery } from './partnerPrice'
 import type { ProductListQuery } from './product'
 import type { PurchaseReceiptQuery } from './purchase'
 import type { PurchaseReturnQuery } from './purchaseReturn'
@@ -33,6 +34,11 @@ export function exportInvoices(params: Omit<InvoiceQuery, 'page' | 'pageSize'>):
 /** 导出往来单位列表 */
 export function exportPartners(params: Omit<GetPartnersParams, 'page' | 'pageSize'>): Promise<void> {
   return downloadBlob('/partners/export', params)
+}
+
+/** 导出客户价格列表（工作表：客户价格，含商品销售价对比） */
+export function exportPartnerPrices(params: Omit<PartnerPriceQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/partner-prices/export', params)
 }
 
 /** 导出库存查询列表 */

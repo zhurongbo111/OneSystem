@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
+import { getEffectivePrices, PRICE_SOURCE_META } from '@/api/partnerPrice'
+import type { PriceSource } from '@/api/partnerPrice'
 import { getProductPickList } from '@/api/product'
 import type { ProductPickItem } from '@/api/product'
 import { createSalesShipment, getSalesOrderLines, getSalesOrderPicks, toUtcMidnight } from '@/api/sale'
@@ -86,6 +88,15 @@ const products = ref<ProductPickItem[]>([])
 /** 明细行（subtotal 为前端实时计算，仅展示；提交不含小计 / 总额） */
 const lines = ref<SalesFormLine[]>([newLine()])
 
+/** 明细区批量取价中（036 §4.5：绑明细区 a-spin，非按钮） */
+const pricesLoading = ref(false)
+
+/** 各行单价来源（协议价 / 默认价）；手工改价后清除，表示议价 */
+const priceSources = ref<Record<string, PriceSource>>({})
+
+/** 手工改过单价的行（批量取价默认跳过，切客户时按「覆盖 + 提示」处理） */
+const manualPriceKeys = ref<Record<string, boolean>>({})
+
 const rules = {
   partnerId: [{ required: true, message: '请选择客户' }],
   orderDate: [{ required: true, message: '请选择单据日期' }],
@@ -160,14 +171,50 @@ onMounted(async () => {
 })
 
 // —— methods ——
-/** 客户变化：清空已关联订单并重置明细，再按新客户拉候选订单 */
+/**
+ * 批量取价：对已选商品一次请求取「协议价优先、未配置时取商品销售价」，回填单价并标注来源（036 §4.4）。
+ *
+ * - 手工改过单价的行默认跳过（保留议价）；`overrideManual` 时覆盖并提示——切换客户场景按「覆盖 + Message.info」处理。
+ * - 关联订单时单价沿用订单价，不参与取价覆盖。
+ */
+async function refreshEffectivePrices(options?: { overrideManual?: boolean }): Promise<void> {
+  if (!partnerId.value || isLinked.value) return
+  const targets = lines.value.filter(
+    (l) => l.productId && (options?.overrideManual === true || !manualPriceKeys.value[l.key]),
+  )
+  const productIds = [...new Set(targets.map((l) => l.productId as string))]
+  if (productIds.length === 0) return
+
+  if (options?.overrideManual === true && Object.keys(manualPriceKeys.value).length > 0) {
+    Message.info('已按新客户重新取价，手工填写的单价将被覆盖')
+  }
+
+  pricesLoading.value = true
+  try {
+    const prices = await getEffectivePrices({ partnerId: partnerId.value, productIds })
+    const map = new Map(prices.map((p) => [p.productId, p]))
+    lines.value.forEach((l) => {
+      const hit = l.productId ? map.get(l.productId) : undefined
+      if (!hit) return
+      l.unitPrice = hit.unitPrice
+      priceSources.value[l.key] = hit.source
+      delete manualPriceKeys.value[l.key]
+    })
+  } catch {
+    // 错误提示已由请求层统一处理（商品不存在 40400）
+  } finally {
+    pricesLoading.value = false
+  }
+}
+
+/** 客户变化：清空已关联订单（明细保留），再按新客户拉候选订单并重新取价 */
 async function onPartnerChange(value?: string): Promise<void> {
   partnerId.value = value
   orderId.value = undefined
-  lines.value = [newLine()]
   orderPicks.value = []
   if (!value) return
   await loadOrderPicks(value)
+  await refreshEffectivePrices({ overrideManual: true })
 }
 
 async function loadOrderPicks(value: string): Promise<void> {
@@ -233,8 +280,11 @@ function onLineProductChange(line: SalesFormLine, value?: string): void {
   const p = products.value.find((it) => it.id === value)
   line.productName = p?.name ?? ''
   line.unit = p?.unit ?? ''
-  // 单价默认带出商品销售价（开单时可改）
+  // 单价默认带出商品销售价（开单时可改）；已选客户时按批量取价覆盖为协议价
   line.unitPrice = p?.salePrice ?? 0
+  delete priceSources.value[line.key]
+  delete manualPriceKeys.value[line.key]
+  void refreshEffectivePrices()
 }
 
 function onLineQuantityChange(line: SalesFormLine, value: number | undefined): void {
@@ -243,6 +293,14 @@ function onLineQuantityChange(line: SalesFormLine, value: number | undefined): v
 
 function onLineUnitPriceChange(line: SalesFormLine, value: number | undefined): void {
   line.unitPrice = value ?? 0
+  // 手工改价视为议价：来源标注消失，后续批量取价跳过该行
+  manualPriceKeys.value[line.key] = true
+  delete priceSources.value[line.key]
+}
+
+/** 行单价来源（协议价 / 默认价）；手工改价后为 undefined（议价，不标注） */
+function priceSource(row: SalesFormLine): PriceSource | undefined {
+  return priceSources.value[row.key]
 }
 
 /** 行数量是否超库存（前端预警标红，仅提示不拦截，最终以后端 40103 为准；design §4.4） */
@@ -392,87 +450,107 @@ async function onSubmit(): Promise<void> {
             添加行
           </a-button>
         </div>
-        <a-table
-          row-key="key"
-          size="small"
-          :columns="itemColumns"
-          :data="lines"
-          :loading="orderLinesLoading"
-          :pagination="false"
+        <!-- 批量取价期间明细区整体加载（036 §4.5：pricesLoading 绑明细区，非按钮） -->
+        <a-spin
+          :loading="pricesLoading"
+          class="items-area"
         >
-          <template #seq="{ rowIndex }">
-            {{ rowIndex + 1 }}
-          </template>
-          <template #product="{ record }">
-            <a-select
-              v-if="!isLinked"
-              :model-value="(record as SalesFormLine).productId"
-              :options="productOptions"
-              placeholder="请选择商品"
-              allow-search
-              allow-clear
-              @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as SalesFormLine, v as string | undefined)"
-            />
-            <span v-else>{{ (record as SalesFormLine).productName }}</span>
-          </template>
-          <template #orderedQuantity="{ record }">
-            {{ (record as SalesFormLine).orderedQuantity ?? 0 }}
-          </template>
-          <template #fulfilledQuantity="{ record }">
-            {{ (record as SalesFormLine).fulfilledQuantity ?? 0 }}
-          </template>
-          <template #remainingQuantity="{ record }">
-            {{ (record as SalesFormLine).remainingQuantity ?? 0 }}
-          </template>
-          <template #quantity="{ record }">
-            <a-input-number
-              :model-value="(record as SalesFormLine).quantity"
-              :min="QUANTITY_MIN"
-              :max="(record as SalesFormLine).remainingQuantity ?? QUANTITY_MAX"
-              :status="isOverStock(record as SalesFormLine) ? 'error' : undefined"
-              style="width: 100%"
-              @change="(v: number | undefined) => onLineQuantityChange(record as SalesFormLine, v)"
-            />
-          </template>
-          <template #unitPrice="{ record }">
-            <a-input-number
-              v-if="!isLinked"
-              :model-value="(record as SalesFormLine).unitPrice"
-              :min="0"
-              :precision="2"
-              prefix="¥"
-              style="width: 100%"
-              @change="(v: number | undefined) => onLineUnitPriceChange(record as SalesFormLine, v)"
-            />
-            <span
-              v-else
-              class="line-unit-price"
-            >¥ {{ (record as SalesFormLine).unitPrice.toFixed(2) }}</span>
-          </template>
-          <template #subtotal="{ record }">
-            <div>
-              <span class="line-subtotal">
-                {{ ((record as SalesFormLine).quantity * (record as SalesFormLine).unitPrice).toFixed(2) }}
-              </span>
-              <div
-                v-if="isOverStock(record as SalesFormLine)"
-                class="stock-warning"
-              >
-                库存不足，当前库存 {{ products.find((it) => it.id === (record as SalesFormLine).productId)?.stockQuantity ?? 0 }}
+          <a-table
+            row-key="key"
+            size="small"
+            :columns="itemColumns"
+            :data="lines"
+            :loading="orderLinesLoading"
+            :pagination="false"
+          >
+            <template #seq="{ rowIndex }">
+              {{ rowIndex + 1 }}
+            </template>
+            <template #product="{ record }">
+              <a-select
+                v-if="!isLinked"
+                :model-value="(record as SalesFormLine).productId"
+                :options="productOptions"
+                placeholder="请选择商品"
+                allow-search
+                allow-clear
+                @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as SalesFormLine, v as string | undefined)"
+              />
+              <span v-else>{{ (record as SalesFormLine).productName }}</span>
+            </template>
+            <template #orderedQuantity="{ record }">
+              {{ (record as SalesFormLine).orderedQuantity ?? 0 }}
+            </template>
+            <template #fulfilledQuantity="{ record }">
+              {{ (record as SalesFormLine).fulfilledQuantity ?? 0 }}
+            </template>
+            <template #remainingQuantity="{ record }">
+              {{ (record as SalesFormLine).remainingQuantity ?? 0 }}
+            </template>
+            <template #quantity="{ record }">
+              <a-input-number
+                :model-value="(record as SalesFormLine).quantity"
+                :min="QUANTITY_MIN"
+                :max="(record as SalesFormLine).remainingQuantity ?? QUANTITY_MAX"
+                :status="isOverStock(record as SalesFormLine) ? 'error' : undefined"
+                style="width: 100%"
+                @change="(v: number | undefined) => onLineQuantityChange(record as SalesFormLine, v)"
+              />
+            </template>
+            <template #unitPrice="{ record }">
+              <div>
+                <a-input-number
+                  v-if="!isLinked"
+                  :model-value="(record as SalesFormLine).unitPrice"
+                  :min="0"
+                  :precision="2"
+                  prefix="¥"
+                  style="width: 100%"
+                  @change="(v: number | undefined) => onLineUnitPriceChange(record as SalesFormLine, v)"
+                />
+                <span
+                  v-else
+                  class="line-unit-price"
+                >¥ {{ (record as SalesFormLine).unitPrice.toFixed(2) }}</span>
+                <!-- 来源标注：协议价 / 默认价；手工改价后消失（视为议价） -->
+                <div
+                  v-if="priceSource(record as SalesFormLine) !== undefined"
+                  class="price-source"
+                >
+                  <a-tag
+                    size="small"
+                    :color="PRICE_SOURCE_META[priceSource(record as SalesFormLine) as PriceSource].color"
+                  >
+                    {{ PRICE_SOURCE_META[priceSource(record as SalesFormLine) as PriceSource].label }}
+                  </a-tag>
+                </div>
               </div>
-            </div>
-          </template>
-          <template #itemAction="{ record }">
-            <a-button
-              type="text"
-              status="danger"
-              size="small"
-              @click="removeItem((record as SalesFormLine).key)"
-            >
-              删除
-            </a-button>
-          </template>
-        </a-table>
+            </template>
+            <template #subtotal="{ record }">
+              <div>
+                <span class="line-subtotal">
+                  {{ ((record as SalesFormLine).quantity * (record as SalesFormLine).unitPrice).toFixed(2) }}
+                </span>
+                <div
+                  v-if="isOverStock(record as SalesFormLine)"
+                  class="stock-warning"
+                >
+                  库存不足，当前库存 {{ products.find((it) => it.id === (record as SalesFormLine).productId)?.stockQuantity ?? 0 }}
+                </div>
+              </div>
+            </template>
+            <template #itemAction="{ record }">
+              <a-button
+                type="text"
+                status="danger"
+                size="small"
+                @click="removeItem((record as SalesFormLine).key)"
+              >
+                删除
+              </a-button>
+            </template>
+          </a-table>
+        </a-spin>
         <a-alert
           v-if="itemsErrorShown && itemsInvalid"
           type="error"
@@ -538,9 +616,18 @@ async function onSubmit(): Promise<void> {
   margin-top: 8px;
 }
 
+.items-area {
+  display: block;
+}
+
 .line-subtotal,
 .line-unit-price {
   font-variant-numeric: tabular-nums;
+}
+
+/* 单价来源标注：紧跟单价控件下方 */
+.price-source {
+  margin-top: 2px;
 }
 
 .stock-warning {

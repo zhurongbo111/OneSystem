@@ -42,6 +42,8 @@ export interface SalesShipmentItem {
 
 /** 销售出库单详情（对应后端 SalesShipmentDetailDto，明细按插入顺序） */
 export interface SalesShipmentDetail extends Omit<SalesShipmentListItem, 'status'> {
+  /** 到期日（yyyy-MM-dd；单据日期 + 客户账期，036 §0.3 由后端推导） */
+  dueDate: string | null
   remark: string | null
   createdBy: string | null
   items: SalesShipmentItem[]

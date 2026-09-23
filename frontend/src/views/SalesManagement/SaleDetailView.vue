@@ -187,6 +187,10 @@ function onOrderDetail(): void {
           <a-descriptions-item label="单据日期">
             {{ formatDateTime(detail.orderDate).slice(0, 10) }}
           </a-descriptions-item>
+          <!-- 到期日由后端按客户账期推导（036 §0.3），前端不做日期加减 -->
+          <a-descriptions-item label="到期日">
+            {{ detail.dueDate || '-' }}
+          </a-descriptions-item>
           <a-descriptions-item label="总金额">
             <span class="amount">¥ {{ detail.totalAmount.toFixed(2) }}</span>
           </a-descriptions-item>
