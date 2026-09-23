@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：收付款与应收应付（erp-settlement）
@@ -13,6 +13,7 @@ updated: 2026-09-22
 > **演进（erp-audit-log）**：本域收付款单（创建核销 / 作废）的写操作已接入操作日志；被核销单据的结算态变更由收付款单日志体现，不单独记录（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-invoice）**：`SettlementOrderType` 语义已泛化为「**可关联单据类型**」并被 `specs/032-erp-invoice/design.md` §0.2 复用（发票关联单据共用该枚举，不新建同形枚举）；取值与命名不变，后续若改名（如 `BusinessOrderType`）两规格同步。
 > **演进（erp-general-ledger）**：本域收付款单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（收款：借现金 / 银行存款、贷「应收账款」；付款：借「应付账款」、贷现金 / 银行存款，现金科目按结算方式选取）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
+> **演进（erp-cash）**：收付款单增可空 `BankAccountId`（外键 → `BankAccounts(Id)`），结算方式与账户类型需匹配（现金 ↔ 现金账户 / 银行转账 ↔ 银行账户，不匹配 `40162`）；列表 / 详情出参增 `bankAccountName`（联查带出，故仓储出参由 `Settlement` 实体改为读模型 `SettlementListItem` / `SettlementDetail`）。账户本体与资金日记账见 `specs/034-erp-cash/design.md` §2 / §3。
 
 ## 0. 结算口径约定（唯一事实源）
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-23
 ---
 
 # 设计规格：资金出纳（erp-cash）
@@ -122,13 +122,16 @@ updated: 2026-09-20
 
 | 接口 / 方法 | 说明 |
 |---|---|
-| `IBankAccountRepository.GetPagedAsync(...)` / `GetByIdAsync` / `ExistsByCodeAsync` / `GetAllEnabledAsync` | |
+| `IBankAccountRepository.GetPagedAsync(...)` / `GetByIdAsync` / `ExistsByCodeAsync` | |
 | `IBankAccountRepository.GetBalancesAsync()` | 各账户余额（`初始余额 + Σ收 − Σ付`，只计未作废收付款） |
 | `IBankAccountRepository.IsReferencedAsync(id)` | 删除保护（被收付款单引用） |
 | `IBankAccountRepository.AddAsync` / `UpdateAsync` / `DeleteAsync` | |
 | `ICashJournalQueryRepository.GetJournalAsync(bankAccountId, start, end)` | 日记账（期初 + 流水 + 期末） |
 
-读模型：`BankAccountListItem`、`BankAccountBalanceItem`、`CashJournalEntryItem`（`Date` / `SettlementNo` / `Summary` / `Debit`（收）/ `Credit`（付）/ `Balance`）、`CashJournalResult`（`OpeningBalance` / `Entries` / `ClosingBalance`）。
+读模型：`BankAccountListItem`（含派生列 `Balance`）、`BankAccountBalanceItem`、`CashJournalEntryItem`（`Date` / `SettlementNo` / `Summary` / `Debit`（收）/ `Credit`（付）/ `Balance`）、`CashJournalResult`（`OpeningBalance` / `Entries` / `ClosingBalance`）；
+`023` 收付款单增 `BankAccountId` 后，列表 / 详情联查资金账户名，故仓储出参由实体改为读模型 `SettlementListItem` / `SettlementDetail`（字段与实体 1:1 + 联查列 `BankAccountName`）。
+
+> 账户下拉复用列表接口（`GET /api/bank-accounts`，启用 + 按类型过滤），故不设「取全部启用账户」的独立仓储方法。
 
 ### 3.2 错误码（`ErrorCode.cs`，从 `40160` 起）
 
