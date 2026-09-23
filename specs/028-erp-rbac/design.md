@@ -31,6 +31,7 @@ updated: 2026-09-23
 | 采购入库 | `purchases` | `view` / `create` / `void` / `export` | `/api/purchase-orders*`（`024` 前）、`/purchases` |
 | 采购退货 | `purchaseReturns` | `view` / `create` / `void` / `settle` / `export` | `/api/purchase-returns*`、`/purchase-returns` |
 | 销售订单（`024`） | `salesOrders` | `view` / `create` / `update` / `void` / `close` | `/api/sales-orders*`、`/sales-orders` |
+| 报价单（`037`） | `quotations` | `view` / `create` / `update` / `void` / `convert` | `/api/quotations*`、`/quotations` |
 | 销售出库 | `sales` | `view` / `create` / `void` / `export` | `/api/sales-orders*`（`024` 前）、`/sales` |
 | 销售退货 | `salesReturns` | `view` / `create` / `void` / `settle` / `export` | `/api/sales-returns*`、`/sales-returns` |
 | 库存查询 | `inventory` | `view` / `export` | `/api/inventory*`、`/inventory` |

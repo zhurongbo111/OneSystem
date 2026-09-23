@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：业务操作审计日志（erp-audit-log）
@@ -22,6 +22,7 @@ updated: 2026-09-22
 | 往来单位 `Partner` | 创建 / 更新 / 启停 | `Partners/*` | 「新增往来单位 甲供应商（供应商）」/「停用往来单位 甲供应商」 |
 | 仓库（`038`） `Warehouse` | 创建 / 更新 / 启停 / 设默认 | `Warehouses/*` | 「新增仓库 上海仓（SH）」/「设置默认仓库 上海仓」 |
 | 客户价格（`036`） `PartnerPrice` | 创建 / 更新 / 删除 | `PartnerPrices/*` | 「设置客户价 甲客户 / A001 = 8.80」 |
+| 报价单（`037`） `Quotation` | 创建 / 更新（含转销售订单）/ 作废 | `Quotations/CreateQuotation` / `UpdateQuotation` / `ConvertToOrder` / `VoidQuotation` | 「创建报价单 QT…（客户 乙，2 行，金额 30.00）」/「报价单 QT… 转销售订单 SO…」/「作废报价单 QT…」 |
 | 用户 `User` | 创建 / 更新 / 启停 / 重置密码 / 角色变更 | `Users/*`（`028` 的 `roleIds`） | 「新增用户 zhangsan（张三）」/「重置用户 zhangsan 密码」/「调整用户 zhangsan 角色：Staff → 仓管,财务」 |
 | 角色 `Role` | 创建 / 更新 / 删除 | `Roles/*` | 「新增角色 仓管（12 项权限）」/「修改角色 仓管 权限：+库存盘点.创建」/「删除角色 仓管」 |
 | 采购订单 `PurchaseOrder` | 创建 / 更新 / 作废 / 关闭 | `PurchaseOrders/CreatePurchaseOrder` / `UpdatePurchaseOrder` / `VoidPurchaseOrder` / `ClosePurchaseOrder` | 「创建采购订单 PO…（供应商 甲，3 行，金额 1200.00）」/「关闭采购订单 PO…」 |
