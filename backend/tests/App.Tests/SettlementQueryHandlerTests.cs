@@ -299,6 +299,9 @@ public class SettlementQueryHandlerTests
                     ReceivableAmount = 600m,
                     PayableAmount = 0m,
                     UnsettledOrderCount = 2,
+                    PaymentTermDays = 30,
+                    MaxOverdueDays = 0,
+                    OverdueOrderCount = 0,
                 },
             },
             ReconciliationTotal = 1

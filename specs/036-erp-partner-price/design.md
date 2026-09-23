@@ -140,7 +140,7 @@ updated: 2026-09-17
 | 方法 | 说明 |
 |---|---|
 | `Task<decimal> GetReceivableAmountAsync(Guid partnerId, ...)` | 客户当前应收余额（`023` §0 口径：销售净额 − 已收）；供额度校验 |
-| `GetReconciliationAsync`（改造） | 返回项追加 `PaymentTermDays` / `EarliestDueDate` / `MaxOverdueDays` / `OverdueOrderCount` |
+| `GetReconciliationAsync`（改造） | 返回项追加 `PaymentTermDays` / `EarliestDueDate` / `MaxOverdueDays` / `OverdueOrderCount`；签名追加 `overdueOnly` 与 `today`——逾期是派生值，「仅看逾期」无法下推 SQL，故在全部匹配往来上派生后再内存分页；基准日由用例传入，仓储不读系统时间（可测性） |
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 

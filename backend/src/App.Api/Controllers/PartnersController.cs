@@ -82,6 +82,8 @@ public class PartnersController : ControllerBase
             Phone = request.Phone,
             Address = request.Address,
             Remark = request.Remark,
+            PaymentTermDays = request.PaymentTermDays,
+            CreditLimit = request.CreditLimit,
         };
         return ApiResponseFactory.Ok(await _mediator.Send(command, cancellationToken));
     }

@@ -95,5 +95,9 @@ internal static class SettlementsDtoMapper
             ReceivableAmount = item.ReceivableAmount,
             PayableAmount = item.PayableAmount,
             UnsettledOrderCount = item.UnsettledOrderCount,
+            PaymentTermDays = item.PaymentTermDays,
+            EarliestDueDate = item.EarliestDueDate?.ToString("yyyy-MM-dd"),
+            MaxOverdueDays = item.MaxOverdueDays,
+            OverdueOrderCount = item.OverdueOrderCount,
         };
 }

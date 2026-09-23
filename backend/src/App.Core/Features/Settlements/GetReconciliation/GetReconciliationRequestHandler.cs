@@ -25,8 +25,10 @@ public sealed class GetReconciliationRequestHandler : IRequestHandler<GetReconci
     /// <param name="cancellationToken">取消令牌</param>
     public async Task<PagedResult<ReconciliationListItemDto>> HandleAsync(GetReconciliationRequest request, CancellationToken cancellationToken = default)
     {
+        // 逾期判定基准日由用例给定（仓储不读系统时间）；「今天」按 UTC 取业务日期同一坐标系
+        var today = DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime);
         var (items, total) = await _settlementQueryRepository.GetReconciliationAsync(
-            request.Keyword, request.Type, request.Page, request.PageSize, cancellationToken);
+            request.Keyword, request.Type, request.OverdueOnly, today, request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<ReconciliationListItemDto>
         {

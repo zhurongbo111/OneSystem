@@ -28,6 +28,12 @@ public sealed class Partner
     /// <summary>备注</summary>
     public string? Remark { get; set; }
 
+    /// <summary>账期天数（0 = 现结；到期日 = 单据日期 + 账期天数，推导不落列）</summary>
+    public int PaymentTermDays { get; set; }
+
+    /// <summary>信用额度（0 = 不限；销售出库创建时校验，见 specs/036-erp-partner-price/design.md §0.4）</summary>
+    public decimal CreditLimit { get; set; }
+
     /// <summary>单位状态（启用 / 停用；停用不可被新单据选择）</summary>
     public PartnerStatus Status { get; set; } = PartnerStatus.Enabled;
 

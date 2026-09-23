@@ -170,4 +170,16 @@ public sealed class ReconciliationListItemDto
 
     /// <summary>未结单据数（四类单据中未结且未作废的合计）</summary>
     public required int UnsettledOrderCount { get; init; }
+
+    /// <summary>账期天数（0 = 现结；`036`）</summary>
+    public required int PaymentTermDays { get; init; }
+
+    /// <summary>应收侧未结单据的最早到期日（yyyy-MM-dd）；无未结应收单据时为 null（`036`）</summary>
+    public string? EarliestDueDate { get; init; }
+
+    /// <summary>最大逾期天数（未结且已过期的应收单据；0 表示无逾期）</summary>
+    public required int MaxOverdueDays { get; init; }
+
+    /// <summary>逾期应收单据数</summary>
+    public required int OverdueOrderCount { get; init; }
 }

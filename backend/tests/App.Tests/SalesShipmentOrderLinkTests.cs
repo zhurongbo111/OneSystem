@@ -87,7 +87,8 @@ public class SalesShipmentOrderLinkTests
         var gl = GeneralLedgerStubs.Create();
         var handler = new CreateSalesShipmentRequestHandler(
             shipments, orders, new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+            inventory, movements, new FakeSettlementQueryRepository(),
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
 
         return new LinkedHarness
         {

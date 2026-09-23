@@ -37,6 +37,7 @@ public class CreateSalesShipmentRequestHandlerTests
             new ProductRepository(context),
             inventory,
             movements,
+            new FakeSettlementQueryRepository(),
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             uow,
             user, TestSupport.AuditLogger);

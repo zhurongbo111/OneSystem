@@ -90,6 +90,9 @@ public static class DependencyInjection
         services.AddScoped<IBankAccountRepository, BankAccountRepository>();
         services.AddScoped<ICashJournalQueryRepository, CashJournalQueryRepository>();
 
+        // 客户价格（erp-partner-price）：客户协议价
+        services.AddScoped<IPartnerPriceRepository, PartnerPriceRepository>();
+
         // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();

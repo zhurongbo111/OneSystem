@@ -29,6 +29,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly ISettlementQueryRepository _settlementQueryRepository;
     private readonly IVoucherRepository _voucherRepository;
     private readonly IAccountMappingRepository _accountMappingRepository;
     private readonly IAccountingPeriodRepository _accountingPeriodRepository;
@@ -47,6 +48,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
+        ISettlementQueryRepository settlementQueryRepository,
         IVoucherRepository voucherRepository,
         IAccountMappingRepository accountMappingRepository,
         IAccountingPeriodRepository accountingPeriodRepository,
@@ -61,6 +63,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
+        _settlementQueryRepository = settlementQueryRepository;
         _voucherRepository = voucherRepository;
         _accountMappingRepository = accountMappingRepository;
         _accountingPeriodRepository = accountingPeriodRepository;
@@ -122,6 +125,19 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
             }
 
             totalAmount += line.Quantity * line.UnitPrice;
+        }
+
+        // 信用额度校验（specs/036-erp-partner-price/design.md §0.4）：额度 0 视为不限；
+        // 校验位置在事务与库存扣减之前，超限即整单拒绝（不产生库存 / 单据 / 流水变更）
+        if (partner.CreditLimit > 0)
+        {
+            var receivableAmount = await _settlementQueryRepository.GetReceivableAmountAsync(partner.Id, cancellationToken);
+            if (receivableAmount + totalAmount > partner.CreditLimit)
+            {
+                throw new BusinessException(
+                    ErrorCode.CreditLimitExceeded,
+                    $"客户 {partner.Name} 超出信用额度（额度 {AuditSummary.Money(partner.CreditLimit)}，当前应收 {AuditSummary.Money(receivableAmount)}，本单 {AuditSummary.Money(totalAmount)}）");
+            }
         }
 
         // 关联订单校验（Handler 业务约束，design.md §3.4）：订单存在 → 已作废 → 已完成 / 已关闭 → 客户一致 → 未发数量

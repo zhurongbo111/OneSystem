@@ -193,6 +193,13 @@ public static class ErrorCode
     /// <summary>结算方式与资金账户类型不匹配（如现金结算挂银行账户）</summary>
     public const int BankAccountTypeMismatch = 40162;
 
+    // ===== 客户价格、账期与信用额度（specs/036-erp-partner-price/design.md §3.2） =====
+    /// <summary>客户超出信用额度（message 含额度、当前应收与本单金额）</summary>
+    public const int CreditLimitExceeded = 40130;
+
+    /// <summary>该客户 + 商品的协议价已存在</summary>
+    public const int PartnerPriceExists = 40131;
+
     // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
     /// <summary>角色名称已存在（忽略大小写）</summary>
     public const int RoleNameExists = 40173;

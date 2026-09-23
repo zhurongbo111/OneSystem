@@ -25,4 +25,10 @@ public sealed class UpdatePartnerRequest : IRequest<PartnerDto>
 
     /// <summary>备注，可空（≤ 200 字符）</summary>
     public string? Remark { get; init; }
+
+    /// <summary>账期天数（0 = 现结；上限 3650，`036`）</summary>
+    public int PaymentTermDays { get; init; }
+
+    /// <summary>信用额度（0 = 不限；`036`）</summary>
+    public decimal CreditLimit { get; init; }
 }

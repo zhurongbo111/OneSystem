@@ -165,13 +165,26 @@ internal sealed class FakeSettlementQueryRepository : ISettlementQueryRepository
     public int UnsettledTotal { get; set; }
 
     /// <summary>已执行的往来台账查询入参</summary>
-    public List<(string? Keyword, PartnerType? Type, int Page, int PageSize)> ReconciliationQueries { get; } = [];
+    public List<(string? Keyword, PartnerType? Type, bool OverdueOnly, DateOnly Today, int Page, int PageSize)> ReconciliationQueries { get; } = [];
 
     /// <summary>往来台账返回行（由用例预置）</summary>
     public IReadOnlyList<ReconciliationItem> ReconciliationItems { get; set; } = Array.Empty<ReconciliationItem>();
 
     /// <summary>往来台账返回总数（由用例预置）</summary>
     public int ReconciliationTotal { get; set; }
+
+    /// <summary>已执行的应收余额查询入参（`036` 信用额度校验）</summary>
+    public List<Guid> ReceivableQueries { get; } = [];
+
+    /// <summary>应收余额返回值（由用例预置）</summary>
+    public decimal ReceivableAmount { get; set; }
+
+    /// <inheritdoc />
+    public Task<decimal> GetReceivableAmountAsync(Guid partnerId, CancellationToken cancellationToken = default)
+    {
+        ReceivableQueries.Add(partnerId);
+        return Task.FromResult(ReceivableAmount);
+    }
 
     public Task<(IReadOnlyList<SettlementCandidateItem> Items, int Total)> GetUnsettledAsync(
         Guid partnerId, SettlementType type, int page, int pageSize, CancellationToken cancellationToken = default)
@@ -181,9 +194,9 @@ internal sealed class FakeSettlementQueryRepository : ISettlementQueryRepository
     }
 
     public Task<(IReadOnlyList<ReconciliationItem> Items, int Total)> GetReconciliationAsync(
-        string? keyword, PartnerType? type, int page, int pageSize, CancellationToken cancellationToken = default)
+        string? keyword, PartnerType? type, bool overdueOnly, DateOnly today, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        ReconciliationQueries.Add((keyword, type, page, pageSize));
+        ReconciliationQueries.Add((keyword, type, overdueOnly, today, page, pageSize));
         return Task.FromResult((ReconciliationItems, ReconciliationTotal));
     }
 }
