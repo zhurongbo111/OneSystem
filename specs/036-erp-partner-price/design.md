@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-23
 ---
 
 # 设计规格：客户价格、账期与信用额度（erp-partner-price）
@@ -114,6 +114,16 @@ updated: 2026-09-17
 | `EffectivePriceItem`（新增） | `ProductId` / `UnitPrice` / `Source`（`Agreement` / `Default`） | 批量取价 |
 | `OverdueReceivableItem`（`023` 读模型扩展） | 在 `ReconciliationItem` 追加 `EarliestDueDate` / `MaxOverdueDays` / `OverdueOrderCount` | 往来对账逾期列（`023` 页面演进） |
 
+### 2.3.1 本规格对既有出参的续行
+
+> 到期日一律由后端按 §0.3 推导（`单据日期 + 账期`），前端不重复实现日期加减（同 §4.2）。
+
+| 出参（所属规格） | 追加字段 | 用途 |
+|---|---|---|
+| `SettlementCandidate`（`023`） | `DueDate`（`yyyy-MM-dd`） | 未结单据抽屉的到期日列 |
+| `SalesShipmentDetail`（`016`） | `DueDate`（`yyyy-MM-dd`） | 销售出库详情的到期日描述项 |
+| `PartnerPriceListItem`（本规格） | `CreatedAt` | 客户价格列表的创建时间列（列表按此倒序） |
+
 ### 2.4 迁移与字段约束
 
 - 迁移：`dotnet ef migrations add AddErpPartnerPrice -p src/App.Infrastructure -s src/App.Api`（建 1 张表 + `Partners` 加 2 列，均有默认值）。
@@ -161,8 +171,10 @@ updated: 2026-09-17
 | `/api/partner-prices/{id:guid}` | PUT | `PartnerPrices/UpdatePartnerPrice` | `PartnerPriceDetailDto` | `partnerPrices.update` / 40000 / 40131 / 40400 |
 | `/api/partner-prices/{id:guid}` | DELETE | `PartnerPrices/DeletePartnerPrice` | `null` | `partnerPrices.delete` / 40400 |
 | `/api/partner-prices/effective` | GET | `PartnerPrices/GetEffectivePrices` | `IReadOnlyList<EffectivePriceDto>` | `partnerPrices.view` / 40000 |
+| `/api/partner-prices/export` | GET | `PartnerPrices/ExportPartnerPrices` | xlsx 文件流（`027` §0.1 契约例外） | `partnerPrices.export` / 40000 |
 
-- 路由注意：`effective` 为固定段，置于 `{id:guid}` 之前。
+- 路由注意：`effective` 与 `export` 为固定段，均置于 `{id:guid}` 之前。
+- 导出列 = 客户价格列表列（含协议价与商品销售价对比），走 `027` 的 `IExcelExporter`；范围表登记见 `specs/027-erp-export/design.md` §0.1。
 - 往来单位侧：`Partners/UpdatePartner` 请求与出参追加 `paymentTermDays` / `creditLimit`（不新增端点）。
 
 ### 3.4 关键用例流程（Handler）
@@ -187,7 +199,7 @@ updated: 2026-09-17
 | `UpdatePartnerPriceRequest` | `price` / `remark` 同上（不含 `partnerId` / `productId`） |
 | `GetPartnerPricesRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 50；`partnerId` / `productId` 可空 |
 | `GetEffectivePricesRequest` | `partnerId` 必填；`productIds` 必填、去重后 1–100 项 |
-| `UpdatePartnerRequest`（`013` 改造） | 追加 `paymentTermDays` 0–3650（`PartnerFieldConstraints.PaymentTermDaysMaxValue`）、`creditLimit` 0 ~ 9999999.99 |
+| `CreatePartnerRequest` / `UpdatePartnerRequest`（`013` 改造） | 追加 `paymentTermDays` 0–3650（`PartnerFieldConstraints.PaymentTermDaysMaxValue`）、`creditLimit` 0 ~ 9999999.99；**新增与编辑两侧字段与校验同源**（新增时不传按 0 落库，前端新增表单同样可设置） |
 | `GetReconciliationRequest`（`023` 改造） | 追加 `overdueOnly` 可空（默认 `false`） |
 
 ### 3.6 Swagger
@@ -243,6 +255,7 @@ src/
 | 操作 | 状态 | 绑定 |
 |---|---|---|
 | 列表查询（客户价 / 对账） | `loading` | 搜索 / 翻页 + 表格 |
+| 列表导出（客户价，xlsx） | `exporting` | 导出按钮（与查询分开，防重入） |
 | 价格抽屉提交 | `submitting` | 提交按钮 |
 | 行内删除 | `deletingId` | popconfirm 确认按钮 |
 | 开单页批量取价 | `pricesLoading` | 明细区（`a-spin`，非按钮） |

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-23
 ---
 
 # 需求规格：客户价格、账期与信用额度（erp-partner-price）
