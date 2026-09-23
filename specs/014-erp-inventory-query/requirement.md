@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 需求规格：库存查询（erp-inventory-query）

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 任务清单：商品管理（erp-product）

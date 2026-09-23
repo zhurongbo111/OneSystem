@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 任务清单：期初建账与库存盘点（erp-stock-take）

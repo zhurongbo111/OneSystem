@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：库存流水（erp-stock-movement）
@@ -9,6 +9,7 @@ updated: 2026-09-22
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase` 为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 本规格消费 `erp-product` 的 `Products` 表与 `IInventoryRepository` 的原子增减（`IncrementAsync` / `TryDecrementAsync`），并改造 `erp-purchase` / `erp-sale` 的四个既有用例（**不改变其业务语义**，只在其既有事务内追加流水）。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `stockMovements.view` / `export`（`export` 由 `027` 的导出动作标注）；本页只读，无写操作权限点。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-multi-warehouse，`038`）**：流水加 `WarehouseId`（NOT NULL、FK → `Warehouses`）并新增索引 `(WarehouseId, ProductId, CreatedAt)`；创建单据 / 盘点的每条流水带仓（数量实际变动的仓），流水页加「仓库」筛选与列、导出加仓库列，成本随流水按仓结转。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.2。
 > **演进（erp-audit-log）**：库存流水由各单据写用例在同一事务内追加（本域无独立写用例），本页为只读查询，不单独记录操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 
 ## 0. 库存流水展示约定（唯一事实源）

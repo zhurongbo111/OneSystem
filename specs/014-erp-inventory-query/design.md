@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：库存查询（erp-inventory-query）
@@ -10,6 +10,7 @@ updated: 2026-09-22
 > 本规格消费 erp-product 建立的 `Inventory` / `Products` / `Categories` 表与 `IInventoryRepository`，**不引入新表 / 新实体 / 新迁移**。
 > 库存的「分类汇总视图」（库存余额表：按分类聚合 + 占比 + 低库存 / 零库存计数）由 `specs/025-erp-report/` 提供，本页仍是「逐商品明细操作视图」；报表「查看明细」下钻本页时经 `query.categoryId` 预置分类筛选。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `inventory.view` / `export`（`export` 由 `027` 的导出动作标注）；本页只读，无写操作权限点。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-multi-warehouse，`038`）**：库存行升级为「商品 × 仓」，本域加「仓库」筛选与仓库列，安全阈值改为**仓级** `Inventory.SafetyStock`（判定唯一来源）并新增行内「安全库存」维护（`PUT /api/inventory/safety-stock`，权限 `inventory.update`）；不传 `warehouseId` 时为全部仓各一行。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.4。
 > **演进（erp-audit-log）**：本域为只读查询（无写路径），不在操作日志范围内（`specs/029-erp-audit-log/design.md` §0.1「范围外动作」）。
 
 ## 1. 总体设计

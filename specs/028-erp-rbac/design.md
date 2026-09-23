@@ -34,7 +34,7 @@ updated: 2026-09-23
 | 报价单（`037`） | `quotations` | `view` / `create` / `update` / `void` / `convert` | `/api/quotations*`、`/quotations` |
 | 销售出库 | `sales` | `view` / `create` / `void` / `export` | `/api/sales-orders*`（`024` 前）、`/sales` |
 | 销售退货 | `salesReturns` | `view` / `create` / `void` / `settle` / `export` | `/api/sales-returns*`、`/sales-returns` |
-| 库存查询 | `inventory` | `view` / `export` | `/api/inventory*`、`/inventory` |
+| 库存查询 | `inventory` | `view` / `export` / `update`（`038`：仓级安全库存维护） | `/api/inventory*`、`/inventory` |
 | 库存流水 | `stockMovements` | `view` / `export` | `/api/stock-movements*`、`/stock-movements` |
 | 库存盘点 | `stockTakes` | `view` / `create` / `export` | `/api/stock-takes*`、`/stock-takes` |
 | 调拨（`039`） | `transfers` | `view` / `create` / `void` / `export` | `/api/transfers*`、`/transfers` |

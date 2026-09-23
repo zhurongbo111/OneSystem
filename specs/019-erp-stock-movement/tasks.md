@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 任务清单：库存流水（erp-stock-movement）

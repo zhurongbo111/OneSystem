@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：成本核算与销售毛利（erp-cost）
@@ -11,6 +11,8 @@ updated: 2026-09-22
 > **演进（erp-rbac）**：成本重算动作接入权限校验，权限点 `costs.recalculate`（该点**不在**内置 `Staff` 默认权限内，见 `specs/028-erp-rbac/design.md` §0.3）；成本报表页操作行按钮由前端按权限过滤。清单唯一来源见其 §0.2。
 > **演进（erp-audit-log）**：成本重算（`RecalculateCosts`，动作 `Recalculate`，无明确业务对象 → `ResourceId` 为空）已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-general-ledger）**：本规格的**移动加权成本**是 `033` 销售出库自动凭证「成本结转分录」的唯一来源（成本额在写路径现场取流水单价，与成本报表同源）；`033` 利润表口径与本规格「成本与毛利」报表同源。口径与勾稽见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
+
+> **演进（erp-multi-warehouse）**：自 `038` 起库存行 = 「商品 × 仓」，本规格的结存成本额 / 均价 / 出库结转均**按仓**（行级）成立，组织级口径 = 各仓合计；成本方法签名追加 `warehouseId`，重算按「商品 × 仓」分账推演。决策与判据见 `specs/038-erp-multi-warehouse/design.md` §0 / §5。
 
 ## 0. 成本口径约定（唯一事实源）
 

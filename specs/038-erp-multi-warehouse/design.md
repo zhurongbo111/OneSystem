@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-23
 ---
 
 # 设计规格：多仓库（erp-multi-warehouse）
@@ -21,7 +21,7 @@ updated: 2026-09-17
 | 单据仓库 | 采购入库 = 入库仓；销售出库 = 出库仓；采购退货 = 出库仓；销售退货 = 入库仓；库存盘点 = 盘点仓；**参数可空 → 取默认仓**（兼容存量调用方） |
 | 单据仓库不可改 | 单据一步式（保存即生效、不可编辑），仓库随单据固化；纠错靠作废重开（同 `015` 口径） |
 | 流水仓库 | `StockMovements.WarehouseId`（NOT NULL）；一条流水的仓 = 其数量实际变动的仓（调拨将产生两条不同仓的流水，见 `039`） |
-| 成本口径 | 成本仍为**组织级**移动加权平均（`026` §0.1，不分仓）；本规格不引入按仓均价（见 §5 决策） |
+| 成本口径 | **按仓口径**：成本列（`CostAmount` / `AverageCost`）随库存行落到「商品 × 仓」，即仓级移动加权平均；**组织级 = 各仓合计**（报表按商品聚合 Σ 各仓金额与数量）。`026` §0.1 的计价公式不变，只是「库存行」自本规格起 = 商品 × 仓（`026` 留演进指针） |
 | 对账口径（按仓） | 任一「商品 × 仓」满足 `Σ 流水 Quantity == Inventory.Quantity`；全组织汇总仍等于 `026` 的组织级口径 |
 | 报表维度 | `025` 的进销存报表 / 库存余额表、`026` 的成本报表增加「仓库」筛选与分组维度（本规格落地时在 `025` §0.1 / §0.2 续行，页面加筛选） |
 | 审计摘要 | 单据类摘要追加仓库名（`029` §0.1 摘要模板续行） |
@@ -45,7 +45,7 @@ updated: 2026-09-17
 
 核心原则：
 
-- **仓是库存的第二维**：库存的所有读写都以 `(productId, warehouseId)` 定位；不存在「无仓库存」。
+- **仓是库存的第二维**：库存的所有读写（含成本列）都以 `(productId, warehouseId)` 定位；不存在「无仓库存」。
 - **默认仓兜底**：所有 `warehouseId` 入参可空（空 → 默认仓），保证既有前端 / e2e / 第三方调用零改造可继续工作；新前端一律显式传仓（默认仓预选）。
 - **一次性迁移到位**：加列 + 回填 + 唯一键升级 + 索引重建在同一迁移内完成（`ROADMAP` §6.2 已论证可比性）。
 - **不改单据一步式语义**：仓库是单据字段，不改变「保存即生效、不可编辑、可作废回冲」的任何行为。
@@ -159,7 +159,7 @@ updated: 2026-09-17
 | `Task<IReadOnlyDictionary<Guid, int>> GetQuantitiesAsync(Guid warehouseId, IReadOnlyList<Guid> productIds, ...)` | 批量读某仓账面 |
 | `Task<(IReadOnlyList<InventoryItem> Items, int Total)> GetPagedAsync(string? keyword, Guid? categoryId, Guid? warehouseId, int page, int pageSize, ...)` | 库存查询：`warehouseId` 为**新增筛选**（可空 = 全部仓，行含仓名与仓级阈值） |
 | `Task UpdateSafetyStockAsync(Guid productId, Guid warehouseId, int safetyStock, ...)` | 仓级安全库存维护 |
-| 成本方法（`026`） | `GetAverageCostAsync` / `ApplyInboundCostAsync` / `ApplyOutboundCostAsync` 签名不变（成本为组织级，不带仓） |
+| 成本方法（`026`） | `GetAverageCostAsync` / `ApplyInboundCostAsync` / `ApplyOutboundCostAsync` / `SetCostAsync` **全部追加 `warehouseId`**（成本随库存行按仓维护）；`026` 的成本重算按「商品 × 仓」分账推演（`StockMovementCostRow` 追加 `WarehouseId`） |
 
 `IStockMovementRepository`（`019` 定义，改造）：
 
@@ -196,6 +196,7 @@ updated: 2026-09-17
 | `/api/warehouses/{id:guid}/status` | PUT | `Warehouses/UpdateWarehouseStatus` | `WarehouseDetailDto` | `warehouses.status` / 40000 / 40124 / 40400 |
 | `/api/warehouses/{id:guid}/default` | PUT | `Warehouses/SetDefaultWarehouse` | `WarehouseDetailDto` | `warehouses.update` / 40000 / 40400 |
 | `/api/warehouses/pick` | GET | `Warehouses/GetWarehousePickList` | `IReadOnlyList<WarehousePickDto>`（id / 编码 / 名称 / 是否默认） | `warehouses.view` / 40000 |
+| `/api/stock-takes/pick-products` | GET | `StockTakes/GetStockTakePickProducts`（改造：追加 `warehouseId` 查询参数） | `IReadOnlyList<StockTakeProductPickDto>`（账面与 `hasMovements` 均为**所选仓**口径） | `stockTakes.view` / 40000 |
 
 - 路由注意：`/api/warehouses/pick` 为固定段，置于 `{id:guid}` 之前。
 - 库存侧新增 1 个写端点：`PUT /api/inventory/safety-stock`（`Inventory/UpdateInventorySafetyStock`，body `{ productId, warehouseId, safetyStock }`，权限点 `inventory.update`——`028` §0.2 续行，见 `tasks.md` §联动）。
@@ -296,7 +297,7 @@ src/
 | 仓级安全库存以 `Inventory.SafetyStock` 为准 | 判定唯一来源在库存行 | 商品级阈值无法表达「上海 100 / 北京 20」；保留商品阈值为初始值，避免商品新建后逐仓手填 |
 | 新建商品只为「启用仓」建行，其余仓按需创建 | `IncrementAsync` 内含 upsert | 避免「新建商品 × N 仓」的行爆炸（多仓多为 2–5 个，仍可控）；后期新开仓时老商品自动补齐 |
 | 单据存仓名快照 | `WarehouseName` | 同 `PartnerName`：列表 / 详情 / 打印免联查；仓改名后历史单据保持当时名称（与「档案改名不影响历史凭证」一致） |
-| 成本不分仓 | 组织级移动加权（`026` 口径不变） | 按仓成本需要按仓均价与跨仓成本流转规则（调拨定价），复杂度高且多数客户不需要；`039` 调拨按转出仓成本结转即可满足「成本不丢」的要求 |
+| 成本**按仓**维护（行级） | 移动加权公式与 `026` 一致，只是作用域为「商品 × 仓」；组织级口径 = 各仓合计 | 库存行自本规格起即「商品 × 仓」，成本列与数量列同属一行，**行级自洽**（Σ 流水 `TotalCost` == 该行 `CostAmount`）；若强留"组织级成本镜像到每行"，则每行均价与出库结转单价都会失真（同一商品各仓数量不同）。跨仓成本流转（调拨定价）仍不在本期：`039` 按转出仓成本结转即可满足「成本不丢」 |
 | 明细表不加仓 | 仓只在主表 | 一张单据只操作一个仓，明细继承主表；避免冗余列与不一致风险 |
 | 库存不足按仓 | `40103` message 含仓名 | 复用既有码（前端文案统一），信息层面补足仓维度 |
 | 报表按仓筛选而非新增报表 | 追加筛选参数 | 避免 5 个报表页 × 仓维度 = 一套新报表；筛选后可得到「某仓的进销存」 |
