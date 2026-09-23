@@ -13,6 +13,8 @@ public class GetInventoryRequestHandlerTests
     private static (AppDbContext Context, GetInventoryRequestHandler Handler) CreateHandler()
     {
         var context = TestSupport.CreateDbContext();
+        // 038：库存查询联查仓库（inner join），先落默认仓
+        TestSupport.SeedDefaultWarehouse(context);
         var handler = new GetInventoryRequestHandler(new InventoryRepository(context));
         return (context, handler);
     }
@@ -51,7 +53,10 @@ public class GetInventoryRequestHandlerTests
         {
             Id = Guid.NewGuid(),
             ProductId = product.Id,
+            WarehouseId = TestWarehouse.DefaultId,
             Quantity = stock,
+            // 038：仓级安全库存是低库存判定的唯一来源（商品档案阈值仅作新建库存行的初始值）
+            SafetyStock = safety,
             UpdatedAt = stockUpdatedAt ?? DateTimeOffset.UtcNow,
         });
         return context.SaveChangesAsync();

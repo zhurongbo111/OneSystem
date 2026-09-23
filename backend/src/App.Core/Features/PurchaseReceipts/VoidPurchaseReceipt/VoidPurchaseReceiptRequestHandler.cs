@@ -95,23 +95,26 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            // 回冲：逐行库存 -= 数量（与入库同一事务；允许冲负，见 design.md §5 决策）
+            // 回冲：逐行在**单据入库仓**扣减数量（与入库同一事务；允许冲负，见 design.md §5 决策）
             foreach (var item in items)
             {
-                await _inventoryRepository.IncrementAsync(item.ProductId, -item.Quantity, cancellationToken);
+                await _inventoryRepository.IncrementAsync(
+                    item.ProductId, order.WarehouseId, -item.Quantity, cancellationToken);
 
                 // 成本：冲销还原 —— 复用原入库流水的成本单价（erp-cost design §0.2），保证「入 + 冲回 = 0」；
                 // 查不到原流水（历史数据）按 0 计，重算用例会统计缺价
                 var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
                     order.Id, item.ProductId, StockMovementType.PurchaseInbound, cancellationToken) ?? 0m;
                 var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
-                await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+                await _inventoryRepository.ApplyOutboundCostAsync(
+                    item.ProductId, order.WarehouseId, totalCost, cancellationToken);
 
-                // 库存流水：采购作废回冲，与库存增减同事务（erp-stock-movement design §3.7）
+                // 库存流水：采购作废回冲，与库存增减同事务并带变动仓（erp-stock-movement design §3.7）
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
                     Id = Guid.NewGuid(),
                     ProductId = item.ProductId,
+                    WarehouseId = order.WarehouseId,
                     MovementType = StockMovementType.PurchaseVoid,
                     Quantity = -item.Quantity,
                     UnitCost = unitCost,
@@ -171,7 +174,7 @@ public sealed class VoidPurchaseReceiptRequestHandler : IRequestHandler<VoidPurc
                 Action = AuditAction.Void,
                 ResourceId = order.Id,
                 ResourceNo = order.ReceiptNo,
-                Summary = $"作废采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、{AuditSummary.Money(order.TotalAmount)}）",
+                Summary = $"作废采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、入库仓：{order.WarehouseName}、{AuditSummary.Money(order.TotalAmount)}）",
                 Changes = voidedReceiptChangeBuilder.Build(),
                 ChangesTruncated = voidedReceiptChangeBuilder.Truncated,
                 UtcNow = now,

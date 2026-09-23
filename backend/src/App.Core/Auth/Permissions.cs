@@ -175,6 +175,9 @@ public static class Permissions
     /// <summary>查看库存</summary>
     public const string InventoryView = "inventory.view";
 
+    /// <summary>维护仓级安全库存（038）</summary>
+    public const string InventoryUpdate = "inventory.update";
+
     /// <summary>导出库存</summary>
     public const string InventoryExport = "inventory.export";
 
@@ -456,7 +459,7 @@ public static class Permissions
         QuotationsView, QuotationsCreate, QuotationsUpdate, QuotationsVoid, QuotationsConvert,
         SalesView, SalesCreate, SalesVoid, SalesExport,
         SalesReturnsView, SalesReturnsCreate, SalesReturnsVoid, SalesReturnsSettle, SalesReturnsExport,
-        InventoryView, InventoryExport,
+        InventoryView, InventoryUpdate, InventoryExport,
         StockMovementsView, StockMovementsExport,
         StockTakesView, StockTakesCreate, StockTakesExport,
         TransfersView, TransfersCreate, TransfersVoid, TransfersExport,
@@ -512,7 +515,7 @@ public static class Permissions
         new("报价单", [new PermissionItem(QuotationsView, "查看"), new PermissionItem(QuotationsCreate, "新增"), new PermissionItem(QuotationsUpdate, "编辑"), new PermissionItem(QuotationsVoid, "作废"), new PermissionItem(QuotationsConvert, "转订单")]),
         new("销售出库", [new PermissionItem(SalesView, "查看"), new PermissionItem(SalesCreate, "新增"), new PermissionItem(SalesVoid, "作废"), new PermissionItem(SalesExport, "导出")]),
         new("销售退货", [new PermissionItem(SalesReturnsView, "查看"), new PermissionItem(SalesReturnsCreate, "新增"), new PermissionItem(SalesReturnsVoid, "作废"), new PermissionItem(SalesReturnsSettle, "结算"), new PermissionItem(SalesReturnsExport, "导出")]),
-        new("库存查询", [new PermissionItem(InventoryView, "查看"), new PermissionItem(InventoryExport, "导出")]),
+        new("库存查询", [new PermissionItem(InventoryView, "查看"), new PermissionItem(InventoryUpdate, "维护安全库存"), new PermissionItem(InventoryExport, "导出")]),
         new("库存流水", [new PermissionItem(StockMovementsView, "查看"), new PermissionItem(StockMovementsExport, "导出")]),
         new("库存盘点", [new PermissionItem(StockTakesView, "查看"), new PermissionItem(StockTakesCreate, "新增"), new PermissionItem(StockTakesExport, "导出")]),
         new("调拨单", [new PermissionItem(TransfersView, "查看"), new PermissionItem(TransfersCreate, "新增"), new PermissionItem(TransfersVoid, "作废"), new PermissionItem(TransfersExport, "导出")]),

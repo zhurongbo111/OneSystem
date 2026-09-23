@@ -218,17 +218,17 @@ public class ExportRequestHandlerTests
 
         var documents = workbook.Worksheet("单据");
         Assert.Equal(
-            ["单号", "关联订单", "供应商", "单据日期", "总金额", "结算状态", "单据状态", "创建时间", "创建人"],
-            Enumerable.Range(1, 9).Select(i => documents.Cell(1, i).GetString()));
+            ["单号", "关联订单", "供应商", "仓库", "单据日期", "总金额", "结算状态", "单据状态", "创建时间", "创建人"],
+            Enumerable.Range(1, 10).Select(i => documents.Cell(1, i).GetString()));
         Assert.Equal("GR202609170001", documents.Cell(2, 1).GetString());
         Assert.Equal("供应商一", documents.Cell(2, 3).GetString());
         // 部分结算：与列表同口径（含未结金额）
-        Assert.Equal("部分结算（未结 200.00）", documents.Cell(2, 6).GetString());
-        Assert.Equal("正常", documents.Cell(2, 7).GetString());
-        Assert.Equal("管理员", documents.Cell(2, 9).GetString());
+        Assert.Equal("部分结算（未结 200.00）", documents.Cell(2, 7).GetString());
+        Assert.Equal("正常", documents.Cell(2, 8).GetString());
+        Assert.Equal("管理员", documents.Cell(2, 10).GetString());
         // 作废单据照常导出
         Assert.Equal("GR202609170002", documents.Cell(3, 1).GetString());
-        Assert.Equal("已作废", documents.Cell(3, 7).GetString());
+        Assert.Equal("已作废", documents.Cell(3, 8).GetString());
 
         var details = workbook.Worksheet("明细");
         Assert.Equal(

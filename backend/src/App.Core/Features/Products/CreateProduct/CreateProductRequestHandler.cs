@@ -13,6 +13,7 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
 {
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
@@ -24,6 +25,7 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
     public CreateProductRequestHandler(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
+        IWarehouseRepository warehouseRepository,
         IInventoryRepository inventoryRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
@@ -31,6 +33,7 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
+        _warehouseRepository = warehouseRepository;
         _inventoryRepository = inventoryRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
@@ -96,14 +99,15 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
         try
         {
             await _productRepository.AddAsync(product, cancellationToken);
-            // 全限定名：Features 下新增 Inventory 用例命名空间后，Inventory 在该处被解析为命名空间而非实体类型
-            await _inventoryRepository.AddAsync(new App.Core.Entities.Inventory
+
+            // 为每个启用仓建 0 库存行（038）：安全库存取商品档案阈值作为各仓初始值；
+            // 无启用仓不可能（默认仓必存在且不可停用）
+            var warehouses = await _warehouseRepository.GetEnabledAsync(cancellationToken);
+            foreach (var warehouse in warehouses)
             {
-                Id = Guid.NewGuid(),
-                ProductId = product.Id,
-                Quantity = 0,
-                UpdatedAt = now,
-            }, cancellationToken);
+                await _inventoryRepository.EnsureRowAsync(
+                    product.Id, warehouse.Id, product.SafetyStock, cancellationToken);
+            }
 
             // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
             await _auditLogger.RecordAsync(new AuditEntry

@@ -69,7 +69,8 @@ internal sealed class RecordingProductRepository : IProductRepository
         => throw new NotSupportedException();
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(
+        Guid? warehouseId = null, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 }
 
@@ -157,6 +158,7 @@ internal sealed class RecordingPurchaseReceiptRepository : IPurchaseReceiptRepos
         DateTimeOffset? start,
         DateTimeOffset? end,
         SettlementState? settlementState,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)

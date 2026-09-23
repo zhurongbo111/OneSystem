@@ -32,6 +32,7 @@ public sealed class ReportQueryRepository : IReportQueryRepository
         Guid? productId,
         Guid? categoryId,
         bool onlyChanged,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -54,9 +55,17 @@ public sealed class ReportQueryRepository : IReportQueryRepository
             productQuery = productQuery.Where(x => x.CategoryId == value);
         }
 
-        // 期初段：期间起点之前的**全部**流水累计（含全部变动类型，保证期末与库存台账同源可对账）
-        var openingRows = await _dbContext.StockMovements.AsNoTracking()
-            .Where(m => m.CreatedAt < start)
+        // 期初段：期间起点之前的**该仓**全部流水累计（含全部变动类型，保证期末与库存台账同源可对账）；
+        // 不传仓时为组织级合计（Σ 各仓），与库存余额表「全部仓合并」口径一致（038）
+        var openingQuery = _dbContext.StockMovements.AsNoTracking()
+            .Where(m => m.CreatedAt < start);
+        if (warehouseId is not null)
+        {
+            var warehouse = warehouseId.Value;
+            openingQuery = openingQuery.Where(m => m.WarehouseId == warehouse);
+        }
+
+        var openingRows = await openingQuery
             .GroupBy(m => m.ProductId)
             .Select(g => new { ProductId = g.Key, Quantity = g.Sum(m => m.Quantity) })
             .ToListAsync(cancellationToken);
@@ -68,8 +77,15 @@ public sealed class ReportQueryRepository : IReportQueryRepository
         }
 
         // 区间段：按变动类型归入入 / 出；盘点调整为双向类型，按符号拆分（正计入、负计入出），不整条计入一侧
-        var periodRows = await _dbContext.StockMovements.AsNoTracking()
-            .Where(m => m.CreatedAt >= start && m.CreatedAt < end)
+        var periodQuery = _dbContext.StockMovements.AsNoTracking()
+            .Where(m => m.CreatedAt >= start && m.CreatedAt < end);
+        if (warehouseId is not null)
+        {
+            var warehouse = warehouseId.Value;
+            periodQuery = periodQuery.Where(m => m.WarehouseId == warehouse);
+        }
+
+        var periodRows = await periodQuery
             .GroupBy(m => m.ProductId)
             .Select(g => new
             {
@@ -153,15 +169,36 @@ public sealed class ReportQueryRepository : IReportQueryRepository
     public async Task<(IReadOnlyList<StockBalanceItem> Items, int Total, StockBalanceTotal Summary)> GetStockBalanceAsync(
         string? keyword,
         Guid? categoryId,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        // 基准：启用商品左连接库存台账（无库存行按 0 计），联查分类带出分类名
+        // 库存台账按「商品」聚合（038：一行 = 商品 × 仓）：
+        // 传仓时只取该仓行；不传仓时合计各仓（库存与成本金额求和、低库存标记取「任一仓低于其仓级阈值」）
+        var inventoryQuery = _dbContext.Inventory.AsNoTracking();
+        if (warehouseId is not null)
+        {
+            var warehouse = warehouseId.Value;
+            inventoryQuery = inventoryQuery.Where(i => i.WarehouseId == warehouse);
+        }
+
+        var inventoryByProduct = inventoryQuery
+            .GroupBy(i => i.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(i => i.Quantity),
+                CostAmount = g.Sum(i => i.CostAmount),
+                BelowSafety = g.Any(i => i.SafetyStock > 0 && i.Quantity < i.SafetyStock),
+                HasAnomaly = g.Any(i => i.Quantity < 0 || i.CostAmount < 0),
+            });
+
+        // 基准：启用商品左连接上述聚合（无库存行按 0 计），联查分类带出分类名
         var query = from p in _dbContext.Products.AsNoTracking()
                     where p.Status == ProductStatus.Enabled
                     join c in _dbContext.Categories.AsNoTracking() on p.CategoryId equals c.Id
-                    join i in _dbContext.Inventory.AsNoTracking() on p.Id equals i.ProductId into iGroup
+                    join i in inventoryByProduct on p.Id equals i.ProductId into iGroup
                     from i in iGroup.DefaultIfEmpty()
                     select new
                     {
@@ -169,10 +206,11 @@ public sealed class ReportQueryRepository : IReportQueryRepository
                         CategoryName = c.Name,
                         p.Code,
                         p.Name,
-                        p.SafetyStock,
                         Quantity = i == null ? 0 : i.Quantity,
                         // 成本列（erp-cost）：结存成本额，用于库存金额与均价聚合
                         CostAmount = i == null ? 0 : i.CostAmount,
+                        BelowSafety = i != null && i.BelowSafety,
+                        HasAnomaly = i != null && i.HasAnomaly,
                     };
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -187,7 +225,14 @@ public sealed class ReportQueryRepository : IReportQueryRepository
             query = query.Where(x => x.CategoryId == value);
         }
 
-        var grouped = await query
+        // 先取「商品级」投影，再在内存按分类聚合。
+        // 缘由（038 实测）：把外层 GroupBy（按分类）套在「已分组的连接子查询」之上，EF Core 会抛
+        // 「The LINQ expression '…Sum(e1 => e1.Inner == null ? 0 : e1.Inner.Quantity)' could not be translated」
+        // （50000 整页空）。商品级投影本身可正常翻译（与商品列表同形状），分类数远小于商品数，
+        // 内存聚合成本可忽略，与进销存报表的内存聚合口径一致。
+        var productRows = await query.ToListAsync(cancellationToken);
+
+        var grouped = productRows
             .GroupBy(x => new { x.CategoryId, x.CategoryName })
             .Select(g => new StockBalanceItem
             {
@@ -196,16 +241,17 @@ public sealed class ReportQueryRepository : IReportQueryRepository
                 ProductCount = g.Count(),
                 TotalQuantity = g.Sum(x => x.Quantity),
                 ZeroStockCount = g.Count(x => x.Quantity == 0),
-                // 低库存口径与库存查询页同源：安全阈值 > 0（0 表示不提醒）且库存 < 阈值
-                BelowSafetyCount = g.Count(x => x.SafetyStock > 0 && x.Quantity < x.SafetyStock),
+                // 低库存口径与库存查询页同源（038 起为仓级阈值）：任一仓「阈值 > 0 且该仓库存 < 阈值」即计入
+                BelowSafetyCount = g.Count(x => x.BelowSafety),
                 // 成本列（erp-cost）：库存金额合计、按「金额 ÷ 数量」的均价、成本异常标记
                 TotalCostAmount = g.Sum(x => x.CostAmount),
                 AverageCost = g.Sum(x => x.Quantity) == 0
                     ? 0m
-                    : g.Sum(x => x.CostAmount) / g.Sum(x => x.Quantity),
-                HasCostAnomaly = g.Any(x => x.Quantity < 0 || x.CostAmount < 0),
+                    : Math.Round(
+                        g.Sum(x => x.CostAmount) / g.Sum(x => x.Quantity), 4, MidpointRounding.AwayFromZero),
+                HasCostAnomaly = g.Any(x => x.HasAnomaly),
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var summary = new StockBalanceTotal
         {

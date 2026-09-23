@@ -20,6 +20,8 @@ internal static class SalesShipmentsDtoMapper
             ShipmentNo = order.ShipmentNo,
             PartnerId = order.PartnerId.ToString(),
             PartnerName = order.PartnerName,
+            WarehouseId = order.WarehouseId.ToString(),
+            WarehouseName = order.WarehouseName,
             OrderDate = order.OrderDate,
             // 到期日 = 单据日期 + 客户账期天数（`036` §0.3，推导不落列）
             DueDate = DateOnly.FromDateTime(order.OrderDate.UtcDateTime).AddDays(paymentTermDays).ToString("yyyy-MM-dd"),
@@ -59,6 +61,8 @@ internal static class SalesShipmentsDtoMapper
             ShipmentNo = order.ShipmentNo,
             PartnerId = order.PartnerId.ToString(),
             PartnerName = order.PartnerName,
+            WarehouseId = order.WarehouseId.ToString(),
+            WarehouseName = order.WarehouseName,
             OrderDate = order.OrderDate,
             OrderId = order.OrderId?.ToString(),
             OrderNo = order.OrderNo,

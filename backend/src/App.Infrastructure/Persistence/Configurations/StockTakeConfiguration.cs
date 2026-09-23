@@ -23,6 +23,11 @@ internal sealed class StockTakeConfiguration : IEntityTypeConfiguration<StockTak
             .IsRequired()
             .HasColumnType("varchar(20)");
         builder.Property(t => t.Type).HasConversion<short>().IsRequired();
+        // 盘点仓名称快照（038；长度与仓库名称同源）
+        builder.Property(t => t.WarehouseName)
+            .HasMaxLength(WarehouseFieldConstraints.NameMaxLength)
+            .IsRequired()
+            .HasColumnType("varchar(50)");
         builder.Property(t => t.TakeDate).IsRequired();
         builder.Property(t => t.ItemCount).IsRequired();
         builder.Property(t => t.DiffItemCount).IsRequired();

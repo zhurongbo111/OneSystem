@@ -19,6 +19,7 @@ public interface IPurchaseReceiptRepository
     /// <param name="start">起始业务日期（含），可空</param>
     /// <param name="end">结束业务日期（含），可空</param>
     /// <param name="settlementState">结算状态（0 未结 / 1 部分 / 2 结清，按 SettledAmount 与 TotalAmount 推导），可空</param>
+    /// <param name="warehouseId">入库仓 id，可空（038；不传 = 全部仓）</param>
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -29,6 +30,7 @@ public interface IPurchaseReceiptRepository
         DateTimeOffset? start,
         DateTimeOffset? end,
         SettlementState? settlementState,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

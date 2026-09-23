@@ -65,10 +65,13 @@ public interface IProductRepository
     Task UpdateAsync(Product product, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 开单商品选择：仅启用商品，联查当前库存，全量返回（MVP 数据量可控），编码正序
+    /// 开单商品选择：仅启用商品，联查当前库存，全量返回（MVP 数据量可控），编码正序。
+    /// 038：<paramref name="warehouseId"/> 传仓 → 该仓库存；不传 → 各仓合计（组织级）
     /// </summary>
+    /// <param name="warehouseId">仓库 id，可空</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(
+        Guid? warehouseId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按商品 id 集合批量查询编码（erp-export 导出单据明细的商品编码列用，一次查询避免 N+1）；

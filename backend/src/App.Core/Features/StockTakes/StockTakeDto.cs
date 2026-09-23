@@ -14,6 +14,12 @@ public sealed class StockTakeDetailDto
     /// <summary>单据类型（0 期初建账 / 1 库存盘点）</summary>
     public required int Type { get; init; }
 
+    /// <summary>盘点仓 id（038）</summary>
+    public required string WarehouseId { get; init; }
+
+    /// <summary>盘点仓名称快照（038）</summary>
+    public required string WarehouseName { get; init; }
+
     /// <summary>盘点业务日期</summary>
     public required DateTimeOffset TakeDate { get; init; }
 
@@ -78,6 +84,12 @@ public sealed class StockTakeListItemDto
 
     /// <summary>单据类型（0 期初建账 / 1 库存盘点）</summary>
     public required int Type { get; init; }
+
+    /// <summary>盘点仓 id（038）</summary>
+    public required string WarehouseId { get; init; }
+
+    /// <summary>盘点仓名称快照（038）</summary>
+    public required string WarehouseName { get; init; }
 
     /// <summary>盘点业务日期</summary>
     public required DateTimeOffset TakeDate { get; init; }

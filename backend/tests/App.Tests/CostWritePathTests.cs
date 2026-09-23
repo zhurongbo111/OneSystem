@@ -59,7 +59,8 @@ public class CostWritePathTests
 
         // ① 采购入库 10 件 × 20 元 → 数量 20、金额 300、均价 15
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, inventory, movements,
+            orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, new FakeWarehouseRepository(),
+            inventory, movements,
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
         {
@@ -78,7 +79,8 @@ public class CostWritePathTests
 
         // ② 销售出库 5 件 → 按变动前均价 15 结转，成本 75、金额 225、均价仍 15
         var createSale = new CreateSalesShipmentRequestHandler(
-            sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, inventory, movements,
+            sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, new FakeWarehouseRepository(),
+            inventory, movements,
             new FakeSettlementQueryRepository(),
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         await createSale.HandleAsync(new CreateSalesShipmentRequest
@@ -163,7 +165,8 @@ public class CostWritePathTests
         var (context, _, _, product, inventory, movements, _, uow, user) = await CreateAsync();
 
         var handler = new CreateStockTakeRequestHandler(
-            new FakeStockTakeRepository(), new ProductRepository(context), inventory, movements, uow, user, TestSupport.AuditLogger);
+            new FakeStockTakeRepository(), new ProductRepository(context), new FakeWarehouseRepository(),
+            inventory, movements, uow, user, TestSupport.AuditLogger);
         await handler.HandleAsync(new CreateStockTakeRequest
         {
             Type = StockTakeType.Initial,
@@ -192,7 +195,8 @@ public class CostWritePathTests
         inventory.AverageCosts[product.Id] = 10m;
 
         var handler = new CreateStockTakeRequestHandler(
-            new FakeStockTakeRepository(), new ProductRepository(context), inventory, movements, uow, user, TestSupport.AuditLogger);
+            new FakeStockTakeRepository(), new ProductRepository(context), new FakeWarehouseRepository(),
+            inventory, movements, uow, user, TestSupport.AuditLogger);
 
         // 无差异（实盘 = 账面）→ 回归 020 既有语义：不改库存、不写流水、不动成本
         await handler.HandleAsync(new CreateStockTakeRequest

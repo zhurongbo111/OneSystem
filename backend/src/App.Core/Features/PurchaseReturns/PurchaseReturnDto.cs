@@ -17,6 +17,12 @@ public sealed class PurchaseReturnDetailDto
     /// <summary>供应商名称快照</summary>
     public required string PartnerName { get; init; }
 
+    /// <summary>出库仓 id（038）</summary>
+    public required string WarehouseId { get; init; }
+
+    /// <summary>出库仓名称快照（038）</summary>
+    public required string WarehouseName { get; init; }
+
     /// <summary>业务日期</summary>
     public required DateTimeOffset ReturnDate { get; init; }
 
@@ -87,6 +93,12 @@ public sealed class PurchaseReturnListItemDto
 
     /// <summary>供应商名称快照</summary>
     public required string PartnerName { get; init; }
+
+    /// <summary>出库仓 id（038）</summary>
+    public required string WarehouseId { get; init; }
+
+    /// <summary>出库仓名称快照（038）</summary>
+    public required string WarehouseName { get; init; }
 
     /// <summary>业务日期</summary>
     public required DateTimeOffset ReturnDate { get; init; }

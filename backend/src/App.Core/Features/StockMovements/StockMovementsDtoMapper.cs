@@ -16,6 +16,8 @@ internal static class StockMovementsDtoMapper
             ProductCode = item.ProductCode,
             ProductName = item.ProductName,
             Unit = item.Unit,
+            WarehouseId = item.WarehouseId.ToString(),
+            WarehouseName = item.WarehouseName,
             MovementType = item.MovementType,
             Quantity = item.Quantity,
             UnitCost = item.UnitCost,

@@ -32,15 +32,20 @@ internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<Stoc
         builder.Property(m => m.SourceNo).HasMaxLength(OrderFieldConstraints.OrderNoMaxLength);
         builder.Property(m => m.Remark).HasMaxLength(OrderFieldConstraints.RemarkMaxLength);
 
-        // 按商品下钻流水 + 全局列表按变动时间倒序 + 按单号查询
+        // 按仓 + 商品下钻流水（038）+ 全局列表按变动时间倒序 + 按单号查询
+        builder.HasIndex(m => new { m.WarehouseId, m.ProductId, m.CreatedAt });
         builder.HasIndex(m => new { m.ProductId, m.CreatedAt });
         builder.HasIndex(m => m.CreatedAt).IsDescending();
         builder.HasIndex(m => m.SourceNo);
 
-        // 商品停用不影响历史流水 → 外键禁止级联删除
+        // 商品 / 仓库停用不影响历史流水 → 外键禁止级联删除
         builder.HasOne<Product>()
             .WithMany()
             .HasForeignKey(m => m.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Warehouse>()
+            .WithMany()
+            .HasForeignKey(m => m.WarehouseId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

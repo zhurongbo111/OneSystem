@@ -34,6 +34,7 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
         DateTimeOffset? start,
         DateTimeOffset? end,
         SettlementState? settlementState,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -82,6 +83,13 @@ public sealed class SalesShipmentRepository : ISalesShipmentRepository
                 SettlementState.PartiallySettled => query.Where(o => o.SettledAmount > 0 && o.SettledAmount < o.TotalAmount),
                 _ => query.Where(o => o.SettledAmount >= o.TotalAmount),
             };
+        }
+
+        // 出库仓筛选（038）
+        if (warehouseId is not null)
+        {
+            var value = warehouseId.Value;
+            query = query.Where(o => o.WarehouseId == value);
         }
 
         var total = await query.CountAsync(cancellationToken);

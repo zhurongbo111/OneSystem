@@ -46,8 +46,19 @@ public class ReportQueryRepositoryTests
             CreatedAt = createdAt,
         };
 
-    private static Inventory NewInventory(Guid productId, int quantity)
-        => new() { Id = Guid.NewGuid(), ProductId = productId, Quantity = quantity, UpdatedAt = End };
+    /// <summary>
+    /// 库存行（038：一行 = 商品 × 仓；仓级安全库存为低库存判定的唯一来源，故与商品阈值同值传入）
+    /// </summary>
+    private static Inventory NewInventory(Guid productId, int quantity, int safetyStock = 0, Guid? warehouseId = null)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            ProductId = productId,
+            WarehouseId = warehouseId ?? TestWarehouse.DefaultId,
+            Quantity = quantity,
+            SafetyStock = safetyStock,
+            UpdatedAt = End,
+        };
 
     private static PurchaseReceipt NewReceipt(Guid partnerId, DateTimeOffset orderDate, decimal totalAmount, OrderStatus status = OrderStatus.Normal)
     {
@@ -129,7 +140,7 @@ public class ReportQueryRepositoryTests
         await dbContext.SaveChangesAsync();
 
         var repository = new ReportQueryRepository(dbContext);
-        var (items, total, summary) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, 1, 20);
+        var (items, total, summary) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, null, 1, 20);
 
         var item = Assert.Single(items);
         Assert.Equal(1, total);
@@ -162,7 +173,7 @@ public class ReportQueryRepositoryTests
         await dbContext.SaveChangesAsync();
 
         var repository = new ReportQueryRepository(dbContext);
-        var (items, _, _) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, 1, 20);
+        var (items, _, _) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, null, 1, 20);
 
         var item = Assert.Single(items);
         Assert.Equal(70, item.OpeningQuantity);
@@ -184,7 +195,7 @@ public class ReportQueryRepositoryTests
         await dbContext.SaveChangesAsync();
 
         var repository = new ReportQueryRepository(dbContext);
-        var (items, _, _) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, 1, 20);
+        var (items, _, _) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, null, 1, 20);
 
         var item = Assert.Single(items);
         Assert.Equal(5, item.InboundQuantity);
@@ -205,7 +216,7 @@ public class ReportQueryRepositoryTests
         await dbContext.SaveChangesAsync();
 
         var repository = new ReportQueryRepository(dbContext);
-        var (items, _, _) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, 1, 20);
+        var (items, _, _) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, null, 1, 20);
 
         var item = Assert.Single(items);
         // 起点（含）计入期间，终点（不含）留给下一期间
@@ -229,11 +240,11 @@ public class ReportQueryRepositoryTests
 
         var repository = new ReportQueryRepository(dbContext);
 
-        var (allItems, allTotal, allSummary) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, 1, 20);
+        var (allItems, allTotal, allSummary) = await repository.GetInventoryFlowAsync(Start, End, null, null, false, null, 1, 20);
         Assert.Equal(2, allTotal);
         Assert.Equal(50, allSummary.OpeningQuantity);
 
-        var (changedItems, changedTotal, changedSummary) = await repository.GetInventoryFlowAsync(Start, End, null, null, true, 1, 20);
+        var (changedItems, changedTotal, changedSummary) = await repository.GetInventoryFlowAsync(Start, End, null, null, true, null, 1, 20);
         Assert.Equal(1, changedTotal);
         Assert.Equal("sku-1", Assert.Single(changedItems).Code);
         Assert.Equal(0, changedSummary.OpeningQuantity);
@@ -254,7 +265,7 @@ public class ReportQueryRepositoryTests
         await dbContext.SaveChangesAsync();
 
         var repository = new ReportQueryRepository(dbContext);
-        var (items, total, summary) = await repository.GetInventoryFlowAsync(Start, End, null, CategoryAId, false, 1, 20);
+        var (items, total, summary) = await repository.GetInventoryFlowAsync(Start, End, null, CategoryAId, false, null, 1, 20);
 
         Assert.Equal(1, total);
         Assert.Equal(100, Assert.Single(items).OpeningQuantity);
@@ -273,13 +284,13 @@ public class ReportQueryRepositoryTests
         dbContext.Categories.Add(NewCategory(CategoryAId, "分类一"));
         dbContext.Products.AddRange(below, zeroNoAlert, normal);
         dbContext.Inventory.AddRange(
-            NewInventory(below.Id, 5),
-            NewInventory(zeroNoAlert.Id, 0),
-            NewInventory(normal.Id, 10));
+            NewInventory(below.Id, 5, safetyStock: 10),
+            NewInventory(zeroNoAlert.Id, 0, safetyStock: 0),
+            NewInventory(normal.Id, 10, safetyStock: 10));
         await dbContext.SaveChangesAsync();
 
         var repository = new ReportQueryRepository(dbContext);
-        var (items, total, summary) = await repository.GetStockBalanceAsync(null, null, 1, 20);
+        var (items, total, summary) = await repository.GetStockBalanceAsync(null, null, null, 1, 20);
 
         var item = Assert.Single(items);
         Assert.Equal(1, total);
@@ -307,12 +318,12 @@ public class ReportQueryRepositoryTests
 
         var repository = new ReportQueryRepository(dbContext);
 
-        var (byCategory, totalByCategory, summaryByCategory) = await repository.GetStockBalanceAsync(null, CategoryBId, 1, 20);
+        var (byCategory, totalByCategory, summaryByCategory) = await repository.GetStockBalanceAsync(null, CategoryBId, null, 1, 20);
         Assert.Equal(1, totalByCategory);
         Assert.Equal("分类二", Assert.Single(byCategory).CategoryName);
         Assert.Equal(20, summaryByCategory.TotalQuantity);
 
-        var (byKeyword, totalByKeyword, _) = await repository.GetStockBalanceAsync("sku-a", null, 1, 20);
+        var (byKeyword, totalByKeyword, _) = await repository.GetStockBalanceAsync("sku-a", null, null, 1, 20);
         Assert.Equal(1, totalByKeyword);
         Assert.Equal("分类一", Assert.Single(byKeyword).CategoryName);
     }

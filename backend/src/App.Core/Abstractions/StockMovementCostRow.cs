@@ -15,6 +15,9 @@ public sealed record StockMovementCostRow
     /// <summary>变动商品 id</summary>
     public required Guid ProductId { get; init; }
 
+    /// <summary>变动仓库 id（038：重算按「商品 × 仓」分账推演）</summary>
+    public required Guid WarehouseId { get; init; }
+
     /// <summary>变动类型</summary>
     public required StockMovementType MovementType { get; init; }
 

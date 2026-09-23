@@ -43,6 +43,7 @@ public sealed class ExportPurchaseReceiptsRequestHandler : IRequestHandler<Expor
             request.Start,
             request.End,
             request.SettlementState,
+            request.WarehouseId,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);
@@ -74,6 +75,7 @@ public sealed class ExportPurchaseReceiptsRequestHandler : IRequestHandler<Expor
                 order.ReceiptNo,
                 order.OrderNo ?? string.Empty,
                 order.PartnerName,
+                order.WarehouseName,
                 order.OrderDate,
                 order.TotalAmount,
                 ExportLabels.ToText(SettlementStateCalculator.Derive(order.TotalAmount, order.SettledAmount), unsettled),
@@ -109,6 +111,7 @@ public sealed class ExportPurchaseReceiptsRequestHandler : IRequestHandler<Expor
                         new ExcelColumnModel { Header = "单号", ValueType = ExcelValueType.Text, Width = 20 },
                         new ExcelColumnModel { Header = "关联订单", ValueType = ExcelValueType.Text, Width = 20 },
                         new ExcelColumnModel { Header = "供应商", ValueType = ExcelValueType.Text, Width = 24 },
+                        new ExcelColumnModel { Header = "仓库", ValueType = ExcelValueType.Text, Width = 16 },
                         new ExcelColumnModel { Header = "单据日期", ValueType = ExcelValueType.Date, Width = 14 },
                         new ExcelColumnModel { Header = "总金额", ValueType = ExcelValueType.Decimal, Width = 14 },
                         new ExcelColumnModel { Header = "结算状态", ValueType = ExcelValueType.Text, Width = 24 },

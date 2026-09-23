@@ -75,7 +75,8 @@ public sealed class UpdateProductStatusRequestHandler : IRequestHandler<UpdatePr
             UtcNow = now,
         }, cancellationToken);
 
-        var stockQuantity = await _inventoryRepository.GetQuantityAsync(product.Id, cancellationToken);
+        // 全组织库存合计（038）
+        var stockQuantity = await _inventoryRepository.GetTotalQuantityAsync(product.Id, cancellationToken);
         return ProductDtoMapper.ToProductDto(product, category.Name, stockQuantity);
     }
 }

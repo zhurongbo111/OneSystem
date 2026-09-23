@@ -6,6 +6,7 @@ using App.Core.Features.Accounts.DeleteAccount;
 using App.Core.Features.Accounts.UpdateAccount;
 using App.Core.Features.Accounts.UpdateAccountStatus;
 using App.Core.Features.Categories.CreateCategory;
+using App.Core.Features.Inventory.UpdateInventorySafetyStock;
 using App.Core.Features.Invoices.CreateInvoice;
 using App.Core.Features.Invoices.VoidInvoice;
 using App.Core.Features.Categories.DeleteCategory;
@@ -62,6 +63,10 @@ using App.Core.Features.Users.CreateUser;
 using App.Core.Features.Users.ResetPassword;
 using App.Core.Features.Users.UpdateUser;
 using App.Core.Features.Users.UpdateUserStatus;
+using App.Core.Features.Warehouses.CreateWarehouse;
+using App.Core.Features.Warehouses.SetDefaultWarehouse;
+using App.Core.Features.Warehouses.UpdateWarehouse;
+using App.Core.Features.Warehouses.UpdateWarehouseStatus;
 
 namespace App.Tests;
 
@@ -137,6 +142,11 @@ public class AuditLogScopeGuardTests
             { typeof(UpdateQuotationRequestHandler), AuditResource.Quotation, AuditAction.Update },
             { typeof(VoidQuotationRequestHandler), AuditResource.Quotation, AuditAction.Void },
             { typeof(ConvertQuotationRequestHandler), AuditResource.Quotation, AuditAction.Update },
+            { typeof(CreateWarehouseRequestHandler), AuditResource.Warehouse, AuditAction.Create },
+            { typeof(UpdateWarehouseRequestHandler), AuditResource.Warehouse, AuditAction.Update },
+            { typeof(UpdateWarehouseStatusRequestHandler), AuditResource.Warehouse, AuditAction.StatusChange },
+            { typeof(SetDefaultWarehouseRequestHandler), AuditResource.Warehouse, AuditAction.Update },
+            { typeof(UpdateInventorySafetyStockRequestHandler), AuditResource.Inventory, AuditAction.Update },
         };
 
     [Theory]

@@ -16,6 +16,12 @@ public sealed class StockTake
     /// <summary>单据类型（0=期初建账 1=库存盘点；流水类型与可选商品范围随类型不同）</summary>
     public StockTakeType Type { get; set; }
 
+    /// <summary>盘点仓 ID（外键 → Warehouses(Id)，038；未指定时取默认仓）</summary>
+    public Guid WarehouseId { get; set; }
+
+    /// <summary>盘点仓名称快照（列表 / 详情免 join；仓改名后历史单据保持当时名称）</summary>
+    public string WarehouseName { get; set; } = string.Empty;
+
     /// <summary>盘点业务日期（UTC 午夜）</summary>
     public DateTimeOffset TakeDate { get; set; }
 

@@ -80,22 +80,25 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            // 回冲：逐行库存 -= 退货数量（撤销保存时的回增；允许冲负，见 design.md §5 决策）
+            // 回冲：逐行在**单据入库仓**扣减退货数量（撤销保存时的回增；允许冲负，见 design.md §5 决策）
             foreach (var item in items)
             {
-                await _inventoryRepository.IncrementAsync(item.ProductId, -item.Quantity, cancellationToken);
+                await _inventoryRepository.IncrementAsync(
+                    item.ProductId, salesReturn.WarehouseId, -item.Quantity, cancellationToken);
 
                 // 成本：冲销还原 —— 复用该销售退货原入库流水的成本单价（erp-cost design §0.2）
                 var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
                     salesReturn.Id, item.ProductId, StockMovementType.SalesReturnIn, cancellationToken) ?? 0m;
                 var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
-                await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+                await _inventoryRepository.ApplyOutboundCostAsync(
+                    item.ProductId, salesReturn.WarehouseId, totalCost, cancellationToken);
 
-                // 库存流水：销售退货作废回冲（负方向），与库存增减同事务（design.md §3.7）
+                // 库存流水：销售退货作废回冲（负方向），与库存增减同事务并带变动仓（design.md §3.7）
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
                     Id = Guid.NewGuid(),
                     ProductId = item.ProductId,
+                    WarehouseId = salesReturn.WarehouseId,
                     MovementType = StockMovementType.SalesReturnVoid,
                     Quantity = -item.Quantity,
                     UnitCost = unitCost,
@@ -128,7 +131,7 @@ public sealed class VoidSalesReturnRequestHandler : IRequestHandler<VoidSalesRet
                 Action = AuditAction.Void,
                 ResourceId = salesReturn.Id,
                 ResourceNo = salesReturn.ReturnNo,
-                Summary = $"作废销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、{AuditSummary.Money(salesReturn.TotalAmount)}）",
+                Summary = $"作废销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、入库仓：{salesReturn.WarehouseName}、{AuditSummary.Money(salesReturn.TotalAmount)}）",
                 Changes = voidedSalesReturnChangeBuilder.Build(),
                 ChangesTruncated = voidedSalesReturnChangeBuilder.Truncated,
                 UtcNow = now,

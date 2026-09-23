@@ -29,6 +29,7 @@ public sealed class GetInventoryRequestHandler : IRequestHandler<GetInventoryReq
         var (items, total) = await _inventoryRepository.GetPagedAsync(
             request.Keyword,
             request.CategoryId,
+            request.WarehouseId,
             request.Page,
             request.PageSize,
             cancellationToken);

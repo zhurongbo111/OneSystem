@@ -16,6 +16,9 @@ public sealed class CreatePurchaseReceiptRequest : IRequest<PurchaseReceiptDetai
     /// <summary>业务日期（UTC 午夜，前端所选日期的本地 0 点转 UTC ISO 串）</summary>
     public required DateTimeOffset OrderDate { get; init; }
 
+    /// <summary>入库仓 id，可空（038；不传 = 默认仓，兼容存量调用方）</summary>
+    public Guid? WarehouseId { get; init; }
+
     /// <summary>关联采购订单 id，可空（不关联即一步式直通用法；关联时必须与订单供应商一致）</summary>
     public Guid? OrderId { get; init; }
 

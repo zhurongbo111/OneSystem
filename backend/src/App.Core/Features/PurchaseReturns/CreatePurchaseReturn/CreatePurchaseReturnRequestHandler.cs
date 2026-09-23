@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Warehouses;
 using App.Core.Finance;
 
 namespace App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
@@ -25,6 +26,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
     private readonly IPurchaseReturnRepository _purchaseReturnRepository;
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IVoucherRepository _voucherRepository;
@@ -42,6 +44,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
         IPurchaseReturnRepository purchaseReturnRepository,
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
+        IWarehouseRepository warehouseRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IVoucherRepository voucherRepository,
@@ -55,6 +58,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
         _purchaseReturnRepository = purchaseReturnRepository;
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
+        _warehouseRepository = warehouseRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
         _voucherRepository = voucherRepository;
@@ -121,6 +125,9 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
             totalAmount += subtotal;
         }
 
+        // 出库仓解析（038 §3.4 第 1 步）：入参可空 → 默认仓；指定仓不存在 40400、已停用 40123
+        var warehouse = await WarehouseResolver.ResolveAsync(_warehouseRepository, request.WarehouseId, cancellationToken);
+
         var now = DateTimeOffset.UtcNow;
         var operatorId = _currentUser.UserId();
 
@@ -136,19 +143,21 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
                 foreach (var line in request.Items)
                 {
                     returnUnitCosts[line.ProductId] =
-                        await _inventoryRepository.GetAverageCostAsync(line.ProductId, cancellationToken);
+                        await _inventoryRepository.GetAverageCostAsync(line.ProductId, warehouse.Id, cancellationToken);
                 }
 
-                // 逐行扣减：任一行库存不足 → 回滚整单（报首个不足商品）
+                // 逐行按仓扣减：任一行该仓库存不足 → 回滚整单（报首个不足商品，message 含仓名）
                 foreach (var line in request.Items)
                 {
-                    var ok = await _inventoryRepository.TryDecrementAsync(line.ProductId, line.Quantity, cancellationToken);
+                    var ok = await _inventoryRepository.TryDecrementAsync(
+                        line.ProductId, warehouse.Id, line.Quantity, cancellationToken);
                     if (!ok)
                     {
-                        var current = await _inventoryRepository.GetQuantityAsync(line.ProductId, cancellationToken);
+                        var current = await _inventoryRepository.GetQuantityAsync(
+                            line.ProductId, warehouse.Id, cancellationToken);
                         throw new BusinessException(
                             ErrorCode.InsufficientStock,
-                            $"库存不足：商品 {products[line.ProductId].Name}（当前 {current}，需要 {line.Quantity}）");
+                            $"库存不足：{warehouse.Name} 商品 {products[line.ProductId].Name}（当前 {current}，需要 {line.Quantity}）");
                     }
                 }
 
@@ -159,6 +168,8 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
                     ReturnNo = returnNo,
                     PartnerId = partner.Id,
                     PartnerName = partner.Name,
+                    WarehouseId = warehouse.Id,
+                    WarehouseName = warehouse.Name,
                     ReturnDate = request.ReturnDate,
                     TotalAmount = totalAmount,
                     SettledAmount = 0m,
@@ -197,12 +208,14 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
                     // 成本：退货出库按变动前均价结转（erp-cost design §0.2）
                     var unitCost = returnUnitCosts[item.ProductId];
                     var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
-                    await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+                    await _inventoryRepository.ApplyOutboundCostAsync(
+                        item.ProductId, warehouse.Id, totalCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
+                        WarehouseId = warehouse.Id,
                         MovementType = StockMovementType.PurchaseReturnOut,
                         Quantity = -item.Quantity,
                         UnitCost = unitCost,
@@ -235,6 +248,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
                 var createdReturnChangeBuilder = new AuditChangeBuilder()
                     .Add("returnNo", "退货单号", null, purchaseReturn.ReturnNo)
                     .Add("partnerName", "供应商", null, purchaseReturn.PartnerName)
+                    .Add("warehouseName", "出库仓", null, purchaseReturn.WarehouseName)
                     .Add("returnDate", "退货日期", null, AuditSummary.Date(purchaseReturn.ReturnDate))
                     .Add("totalAmount", "退货金额", null, AuditSummary.Money(purchaseReturn.TotalAmount))
                     .Add("remark", "备注", null, purchaseReturn.Remark);
@@ -244,7 +258,7 @@ public sealed class CreatePurchaseReturnRequestHandler : IRequestHandler<CreateP
                     Action = AuditAction.Create,
                     ResourceId = purchaseReturn.Id,
                     ResourceNo = purchaseReturn.ReturnNo,
-                    Summary = $"创建采购退货单 {purchaseReturn.ReturnNo}（供应商：{purchaseReturn.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(purchaseReturn.TotalAmount)}）",
+                    Summary = $"创建采购退货单 {purchaseReturn.ReturnNo}（供应商：{purchaseReturn.PartnerName}、出库仓：{purchaseReturn.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(purchaseReturn.TotalAmount)}）",
                     Changes = createdReturnChangeBuilder.Build(),
                     ChangesTruncated = createdReturnChangeBuilder.Truncated,
                     UtcNow = now,

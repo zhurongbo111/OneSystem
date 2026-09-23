@@ -19,8 +19,8 @@ internal sealed class FakePurchaseReturnRepository : IPurchaseReturnRepository
     /// <summary>新增写失败注入：返回非 null 异常时 AddAsync 抛出（模拟数据库写入失败）</summary>
     public Func<Exception?>? AddFailure { get; set; }
 
-    /// <summary>已执行的分页查询入参（keyword / partnerId / start / end / settlement / page / pageSize）</summary>
-    public List<(string? Keyword, Guid? PartnerId, DateTimeOffset? Start, DateTimeOffset? End, SettlementState? SettlementState, int Page, int PageSize)> PagedQueries { get; } = [];
+    /// <summary>已执行的分页查询入参（keyword / partnerId / start / end / settlement / warehouseId / page / pageSize）</summary>
+    public List<(string? Keyword, Guid? PartnerId, DateTimeOffset? Start, DateTimeOffset? End, SettlementState? SettlementState, Guid? WarehouseId, int Page, int PageSize)> PagedQueries { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
     public IReadOnlyList<PurchaseReturn> PagedItems { get; set; } = Array.Empty<PurchaseReturn>();
@@ -37,9 +37,9 @@ internal sealed class FakePurchaseReturnRepository : IPurchaseReturnRepository
 
     public Task<(IReadOnlyList<PurchaseReturn> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end,
-        SettlementState? settlementState, int page, int pageSize, CancellationToken cancellationToken = default)
+        SettlementState? settlementState, Guid? warehouseId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        PagedQueries.Add((keyword, partnerId, start, end, settlementState, page, pageSize));
+        PagedQueries.Add((keyword, partnerId, start, end, settlementState, warehouseId, page, pageSize));
         return Task.FromResult((PagedItems, PagedTotal));
     }
 

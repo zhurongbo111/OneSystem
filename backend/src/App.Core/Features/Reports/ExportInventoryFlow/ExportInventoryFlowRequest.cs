@@ -24,6 +24,9 @@ public sealed class ExportInventoryFlowRequest : IRequest<ExportResultDto>
     /// <summary>是否只看期间有变动的商品</summary>
     public bool OnlyChanged { get; init; }
 
+    /// <summary>仓库 id，可空（038；不传 = 全部仓合并）</summary>
+    public Guid? WarehouseId { get; init; }
+
     /// <summary>页码，从 1 起（导出忽略，仅为与报表参数一致）</summary>
     public int Page { get; init; } = 1;
 

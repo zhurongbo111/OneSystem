@@ -92,4 +92,7 @@ public enum AuditResource
 
     /// <summary>报价单（037）</summary>
     Quotation = 28,
+
+    /// <summary>库存台账（038：维护仓级安全库存）</summary>
+    Inventory = 29,
 }

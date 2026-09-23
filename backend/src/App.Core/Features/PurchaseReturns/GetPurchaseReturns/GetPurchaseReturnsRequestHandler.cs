@@ -27,7 +27,7 @@ public sealed class GetPurchaseReturnsRequestHandler : IRequestHandler<GetPurcha
     {
         var (items, total) = await _purchaseReturnRepository.GetPagedAsync(
             request.Keyword, request.PartnerId, request.Start, request.End, request.SettlementState,
-            request.Page, request.PageSize, cancellationToken);
+            request.WarehouseId, request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<PurchaseReturnListItemDto>
         {

@@ -14,6 +14,12 @@ public sealed class StockMovement
     /// <summary>变动商品 id（FK → Products(Id)）</summary>
     public Guid ProductId { get; set; }
 
+    /// <summary>
+    /// 变动仓库 id（FK → Warehouses(Id)，NOT NULL，038）：
+    /// 一条流水的仓 = 其数量实际变动的仓；对账口径为「任一 (商品, 仓) 满足 Σ 流水 Quantity == 该仓库存」。
+    /// </summary>
+    public Guid WarehouseId { get; set; }
+
     /// <summary>变动类型</summary>
     public StockMovementType MovementType { get; set; }
 

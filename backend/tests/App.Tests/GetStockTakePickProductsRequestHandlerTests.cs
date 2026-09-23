@@ -10,19 +10,21 @@ namespace App.Tests;
 /// </summary>
 public class GetStockTakePickProductsRequestHandlerTests
 {
-    private static (FakeProductRepository Products, FakeStockMovementRepository Movements,
+    private static (FakeProductRepository Products, FakeStockMovementRepository Movements, FakeInventoryRepository Inventory,
         GetStockTakePickProductsRequestHandler Handler) CreateHandler()
     {
         var products = new FakeProductRepository();
         var movements = new FakeStockMovementRepository();
-        var handler = new GetStockTakePickProductsRequestHandler(products, movements);
-        return (products, movements, handler);
+        var inventory = new FakeInventoryRepository();
+        var handler = new GetStockTakePickProductsRequestHandler(
+            products, new FakeWarehouseRepository(), inventory, movements);
+        return (products, movements, inventory, handler);
     }
 
     [Fact]
     public async Task 盘点商品选择_已发生变动商品_hasMovements应为true()
     {
-        var (products, movements, handler) = CreateHandler();
+        var (products, movements, _, handler) = CreateHandler();
         var withMovement = Guid.NewGuid();
         var clean = Guid.NewGuid();
         products.Picks.Add(new ProductPickItem
@@ -49,6 +51,7 @@ public class GetStockTakePickProductsRequestHandlerTests
         {
             Id = Guid.NewGuid(),
             ProductId = withMovement,
+            WarehouseId = TestWarehouse.DefaultId,
             MovementType = StockMovementType.InitialStock,
             Quantity = 4,
             SourceNo = "ST202601010001",
@@ -67,11 +70,12 @@ public class GetStockTakePickProductsRequestHandlerTests
     [Fact]
     public async Task 盘点商品选择_仅返回仓储提供的启用商品_Handler不重复过滤()
     {
-        var (products, _, handler) = CreateHandler();
+        var (products, _, inventory, handler) = CreateHandler();
         // 仓储已过滤停用商品，Handler 仅透传（Picks 中即视为启用商品）
+        var only = Guid.NewGuid();
         products.Picks.Add(new ProductPickItem
         {
-            Id = Guid.NewGuid(),
+            Id = only,
             Code = "only",
             Name = "唯一商品",
             Unit = "箱",
@@ -79,6 +83,8 @@ public class GetStockTakePickProductsRequestHandlerTests
             SalePrice = 5m,
             StockQuantity = 12,
         });
+        // 038：账面数量按「所选仓」读取（不取商品下拉自带的组织级库存）
+        inventory.Seed(only, 12);
 
         var result = await handler.HandleAsync(new GetStockTakePickProductsRequest());
 

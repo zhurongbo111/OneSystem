@@ -15,6 +15,9 @@ public sealed class CreateStockTakeRequest : IRequest<StockTakeDetailDto>
     /// <summary>盘点业务日期（UTC 午夜，前端所选日期的本地 0 点转 UTC ISO 串）</summary>
     public required DateTimeOffset TakeDate { get; init; }
 
+    /// <summary>盘点仓 id，可空（038；不传 = 默认仓，兼容存量调用方）</summary>
+    public Guid? WarehouseId { get; init; }
+
     /// <summary>明细行（1–100 行；productId / actualQuantity）</summary>
     public required IReadOnlyList<CreateStockTakeItem> Items { get; init; }
 

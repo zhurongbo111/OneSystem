@@ -29,6 +29,7 @@ public sealed class GetStockBalanceRequestHandler : IRequestHandler<GetStockBala
         var (items, total, summary) = await _reportQueryRepository.GetStockBalanceAsync(
             request.Keyword,
             request.CategoryId,
+            request.WarehouseId,
             request.Page,
             request.PageSize,
             cancellationToken);

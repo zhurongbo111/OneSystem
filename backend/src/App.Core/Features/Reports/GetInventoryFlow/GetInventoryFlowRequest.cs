@@ -22,6 +22,9 @@ public sealed class GetInventoryFlowRequest : IRequest<ReportPageDto<InventoryFl
     /// <summary>是否只看期间有变动的商品（默认为否：展示筛选范围内全部启用商品）</summary>
     public bool OnlyChanged { get; init; }
 
+    /// <summary>仓库 id，可空（038；不传 = 全部仓合并）</summary>
+    public Guid? WarehouseId { get; init; }
+
     /// <summary>页码，从 1 起</summary>
     public int Page { get; init; } = 1;
 

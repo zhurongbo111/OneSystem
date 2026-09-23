@@ -19,4 +19,7 @@ public sealed class GetInventoryRequest : IRequest<PagedResult<InventoryItemDto>
 
     /// <summary>分类 id，可空</summary>
     public Guid? CategoryId { get; init; }
+
+    /// <summary>仓库 id，可空（不传 = 全部仓，038）</summary>
+    public Guid? WarehouseId { get; init; }
 }

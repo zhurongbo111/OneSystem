@@ -27,4 +27,7 @@ public sealed class ExportStockTakesRequest : IRequest<ExportResultDto>
 
     /// <summary>结束盘点日期（含），可空（前端传本地当天 23:59:59 的 UTC ISO 串）</summary>
     public DateTimeOffset? End { get; init; }
+
+    /// <summary>盘点仓 id，可空（038；不传 = 全部仓）</summary>
+    public Guid? WarehouseId { get; init; }
 }

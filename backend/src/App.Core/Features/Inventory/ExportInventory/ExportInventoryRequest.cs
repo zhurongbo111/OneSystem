@@ -20,4 +20,7 @@ public sealed class ExportInventoryRequest : IRequest<ExportResultDto>
 
     /// <summary>分类 id，可空</summary>
     public Guid? CategoryId { get; init; }
+
+    /// <summary>仓库 id，可空（038；不传 = 全部仓）</summary>
+    public Guid? WarehouseId { get; init; }
 }

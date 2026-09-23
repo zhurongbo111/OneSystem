@@ -119,8 +119,8 @@ public sealed class UpdateProductRequestHandler : IRequestHandler<UpdateProductR
             throw;
         }
 
-        // 落库后重读当前库存，返回完整出参
-        var stockQuantity = await _inventoryRepository.GetQuantityAsync(product.Id, cancellationToken);
+        // 落库后重读当前库存（全组织合计，038），返回完整出参
+        var stockQuantity = await _inventoryRepository.GetTotalQuantityAsync(product.Id, cancellationToken);
         return ProductDtoMapper.ToProductDto(product, category.Name, stockQuantity);
     }
 }

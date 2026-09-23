@@ -24,6 +24,12 @@ public sealed record StockMovementListItemDto
     /// <summary>计量单位（联查 Products 带出）</summary>
     public required string Unit { get; init; }
 
+    /// <summary>仓库 ID（038）</summary>
+    public required string WarehouseId { get; init; }
+
+    /// <summary>仓库名称（联查 Warehouses 带出，038）</summary>
+    public required string WarehouseName { get; init; }
+
     /// <summary>变动类型（原始枚举，前端按 §0 表转文案 / 颜色）</summary>
     public required StockMovementType MovementType { get; init; }
 

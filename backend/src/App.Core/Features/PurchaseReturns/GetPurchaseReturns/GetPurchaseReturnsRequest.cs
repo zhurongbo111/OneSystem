@@ -29,4 +29,7 @@ public sealed class GetPurchaseReturnsRequest : IRequest<PagedResult<PurchaseRet
 
     /// <summary>结算状态（0 未结算 / 1 部分结算 / 2 已结算，按已结金额推导），可空</summary>
     public SettlementState? SettlementState { get; init; }
+
+    /// <summary>出库仓 id，可空（038；不传 = 全部仓）</summary>
+    public Guid? WarehouseId { get; init; }
 }

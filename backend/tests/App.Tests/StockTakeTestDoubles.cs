@@ -49,6 +49,7 @@ internal sealed class FakeStockTakeRepository : IStockTakeRepository
         StockTakeType? type,
         DateTimeOffset? start,
         DateTimeOffset? end,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -76,6 +77,12 @@ internal sealed class FakeStockTakeRepository : IStockTakeRepository
         {
             var e = end.Value;
             query = query.Where(t => t.TakeDate <= e);
+        }
+
+        if (warehouseId is not null)
+        {
+            var w = warehouseId.Value;
+            query = query.Where(t => t.WarehouseId == w);
         }
 
         var ordered = query.OrderByDescending(t => t.CreatedAt).ToList();
@@ -154,7 +161,8 @@ internal sealed class FakeProductRepository : IProductRepository
         => throw new NotSupportedException();
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(
+        Guid? warehouseId = null, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<ProductPickItem>>(Picks.ToList());
 
     /// <summary>批量取商品编码（erp-export 导出用）：与真实仓储同口径，缺失 id 不出现在结果中</summary>

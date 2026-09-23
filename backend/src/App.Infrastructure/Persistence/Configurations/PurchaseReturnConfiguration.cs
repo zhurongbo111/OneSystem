@@ -25,6 +25,11 @@ internal sealed class PurchaseReturnConfiguration : IEntityTypeConfiguration<Pur
             .HasMaxLength(PartnerFieldConstraints.NameMaxLength)
             .IsRequired()
             .HasColumnType("varchar(50)");
+        // 出库仓名称快照（038；长度与仓库名称同源）
+        builder.Property(r => r.WarehouseName)
+            .HasMaxLength(WarehouseFieldConstraints.NameMaxLength)
+            .IsRequired()
+            .HasColumnType("varchar(50)");
         builder.Property(r => r.ReturnDate).IsRequired();
         builder.Property(r => r.TotalAmount).IsRequired().HasColumnType("numeric(18,2)");
         builder.Property(r => r.SettledAmount).IsRequired().HasColumnType("numeric(18,2)").HasDefaultValue(0m);

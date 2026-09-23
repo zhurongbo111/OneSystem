@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Warehouses;
 
 namespace App.Core.Features.StockTakes.CreateStockTake;
 
@@ -21,6 +22,7 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
 
     private readonly IStockTakeRepository _stockTakeRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -33,6 +35,7 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
     public CreateStockTakeRequestHandler(
         IStockTakeRepository stockTakeRepository,
         IProductRepository productRepository,
+        IWarehouseRepository warehouseRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IUnitOfWork unitOfWork,
@@ -41,6 +44,7 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
     {
         _stockTakeRepository = stockTakeRepository;
         _productRepository = productRepository;
+        _warehouseRepository = warehouseRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
         _unitOfWork = unitOfWork;
@@ -82,11 +86,14 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
             }
         }
 
-        // 查库约束：期初建账只允许「从未发生库存变动」的商品（事务外快速失败，失败时不写任何数据）
+        // 盘点仓解析（038 §3.4 第 1 步）：入参可空 → 默认仓；指定仓不存在 40400、已停用 40123
+        var warehouse = await WarehouseResolver.ResolveAsync(_warehouseRepository, request.WarehouseId, cancellationToken);
+
+        // 查库约束：期初建账只允许「该仓从未发生库存变动」的商品（事务外快速失败，失败时不写任何数据）
         if (request.Type == StockTakeType.Initial)
         {
             var productIds = products.Keys.ToList();
-            var withMovements = await _stockMovementRepository.GetProductIdsWithMovementsAsync(productIds, cancellationToken);
+            var withMovements = await _stockMovementRepository.GetProductIdsWithMovementsAsync(productIds, warehouse.Id, cancellationToken);
             if (withMovements.Count > 0)
             {
                 throw new BusinessException(ErrorCode.StockInitialNotAllowed, "期初建账仅允许从未发生库存变动的商品");
@@ -106,8 +113,9 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
             {
                 var takeNo = await _stockTakeRepository.GenerateTakeNoAsync(request.TakeDate, cancellationToken);
 
-                // 事务内读账面（无库存行视为 0），重算差异；前后端差异值不信任前端
-                var bookQuantities = await _inventoryRepository.GetQuantitiesAsync(products.Keys.ToList(), cancellationToken);
+                // 事务内读**所选仓**账面（该仓无库存行视为 0），重算差异；前后端差异值不信任前端
+                var bookQuantities = await _inventoryRepository.GetQuantitiesAsync(
+                    warehouse.Id, products.Keys.ToList(), cancellationToken);
 
                 var items = new List<StockTakeItem>(request.Items.Count);
                 var diffItemCount = 0;
@@ -141,6 +149,8 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                     Id = Guid.NewGuid(),
                     TakeNo = takeNo,
                     Type = request.Type,
+                    WarehouseId = warehouse.Id,
+                    WarehouseName = warehouse.Name,
                     TakeDate = request.TakeDate,
                     ItemCount = items.Count,
                     DiffItemCount = diffItemCount,
@@ -167,29 +177,33 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                         continue;
                     }
 
-                    // 库存按实盘数量设定（原子）
-                    await _inventoryRepository.SetQuantityAsync(item.ProductId, item.ActualQuantity, cancellationToken);
+                    // 库存按实盘数量设定（原子，按所选仓）
+                    await _inventoryRepository.SetQuantityAsync(
+                        item.ProductId, warehouse.Id, item.ActualQuantity, cancellationToken);
 
-                    // 成本（erp-cost design §0.2）：期初按录入单价加权；盘点按当时移动加权均价（盘盈入 / 盘亏出）
+                    // 成本（erp-cost design §0.2）：期初按录入单价加权；盘点按该仓当时移动加权均价（盘盈入 / 盘亏出）
                     var unitCost = request.Type == StockTakeType.Initial
                         ? item.UnitCost
-                        : await _inventoryRepository.GetAverageCostAsync(item.ProductId, cancellationToken);
+                        : await _inventoryRepository.GetAverageCostAsync(item.ProductId, warehouse.Id, cancellationToken);
                     var absQuantity = Math.Abs(item.Difference);
                     var totalCost = CostCalculator.TotalCost(absQuantity, unitCost);
                     if (item.Difference > 0)
                     {
-                        await _inventoryRepository.ApplyInboundCostAsync(item.ProductId, absQuantity, unitCost, cancellationToken);
+                        await _inventoryRepository.ApplyInboundCostAsync(
+                            item.ProductId, warehouse.Id, absQuantity, unitCost, cancellationToken);
                     }
                     else
                     {
-                        await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+                        await _inventoryRepository.ApplyOutboundCostAsync(
+                            item.ProductId, warehouse.Id, totalCost, cancellationToken);
                     }
 
-                    // 流水：与库存设定同事务，变动量 = 差异（带符号），指向盘点单
+                    // 流水：与库存设定同事务，变动量 = 差异（带符号），指向盘点单并带变动仓
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
+                        WarehouseId = warehouse.Id,
                         MovementType = movementType,
                         Quantity = item.Difference,
                         UnitCost = unitCost,
@@ -209,6 +223,7 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                 var changeBuilder = new AuditChangeBuilder()
                     .Add("takeNo", "盘点单号", null, take.TakeNo)
                     .Add("type", "单据类型", null, AuditText.StockTakeType(take.Type))
+                    .Add("warehouseName", "盘点仓", null, take.WarehouseName)
                     .Add("takeDate", "盘点日期", null, AuditSummary.Date(take.TakeDate))
                     .Add("itemCount", "明细行数", null, AuditSummary.Count(take.ItemCount))
                     .Add("diffItemCount", "差异行数", null, AuditSummary.Count(take.DiffItemCount))
@@ -220,7 +235,7 @@ public sealed class CreateStockTakeRequestHandler : IRequestHandler<CreateStockT
                     Action = AuditAction.Adjust,
                     ResourceId = take.Id,
                     ResourceNo = take.TakeNo,
-                    Summary = $"{AuditText.StockTakeType(take.Type)} {take.TakeNo}：{AuditSummary.Count(take.ItemCount)} 行、差异 {AuditSummary.Count(take.DiffItemCount)} 行、涉及 {involvedText}",
+                    Summary = $"{AuditText.StockTakeType(take.Type)} {take.TakeNo}（{take.WarehouseName}）：{AuditSummary.Count(take.ItemCount)} 行、差异 {AuditSummary.Count(take.DiffItemCount)} 行、涉及 {involvedText}",
                     Changes = changeBuilder.Build(),
                     ChangesTruncated = changeBuilder.Truncated,
                     UtcNow = now,

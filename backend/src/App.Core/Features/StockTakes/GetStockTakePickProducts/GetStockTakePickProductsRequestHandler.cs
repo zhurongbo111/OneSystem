@@ -1,14 +1,18 @@
 using App.Core.Abstractions;
+using App.Core.Features.Warehouses;
 
 namespace App.Core.Features.StockTakes.GetStockTakePickProducts;
 
 /// <summary>
-/// 盘点商品选择用例：IProductRepository.GetPickListAsync（启用商品 + 当前库存，已过滤）
-/// 叠加 IStockMovementRepository.GetProductIdsWithMovementsAsync 得到 hasMovements 标记（期初模式据此标注「已建账」）。
+/// 盘点商品选择用例：IProductRepository.GetPickListAsync（启用商品）叠加
+/// IInventoryRepository.GetQuantitiesAsync（**所选仓**账面，038）与
+/// IStockMovementRepository.GetProductIdsWithMovementsAsync（**该仓**是否已发生变动，期初模式据此标注「已建账」）。
 /// </summary>
 public sealed class GetStockTakePickProductsRequestHandler : IRequestHandler<GetStockTakePickProductsRequest, IReadOnlyList<StockTakeProductPickDto>>
 {
     private readonly IProductRepository _productRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
 
     /// <summary>
@@ -16,9 +20,13 @@ public sealed class GetStockTakePickProductsRequestHandler : IRequestHandler<Get
     /// </summary>
     public GetStockTakePickProductsRequestHandler(
         IProductRepository productRepository,
+        IWarehouseRepository warehouseRepository,
+        IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository)
     {
         _productRepository = productRepository;
+        _warehouseRepository = warehouseRepository;
+        _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
     }
 
@@ -27,18 +35,26 @@ public sealed class GetStockTakePickProductsRequestHandler : IRequestHandler<Get
     /// </summary>
     /// <param name="request">请求</param>
     /// <param name="cancellationToken">取消令牌</param>
-    public async Task<IReadOnlyList<StockTakeProductPickDto>> HandleAsync(GetStockTakePickProductsRequest request, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StockTakeProductPickDto>> HandleAsync(
+        GetStockTakePickProductsRequest request, CancellationToken cancellationToken = default)
     {
-        // 启用商品 + 当前库存（仓储已过滤启用状态，Handler 不重复过滤）
-        var picks = await _productRepository.GetPickListAsync(cancellationToken);
+        // 盘点仓解析（038）：入参可空 → 默认仓；账面与「已建账」标记均按该仓计算
+        var warehouse = await WarehouseResolver.ResolveAsync(_warehouseRepository, request.WarehouseId, cancellationToken);
+
+        // 启用商品（仓储已过滤启用状态，Handler 不重复过滤）；
+        // 038：库存仍按**所选仓**覆盖（下方 GetQuantitiesAsync），故这里不按仓取品项
+        var picks = await _productRepository.GetPickListAsync(null, cancellationToken);
         if (picks.Count == 0)
         {
             return Array.Empty<StockTakeProductPickDto>();
         }
 
-        // 批量标注「是否已发生库存变动」（期初模式据此禁用已建账商品）
         var productIds = picks.Select(p => p.Id).ToList();
-        var withMovements = await _stockMovementRepository.GetProductIdsWithMovementsAsync(productIds, cancellationToken);
+
+        // 该仓账面（批量一次取数，避免逐商品 N+1）与该仓「已发生库存变动」商品集合
+        var quantities = await _inventoryRepository.GetQuantitiesAsync(warehouse.Id, productIds, cancellationToken);
+        var withMovements = await _stockMovementRepository.GetProductIdsWithMovementsAsync(
+            productIds, warehouse.Id, cancellationToken);
         var withMovementsSet = new HashSet<Guid>(withMovements);
 
         return picks.Select(p => new StockTakeProductPickDto
@@ -47,7 +63,7 @@ public sealed class GetStockTakePickProductsRequestHandler : IRequestHandler<Get
             Code = p.Code,
             Name = p.Name,
             Unit = p.Unit,
-            StockQuantity = p.StockQuantity,
+            StockQuantity = quantities.TryGetValue(p.Id, out var quantity) ? quantity : 0,
             HasMovements = withMovementsSet.Contains(p.Id),
         }).ToList();
     }

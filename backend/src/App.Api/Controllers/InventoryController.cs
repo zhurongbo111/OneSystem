@@ -6,6 +6,7 @@ using App.Core.Auth;
 using App.Core.Features.Inventory;
 using App.Core.Features.Inventory.ExportInventory;
 using App.Core.Features.Inventory.GetInventory;
+using App.Core.Features.Inventory.UpdateInventorySafetyStock;
 using App.Core.Responses;
 
 using Microsoft.AspNetCore.Authorization;
@@ -38,6 +39,16 @@ public class InventoryController : ControllerBase
     [HttpGet]
     [RequirePermission(Permissions.InventoryView)]
     public async Task<ApiResponse<PagedResult<InventoryItemDto>>> GetInventory([FromQuery] GetInventoryRequest request, CancellationToken cancellationToken)
+        => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 维护「商品 × 仓库」的仓级安全库存（038；低库存判定的唯一来源）
+    /// </summary>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<UpdateInventorySafetyStockResponse>))]
+    [HttpPut("safety-stock")]
+    [RequirePermission(Permissions.InventoryUpdate)]
+    public async Task<ApiResponse<UpdateInventorySafetyStockResponse>> UpdateSafetyStock(
+        [FromBody] UpdateInventorySafetyStockRequest request, CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
 
     /// <summary>
