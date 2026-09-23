@@ -23,8 +23,8 @@ backend/
 
 **命名规律**（据此定位，不逐一列举）：
 
-- `App.Core/Abstractions/`：仓储（`I<实体>Repository`）、`IUnitOfWork`、中介（`IMediator` / `IRequest` / `IRequestHandler`）、`ICurrentUser`(Extensions)、`IClientInfo`、`IExcelExporter`、审计写入 `IAuditLogger` 与 `IAuditLogRepository` 等接口，以及跨用例**读模型**（命名 `<实体><用途>`，创建判据见后端规则 §4.3；`030` 组织人事读模型 `DepartmentTreeNode` / `PositionListItem` / `PositionPickItem` / `EmployeeListItem` / `EmployeeDetail` / `EmployeePickUserItem`，`031` 财务主数据读模型 `AccountTreeNode` / `TaxRateListItem`，`032` 发票读模型 `InvoicableOrderItem` / `InvoiceListItem`，`033` 总账读模型 `AccountBalanceItem` / `BalanceSheet` / `BalanceSheetItem` / `IncomeStatementItem`；`036` 客户价格读模型 `PartnerPriceListItem` / `EffectivePriceItem`）；完整清单用目录列表获取。
-- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）/ `OrderFlowStatus`（024，订单流转状态：待收货 / 部分收货 / 已完成 / 已关闭 / 已作废）/ `AuditResource` / `AuditAction`（029，操作日志的资源类型 / 动作；实体 `AuditLog` 为**纯追加表**，无 `UpdatedAt` / `UpdatedBy`）/ `DepartmentStatus` / `PositionStatus` / `EmployeeStatus` / `Gender`（030，组织主数据与员工档案；实体 `Department`（`ParentId` 自引用树）/ `Position` / `Employee`）；`AccountCategory`（5 值）/ `AccountDirection` / `AccountStatus` / `TaxRateStatus`（031，财务主数据；实体 `Account`（`ParentId` 自引用树 + `IsPreset` 预置不可删）/ `TaxRate`）；`InvoiceType`（032，发票登记；实体 `Invoice` / `InvoiceItem`，关联单据类型复用 023 的 `SettlementOrderType`）；`PeriodStatus` / `VoucherSourceType` / `VoucherStatus`（033，总账；实体 `AccountingPeriod`（按年月唯一）/ `Voucher` / `VoucherEntry`（凭证主子表，金额快照到分录）/ `AccountMapping`（按 `Key` 唯一，指向 `031` 的 `Account`））。
+- `App.Core/Abstractions/`：仓储（`I<实体>Repository`）、`IUnitOfWork`、中介（`IMediator` / `IRequest` / `IRequestHandler`）、`ICurrentUser`(Extensions)、`IClientInfo`、`IExcelExporter`、审计写入 `IAuditLogger` 与 `IAuditLogRepository` 等接口，以及跨用例**读模型**（命名 `<实体><用途>`，创建判据见后端规则 §4.3；`030` 组织人事读模型 `DepartmentTreeNode` / `PositionListItem` / `PositionPickItem` / `EmployeeListItem` / `EmployeeDetail` / `EmployeePickUserItem`，`031` 财务主数据读模型 `AccountTreeNode` / `TaxRateListItem`，`032` 发票读模型 `InvoicableOrderItem` / `InvoiceListItem`，`033` 总账读模型 `AccountBalanceItem` / `BalanceSheet` / `BalanceSheetItem` / `IncomeStatementItem`；`036` 客户价格读模型 `PartnerPriceListItem` / `EffectivePriceItem`；`037` 报价单读模型 `QuotationListItem`（主表 + 明细行数），详情走「主表 + 明细」元组）；完整清单用目录列表获取。
+- `App.Core/Entities/`：每实体一个 `<实体>.cs` + `<实体>FieldConstraints.cs`（字段约束常量）；枚举 `UserStatus` / `ProductStatus` / `PartnerType` / `PartnerStatus` / `OrderStatus` / `StockMovementType`（10 值）/ `StockTakeType`（020，期初建账 / 库存盘点）/ `SettlementType` / `SettlementMethod` / `SettlementOrderType` / `SettlementState`（023，结算推导态）/ `OrderFlowStatus`（024，订单流转状态：待收货 / 部分收货 / 已完成 / 已关闭 / 已作废）/ `AuditResource` / `AuditAction`（029，操作日志的资源类型 / 动作；实体 `AuditLog` 为**纯追加表**，无 `UpdatedAt` / `UpdatedBy`）/ `DepartmentStatus` / `PositionStatus` / `EmployeeStatus` / `Gender`（030，组织主数据与员工档案；实体 `Department`（`ParentId` 自引用树）/ `Position` / `Employee`）；`AccountCategory`（5 值）/ `AccountDirection` / `AccountStatus` / `TaxRateStatus`（031，财务主数据；实体 `Account`（`ParentId` 自引用树 + `IsPreset` 预置不可删）/ `TaxRate`）；`InvoiceType`（032，发票登记；实体 `Invoice` / `InvoiceItem`，关联单据类型复用 023 的 `SettlementOrderType`）；`PeriodStatus` / `VoucherSourceType` / `VoucherStatus`（033，总账；实体 `AccountingPeriod`（按年月唯一）/ `Voucher` / `VoucherEntry`（凭证主子表，金额快照到分录）/ `AccountMapping`（按 `Key` 唯一，指向 `031` 的 `Account`））；`QuotationStatus`（3 值，`037` 报价单：草稿 / 已转订单 / 已作废；实体 `Quotation` / `QuotationItem`，快照列复用既有约束常量、不新建常量类）。
 - 其他 Core 类型：`Auth/`（`JwtOptions`、`PasswordHasher`、`TokenService`、`Permissions`）、`Errors/`（`BusinessException`、`ErrorCode`、`OrderNoConflictException`）、`Mediation/Mediator`（分发前统一跑 Validator）、`Audit/`（029：`AuditEntry` / `AuditChangeBuilder`（只记变化 + 敏感字段黑名单 + 超长截断）/ `AuditSummary`（金额 / 数量 / 日期 / 集合格式化）/ `AuditText`（枚举中文文案））。
 - **收付款单出参（`034` 改造）**：`Settlement` 增可空 `BankAccountId`，列表 / 详情联查账户名，故 `ISettlementRepository` 出参由实体改为读模型 `SettlementListItem` / `SettlementDetail`（`Abstractions/`）。
 - `App.Infrastructure/Repositories/` 每实体一个 `<实体>Repository.cs`；`Persistence/Configurations/` 每实体一个 `<实体>Configuration.cs`；`Persistence/` 另有 `UnitOfWork`、`DatabaseInitializer`。
@@ -94,6 +94,14 @@ backend/
 - 用例：`Features/PartnerPrices/`（列表 / 新增 / 详情 / 编辑 / 删除 / 批量取价 / 导出）；端点 `PartnerPricesController`（`effective` 与 `export` 固定段置于 `{id:guid}` 之前）；权限点 `partnerPrices.*`（含 `export`）；错误码 `40130`（信用额度超限）/ `40131`（协议价重复）。
 - 横向改造：`CreatePartner` / `UpdatePartner` **两侧同源**携带账期与额度（新增侧漏字段曾致额度不生效）；`SalesShipments/CreateSalesShipment` 追加信用校验（位于扣库存之前）；`Settlements/GetReconciliation` 追加账期 / 到期日 / 逾期列与 `overdueOnly` 筛选，未结单据候选与销售详情出参追加 `dueDate`（到期日一律后端按「单据日期 + 账期」推导）。导出已登记 `027` §0.1；写用例已接入操作日志（`029` §0.1 续行）；前端域 `PartnerPriceManagement/`。
 
+**报价单（erp-quotation，`037`）**（后端 + 前端已交付）：
+
+- 实体 `Quotation`（`QuotationNo` 唯一 + 客户名称快照 + 可空 `ValidUntil`（`date`）+ 转单回写 `ConvertedOrderId` / `ConvertedOrderNo`）/ `QuotationItem`（名称 / 单位 / 单价快照）+ `QuotationStatus` 枚举；字段约束复用 `OrderFieldConstraints` / `PartnerFieldConstraints` / `ProductFieldConstraints`（**无新常量类**）。
+- 仓储 `IQuotationRepository`（分页含明细行数聚合 / 详情 / 增改（明细全量替换）/ 状态回写 / 单号生成 `QT`）。
+- 用例：`Features/Quotations/`（列表 / 新增 / 详情 / 编辑 / 作废 / 转销售订单）；端点 `QuotationsController`；权限点 `quotations.view/create/update/void/convert`；错误码 `40166`（非草稿不可编辑 / 作废）/ `40167`（不可转单）。
+- `ConvertToOrder` 为**跨仓储写**：同一事务内建销售订单（明细按报价原样复制、订单日期 = 转单当天）+ 回写报价单（置 `Converted`），报价单**只能转一次**；取价复用 `036` 的 `GET /api/partner-prices/effective`（不改 `036`）。
+- 报价单是意向单据：不触碰库存台账 / 库存流水 / 收付款；写用例已接入操作日志（`029` §0.1 续行）；前端域 `QuotationManagement/`。
+
 **基准参照**：
 
 - 后端用例脚手架：`Features/Auth/Login`（四件套）、`Features/Users/GetCurrentUser`（无参用例形态）；分发与全局校验见 `Core/Mediation/Mediator.cs`。
@@ -119,7 +127,7 @@ frontend/
 ├── e2e/        # 每功能域一个或多个 <域名>.spec.ts（kebab-case 功能短名，命名判据见前端规则 §10）+ helpers/（菜单点击 / 表格搜索 / 重试点击 / 登录 loginAs / 消息断言 expectMessage，判据见前端规则 §10.1）+ global-setup.ts（冷启动预热，见前端规则 §10）；权限用例见 `rbac.spec.ts`（最小权限角色经接口构造 fixture）
 └── src/
     ├── main.ts / App.vue / env.d.ts
-    ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流；`40300` 与 `40000` 同处置：统一 `Message.error`）+ 按业务域拆分 <entity>.ts（`030` 起组织人事拆 department.ts / position.ts / employee.ts，`031` 财务主数据拆 account.ts / taxRate.ts，`032` 发票拆 invoice.ts）+ voucher.ts / financialReport.ts（033，凭证 / 期间 / 科目映射 / 三大报表）+ bankAccount.ts（034，资金账户 CRUD / 余额总览 / 资金日记账）+ partnerPrice.ts（036，客户协议价 CRUD / 批量取价 / 生效价类型与来源标签）+ export.ts（13 个列表导出）+ role.ts（角色 CRUD 与权限点分组清单，中文名由后端返回）+ auditLog.ts（操作日志查询 + 资源 / 动作文案与着色常量，`029`）
+    ├── api/         # request.ts（统一解包 / 40100 处置 / downloadBlob 文件下载与契约例外分流；`40300` 与 `40000` 同处置：统一 `Message.error`）+ 按业务域拆分 <entity>.ts（`030` 起组织人事拆 department.ts / position.ts / employee.ts，`031` 财务主数据拆 account.ts / taxRate.ts，`032` 发票拆 invoice.ts）+ voucher.ts / financialReport.ts（033，凭证 / 期间 / 科目映射 / 三大报表）+ bankAccount.ts（034，资金账户 CRUD / 余额总览 / 资金日记账）+ partnerPrice.ts（036，客户协议价 CRUD / 批量取价 / 生效价类型与来源标签）+ quotation.ts（037，报价单 CRUD / 作废 / 转销售订单）+ export.ts（13 个列表导出）+ role.ts（角色 CRUD 与权限点分组清单，中文名由后端返回）+ auditLog.ts（操作日志查询 + 资源 / 动作文案与着色常量，`029`）
     ├── components/  # AppLayout.vue（侧边菜单多顶级分组：示例页面 / 基础档案 / 采购 / 销售 / 库存 / 资金（含客户价格 / 发票登记）/ 财务 / 报表 / 系统；子菜单默认折叠、仅当前分组自动展开；菜单项按 `MENU_PERMISSIONS` 权限过滤，分组内无可见子项则整组隐藏，`028`）、SettlementRecords.vue（四类单据详情「收付款明细」只读反查，`023`）
     ├── composables/ # useOrderStore.ts（演示用）
     ├── router/ stores/ utils/   # index.ts（路由懒加载；`ROUTE_PERMISSIONS` 集中登记「路由名 → 权限点」并注入 `meta.permission`，守卫未登录跳登录页、无权限跳 `/403`；另含 6 条顶层 `print/...` 打印路由与顶层 `/403`，均不进 AppLayout）/ auth.ts（Pinia：token / user / permissions + `hasPermission` / `hasAnyPermission` / `fetchPermissions`）/ datetime.ts / settlement.ts（结算状态文案与颜色）
@@ -144,6 +152,7 @@ frontend/
   - `GeneralLedgerManagement/` 为总账域（`033`）：凭证列表（工具条「手工凭证 / 科目映射 / 期间管理」抽屉入口）/ 手工凭证页（独立页，分录子表 + 借贷差额提示）/ 凭证详情（主表 + 分录表）/ 财务报表（三 tab：科目余额表 / 资产负债表 / 利润表）平铺在同一域目录；期间结账与科目映射均以抽屉承载。
   - `CashManagement/` 为资金出纳域（`034`）：资金账户（余额总览卡片 + 列表 + 抽屉表单）/ 资金日记账（账户 + 日期范围筛选，期初 / 流水 / 期末）两页平铺在同一域目录；收付款开单页（`023`）的「资金账户」下拉按结算方式过滤账户类型。
   - `PartnerPriceManagement/` 为客户价格域（`036`）：客户协议价列表单页（筛选 + 协议价 / 销售价对比 + 导出 + 行内删除回退默认价），新增 / 编辑共用 `PartnerPriceFormDrawer.vue` 抽屉（客户与商品不可改）。
+  - `QuotationManagement/` 为报价单域（`037`）：列表 / 新建（含明细子表 + 选客户批量取价并标注来源，与 `SaleFormPage` 同一取价交互）/ 详情（转单信息 + 转单 / 编辑 / 作废）三页平铺在同一域目录，编辑与新建共用 `QuotationFormPage.vue`；状态文案与「已过期」判据在 `utils/quotation.ts`（§0.1 唯一来源）。
 
 **图标选型**：业务图标（侧边菜单、列表工具条、操作列）统一 Tabler（`@tabler/icons-vue`）；仅「图标」示例页为演示保留三套并存；优先级见前端规则 §4.7。
 
@@ -179,7 +188,7 @@ frontend/
 
 ## 6. 现有功能规格（specs/）
 
-`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。范围规律：工程与前端交互模式为 `001`–`011`、`018`，业务为 `009`，ERP 为 `012`–`034`、`036`（已实现）与 `037`–`045`（已起草未实现，**无待起草模块**；其中 `035` 计量单位字典已定性**范围外不做**，见 `specs/ROADMAP.md` §7）。`028` 为**横向改造**（角色域 + 为 `012`–`027` 全部动作补权限点），权限点清单唯一来源 `specs/028-erp-rbac/design.md` §0.2、白名单 §0.4；各域 `design.md` 均带「演进（erp-rbac）」指针注记。`029` 为**横向能力**（为 `012`–`028` 各写路径追加操作日志 + 2 个只读查询接口 + 只读日志页），覆盖范围表唯一来源 `specs/029-erp-audit-log/design.md` §0.1；受影响各域 `design.md` 带「演进（erp-audit-log）」指针注记。
+`specs/` 下目录名为 `<三位序号>-<功能名>`，序号 = **既定实现顺序**（规则见 `AGENTS.md` §2.1 / §2.5），**按名称排序即实现顺序**；**完整清单用目录列表获取**，功能名指代不含序号。范围规律：工程与前端交互模式为 `001`–`011`、`018`，业务为 `009`，ERP 为 `012`–`034`、`036`、`037`（已实现）与 `038`–`045`（已起草未实现，**无待起草模块**；其中 `035` 计量单位字典已定性**范围外不做**，见 `specs/ROADMAP.md` §7）。`028` 为**横向改造**（角色域 + 为 `012`–`027` 全部动作补权限点），权限点清单唯一来源 `specs/028-erp-rbac/design.md` §0.2、白名单 §0.4；各域 `design.md` 均带「演进（erp-rbac）」指针注记。`029` 为**横向能力**（为 `012`–`028` 各写路径追加操作日志 + 2 个只读查询接口 + 只读日志页），覆盖范围表唯一来源 `specs/029-erp-audit-log/design.md` §0.1；受影响各域 `design.md` 带「演进（erp-audit-log）」指针注记。
 
 `specs/ROADMAP.md` 是 ERP **全域**（内核 + 外围系统）的**路线索引**（单文件，非 spec 目录、无三件套）：记录模块边界（§1）、模块地图（§2）、覆盖矩阵（§3）、阶段路线 P1–P6（§4.2），并写明跨功能前置决策（多仓 / 结算 / 权限 / 组织等）。接续 ERP 功能前先读它，再进具体规格。
 
