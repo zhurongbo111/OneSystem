@@ -162,7 +162,8 @@ updated: 2026-09-22
 |---|---|---|---|
 | 商品 | `CreateProduct` / `UpdateProduct` / `UpdateProductStatus` | `Create` / `Update` / `StatusChange` | 更新记名称 / 分类 / 单位 / 采购价 / 销售价 / 安全库存 / 备注的前后值 |
 | 分类 | `CreateCategory` / `UpdateCategory` / `DeleteCategory` | `Create` / `Update` / `Delete` | 名称前后值 |
-| 往来单位 | `CreatePartner` / `UpdatePartner` / `UpdatePartnerStatus` | 同上 | 类型 / 联系人 / 电话 / 地址 / 备注 |
+| 往来单位 | `CreatePartner` / `UpdatePartner` / `UpdatePartnerStatus` | 同上 | 类型 / 联系人 / 电话 / 地址 / 备注 / 账期天数 / 信用额度（`036` 续行） |
+| 客户价格（`036`） | `CreatePartnerPrice` / `UpdatePartnerPrice` / `DeletePartnerPrice` | `Create` / `Update` / `Delete` | 客户 / 商品 / 协议单价 / 备注的前后值（删除只记资源标识） |
 | 用户 | `CreateUser` / `UpdateUser` / `UpdateUserStatus` / `ResetPassword` | `Create` / `Update` / `StatusChange` | 显示名 / 邮箱 / 手机号 / 状态 / 角色集合；**重置密码只记「已重置」不记内容** |
 | 角色 | `CreateRole` / `UpdateRole` / `DeleteRole` | `Create` / `Update` / `Delete` | 名称 / 备注 / 权限点增删差异文本 |
 | 单据（采购 / 销售 / 退货） | `Create*` / `Void*` / `Update*Settlement` | `Create` / `Void` / `Settle` | 单号 / 往来 / 金额 / 明细行数 / 状态前后值 |

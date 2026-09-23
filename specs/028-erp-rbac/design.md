@@ -41,7 +41,7 @@ updated: 2026-09-23
 | 收付款 | `settlements` | `view` / `create` / `void` / `export` | `/api/settlements*`、`/settlements` |
 | 往来对账 | `reconciliation` | `view` | `/api/reconciliation`、`/reconciliation` |
 | 发票（`032`） | `invoices` | `view` / `create` / `void` / `export` | `/api/invoices*`、`/invoices` |
-| 客户价格（`036`） | `partnerPrices` | `view` / `create` / `update` / `delete` | `/api/partner-prices*`、`/partner-prices` |
+| 客户价格（`036`） | `partnerPrices` | `view` / `create` / `update` / `delete` / `export` | `/api/partner-prices*`、`/partner-prices` |
 | 报表 | `reports` | `view` / `export` | `/api/reports/*`、`/reports/*`（5 个报表页共用） |
 | 成本重算 | `costs` | `recalculate` | `/api/costs/recalculate`、成本报表页操作行 |
 | 用户管理 | `users` | `view` / `create` / `update` / `status` / `resetPassword` | `/api/users*`、`/users` |

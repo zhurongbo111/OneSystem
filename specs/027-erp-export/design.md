@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：列表导出 Excel 与单据打印（erp-export）
@@ -49,6 +49,7 @@ updated: 2026-09-22
 | 采购汇总 | `GET /api/reports/purchase-summary/export` | `Reports/ExportPurchaseSummary` | 1 张（含合计行） |
 | 销售汇总 | `GET /api/reports/sales-summary/export` | `Reports/ExportSalesSummary` | 1 张（含合计行） |
 | 成本与毛利 | `GET /api/reports/cost-profit/export` | `Reports/ExportCostProfit` | 1 张（含合计行） |
+| 客户价格（`036` 续行） | `GET /api/partner-prices/export` | `PartnerPrices/ExportPartnerPrices` | 1 张（含协议价与商品销售价对比） |
 
 - **导出参数 = 该列表 / 报表的既有筛选参数**（忽略 `page` / `pageSize`，后端按 `page = 1, pageSize = 上限` 取数）；单据类明细工作表首列固定为所属单号。
 - **路由与用例名修正（对齐 `024-erp-order-flow` 落地的重命名，2026-09-20）**：本表起草早于 `024` 的表 / 接口重命名，原「采购入库 `purchase-orders` / `Purchases`」「销售出库 `sales-orders` / `Sales`」已失效；实现以现状域为准——采购入库 = `api/purchase-receipts` + `Features/PurchaseReceipts/ExportPurchaseReceipts`，销售出库 = `api/sales-shipments` + `Features/SalesShipments/ExportSalesShipments`（列表列定义与筛选参数同样取对应域 `design.md` §4.4）。

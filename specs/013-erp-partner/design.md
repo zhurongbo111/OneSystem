@@ -10,6 +10,7 @@ updated: 2026-09-22
 > 本规格为进销存功能组往来单位域，开单下拉数据源的消费方为 erp-purchase / erp-sale。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `partners.view` / `create` / `update` / `status` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-audit-log）**：本域往来单位（创建 / 更新 / 启停）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
+> **演进（erp-partner-price）**：`Partners` 追加 `PaymentTermDays`（账期天数，0 = 现结）与 `CreditLimit`（信用额度，0 = 不限），**新增与编辑两侧请求 / 出参 / 校验同源**（全量覆盖语义，`AGENTS.md` §4.5）；字段上下界常量续行在 `PartnerFieldConstraints`（`PaymentTermDaysMaxValue` / `CreditLimitMaxValue`），前端抽屉追加两字段。字段口径与用途见 `specs/036-erp-partner-price/design.md` §0.2 / §0.3 / §3.5。
 
 ## 1. 总体设计
 

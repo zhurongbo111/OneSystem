@@ -14,6 +14,7 @@ updated: 2026-09-23
 > **演进（erp-invoice）**：`SettlementOrderType` 语义已泛化为「**可关联单据类型**」并被 `specs/032-erp-invoice/design.md` §0.2 复用（发票关联单据共用该枚举，不新建同形枚举）；取值与命名不变，后续若改名（如 `BusinessOrderType`）两规格同步。
 > **演进（erp-general-ledger）**：本域收付款单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（收款：借现金 / 银行存款、贷「应收账款」；付款：借「应付账款」、贷现金 / 银行存款，现金科目按结算方式选取）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
 > **演进（erp-cash）**：收付款单增可空 `BankAccountId`（外键 → `BankAccounts(Id)`），结算方式与账户类型需匹配（现金 ↔ 现金账户 / 银行转账 ↔ 银行账户，不匹配 `40162`）；列表 / 详情出参增 `bankAccountName`（联查带出，故仓储出参由 `Settlement` 实体改为读模型 `SettlementListItem` / `SettlementDetail`）。账户本体与资金日记账见 `specs/034-erp-cash/design.md` §2 / §3。
+> **演进（erp-partner-price）**：`ISettlementQueryRepository` 追加 `GetReceivableAmountAsync(partnerId)`（应收口径与 §0 完全一致，供 `036` 的信用额度校验复用，不另立口径）；往来对账读模型与出参追加账期与逾期字段（`paymentTermDays` / `earliestDueDate` / `maxOverdueDays` / `overdueOrderCount`）+ `overdueOnly` 筛选，未结单据候选出参加 `dueDate`（到期日一律由后端按「单据日期 + 账期」推导，前端不做日期加减）。字段与判据见 `specs/036-erp-partner-price/design.md` §0.3 / §2.3.1。
 
 ## 0. 结算口径约定（唯一事实源）
 
