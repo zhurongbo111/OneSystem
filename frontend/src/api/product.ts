@@ -105,9 +105,12 @@ export function updateProductStatus(id: string, status: ProductStatus): Promise<
   return put<Product>(`/products/${id}/status`, { status })
 }
 
-/** 开单商品选择（仅启用商品，供 erp-purchase / erp-sale 消费） */
-export function getProductPickList(): Promise<ProductPickItem[]> {
-  return get<ProductPickItem[]>('/products/pick')
+/**
+ * 开单商品选择（仅启用商品，供 erp-purchase / erp-sale 消费）
+ * @param warehouseId 仓库 id（038；传仓则 stockQuantity 为该仓数量，不传为各仓合计）
+ */
+export function getProductPickList(warehouseId?: string): Promise<ProductPickItem[]> {
+  return get<ProductPickItem[]>('/products/pick', { params: warehouseId ? { warehouseId } : undefined })
 }
 
 /** 分类分页查询参数（对应后端 GetCategoriesPagedRequest） */

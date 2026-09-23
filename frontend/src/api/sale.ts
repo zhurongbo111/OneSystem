@@ -17,6 +17,10 @@ export interface SalesShipmentListItem {
   orderId: string | null
   /** 关联销售订单号快照（可空） */
   orderNo: string | null
+  /** 出库仓 id（038） */
+  warehouseId: string
+  /** 出库仓名称快照（038） */
+  warehouseName: string
   totalAmount: number
   settledAmount: number
   unsettledAmount: number
@@ -58,6 +62,8 @@ export interface SalesShipmentQuery {
   partnerId?: string
   /** 关联销售订单 id（订单详情的「关联出库单」列表用） */
   orderId?: string
+  /** 出库仓 id，可空（038；不传 = 全部仓） */
+  warehouseId?: string
   start?: string
   end?: string
   settlementState?: SettlementState
@@ -90,6 +96,8 @@ export interface SalesFormLine {
 export interface CreateSalesShipmentPayload {
   partnerId: string
   orderDate: string
+  /** 出库仓 id（038；不传 = 默认仓，前端一律显式传仓） */
+  warehouseId?: string
   /** 关联销售订单 id（可选） */
   orderId?: string
   items: { productId: string; quantity: number; unitPrice: number; orderItemId?: string }[]

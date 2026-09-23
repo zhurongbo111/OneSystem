@@ -17,6 +17,10 @@ export interface PurchaseReceiptListItem {
   orderId: string | null
   /** 关联采购订单号快照（可空） */
   orderNo: string | null
+  /** 入库仓 id（038） */
+  warehouseId: string
+  /** 入库仓名称快照（038） */
+  warehouseName: string
   totalAmount: number
   settledAmount: number
   unsettledAmount: number
@@ -56,6 +60,8 @@ export interface PurchaseReceiptQuery {
   partnerId?: string
   /** 关联采购订单 id（订单详情的「关联入库单」列表用） */
   orderId?: string
+  /** 入库仓 id，可空（038；不传 = 全部仓） */
+  warehouseId?: string
   start?: string
   end?: string
   settlementState?: SettlementState
@@ -88,6 +94,8 @@ export interface PurchaseFormLine {
 export interface CreatePurchaseReceiptPayload {
   partnerId: string
   orderDate: string
+  /** 入库仓 id（038；不传 = 默认仓，前端一律显式传仓） */
+  warehouseId?: string
   /** 关联采购订单 id（可选） */
   orderId?: string
   items: { productId: string; quantity: number; unitPrice: number; orderItemId?: string }[]

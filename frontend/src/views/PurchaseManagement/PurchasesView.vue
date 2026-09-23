@@ -11,6 +11,8 @@ import {
   voidPurchaseReceipt,
   type PurchaseReceiptListItem,
 } from '@/api/purchase'
+import { getWarehousePickList } from '@/api/warehouse'
+import type { WarehousePickItem } from '@/api/warehouse'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import {
@@ -57,15 +59,20 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-/** 关键词 / 供应商 / 日期范围 / 结算：输入态与已应用态分离（点搜索才生效） */
+/** 关键词 / 供应商 / 入库仓 / 日期范围 / 结算：输入态与已应用态分离（点搜索才生效） */
 const keywordInput = ref('')
 const partnerInput = ref<string | undefined>(undefined)
+const warehouseInput = ref<string | undefined>(undefined)
 const dateRangeInput = ref<string[] | undefined>(undefined)
 const settlementInput = ref<SettlementState | undefined>(undefined)
 const appliedKeyword = ref('')
 const appliedPartner = ref<string | undefined>(undefined)
+const appliedWarehouse = ref<string | undefined>(undefined)
 const appliedRange = ref<[string, string] | null>(null)
 const appliedSettlement = ref<SettlementState | undefined>(undefined)
+
+/** 仓库下拉数据源（仅启用仓，038） */
+const warehouses = ref<WarehousePickItem[]>([])
 
 /** 供应商下拉数据源（全量拉取后前端筛「供应商 / 两者」，后端查询仅支持单值 type） */
 const partners = ref<Partner[]>([])
@@ -78,7 +85,7 @@ const supplierOptions = computed(() =>
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
 const tableKey = computed(
-  () => `${appliedKeyword.value}|${appliedPartner.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}|${appliedSettlement.value ?? ''}`,
+  () => `${appliedKeyword.value}|${appliedPartner.value ?? ''}|${appliedWarehouse.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}|${appliedSettlement.value ?? ''}`,
 )
 
 /** 服务端分页配置 */
@@ -96,6 +103,7 @@ const columnOptions = [
   { label: '单号', value: 'receiptNo' },
   { label: '关联订单', value: 'orderNo' },
   { label: '供应商', value: 'partnerName' },
+  { label: '入库仓', value: 'warehouseName' },
   { label: '单据日期', value: 'orderDate' },
   { label: '总金额', value: 'totalAmount' },
   { label: '结算状态', value: 'settlement' },
@@ -108,6 +116,7 @@ const visibleColumns = ref<string[]>([
   'receiptNo',
   'orderNo',
   'partnerName',
+  'warehouseName',
   'orderDate',
   'totalAmount',
   'settlement',
@@ -132,6 +141,10 @@ const columns = computed<TableColumnData[]>(() => {
       ellipsis: true,
       tooltip: true,
     })
+  }
+  if (visibleColumns.value.includes('warehouseName')) {
+    // 入库仓（038）：单据保存即固化，此处只读展示
+    cols.push({ title: '入库仓', dataIndex: 'warehouseName', width: 140, ellipsis: true, tooltip: true })
   }
   if (visibleColumns.value.includes('orderDate')) {
     cols.push({ title: '单据日期', slotName: 'orderDate', width: 110 })
@@ -159,12 +172,14 @@ const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.wi
 onMounted(async () => {
   void fetchList()
   try {
-    const [supplier, both] = await Promise.all([
+    const [supplier, both, warehousePicks] = await Promise.all([
       getPartners({ type: 1, status: 1, page: 1, pageSize: 100 }),
       getPartners({ type: 3, status: 1, page: 1, pageSize: 100 }),
+      getWarehousePickList(),
     ])
     const seen = new Set<string>()
     partners.value = [...supplier.items, ...both.items].filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)))
+    warehouses.value = warehousePicks
   } catch {
     // 错误提示已由请求层统一处理
   }
@@ -182,6 +197,7 @@ async function fetchList(): Promise<void> {
     const result = await getPurchaseReceipts({
       keyword: appliedKeyword.value.trim() || undefined,
       partnerId: appliedPartner.value,
+      warehouseId: appliedWarehouse.value,
       start,
       end,
       settlementState: appliedSettlement.value,
@@ -202,6 +218,7 @@ async function fetchList(): Promise<void> {
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedPartner.value = partnerInput.value
+  appliedWarehouse.value = warehouseInput.value
   appliedRange.value = dateRangeInput.value ? (dateRangeInput.value as [string, string]) : null
   appliedSettlement.value = settlementInput.value
   page.value = 1
@@ -212,10 +229,12 @@ function onSearch(): void {
 function onReset(): void {
   keywordInput.value = ''
   partnerInput.value = undefined
+  warehouseInput.value = undefined
   dateRangeInput.value = undefined
   settlementInput.value = undefined
   appliedKeyword.value = ''
   appliedPartner.value = undefined
+  appliedWarehouse.value = undefined
   appliedRange.value = null
   appliedSettlement.value = undefined
   page.value = 1
@@ -256,6 +275,7 @@ async function onExport(): Promise<void> {
     await exportPurchaseReceipts({
       keyword: appliedKeyword.value.trim() || undefined,
       partnerId: appliedPartner.value,
+      warehouseId: appliedWarehouse.value,
       start,
       end,
       settlementState: appliedSettlement.value,
@@ -321,7 +341,7 @@ function onGoSettlement(row: PurchaseReceiptListItem): void {
           :gutter="16"
           wrap
         >
-          <a-col :span="5">
+          <a-col :span="4">
             <a-input
               v-model="keywordInput"
               class="filter-bar__search"
@@ -330,7 +350,7 @@ function onGoSettlement(row: PurchaseReceiptListItem): void {
               @press-enter="onSearch"
             />
           </a-col>
-          <a-col :span="5">
+          <a-col :span="4">
             <a-select
               v-model="partnerInput"
               :options="supplierOptions"
@@ -339,7 +359,15 @@ function onGoSettlement(row: PurchaseReceiptListItem): void {
               :loading="partners.length === 0"
             />
           </a-col>
-          <a-col :span="7">
+          <a-col :span="4">
+            <a-select
+              v-model="warehouseInput"
+              :options="warehouses.map((w) => ({ label: w.name, value: w.id }))"
+              placeholder="全部入库仓"
+              allow-clear
+            />
+          </a-col>
+          <a-col :span="5">
             <a-range-picker
               v-model="dateRangeInput"
               value-format="YYYY-MM-DD"

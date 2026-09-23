@@ -9,6 +9,10 @@ export interface StockTakeListItem {
   id: string
   takeNo: string
   type: StockTakeType
+  /** 盘点仓 id（038） */
+  warehouseId: string
+  /** 盘点仓名称快照（038） */
+  warehouseName: string
   takeDate: string
   itemCount: number
   diffItemCount: number
@@ -34,6 +38,10 @@ export interface StockTakeItem {
 export interface StockTakeDetail {
   id: string
   takeNo: string
+  /** 盘点仓 id（038） */
+  warehouseId: string
+  /** 盘点仓名称快照（038） */
+  warehouseName: string
   type: StockTakeType
   takeDate: string
   itemCount: number
@@ -60,6 +68,8 @@ export interface StockTakeQuery {
   pageSize: number
   keyword?: string
   type?: StockTakeType
+  /** 盘点仓 id，可空（038；不传 = 全部仓） */
+  warehouseId?: string
   start?: string
   end?: string
 }
@@ -68,6 +78,8 @@ export interface StockTakeQuery {
 export interface CreateStockTakePayload {
   type: StockTakeType
   takeDate: string
+  /** 盘点仓 id（038；必填：账面 / 差异与库存设定都作用于该仓） */
+  warehouseId?: string
   /** unitCost 仅期初建账模式传（erp-cost：成本基线必填）；库存盘点模式不传 */
   items: { productId: string; actualQuantity: number; unitCost?: number }[]
   remark?: string
@@ -110,7 +122,12 @@ export function createStockTake(payload: CreateStockTakePayload): Promise<StockT
   return post<StockTakeDetail>('/stock-takes', payload)
 }
 
-/** 盘点商品选择（启用商品 + 当前库存 + 是否已发生库存变动） */
-export function getStockTakePickProducts(): Promise<StockTakeProductPick[]> {
-  return get<StockTakeProductPick[]>('/stock-takes/pick-products')
+/**
+ * 盘点商品选择（启用商品 + 所选仓当前库存 + 该仓是否已发生库存变动）
+ * @param warehouseId 盘点仓 id（038；不传 = 默认仓）
+ */
+export function getStockTakePickProducts(warehouseId?: string): Promise<StockTakeProductPick[]> {
+  return get<StockTakeProductPick[]>('/stock-takes/pick-products', {
+    params: warehouseId ? { warehouseId } : undefined,
+  })
 }

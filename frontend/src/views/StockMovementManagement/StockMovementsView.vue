@@ -7,6 +7,8 @@ import { getProductPickList } from '@/api/product'
 import type { ProductPickItem } from '@/api/product'
 import { getStockMovements, toUtcRange } from '@/api/stockMovement'
 import type { StockMovementListItem, StockMovementType } from '@/api/stockMovement'
+import { getWarehousePickList } from '@/api/warehouse'
+import type { WarehousePickItem } from '@/api/warehouse'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
@@ -53,15 +55,19 @@ const pageSize = ref(20)
 /** 筛选：输入态与已应用态分离（点搜索才生效） */
 const keywordInput = ref('')
 const productIdInput = ref<string | undefined>(undefined)
+const warehouseIdInput = ref<string | undefined>(undefined)
 const typeInput = ref<StockMovementType | undefined>(undefined)
 const dateRange = ref<string[]>([])
 const appliedKeyword = ref('')
 const appliedProductId = ref<string | undefined>(undefined)
+const appliedWarehouseId = ref<string | undefined>(undefined)
 const appliedType = ref<StockMovementType | undefined>(undefined)
 const appliedRange = ref<string[]>([])
 
 /** 商品下拉数据源（复用 product.ts getProductPickList，全量，量小） */
 const productOptions = ref<ProductPickItem[]>([])
+/** 仓库下拉数据源（仅启用仓，038） */
+const warehouseOptions = ref<WarehousePickItem[]>([])
 
 const columns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
@@ -69,9 +75,11 @@ const columns: TableColumnData[] = [
   { title: '商品编码', dataIndex: 'productCode', width: 160, ellipsis: true, tooltip: true },
   { title: '商品名称', dataIndex: 'productName', width: 180, ellipsis: true, tooltip: true },
   { title: '单位', dataIndex: 'unit', width: 80, align: 'center' },
+  // 仓库列（038）：一条流水的仓 = 其数量实际变动的仓
+  { title: '仓库', dataIndex: 'warehouseName', width: 140, ellipsis: true, tooltip: true },
   { title: '变动类型', slotName: 'movementType', width: 110, align: 'center' },
   { title: '变动量', slotName: 'quantity', width: 100, align: 'right' },
-  // 成本列（erp-cost）：只读展示，与变动量同源
+  // 成本列（erp-cost）：只读展示，与变动量同源；038 起为「该仓」成本
   { title: '成本单价', slotName: 'unitCost', width: 110, align: 'right' },
   { title: '成本金额', slotName: 'totalCost', width: 120, align: 'right' },
   { title: '来源单号', slotName: 'sourceNo', width: 180, ellipsis: true, tooltip: true },
@@ -83,7 +91,7 @@ const columns: TableColumnData[] = [
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
 const tableKey = computed(
   () =>
-    `${appliedKeyword.value}|${appliedProductId.value ?? ''}|${appliedType.value ?? ''}|${appliedRange.value.join('~')}`,
+    `${appliedKeyword.value}|${appliedProductId.value ?? ''}|${appliedWarehouseId.value ?? ''}|${appliedType.value ?? ''}|${appliedRange.value.join('~')}`,
 )
 
 /** 服务端分页配置 */
@@ -108,6 +116,7 @@ onMounted(() => {
   keywordInput.value = presetKeyword
 
   void fetchProducts()
+  void fetchWarehouses()
   void fetchList()
 })
 
@@ -116,6 +125,15 @@ onMounted(() => {
 async function fetchProducts(): Promise<void> {
   try {
     productOptions.value = await getProductPickList()
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
+}
+
+/** 拉取仓库下拉数据（仅启用仓，038；失败静默，不影响主列表） */
+async function fetchWarehouses(): Promise<void> {
+  try {
+    warehouseOptions.value = await getWarehousePickList()
   } catch {
     // 错误提示已由请求层统一处理
   }
@@ -130,6 +148,7 @@ async function fetchList(): Promise<void> {
     const result = await getStockMovements({
       keyword: appliedKeyword.value.trim() || undefined,
       productId: appliedProductId.value,
+      warehouseId: appliedWarehouseId.value,
       type: appliedType.value,
       start,
       end,
@@ -150,6 +169,7 @@ async function fetchList(): Promise<void> {
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedProductId.value = productIdInput.value
+  appliedWarehouseId.value = warehouseIdInput.value
   appliedType.value = typeInput.value
   appliedRange.value = [...(dateRange.value ?? [])]
   page.value = 1
@@ -160,10 +180,12 @@ function onSearch(): void {
 function onReset(): void {
   keywordInput.value = ''
   productIdInput.value = undefined
+  warehouseIdInput.value = undefined
   typeInput.value = undefined
   dateRange.value = []
   appliedKeyword.value = ''
   appliedProductId.value = undefined
+  appliedWarehouseId.value = undefined
   appliedType.value = undefined
   appliedRange.value = []
   page.value = 1
@@ -183,6 +205,7 @@ async function onExport(): Promise<void> {
     await exportStockMovements({
       keyword: appliedKeyword.value.trim() || undefined,
       productId: appliedProductId.value,
+      warehouseId: appliedWarehouseId.value,
       type: appliedType.value,
       start,
       end,
@@ -227,7 +250,7 @@ function onPageSizeChange(size: number): void {
           :gutter="16"
           wrap
         >
-          <a-col :span="6">
+          <a-col :span="5">
             <a-input
               v-model="keywordInput"
               class="filter-bar__search"
@@ -240,12 +263,21 @@ function onPageSizeChange(size: number): void {
               </template>
             </a-input>
           </a-col>
-          <a-col :span="6">
+          <a-col :span="5">
             <a-select
               v-model="productIdInput"
               class="filter-bar__product"
               :options="productOptions.map((p) => ({ label: `${p.code} ${p.name}`, value: p.id }))"
               placeholder="全部商品"
+              allow-clear
+            />
+          </a-col>
+          <a-col :span="4">
+            <a-select
+              v-model="warehouseIdInput"
+              class="filter-bar__warehouse"
+              :options="warehouseOptions.map((w) => ({ label: w.name, value: w.id }))"
+              placeholder="全部仓库"
               allow-clear
             />
           </a-col>
@@ -258,7 +290,7 @@ function onPageSizeChange(size: number): void {
               allow-clear
             />
           </a-col>
-          <a-col :span="8">
+          <a-col :span="6">
             <div class="toolbar-filter__actions">
               <a-range-picker
                 v-model="dateRange"
@@ -325,7 +357,7 @@ function onPageSizeChange(size: number): void {
         :columns="columns"
         :data="items"
         :pagination="pagination"
-        :scroll="{ x: 1354 }"
+        :scroll="{ x: 1494 }"
         @page-change="onPageChange"
         @page-size-change="onPageSizeChange"
       >

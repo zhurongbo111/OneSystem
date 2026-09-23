@@ -137,6 +137,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'warehouses',
+        name: 'warehouses',
+        component: () => import('@/views/WarehouseManagement/WarehousesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'categories',
         name: 'categories',
         component: () => import('@/views/CategoryManagement/CategoriesView.vue'),
@@ -495,6 +501,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   bankAccounts: 'bankAccounts.view',
   cashJournals: 'cashJournals.view',
   products: 'products.view',
+  warehouses: 'warehouses.view',
   categories: 'categories.view',
   partners: 'partners.view',
   inventory: 'inventory.view',
