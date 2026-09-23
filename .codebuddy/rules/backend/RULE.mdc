@@ -58,6 +58,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - **路由约定（强制）**：统一 `/api/<资源复数>`（`AGENTS.md` §4.4）；动作用 HTTP 动词 + 资源 / 子资源路径（如 `PUT /api/users/{id}/status`），用例名不进路径，不在路径中暴露实现细节。
 - **分页入参（强制）**：`page` ≥ 1、`pageSize` 默认 20、上限 100（`AGENTS.md` §4.3）；Validator 用 `InclusiveBetween` 等表达边界，越界由全局校验统一返回 `40000`。
 - **路由参数不得从请求体绑定（强制）**：`[FromBody]` 直接绑定用例 Request 时（如 `Update<X>Request` 兼作中介请求），取自路由的 `Id` 必须是**可缺省**成员。标 `required` 后请求体缺 `id` 会被 `[ApiController]` 的 ModelState 过滤器短路成 RFC problem-details 400（前端表现为「网络异常」，动作方法不执行、全局异常中间件拿不到）。Controller 以路由值覆盖 `Id`，并保留 Validator 的 `NotEmpty` 兜底。
+- **Query 集合参数必须用具体集合类型（强制）**：`[FromQuery]` 请求对象的集合属性声明为 `List<T>` / `T[]`，**禁止接口类型**（`IReadOnlyList<T>` / `IEnumerable<T>` / `IReadOnlyCollection<T>`）——query 集合绑定器无法实例化接口类型，会静默绑定为**空集合**（`?ids=a&ids=b` 也读不到），表现为 Validator 报「xx 不能为空」而参数其实已传（`036` 批量取价曾因此恒失败、开单页「协议价 / 默认价」标注不出现）。接口集合类型只用于**出参 / 仓储契约**。
 
 ### 4.3 DTO 与读模型
 

@@ -33,6 +33,7 @@ Vue 3 + TypeScript（`<script setup lang="ts">` 组合式 API，**禁止 Options
 ## 4. 组件与页面
 
 - 页面级组件放 `src/views/`，按功能目录组织；可复用组件放 `src/components/`。
+- **组件必须显式导入（强制）**：`<script setup>` 中用到的每个组件都要显式 `import`（同域组件用相对路径，如 `import XxxFormDrawer from './XxxFormDrawer.vue'`），**禁止依赖隐式注册**。漏导入时 Vue 把标签当原生自定义元素渲染——不报错、无 DOM，`vue-tsc` 也不报（`036` 客户价格页曾因此抽屉永不出现），表现为「点了新增按钮抽屉 / 表单不出现」。由 `npm run lint` 的 `vue/no-undef-components`（`a-` 前缀的 Arco 组件已忽略）兜底。
 - UI 统一使用 Arco Design 组件，不自造样式体系；自定义样式优先使用 Arco 主题变量（`@arco-design` CSS 变量 / 主题定制）。
 - 组件 props / emits 必须声明 TS 类型。
 - 组件名 PascalCase，文件命名与组件名一致。
