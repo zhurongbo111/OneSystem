@@ -107,6 +107,11 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - 单测至少覆盖：① EF 实际 `HasMaxLength` == 常量；② 同一字段在多个用例 Validator 中「边界值通过 / 越界拒绝」一致；③ 查询关键词长度上限 == 该查询**实际匹配列**的最大列长（按列 `Contains`，超列长不可能命中）——**跨域不照抄数值**，各域取值见对应 `design.md`。
 - 新增字段 / 修改约束时，上述五处缺一即视为未完成，不得勾选规格 `tasks.md` 中对应任务。
 
+### 5.4 查询可翻译性（强制）
+
+- 聚合查询必须**整体可翻译为 SQL**。典型不可翻译形状：在「已分组的连接子查询」之上再套外层分组聚合（如先 `GroupBy(ProductId)` 汇总各仓库存、再 `GroupBy(CategoryId)` 求和），EF Core 抛 `The LINQ expression … could not be translated` → 全局异常中间件返回 `50000`，前端表现为整页空数据（**单测用 InMemory 不会暴露**）。改法：拆成「SQL 取明细级投影 + 内存按上层维度聚合」（上层维度基数远小于明细行时可接受；参照 `ReportQueryRepository.GetStockBalanceAsync`）。
+- 判据：新增 / 修改**含聚合的仓储查询**，交付前必须有**打到真实关系型库的验证**（`e2e` 的报表 / 列表用例或等价集成测试），仅单测通过不得视为完成（`AGENTS.md` §6 同旨）。
+
 ## 6. 认证（JWT）
 
 - 使用 JWT 认证；token 有效期与 claims 在各功能规格中定义。
