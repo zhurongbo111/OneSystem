@@ -15,6 +15,9 @@ public sealed class GetStockMovementsRequest : IRequest<PagedResult<StockMovemen
     /// <summary>商品 id，可空</summary>
     public Guid? ProductId { get; init; }
 
+    /// <summary>仓库 id，可空（038；不传 = 全部仓）</summary>
+    public Guid? WarehouseId { get; init; }
+
     /// <summary>变动类型，可空</summary>
     public StockMovementType? Type { get; init; }
 

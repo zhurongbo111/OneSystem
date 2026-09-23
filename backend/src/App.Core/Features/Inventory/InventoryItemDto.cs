@@ -20,10 +20,16 @@ public sealed record InventoryItemDto
     /// <summary>计量单位</summary>
     public required string Unit { get; init; }
 
-    /// <summary>当前库存</summary>
+    /// <summary>仓库 ID（038）</summary>
+    public required string WarehouseId { get; init; }
+
+    /// <summary>仓库名称（038）</summary>
+    public required string WarehouseName { get; init; }
+
+    /// <summary>该仓当前库存（038）</summary>
     public required int StockQuantity { get; init; }
 
-    /// <summary>安全库存阈值</summary>
+    /// <summary>仓级安全库存阈值（038；判定唯一来源）</summary>
     public required int SafetyStock { get; init; }
 
     /// <summary>是否低于安全库存（SafetyStock &gt; 0 且 Stock &lt; SafetyStock）</summary>

@@ -95,22 +95,25 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            // 回冲：逐行库存 += 数量（与销售扣减同事务；直接加回，无前置校验，见 design.md §5 决策）
+            // 回冲：逐行在**单据出库仓**加回数量（与销售扣减同事务；直接加回，无前置校验，见 design.md §5 决策）
             foreach (var item in items)
             {
-                await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
+                await _inventoryRepository.IncrementAsync(
+                    item.ProductId, order.WarehouseId, item.Quantity, cancellationToken);
 
                 // 成本：冲销还原 —— 复用原出库流水的成本单价（erp-cost design §0.2），保证「出 + 冲回 = 0」
                 var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
                     order.Id, item.ProductId, StockMovementType.SalesOutbound, cancellationToken) ?? 0m;
                 var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
-                await _inventoryRepository.ApplyInboundCostAsync(item.ProductId, item.Quantity, unitCost, cancellationToken);
+                await _inventoryRepository.ApplyInboundCostAsync(
+                    item.ProductId, order.WarehouseId, item.Quantity, unitCost, cancellationToken);
 
-                // 库存流水：销售作废回增，与库存增减同事务（erp-stock-movement design §3.7）
+                // 库存流水：销售作废回增，与库存增减同事务并带变动仓（erp-stock-movement design §3.7）
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
                     Id = Guid.NewGuid(),
                     ProductId = item.ProductId,
+                    WarehouseId = order.WarehouseId,
                     MovementType = StockMovementType.SalesVoid,
                     Quantity = item.Quantity,
                     UnitCost = unitCost,
@@ -170,7 +173,7 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
                 Action = AuditAction.Void,
                 ResourceId = order.Id,
                 ResourceNo = order.ShipmentNo,
-                Summary = $"作废销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、{AuditSummary.Money(order.TotalAmount)}）",
+                Summary = $"作废销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、出库仓：{order.WarehouseName}、{AuditSummary.Money(order.TotalAmount)}）",
                 Changes = voidedShipmentChangeBuilder.Build(),
                 ChangesTruncated = voidedShipmentChangeBuilder.Truncated,
                 UtcNow = now,

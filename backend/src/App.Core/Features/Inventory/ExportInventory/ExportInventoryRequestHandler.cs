@@ -37,6 +37,7 @@ public sealed class ExportInventoryRequestHandler : IRequestHandler<ExportInvent
         var (items, _) = await _inventoryRepository.GetPagedAsync(
             request.Keyword,
             request.CategoryId,
+            request.WarehouseId,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);
@@ -55,6 +56,7 @@ public sealed class ExportInventoryRequestHandler : IRequestHandler<ExportInvent
                 item.Name,
                 item.CategoryName,
                 item.Unit,
+                item.WarehouseName,
                 item.StockQuantity,
                 item.SafetyStock,
                 item.UpdatedAt,
@@ -72,6 +74,7 @@ public sealed class ExportInventoryRequestHandler : IRequestHandler<ExportInvent
                 new ExcelColumnModel { Header = "名称", ValueType = ExcelValueType.Text, Width = 24 },
                 new ExcelColumnModel { Header = "分类", ValueType = ExcelValueType.Text, Width = 14 },
                 new ExcelColumnModel { Header = "单位", ValueType = ExcelValueType.Text, Width = 8 },
+                new ExcelColumnModel { Header = "仓库", ValueType = ExcelValueType.Text, Width = 16 },
                 new ExcelColumnModel { Header = "当前库存", ValueType = ExcelValueType.Integer, Width = 12 },
                 new ExcelColumnModel { Header = "安全阈值", ValueType = ExcelValueType.Integer, Width = 12 },
                 new ExcelColumnModel { Header = "最近变动时间", ValueType = ExcelValueType.DateTime, Width = 18 },

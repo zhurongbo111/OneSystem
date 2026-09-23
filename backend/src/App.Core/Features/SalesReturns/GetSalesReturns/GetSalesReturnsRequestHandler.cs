@@ -27,7 +27,7 @@ public sealed class GetSalesReturnsRequestHandler : IRequestHandler<GetSalesRetu
     {
         var (items, total) = await _salesReturnRepository.GetPagedAsync(
             request.Keyword, request.PartnerId, request.Start, request.End, request.SettlementState,
-            request.Page, request.PageSize, cancellationToken);
+            request.WarehouseId, request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<SalesReturnListItemDto>
         {

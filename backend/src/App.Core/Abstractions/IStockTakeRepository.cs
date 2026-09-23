@@ -26,6 +26,7 @@ public interface IStockTakeRepository
     /// <param name="type">单据类型，可空</param>
     /// <param name="start">盘点日期起（UTC），可空</param>
     /// <param name="end">盘点日期止（UTC），可空</param>
+    /// <param name="warehouseId">盘点仓 id，可空（038；不传 = 全部仓）</param>
     /// <param name="page">页码（从 1 起）</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -34,6 +35,7 @@ public interface IStockTakeRepository
         StockTakeType? type,
         DateTimeOffset? start,
         DateTimeOffset? end,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

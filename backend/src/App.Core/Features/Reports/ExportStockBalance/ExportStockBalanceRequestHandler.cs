@@ -36,6 +36,7 @@ public sealed class ExportStockBalanceRequestHandler : IRequestHandler<ExportSto
         var (items, _, summary) = await _reportQueryRepository.GetStockBalanceAsync(
             request.Keyword,
             request.CategoryId,
+            request.WarehouseId,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);

@@ -106,6 +106,36 @@ internal static class TestSupport
         };
     }
 
+    /// <summary>构建仓库实体（默认启用；默认仓 id 取 <see cref="TestWarehouse.DefaultId"/> 便于断言）</summary>
+    public static Warehouse NewWarehouse(
+        Guid? id = null,
+        string code = "WH01",
+        string name = "主仓",
+        bool isDefault = false,
+        PartnerStatus status = PartnerStatus.Enabled)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new Warehouse
+        {
+            Id = id ?? Guid.NewGuid(),
+            Code = code,
+            Name = name,
+            IsDefault = isDefault,
+            Status = status,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+    }
+
+    /// <summary>写入默认仓（InMemory 用例需先落库，流水 / 库存查询的仓库联查才会命中）</summary>
+    public static Warehouse SeedDefaultWarehouse(AppDbContext dbContext)
+    {
+        var warehouse = NewWarehouse(TestWarehouse.DefaultId, "DEFAULT", TestWarehouse.DefaultName, isDefault: true);
+        dbContext.Warehouses.Add(warehouse);
+        dbContext.SaveChanges();
+        return warehouse;
+    }
+
     /// <summary>构建角色实体（角色行与其权限点一并落库）</summary>
     public static Role SeedRole(
         AppDbContext dbContext,

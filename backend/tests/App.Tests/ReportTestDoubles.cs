@@ -10,6 +10,7 @@ internal readonly record struct InventoryFlowArgs(
     Guid? ProductId,
     Guid? CategoryId,
     bool OnlyChanged,
+    Guid? WarehouseId,
     int Page,
     int PageSize);
 
@@ -17,6 +18,7 @@ internal readonly record struct InventoryFlowArgs(
 internal readonly record struct StockBalanceArgs(
     string? Keyword,
     Guid? CategoryId,
+    Guid? WarehouseId,
     int Page,
     int PageSize);
 
@@ -128,11 +130,12 @@ internal sealed class FakeReportQueryRepository : IReportQueryRepository
         Guid? productId,
         Guid? categoryId,
         bool onlyChanged,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        LastInventoryFlowArgs = new InventoryFlowArgs(start, end, productId, categoryId, onlyChanged, page, pageSize);
+        LastInventoryFlowArgs = new InventoryFlowArgs(start, end, productId, categoryId, onlyChanged, warehouseId, page, pageSize);
         return Task.FromResult((InventoryFlowItems, InventoryFlowTotal, InventoryFlowSummary));
     }
 
@@ -140,11 +143,12 @@ internal sealed class FakeReportQueryRepository : IReportQueryRepository
     public Task<(IReadOnlyList<StockBalanceItem> Items, int Total, StockBalanceTotal Summary)> GetStockBalanceAsync(
         string? keyword,
         Guid? categoryId,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        LastStockBalanceArgs = new StockBalanceArgs(keyword, categoryId, page, pageSize);
+        LastStockBalanceArgs = new StockBalanceArgs(keyword, categoryId, warehouseId, page, pageSize);
         return Task.FromResult((StockBalanceItems, StockBalanceTotal, StockBalanceSummary));
     }
 

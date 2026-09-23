@@ -29,6 +29,7 @@ public interface ISalesShipmentRepository
         DateTimeOffset? start,
         DateTimeOffset? end,
         SettlementState? settlementState,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

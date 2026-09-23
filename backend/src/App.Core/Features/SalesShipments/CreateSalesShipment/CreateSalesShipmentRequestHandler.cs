@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Warehouses;
 using App.Core.Finance;
 
 namespace App.Core.Features.SalesShipments.CreateSalesShipment;
@@ -27,6 +28,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
     private readonly ISalesOrderRepository _salesOrderRepository;
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly ISettlementQueryRepository _settlementQueryRepository;
@@ -46,6 +48,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         ISalesOrderRepository salesOrderRepository,
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
+        IWarehouseRepository warehouseRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         ISettlementQueryRepository settlementQueryRepository,
@@ -61,6 +64,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         _salesOrderRepository = salesOrderRepository;
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
+        _warehouseRepository = warehouseRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
         _settlementQueryRepository = settlementQueryRepository;
@@ -140,6 +144,9 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
             }
         }
 
+        // 出库仓解析（038 §3.4 第 1 步）：入参可空 → 默认仓；指定仓不存在 40400、已停用 40123
+        var warehouse = await WarehouseResolver.ResolveAsync(_warehouseRepository, request.WarehouseId, cancellationToken);
+
         // 关联订单校验（Handler 业务约束，design.md §3.4）：订单存在 → 已作废 → 已完成 / 已关闭 → 客户一致 → 未发数量
         SalesOrder? linkedOrder = null;
         IReadOnlyDictionary<Guid, SalesOrderItem>? orderItems = null;
@@ -197,24 +204,26 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
             try
             {
-                // 成本：出库按「变动前」移动加权均价结转（erp-cost design §0.2）—— 必须在扣减前读取
+                // 成本：出库按「变动前」该仓移动加权均价结转（erp-cost design §0.2）—— 必须在扣减前读取
                 var outboundUnitCosts = new Dictionary<Guid, decimal>(request.Items.Count);
                 foreach (var line in request.Items)
                 {
                     outboundUnitCosts[line.ProductId] =
-                        await _inventoryRepository.GetAverageCostAsync(line.ProductId, cancellationToken);
+                        await _inventoryRepository.GetAverageCostAsync(line.ProductId, warehouse.Id, cancellationToken);
                 }
 
-                // 逐行扣减：任一行库存不足 → 回滚整单（报首个不足商品）
+                // 逐行按仓扣减：任一行该仓库存不足 → 回滚整单（报首个不足商品，message 含仓名）
                 foreach (var line in request.Items)
                 {
-                    var ok = await _inventoryRepository.TryDecrementAsync(line.ProductId, line.Quantity, cancellationToken);
+                    var ok = await _inventoryRepository.TryDecrementAsync(
+                        line.ProductId, warehouse.Id, line.Quantity, cancellationToken);
                     if (!ok)
                     {
-                        var current = await _inventoryRepository.GetQuantityAsync(line.ProductId, cancellationToken);
+                        var current = await _inventoryRepository.GetQuantityAsync(
+                            line.ProductId, warehouse.Id, cancellationToken);
                         throw new BusinessException(
                             ErrorCode.InsufficientStock,
-                            $"库存不足：商品 {products[line.ProductId].Name}（当前 {current}，需要 {line.Quantity}）");
+                            $"库存不足：{warehouse.Name} 商品 {products[line.ProductId].Name}（当前 {current}，需要 {line.Quantity}）");
                     }
                 }
 
@@ -225,6 +234,8 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                     ShipmentNo = shipmentNo,
                     PartnerId = partner.Id,
                     PartnerName = partner.Name,
+                    WarehouseId = warehouse.Id,
+                    WarehouseName = warehouse.Name,
                     OrderDate = request.OrderDate,
                     OrderId = linkedOrder?.Id,
                     OrderNo = linkedOrder?.OrderNo,
@@ -268,12 +279,14 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                     var unitCost = outboundUnitCosts[item.ProductId];
                     var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
                     costAmount += totalCost;
-                    await _inventoryRepository.ApplyOutboundCostAsync(item.ProductId, totalCost, cancellationToken);
+                    await _inventoryRepository.ApplyOutboundCostAsync(
+                        item.ProductId, warehouse.Id, totalCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
+                        WarehouseId = warehouse.Id,
                         MovementType = StockMovementType.SalesOutbound,
                         Quantity = -item.Quantity,
                         UnitCost = unitCost,
@@ -319,6 +332,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                 var createdShipmentChangeBuilder = new AuditChangeBuilder()
                     .Add("shipmentNo", "出库单号", null, order.ShipmentNo)
                     .Add("partnerName", "客户", null, order.PartnerName)
+                    .Add("warehouseName", "出库仓", null, order.WarehouseName)
                     .Add("orderDate", "出库日期", null, AuditSummary.Date(order.OrderDate))
                     .Add("orderNo", "关联订单号", null, order.OrderNo)
                     .Add("totalAmount", "出库金额", null, AuditSummary.Money(order.TotalAmount))
@@ -329,7 +343,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                     Action = AuditAction.Create,
                     ResourceId = order.Id,
                     ResourceNo = order.ShipmentNo,
-                    Summary = $"创建销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
+                    Summary = $"创建销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、出库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
                     Changes = createdShipmentChangeBuilder.Build(),
                     ChangesTruncated = createdShipmentChangeBuilder.Truncated,
                     UtcNow = now,

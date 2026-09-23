@@ -49,6 +49,7 @@ public sealed class StockTakeRepository : IStockTakeRepository
         StockTakeType? type,
         DateTimeOffset? start,
         DateTimeOffset? end,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -78,6 +79,13 @@ public sealed class StockTakeRepository : IStockTakeRepository
         {
             var e = end.Value;
             query = query.Where(t => t.TakeDate <= e);
+        }
+
+        // 盘点仓筛选（038）
+        if (warehouseId is not null)
+        {
+            var value = warehouseId.Value;
+            query = query.Where(t => t.WarehouseId == value);
         }
 
         var total = await query.CountAsync(cancellationToken);

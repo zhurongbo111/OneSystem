@@ -31,7 +31,7 @@ internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
 
     /// <summary>已执行的分页查询入参</summary>
     public List<(string? Keyword, Guid? PartnerId, Guid? OrderId, DateTimeOffset? Start, DateTimeOffset? End,
-        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries
+        SettlementState? SettlementState, Guid? WarehouseId, int Page, int PageSize)> PagedQueries
     { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
@@ -43,9 +43,9 @@ internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
 
     public Task<(IReadOnlyList<(SalesShipment Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, Guid? orderId, DateTimeOffset? start, DateTimeOffset? end,
-        SettlementState? settlementState, int page, int pageSize, CancellationToken cancellationToken = default)
+        SettlementState? settlementState, Guid? warehouseId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        PagedQueries.Add((keyword, partnerId, orderId, start, end, settlementState, page, pageSize));
+        PagedQueries.Add((keyword, partnerId, orderId, start, end, settlementState, warehouseId, page, pageSize));
         return Task.FromResult((PagedItems, PagedTotal));
     }
 

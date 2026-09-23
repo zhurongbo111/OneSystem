@@ -29,8 +29,11 @@ public class AppDbContext : DbContext
     /// <summary>商品表</summary>
     public DbSet<Product> Products => Set<Product>();
 
-    /// <summary>库存台账表（与商品 1:1）</summary>
+    /// <summary>库存台账表（商品 × 仓库，038-erp-multi-warehouse）</summary>
     public DbSet<Inventory> Inventory => Set<Inventory>();
+
+    /// <summary>仓库表（038-erp-multi-warehouse）</summary>
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
     /// <summary>往来单位表（供应商 / 客户合并）</summary>
     public DbSet<Partner> Partners => Set<Partner>();

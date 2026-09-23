@@ -34,6 +34,7 @@ public sealed class ExportStockMovementsRequestHandler : IRequestHandler<ExportS
         var (items, _) = await _stockMovementRepository.GetPagedAsync(
             request.Keyword,
             request.ProductId,
+            request.WarehouseId,
             request.Type,
             request.Start,
             request.End,
@@ -51,6 +52,7 @@ public sealed class ExportStockMovementsRequestHandler : IRequestHandler<ExportS
                 item.ProductCode,
                 item.ProductName,
                 item.Unit,
+                item.WarehouseName,
                 ExportLabels.ToText(item.MovementType),
                 item.Quantity,
                 item.UnitCost,
@@ -70,6 +72,7 @@ public sealed class ExportStockMovementsRequestHandler : IRequestHandler<ExportS
                 new ExcelColumnModel { Header = "商品编码", ValueType = ExcelValueType.Text, Width = 18 },
                 new ExcelColumnModel { Header = "商品名称", ValueType = ExcelValueType.Text, Width = 24 },
                 new ExcelColumnModel { Header = "单位", ValueType = ExcelValueType.Text, Width = 8 },
+                new ExcelColumnModel { Header = "仓库", ValueType = ExcelValueType.Text, Width = 16 },
                 new ExcelColumnModel { Header = "变动类型", ValueType = ExcelValueType.Text, Width = 12 },
                 new ExcelColumnModel { Header = "变动量", ValueType = ExcelValueType.Integer, Width = 10 },
                 new ExcelColumnModel { Header = "成本单价", ValueType = ExcelValueType.Decimal, Width = 12 },

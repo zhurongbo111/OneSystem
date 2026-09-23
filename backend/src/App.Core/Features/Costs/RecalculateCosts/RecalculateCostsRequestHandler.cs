@@ -60,25 +60,27 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
             // 取全部流水（按 CreatedAt, Id 升序）推演；期间参数只决定「写回哪些流水」，不切断开局结存
             var rows = await _stockMovementRepository.GetAllForCostAsync(request.ProductId, null, null, cancellationToken);
 
-            var states = new Dictionary<Guid, CostState>();
+            // 结存推演按「商品 × 仓」分账（038）：成本随库存行按仓维护，组织级口径 = 各仓合计
+            var states = new Dictionary<(Guid ProductId, Guid WarehouseId), CostState>();
 
-            // 本次重算已推演出的成本单价（来源单据 + 商品 + 变动类型 → 单价）：
+            // 本次重算已推演出的成本单价（来源单据 + 商品 + 仓 + 变动类型 → 单价）：
             // 冲销类优先复用「本次推演」的结果，而不是历史成本列 —— 重算与当前成本列无关才谈得上幂等
-            var resolvedCosts = new Dictionary<(Guid SourceId, Guid ProductId, StockMovementType Type), decimal>();
+            var resolvedCosts = new Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, StockMovementType Type), decimal>();
 
             var updates = new List<(Guid Id, decimal UnitCost, decimal TotalCost)>();
             var missingCostCount = 0;
 
             foreach (var row in rows)
             {
-                if (!states.TryGetValue(row.ProductId, out var state))
+                var stateKey = (row.ProductId, row.WarehouseId);
+                if (!states.TryGetValue(stateKey, out var state))
                 {
                     state = new CostState();
-                    states[row.ProductId] = state;
+                    states[stateKey] = state;
                 }
 
                 var (unitCost, missing) = await ResolveUnitCostAsync(row, state, resolvedCosts, cancellationToken);
-                resolvedCosts[(row.SourceId ?? Guid.Empty, row.ProductId, row.MovementType)] = unitCost;
+                resolvedCosts[(row.SourceId ?? Guid.Empty, row.ProductId, row.WarehouseId, row.MovementType)] = unitCost;
 
                 if (missing)
                 {
@@ -128,20 +130,24 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
                 foreach (var pair in states)
                 {
                     await _inventoryRepository.SetCostAsync(
-                        pair.Key, pair.Value.Amount, pair.Value.AverageCost, cancellationToken);
+                        pair.Key.ProductId,
+                        pair.Key.WarehouseId,
+                        pair.Value.Amount,
+                        pair.Value.AverageCost,
+                        cancellationToken);
                 }
 
                 var changeBuilder = new AuditChangeBuilder()
                     .Add("start", "重算起始日期", null, AuditSummary.Date(request.Start))
                     .Add("end", "重算结束日期", null, AuditSummary.Date(request.End))
                     .Add("movementCount", "重算流水数", null, AuditSummary.Count(updates.Count))
-                    .Add("productCount", "涉及商品数", null, AuditSummary.Count(states.Count))
+                    .Add("productCount", "涉及商品数", null, AuditSummary.Count(states.Keys.Select(k => k.ProductId).Distinct().Count()))
                     .Add("missingCostCount", "缺价流水数", null, AuditSummary.Count(missingCostCount));
                 await _auditLogger.RecordAsync(new AuditEntry
                 {
                     Resource = AuditResource.Cost,
                     Action = AuditAction.Recalculate,
-                    Summary = $"成本重算 {AuditSummary.Date(request.Start)} ~ {AuditSummary.Date(request.End)}：{AuditSummary.Count(updates.Count)} 条流水、{AuditSummary.Count(states.Count)} 个商品、缺价 {AuditSummary.Count(missingCostCount)} 条",
+                    Summary = $"成本重算 {AuditSummary.Date(request.Start)} ~ {AuditSummary.Date(request.End)}：{AuditSummary.Count(updates.Count)} 条流水、{AuditSummary.Count(states.Keys.Select(k => k.ProductId).Distinct().Count())} 个商品、缺价 {AuditSummary.Count(missingCostCount)} 条",
                     Changes = changeBuilder.Build(),
                     ChangesTruncated = changeBuilder.Truncated,
                     UtcNow = DateTimeOffset.UtcNow,
@@ -159,7 +165,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
             {
                 MovementCount = updates.Count,
                 MissingCostCount = missingCostCount,
-                ProductCount = states.Count,
+                ProductCount = states.Keys.Select(k => k.ProductId).Distinct().Count(),
             };
         }
         finally
@@ -175,7 +181,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
     private async Task<(decimal UnitCost, bool Missing)> ResolveUnitCostAsync(
         StockMovementCostRow row,
         CostState state,
-        Dictionary<(Guid SourceId, Guid ProductId, StockMovementType Type), decimal> resolvedCosts,
+        Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, StockMovementType Type), decimal> resolvedCosts,
         CancellationToken cancellationToken)
     {
         switch (row.MovementType)
@@ -222,7 +228,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
     private async Task<(decimal UnitCost, bool Missing)> ResolveReversalAsync(
         StockMovementCostRow row,
         StockMovementType originalType,
-        Dictionary<(Guid SourceId, Guid ProductId, StockMovementType Type), decimal> resolvedCosts,
+        Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, StockMovementType Type), decimal> resolvedCosts,
         CancellationToken cancellationToken)
     {
         if (row.SourceId is null)
@@ -230,7 +236,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
             return (0m, true);
         }
 
-        if (resolvedCosts.TryGetValue((row.SourceId.Value, row.ProductId, originalType), out var resolved))
+        if (resolvedCosts.TryGetValue((row.SourceId.Value, row.ProductId, row.WarehouseId, originalType), out var resolved))
         {
             return (resolved, false);
         }

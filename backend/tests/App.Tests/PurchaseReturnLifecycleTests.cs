@@ -281,9 +281,9 @@ public class PurchaseReturnLifecycleTests
         var gl = GeneralLedgerStubs.Create();
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
             purchaseReceipts, new FakePurchaseOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+            new FakeWarehouseRepository(), inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         var createReturn = new CreatePurchaseReturnRequestHandler(
-            returns, new PartnerRepository(context), new ProductRepository(context),
+            returns, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
             inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         var voidReturn = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
 

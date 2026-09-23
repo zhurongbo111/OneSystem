@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Warehouses;
 using App.Core.Finance;
 
 namespace App.Core.Features.SalesReturns.CreateSalesReturn;
@@ -26,6 +27,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
     private readonly ISalesReturnRepository _salesReturnRepository;
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IVoucherRepository _voucherRepository;
@@ -43,6 +45,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
         ISalesReturnRepository salesReturnRepository,
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
+        IWarehouseRepository warehouseRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IVoucherRepository voucherRepository,
@@ -56,6 +59,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
         _salesReturnRepository = salesReturnRepository;
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
+        _warehouseRepository = warehouseRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
         _voucherRepository = voucherRepository;
@@ -122,6 +126,9 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
             totalAmount += subtotal;
         }
 
+        // 入库仓解析（038 §3.4 第 1 步）：入参可空 → 默认仓；指定仓不存在 40400、已停用 40123
+        var warehouse = await WarehouseResolver.ResolveAsync(_warehouseRepository, request.WarehouseId, cancellationToken);
+
         var now = DateTimeOffset.UtcNow;
         var operatorId = _currentUser.UserId();
 
@@ -138,6 +145,8 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                     ReturnNo = returnNo,
                     PartnerId = partner.Id,
                     PartnerName = partner.Name,
+                    WarehouseId = warehouse.Id,
+                    WarehouseName = warehouse.Name,
                     ReturnDate = request.ReturnDate,
                     TotalAmount = totalAmount,
                     SettledAmount = 0m,
@@ -175,21 +184,24 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                 var costAmount = 0m;
                 foreach (var item in items)
                 {
-                    await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
+                    await _inventoryRepository.IncrementAsync(
+                        item.ProductId, warehouse.Id, item.Quantity, cancellationToken);
 
                     // 成本（erp-cost design §0.2）：按被退销售单原出库成本单价退回；
-                    // 销售退货不关联原单（specs/021 §5），查不到原流水时兜底按当前移动加权均价
+                    // 销售退货不关联原单（specs/021 §5），查不到原流水时兜底按该仓当前移动加权均价
                     var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
                         salesReturn.Id, item.ProductId, StockMovementType.SalesOutbound, cancellationToken)
-                        ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, cancellationToken);
+                        ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, warehouse.Id, cancellationToken);
                     var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
                     costAmount += totalCost;
-                    await _inventoryRepository.ApplyInboundCostAsync(item.ProductId, item.Quantity, unitCost, cancellationToken);
+                    await _inventoryRepository.ApplyInboundCostAsync(
+                        item.ProductId, warehouse.Id, item.Quantity, unitCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
+                        WarehouseId = warehouse.Id,
                         MovementType = StockMovementType.SalesReturnIn,
                         Quantity = item.Quantity,
                         UnitCost = unitCost,
@@ -223,6 +235,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                 var createdSalesReturnChangeBuilder = new AuditChangeBuilder()
                     .Add("returnNo", "退货单号", null, salesReturn.ReturnNo)
                     .Add("partnerName", "客户", null, salesReturn.PartnerName)
+                    .Add("warehouseName", "入库仓", null, salesReturn.WarehouseName)
                     .Add("returnDate", "退货日期", null, AuditSummary.Date(salesReturn.ReturnDate))
                     .Add("totalAmount", "退货金额", null, AuditSummary.Money(salesReturn.TotalAmount))
                     .Add("remark", "备注", null, salesReturn.Remark);
@@ -232,7 +245,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                     Action = AuditAction.Create,
                     ResourceId = salesReturn.Id,
                     ResourceNo = salesReturn.ReturnNo,
-                    Summary = $"创建销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(salesReturn.TotalAmount)}）",
+                    Summary = $"创建销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、入库仓：{salesReturn.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(salesReturn.TotalAmount)}）",
                     Changes = createdSalesReturnChangeBuilder.Build(),
                     ChangesTruncated = createdSalesReturnChangeBuilder.Truncated,
                     UtcNow = now,

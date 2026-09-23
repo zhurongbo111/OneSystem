@@ -35,6 +35,7 @@ public class CreateSalesShipmentRequestHandlerTests
             new FakeSalesOrderRepository(calls),
             new PartnerRepository(context),
             new ProductRepository(context),
+            new FakeWarehouseRepository(),
             inventory,
             movements,
             new FakeSettlementQueryRepository(),

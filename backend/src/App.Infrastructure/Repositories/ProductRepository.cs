@@ -49,10 +49,16 @@ public sealed class ProductRepository : IProductRepository
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        // 联查 Inventory 带出当前库存（无库存行时按 0 计）
+        // 联查 Inventory 带出当前库存（无库存行时按 0 计）。
+        // 038：库存行一行 = 商品 × 仓，商品档案是**组织级视图** → 先按商品聚合（Σ 各仓），
+        // 否则一个商品会随仓数量重复成多行（列表重复、总数虚高）
+        var inventoryByProduct = _dbContext.Inventory.AsNoTracking()
+            .GroupBy(i => i.ProductId)
+            .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) });
+
         var query = from p in _dbContext.Products.AsNoTracking()
                     join c in _dbContext.Categories.AsNoTracking() on p.CategoryId equals c.Id
-                    join i in _dbContext.Inventory.AsNoTracking() on p.Id equals i.ProductId into iGroup
+                    join i in inventoryByProduct on p.Id equals i.ProductId into iGroup
                     from i in iGroup.DefaultIfEmpty()
                     select new
                     {
@@ -119,7 +125,8 @@ public sealed class ProductRepository : IProductRepository
                 _dbContext.Inventory.AsNoTracking(),
                 x => x.Product.Id,
                 i => i.ProductId,
-                (x, iGroup) => new { x.Product, x.CategoryName, Inventory = iGroup.FirstOrDefault() })
+                // 038：组织级视图 = Σ 各仓数量（不取首行，避免只反映某一个仓）
+                (x, iGroup) => new { x.Product, x.CategoryName, StockQuantity = iGroup.Sum(i => (int?)i.Quantity) ?? 0 })
             .Select(x => new ProductDetail
             {
                 Id = x.Product.Id,
@@ -132,7 +139,7 @@ public sealed class ProductRepository : IProductRepository
                 SalePrice = x.Product.SalePrice,
                 SafetyStock = x.Product.SafetyStock,
                 // 左连接：库存行缺失时按 0 计，与列表查询行为一致
-                StockQuantity = x.Inventory == null ? 0 : x.Inventory.Quantity,
+                StockQuantity = x.StockQuantity,
                 Status = x.Product.Status,
                 Remark = x.Product.Remark,
                 CreatedAt = x.Product.CreatedAt,
@@ -157,23 +164,41 @@ public sealed class ProductRepository : IProductRepository
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ProductPickItem>> GetPickListAsync(
+        Guid? warehouseId = null, CancellationToken cancellationToken = default)
     {
+        // 038：库存按仓聚合。传仓 → 该仓数量；不传仓 → Σ 各仓（组织级）；
+        // 必须先聚合再连商品，否则一个商品会随仓数量重复成多行
+        var inventoryQuery = _dbContext.Inventory.AsNoTracking();
+        if (warehouseId is not null)
+        {
+            var warehouse = warehouseId.Value;
+            inventoryQuery = inventoryQuery.Where(i => i.WarehouseId == warehouse);
+        }
+
+        var inventoryByProduct = inventoryQuery
+            .GroupBy(i => i.ProductId)
+            .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) });
+
         var items = await _dbContext.Products.AsNoTracking()
             .Where(p => p.Status == ProductStatus.Enabled)
-            .Join(
-                _dbContext.Inventory.AsNoTracking(),
+            // 左连接：无该仓库存行时按 0 计（仓后建场景）
+            .GroupJoin(
+                inventoryByProduct,
                 p => p.Id,
                 i => i.ProductId,
-                (p, i) => new ProductPickItem
+                (p, iGroup) => new { Product = p, Quantities = iGroup })
+            .SelectMany(
+                x => x.Quantities.DefaultIfEmpty(),
+                (x, i) => new ProductPickItem
                 {
-                    Id = p.Id,
-                    Code = p.Code,
-                    Name = p.Name,
-                    Unit = p.Unit,
-                    PurchasePrice = p.PurchasePrice,
-                    SalePrice = p.SalePrice,
-                    StockQuantity = i.Quantity,
+                    Id = x.Product.Id,
+                    Code = x.Product.Code,
+                    Name = x.Product.Name,
+                    Unit = x.Product.Unit,
+                    PurchasePrice = x.Product.PurchasePrice,
+                    SalePrice = x.Product.SalePrice,
+                    StockQuantity = i == null ? 0 : i.Quantity,
                 })
             .OrderBy(x => x.Code)
             .ToListAsync(cancellationToken);

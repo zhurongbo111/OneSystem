@@ -20,6 +20,7 @@ public interface IReportQueryRepository
     /// <param name="productId">商品 id，可空</param>
     /// <param name="categoryId">分类 id，可空</param>
     /// <param name="onlyChanged">是否只看期间有变动的商品</param>
+    /// <param name="warehouseId">仓库 id，可空（038；不传 = 全部仓合并）</param>
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -29,6 +30,7 @@ public interface IReportQueryRepository
         Guid? productId,
         Guid? categoryId,
         bool onlyChanged,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
@@ -39,12 +41,14 @@ public interface IReportQueryRepository
     /// </summary>
     /// <param name="keyword">商品编码 / 名称关键词，可空</param>
     /// <param name="categoryId">分类 id，可空</param>
+    /// <param name="warehouseId">仓库 id，可空（038；不传 = 全部仓合并）</param>
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<(IReadOnlyList<StockBalanceItem> Items, int Total, StockBalanceTotal Summary)> GetStockBalanceAsync(
         string? keyword,
         Guid? categoryId,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

@@ -101,6 +101,19 @@ public static class ErrorCode
     /// <summary>单据已被收付款单核销，禁止作废（erp-settlement 功能业务码；message 含单号与已结金额）</summary>
     public const int OrderSettledCannotVoid = 40120;
 
+    // ===== 多仓库（specs/038-erp-multi-warehouse/design.md §3.2） =====
+    /// <summary>仓库编码已存在</summary>
+    public const int WarehouseCodeExists = 40122;
+
+    /// <summary>仓库已停用，不可用于开单</summary>
+    public const int WarehouseDisabled = 40123;
+
+    /// <summary>默认仓不可停用、不可删除</summary>
+    public const int WarehouseDefaultImmutable = 40124;
+
+    /// <summary>仓库名称已存在</summary>
+    public const int WarehouseNameExists = 40125;
+
     // ===== 组织架构与员工档案（specs/030-erp-org-employee/design.md §3.2） =====
     /// <summary>部门编码已存在</summary>
     public const int DepartmentCodeExists = 40138;

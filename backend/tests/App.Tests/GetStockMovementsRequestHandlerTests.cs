@@ -22,6 +22,8 @@ public class GetStockMovementsRequestHandlerTests
             ProductCode = "sku-mv",
             ProductName = "流水商品",
             Unit = "个",
+            WarehouseId = TestWarehouse.DefaultId,
+            WarehouseName = TestWarehouse.DefaultName,
             MovementType = type,
             Quantity = quantity,
             UnitCost = unitCost,
@@ -37,7 +39,7 @@ public class GetStockMovementsRequestHandlerTests
     /// </summary>
     private sealed class FakeMovementRepository : IStockMovementRepository
     {
-        public (string? Keyword, Guid? ProductId, StockMovementType? Type,
+        public (string? Keyword, Guid? ProductId, Guid? WarehouseId, StockMovementType? Type,
             DateTimeOffset? Start, DateTimeOffset? End, int Page, int PageSize) LastRequest
         { get; private set; }
 
@@ -45,11 +47,11 @@ public class GetStockMovementsRequestHandlerTests
             => throw new NotSupportedException();
 
         public Task<(IReadOnlyList<StockMovementItem> Items, int Total)> GetPagedAsync(
-            string? keyword, Guid? productId, StockMovementType? type,
+            string? keyword, Guid? productId, Guid? warehouseId, StockMovementType? type,
             DateTimeOffset? start, DateTimeOffset? end,
             int page, int pageSize, CancellationToken cancellationToken = default)
         {
-            LastRequest = (keyword, productId, type, start, end, page, pageSize);
+            LastRequest = (keyword, productId, warehouseId, type, start, end, page, pageSize);
             // 两行：入库 +5（有单号 / 操作人）；出库 -3（无单号 / 无操作人，验证空值透传）
             return Task.FromResult<(IReadOnlyList<StockMovementItem>, int)>(
                 (new[]
@@ -59,11 +61,11 @@ public class GetStockMovementsRequestHandlerTests
                 }, 41));
         }
 
-        public Task<int> SumQuantityAsync(Guid productId, CancellationToken cancellationToken = default)
+        public Task<int> SumQuantityAsync(Guid productId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
-            IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+            IReadOnlyList<Guid> productIds, Guid? warehouseId = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<decimal?> GetMovementUnitCostAsync(
@@ -90,10 +92,12 @@ public class GetStockMovementsRequestHandlerTests
         var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var end = new DateTimeOffset(2026, 1, 2, 0, 0, 0, TimeSpan.Zero);
 
+        var warehouseId = Guid.NewGuid();
         var result = await handler.HandleAsync(new GetStockMovementsRequest
         {
             Keyword = "GR2026",
             ProductId = productId,
+            WarehouseId = warehouseId,
             Type = StockMovementType.SalesOutbound,
             Start = start,
             End = end,
@@ -101,8 +105,8 @@ public class GetStockMovementsRequestHandlerTests
             PageSize = 50,
         });
 
-        Assert.Equal(("GR2026", productId, StockMovementType.SalesOutbound, start, end, 3, 50),
-            (repo.LastRequest.Keyword, repo.LastRequest.ProductId, repo.LastRequest.Type,
+        Assert.Equal(("GR2026", productId, warehouseId, StockMovementType.SalesOutbound, start, end, 3, 50),
+            (repo.LastRequest.Keyword, repo.LastRequest.ProductId, repo.LastRequest.WarehouseId, repo.LastRequest.Type,
              repo.LastRequest.Start, repo.LastRequest.End, repo.LastRequest.Page, repo.LastRequest.PageSize));
 
         // DTO 映射：符号保留（-3 为出库）
@@ -123,6 +127,7 @@ public class GetStockMovementsRequestHandlerTests
         var context = TestSupport.CreateDbContext();
         var product = TestSupport.NewProduct("sku-mv-real", "联查商品");
         var admin = TestSupport.SeedAdmin(context);
+        var warehouse = TestSupport.SeedDefaultWarehouse(context);
         context.Products.Add(product);
         context.SaveChanges();
 
@@ -131,6 +136,7 @@ public class GetStockMovementsRequestHandlerTests
         {
             Id = Guid.NewGuid(),
             ProductId = product.Id,
+            WarehouseId = warehouse.Id,
             MovementType = StockMovementType.PurchaseInbound,
             Quantity = 1,
             SourceNo = "GR202601010001",
@@ -141,6 +147,7 @@ public class GetStockMovementsRequestHandlerTests
         {
             Id = Guid.NewGuid(),
             ProductId = product.Id,
+            WarehouseId = warehouse.Id,
             MovementType = StockMovementType.SalesOutbound,
             Quantity = -2,
             SourceNo = "GI202601010001",
@@ -176,6 +183,7 @@ public class GetStockMovementsRequestHandlerTests
         var context = TestSupport.CreateDbContext();
         var p1 = TestSupport.NewProduct("sku-filter-1");
         var p2 = TestSupport.NewProduct("sku-filter-2");
+        var warehouse = TestSupport.SeedDefaultWarehouse(context);
         context.Products.AddRange(p1, p2);
         context.SaveChanges();
 
@@ -184,6 +192,7 @@ public class GetStockMovementsRequestHandlerTests
         {
             Id = Guid.NewGuid(),
             ProductId = p1.Id,
+            WarehouseId = warehouse.Id,
             MovementType = StockMovementType.PurchaseInbound,
             Quantity = 1,
             CreatedAt = Time,
@@ -192,6 +201,7 @@ public class GetStockMovementsRequestHandlerTests
         {
             Id = Guid.NewGuid(),
             ProductId = p2.Id,
+            WarehouseId = warehouse.Id,
             MovementType = StockMovementType.SalesOutbound,
             Quantity = -2,
             CreatedAt = Time,

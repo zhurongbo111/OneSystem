@@ -84,7 +84,7 @@ public class PurchaseReceiptOrderLinkTests
 
         var gl = GeneralLedgerStubs.Create();
         var handler = new CreatePurchaseReceiptRequestHandler(
-            receipts, orders, new PartnerRepository(context), new ProductRepository(context),
+            receipts, orders, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
             inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
 
         return new LinkedHarness

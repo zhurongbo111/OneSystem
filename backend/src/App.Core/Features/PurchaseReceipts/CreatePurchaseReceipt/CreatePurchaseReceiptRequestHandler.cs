@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Warehouses;
 using App.Core.Finance;
 
 namespace App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
@@ -26,6 +27,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IVoucherRepository _voucherRepository;
@@ -44,6 +46,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         IPurchaseOrderRepository purchaseOrderRepository,
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
+        IWarehouseRepository warehouseRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
         IVoucherRepository voucherRepository,
@@ -58,6 +61,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         _purchaseOrderRepository = purchaseOrderRepository;
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
+        _warehouseRepository = warehouseRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
         _voucherRepository = voucherRepository;
@@ -123,6 +127,9 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
             totalAmount += line.Quantity * line.UnitPrice;
         }
 
+        // 入库仓解析（038 §3.4 第 1 步）：入参可空 → 默认仓；指定仓不存在 40400、已停用 40123
+        var warehouse = await WarehouseResolver.ResolveAsync(_warehouseRepository, request.WarehouseId, cancellationToken);
+
         // 关联订单校验（Handler 业务约束，design.md §3.4）：
         // 订单存在 → 已作废 → 已完成 / 已关闭 → 供应商一致 → 逐行明细归属与未收数量
         PurchaseOrder? linkedOrder = null;
@@ -187,6 +194,8 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     ReceiptNo = receiptNo,
                     PartnerId = partner.Id,
                     PartnerName = partner.Name,
+                    WarehouseId = warehouse.Id,
+                    WarehouseName = warehouse.Name,
                     OrderDate = request.OrderDate,
                     OrderId = linkedOrder?.Id,
                     OrderNo = linkedOrder?.OrderNo,
@@ -223,18 +232,20 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                 await _purchaseReceiptRepository.AddAsync(order, items, cancellationToken);
                 foreach (var item in items)
                 {
-                    // 采购入库：库存 += 数量（同事务，回冲在作废用例执行）
-                    await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
+                    // 采购入库：入库仓库存 += 数量（同事务，回冲在作废用例执行）
+                    await _inventoryRepository.IncrementAsync(
+                        item.ProductId, warehouse.Id, item.Quantity, cancellationToken);
 
-                    // 成本：入库按采购单明细单价加权（erp-cost design §0.2）—— 先加数量再加金额
+                    // 成本：入库按采购单明细单价加权（erp-cost design §0.2）—— 先加数量再加金额（按仓分账）
                     await _inventoryRepository.ApplyInboundCostAsync(
-                        item.ProductId, item.Quantity, item.UnitPrice, cancellationToken);
+                        item.ProductId, warehouse.Id, item.Quantity, item.UnitPrice, cancellationToken);
 
-                    // 库存流水：与库存增减同事务，1:1 追加（erp-stock-movement design §3.7）
+                    // 库存流水：与库存增减同事务，1:1 追加并带变动仓（erp-stock-movement design §3.7）
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
+                        WarehouseId = warehouse.Id,
                         MovementType = StockMovementType.PurchaseInbound,
                         Quantity = item.Quantity,
                         UnitCost = item.UnitPrice,
@@ -279,6 +290,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                 var createdReceiptChangeBuilder = new AuditChangeBuilder()
                     .Add("receiptNo", "入库单号", null, order.ReceiptNo)
                     .Add("partnerName", "供应商", null, order.PartnerName)
+                    .Add("warehouseName", "入库仓", null, order.WarehouseName)
                     .Add("orderDate", "入库日期", null, AuditSummary.Date(order.OrderDate))
                     .Add("orderNo", "关联订单号", null, order.OrderNo)
                     .Add("totalAmount", "入库金额", null, AuditSummary.Money(order.TotalAmount))
@@ -289,7 +301,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     Action = AuditAction.Create,
                     ResourceId = order.Id,
                     ResourceNo = order.ReceiptNo,
-                    Summary = $"创建采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
+                    Summary = $"创建采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、入库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
                     Changes = createdReceiptChangeBuilder.Build(),
                     ChangesTruncated = createdReceiptChangeBuilder.Truncated,
                     UtcNow = now,

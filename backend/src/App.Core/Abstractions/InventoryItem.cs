@@ -1,8 +1,9 @@
 namespace App.Core.Abstractions;
 
 /// <summary>
-/// 库存查询列表项读模型（联查 Products / Categories 带出，不暴露实体）。
-/// 低库存标记 isBelowSafetyStock 由 Handler 计算，仓储只负责联查出原始值。
+/// 库存查询列表项读模型（联查 Products / Categories / Warehouses 带出，不暴露实体）。
+/// 一行 = 一个「商品 × 仓库」（038 维度升级）；低库存标记 isBelowSafetyStock 由 Handler 计算，
+/// 仓储只负责联查出原始值。
 /// </summary>
 public sealed record InventoryItem
 {
@@ -21,10 +22,16 @@ public sealed record InventoryItem
     /// <summary>计量单位</summary>
     public required string Unit { get; init; }
 
-    /// <summary>当前库存（联查 Inventory 带出，无库存行时按 0 计）</summary>
+    /// <summary>仓库 ID（038）</summary>
+    public required Guid WarehouseId { get; init; }
+
+    /// <summary>仓库名称（联查 Warehouses 带出）</summary>
+    public required string WarehouseName { get; init; }
+
+    /// <summary>该仓当前库存（联查 Inventory 带出）</summary>
     public required int StockQuantity { get; init; }
 
-    /// <summary>安全库存阈值</summary>
+    /// <summary>仓级安全库存阈值（038）</summary>
     public required int SafetyStock { get; init; }
 
     /// <summary>最近库存变动时间</summary>

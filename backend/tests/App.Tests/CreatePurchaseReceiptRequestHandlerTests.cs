@@ -34,6 +34,7 @@ public class CreatePurchaseReceiptRequestHandlerTests
             new FakePurchaseOrderRepository(calls),
             new PartnerRepository(context),
             new ProductRepository(context),
+            new FakeWarehouseRepository(),
             inventory,
             movements,
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,

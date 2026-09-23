@@ -61,15 +61,18 @@ public sealed class StockTakesController : ControllerBase
     }
 
     /// <summary>
-    /// 盘点商品选择（启用商品 + 当前库存 + 是否已发生库存变动）。
+    /// 盘点商品选择（启用商品 + 所选仓当前库存 + 该仓是否已发生库存变动）。
     /// 固定段路由，注册在 {id:guid} 之前。
     /// </summary>
+    /// <param name="warehouseId">盘点仓 id，可空（038；不传 = 默认仓）</param>
     /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<StockTakeProductPickDto>>))]
     [HttpGet("pick-products")]
     [RequirePermission(Permissions.StockTakesView)]
-    public async Task<ApiResponse<IReadOnlyList<StockTakeProductPickDto>>> GetPickProducts(CancellationToken cancellationToken)
-        => ApiResponseFactory.Ok(await _mediator.Send(new GetStockTakePickProductsRequest(), cancellationToken));
+    public async Task<ApiResponse<IReadOnlyList<StockTakeProductPickDto>>> GetPickProducts(
+        [FromQuery] Guid? warehouseId, CancellationToken cancellationToken)
+        => ApiResponseFactory.Ok(await _mediator.Send(
+            new GetStockTakePickProductsRequest { WarehouseId = warehouseId }, cancellationToken));
 
     /// <summary>
     /// 查询盘点单详情（含明细行，快照字段原样返回）

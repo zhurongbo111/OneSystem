@@ -19,6 +19,12 @@ public sealed class PurchaseReceipt
     /// <summary>供应商名称快照（列表 / 审计免 join）</summary>
     public string PartnerName { get; set; } = string.Empty;
 
+    /// <summary>入库仓 ID（外键 → Warehouses(Id)，038；未指定时取默认仓）</summary>
+    public Guid WarehouseId { get; set; }
+
+    /// <summary>入库仓名称快照（列表 / 详情 / 打印免 join；仓改名后历史单据保持当时名称）</summary>
+    public string WarehouseName { get; set; } = string.Empty;
+
     /// <summary>业务日期（UTC 午夜）</summary>
     public DateTimeOffset OrderDate { get; set; }
 

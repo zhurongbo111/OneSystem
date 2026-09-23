@@ -28,6 +28,7 @@ public class CreateStockTakeRequestHandlerTests
         var handler = new CreateStockTakeRequestHandler(
             takes,
             products,
+            new FakeWarehouseRepository(),
             inventory,
             movements,
             uow,

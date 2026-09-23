@@ -48,12 +48,15 @@ public class ProductsController : ControllerBase
     /// 开单商品选择（仅启用商品，全量返回；erp-purchase / erp-sale 开单页消费。
     /// 固定段 pick 置于 {id:guid} 之前注册，双保险）
     /// </summary>
+    /// <param name="warehouseId">仓库 id，可空（038：传仓则库存为该仓数量，不传为各仓合计）</param>
+    /// <param name="cancellationToken">取消令牌</param>
     [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(ApiResponse<IReadOnlyList<ProductPickDto>>))]
-
     [HttpGet("pick")]
     [RequirePermission(Permissions.ProductsView)]
-    public async Task<ApiResponse<IReadOnlyList<ProductPickDto>>> GetProductPickList(CancellationToken cancellationToken)
-        => ApiResponseFactory.Ok(await _mediator.Send(new GetProductPickListRequest(), cancellationToken));
+    public async Task<ApiResponse<IReadOnlyList<ProductPickDto>>> GetProductPickList(
+        [FromQuery] Guid? warehouseId, CancellationToken cancellationToken)
+        => ApiResponseFactory.Ok(await _mediator.Send(
+            new GetProductPickListRequest { WarehouseId = warehouseId }, cancellationToken));
 
     /// <summary>
     /// 导出商品列表为 xlsx（erp-export）：沿用列表筛选，导出当前筛选全量（不受分页限制）。

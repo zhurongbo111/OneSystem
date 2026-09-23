@@ -19,9 +19,12 @@ public class CreateProductRequestHandlerTests
     {
         var context = TestSupport.CreateDbContext();
         var user = new StubCurrentUser(Guid.NewGuid());
+        // 038：新建商品为每个启用仓建 0 库存行 → 先落一个启用默认仓
+        TestSupport.SeedDefaultWarehouse(context);
         var handler = new CreateProductRequestHandler(
             new ProductRepository(context),
             new CategoryRepository(context),
+            new WarehouseRepository(context),
             new InventoryRepository(context),
             new UnitOfWork(context),
             user, TestSupport.AuditLogger);

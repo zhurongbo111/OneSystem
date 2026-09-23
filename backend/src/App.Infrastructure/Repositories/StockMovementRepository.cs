@@ -31,6 +31,7 @@ public sealed class StockMovementRepository : IStockMovementRepository
     public async Task<(IReadOnlyList<StockMovementItem> Items, int Total)> GetPagedAsync(
         string? keyword,
         Guid? productId,
+        Guid? warehouseId,
         StockMovementType? type,
         DateTimeOffset? start,
         DateTimeOffset? end,
@@ -39,15 +40,17 @@ public sealed class StockMovementRepository : IStockMovementRepository
         CancellationToken cancellationToken = default)
     {
         // 左连接 Products 带出编码 / 名称 / 单位（商品停用不影响历史流水展示）；
-        // 左连接 Users 带出操作人姓名（CreatedBy 为空或无匹配用户时为 null）
+        // 联查 Warehouses 带出仓名（038）；左连接 Users 带出操作人姓名（CreatedBy 为空或无匹配用户时为 null）
         var query = from m in _dbContext.StockMovements.AsNoTracking()
                     join p in _dbContext.Products.AsNoTracking() on m.ProductId equals p.Id
+                    join w in _dbContext.Warehouses.AsNoTracking() on m.WarehouseId equals w.Id
                     join u in _dbContext.Users.AsNoTracking() on m.CreatedBy equals u.Id into uGroup
                     from u in uGroup.DefaultIfEmpty()
                     select new
                     {
                         m,
                         p,
+                        WarehouseName = w.Name,
                         CreatedByName = (string?)(u == null ? null : u.DisplayName),
                     };
 
@@ -61,6 +64,12 @@ public sealed class StockMovementRepository : IStockMovementRepository
         {
             var value = productId.Value;
             query = query.Where(x => x.m.ProductId == value);
+        }
+
+        if (warehouseId is not null)
+        {
+            var value = warehouseId.Value;
+            query = query.Where(x => x.m.WarehouseId == value);
         }
 
         if (type is not null)
@@ -93,6 +102,8 @@ public sealed class StockMovementRepository : IStockMovementRepository
                 ProductCode = x.p.Code,
                 ProductName = x.p.Name,
                 Unit = x.p.Unit,
+                WarehouseId = x.m.WarehouseId,
+                WarehouseName = x.WarehouseName,
                 MovementType = x.m.MovementType,
                 Quantity = x.m.Quantity,
                 UnitCost = x.m.UnitCost,
@@ -108,26 +119,42 @@ public sealed class StockMovementRepository : IStockMovementRepository
     }
 
     /// <inheritdoc />
-    public async Task<int> SumQuantityAsync(Guid productId, CancellationToken cancellationToken = default)
+    public async Task<int> SumQuantityAsync(
+        Guid productId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.StockMovements
+        var query = _dbContext.StockMovements
             .AsNoTracking()
-            .Where(m => m.ProductId == productId)
-            .SumAsync(m => (int?)m.Quantity, cancellationToken) ?? 0;
+            .Where(m => m.ProductId == productId);
+
+        if (warehouseId is not null)
+        {
+            var value = warehouseId.Value;
+            query = query.Where(m => m.WarehouseId == value);
+        }
+
+        return await query.SumAsync(m => (int?)m.Quantity, cancellationToken) ?? 0;
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
-        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+        IReadOnlyList<Guid> productIds, Guid? warehouseId = null, CancellationToken cancellationToken = default)
     {
         if (productIds.Count == 0)
         {
             return Array.Empty<Guid>();
         }
 
-        return await _dbContext.StockMovements
+        var query = _dbContext.StockMovements
             .AsNoTracking()
-            .Where(m => productIds.Contains(m.ProductId))
+            .Where(m => productIds.Contains(m.ProductId));
+
+        if (warehouseId is not null)
+        {
+            var value = warehouseId.Value;
+            query = query.Where(m => m.WarehouseId == value);
+        }
+
+        return await query
             .Select(m => m.ProductId)
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -182,6 +209,7 @@ public sealed class StockMovementRepository : IStockMovementRepository
             {
                 Id = m.Id,
                 ProductId = m.ProductId,
+                WarehouseId = m.WarehouseId,
                 MovementType = m.MovementType,
                 Quantity = m.Quantity,
                 SourceId = m.SourceId,

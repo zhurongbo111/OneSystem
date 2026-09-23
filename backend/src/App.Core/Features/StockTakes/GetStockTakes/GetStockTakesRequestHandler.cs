@@ -26,7 +26,7 @@ public sealed class GetStockTakesRequestHandler : IRequestHandler<GetStockTakesR
     public async Task<PagedResult<StockTakeListItemDto>> HandleAsync(GetStockTakesRequest request, CancellationToken cancellationToken = default)
     {
         var (items, total) = await _stockTakeRepository.GetPagedAsync(
-            request.Keyword, request.Type, request.Start, request.End,
+            request.Keyword, request.Type, request.Start, request.End, request.WarehouseId,
             request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<StockTakeListItemDto>

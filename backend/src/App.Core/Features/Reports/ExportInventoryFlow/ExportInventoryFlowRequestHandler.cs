@@ -35,6 +35,7 @@ public sealed class ExportInventoryFlowRequestHandler : IRequestHandler<ExportIn
             request.ProductId,
             request.CategoryId,
             request.OnlyChanged,
+            request.WarehouseId,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);

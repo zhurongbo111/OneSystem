@@ -298,10 +298,10 @@ public class SalesReturnLifecycleTests
         var gl = GeneralLedgerStubs.Create();
         var salesCreate = new CreateSalesShipmentRequestHandler(
             salesShipments, new FakeSalesOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
-            inventory, movements, new FakeSettlementQueryRepository(),
+            new FakeWarehouseRepository(), inventory, movements, new FakeSettlementQueryRepository(),
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         var returnCreate = new CreateSalesReturnRequestHandler(
-            returns, new PartnerRepository(context), new ProductRepository(context),
+            returns, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
             inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
         var returnVoid = new VoidSalesReturnRequestHandler(returns, inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
 

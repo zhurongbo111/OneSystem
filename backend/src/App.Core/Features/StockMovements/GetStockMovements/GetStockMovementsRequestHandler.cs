@@ -28,6 +28,7 @@ public sealed class GetStockMovementsRequestHandler : IRequestHandler<GetStockMo
         var (items, total) = await _stockMovementRepository.GetPagedAsync(
             request.Keyword,
             request.ProductId,
+            request.WarehouseId,
             request.Type,
             request.Start,
             request.End,

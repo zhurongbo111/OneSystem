@@ -17,6 +17,8 @@ internal static class InventoryDtoMapper
             Name = item.Name,
             CategoryName = item.CategoryName,
             Unit = item.Unit,
+            WarehouseId = item.WarehouseId.ToString(),
+            WarehouseName = item.WarehouseName,
             StockQuantity = item.StockQuantity,
             SafetyStock = item.SafetyStock,
             IsBelowSafetyStock = item.SafetyStock > 0 && item.StockQuantity < item.SafetyStock,

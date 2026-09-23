@@ -31,6 +31,7 @@ public sealed class PurchaseReturnRepository : IPurchaseReturnRepository
         DateTimeOffset? start,
         DateTimeOffset? end,
         SettlementState? settlementState,
+        Guid? warehouseId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -72,6 +73,13 @@ public sealed class PurchaseReturnRepository : IPurchaseReturnRepository
                 SettlementState.PartiallySettled => query.Where(r => r.SettledAmount > 0 && r.SettledAmount < r.TotalAmount),
                 _ => query.Where(r => r.SettledAmount >= r.TotalAmount),
             };
+        }
+
+        // 出库仓筛选（038）
+        if (warehouseId is not null)
+        {
+            var value = warehouseId.Value;
+            query = query.Where(r => r.WarehouseId == value);
         }
 
         var total = await query.CountAsync(cancellationToken);

@@ -80,22 +80,25 @@ public sealed class VoidPurchaseReturnRequestHandler : IRequestHandler<VoidPurch
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            // 回冲：逐行库存 += 退货数量（把退回供应商的实物收回账上；与保存时的扣减对称）
+            // 回冲：逐行在**单据出库仓**加回退货数量（把退回供应商的实物收回账上；与保存时的扣减对称）
             foreach (var item in items)
             {
-                await _inventoryRepository.IncrementAsync(item.ProductId, item.Quantity, cancellationToken);
+                await _inventoryRepository.IncrementAsync(
+                    item.ProductId, purchaseReturn.WarehouseId, item.Quantity, cancellationToken);
 
                 // 成本：冲销还原 —— 复用该退货单原出库流水的成本单价（erp-cost design §0.2）
                 var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
                     purchaseReturn.Id, item.ProductId, StockMovementType.PurchaseReturnOut, cancellationToken) ?? 0m;
                 var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
-                await _inventoryRepository.ApplyInboundCostAsync(item.ProductId, item.Quantity, unitCost, cancellationToken);
+                await _inventoryRepository.ApplyInboundCostAsync(
+                    item.ProductId, purchaseReturn.WarehouseId, item.Quantity, unitCost, cancellationToken);
 
-                // 库存流水：采购退货作废回冲（正方向），与库存增减同事务（design.md §3.6）
+                // 库存流水：采购退货作废回冲（正方向），与库存增减同事务并带变动仓（design.md §3.6）
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
                     Id = Guid.NewGuid(),
                     ProductId = item.ProductId,
+                    WarehouseId = purchaseReturn.WarehouseId,
                     MovementType = StockMovementType.PurchaseReturnVoid,
                     Quantity = item.Quantity,
                     UnitCost = unitCost,
@@ -128,7 +131,7 @@ public sealed class VoidPurchaseReturnRequestHandler : IRequestHandler<VoidPurch
                 Action = AuditAction.Void,
                 ResourceId = purchaseReturn.Id,
                 ResourceNo = purchaseReturn.ReturnNo,
-                Summary = $"作废采购退货单 {purchaseReturn.ReturnNo}（供应商：{purchaseReturn.PartnerName}、{AuditSummary.Money(purchaseReturn.TotalAmount)}）",
+                Summary = $"作废采购退货单 {purchaseReturn.ReturnNo}（供应商：{purchaseReturn.PartnerName}、出库仓：{purchaseReturn.WarehouseName}、{AuditSummary.Money(purchaseReturn.TotalAmount)}）",
                 Changes = voidedReturnChangeBuilder.Build(),
                 ChangesTruncated = voidedReturnChangeBuilder.Truncated,
                 UtcNow = now,

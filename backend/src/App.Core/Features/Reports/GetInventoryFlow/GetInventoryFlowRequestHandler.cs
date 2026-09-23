@@ -33,6 +33,7 @@ public sealed class GetInventoryFlowRequestHandler : IRequestHandler<GetInventor
             request.ProductId,
             request.CategoryId,
             request.OnlyChanged,
+            request.WarehouseId,
             request.Page,
             request.PageSize,
             cancellationToken);

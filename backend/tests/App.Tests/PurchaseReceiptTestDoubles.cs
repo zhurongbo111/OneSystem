@@ -31,7 +31,7 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
 
     /// <summary>已执行的分页查询入参</summary>
     public List<(string? Keyword, Guid? PartnerId, Guid? OrderId, DateTimeOffset? Start, DateTimeOffset? End,
-        SettlementState? SettlementState, int Page, int PageSize)> PagedQueries
+        SettlementState? SettlementState, Guid? WarehouseId, int Page, int PageSize)> PagedQueries
     { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
@@ -43,9 +43,9 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
 
     public Task<(IReadOnlyList<(PurchaseReceipt Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, Guid? orderId, DateTimeOffset? start, DateTimeOffset? end,
-        SettlementState? settlementState, int page, int pageSize, CancellationToken cancellationToken = default)
+        SettlementState? settlementState, Guid? warehouseId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        PagedQueries.Add((keyword, partnerId, orderId, start, end, settlementState, page, pageSize));
+        PagedQueries.Add((keyword, partnerId, orderId, start, end, settlementState, warehouseId, page, pageSize));
         return Task.FromResult((PagedItems, PagedTotal));
     }
 
@@ -125,11 +125,14 @@ internal sealed class FakePurchaseReceiptRepository : IPurchaseReceiptRepository
 }
 
 /// <summary>
-/// 行为型库存仓储假实现（内存台账 + 记录回冲/入库增量），规避 InMemory 不支持 <c>ExecuteUpdateAsync</c>。
+/// 行为型库存仓储假实现（内存台账按「商品 × 仓」+ 记录回冲/入库增量），规避 InMemory 不支持 <c>ExecuteUpdateAsync</c>。
+/// 单参便捷口径（<see cref="Seed"/> / <see cref="GetQuantity(Guid)"/>）一律作用于
+/// <see cref="TestWarehouse.DefaultId"/>，使既有单仓用例零改造；多仓用例走带仓重载。
+/// 成本台账（<see cref="CostAmounts"/> / <see cref="AverageCosts"/>）保持按商品记账（单仓用例口径）。
 /// </summary>
 internal sealed class FakeInventoryRepository : IInventoryRepository
 {
-    private readonly Dictionary<Guid, int> _stock = [];
+    private readonly Dictionary<(Guid ProductId, Guid WarehouseId), int> _stock = [];
     private readonly List<string>? _calls;
 
     public FakeInventoryRepository(List<string>? calls = null) => _calls = calls;
@@ -170,17 +173,43 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     /// <summary>已读取过账面的商品 id 集合（断言「事务内读账面」发生）</summary>
     public HashSet<Guid> BookRead { get; } = [];
 
-    public void Seed(Guid productId, int quantity) => _stock[productId] = quantity;
+    /// <summary>仓级安全库存写入序列（productId, warehouseId, safetyStock）</summary>
+    public List<(Guid ProductId, Guid WarehouseId, int SafetyStock)> SafetyStockWrites { get; } = [];
 
-    public int GetQuantity(Guid productId) => _stock.GetValueOrDefault(productId);
+    /// <summary>预置默认仓库存（单仓用例口径）</summary>
+    public void Seed(Guid productId, int quantity) => Seed(productId, TestWarehouse.DefaultId, quantity);
 
-    public Task AddAsync(Inventory inventory, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException();
+    /// <summary>预置指定仓库存（多仓用例口径）</summary>
+    public void Seed(Guid productId, Guid warehouseId, int quantity) => _stock[(productId, warehouseId)] = quantity;
 
-    public Task<int> GetQuantityAsync(Guid productId, CancellationToken cancellationToken = default)
-        => Task.FromResult(GetQuantity(productId));
+    /// <summary>读取默认仓库存（单仓用例口径）</summary>
+    public int GetQuantity(Guid productId) => GetQuantity(productId, TestWarehouse.DefaultId);
 
-    public Task IncrementAsync(Guid productId, int delta, CancellationToken cancellationToken = default)
+    /// <summary>读取指定仓库存（多仓用例口径）</summary>
+    public int GetQuantity(Guid productId, Guid warehouseId)
+        => _stock.GetValueOrDefault((productId, Normalize(warehouseId)));
+
+    /// <summary>
+    /// 单仓用例兼容：假实现中未显式赋仓（<c>Guid.Empty</c>）一律视为默认仓，
+    /// 免去既有用例逐处补 <c>WarehouseId</c>（生产侧仓库 id 恒由 WarehouseResolver 解析）
+    /// </summary>
+    private static Guid Normalize(Guid warehouseId)
+        => warehouseId == Guid.Empty ? TestWarehouse.DefaultId : warehouseId;
+
+    public Task EnsureRowAsync(Guid productId, Guid warehouseId, int safetyStock, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("EnsureRow");
+        _stock.TryAdd((productId, Normalize(warehouseId)), 0);
+        return Task.CompletedTask;
+    }
+
+    public Task<int> GetQuantityAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default)
+        => Task.FromResult(GetQuantity(productId, warehouseId));
+
+    public Task<int> GetTotalQuantityAsync(Guid productId, CancellationToken cancellationToken = default)
+        => Task.FromResult(_stock.Where(kv => kv.Key.ProductId == productId).Sum(kv => kv.Value));
+
+    public Task IncrementAsync(Guid productId, Guid warehouseId, int delta, CancellationToken cancellationToken = default)
     {
         _calls?.Add("Increment");
         var failure = IncrementFailure?.Invoke();
@@ -190,24 +219,26 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
         }
 
         Increments.Add((productId, delta));
-        _stock[productId] = _stock.GetValueOrDefault(productId) + delta;
+        var key = (productId, Normalize(warehouseId));
+        _stock[key] = _stock.GetValueOrDefault(key) + delta;
         return Task.CompletedTask;
     }
 
-    public Task<bool> TryDecrementAsync(Guid productId, int amount, CancellationToken cancellationToken = default)
+    public Task<bool> TryDecrementAsync(Guid productId, Guid warehouseId, int amount, CancellationToken cancellationToken = default)
     {
         _calls?.Add("TryDecrement");
-        if (TryDecrementFailProducts.Contains(productId) || GetQuantity(productId) < amount)
+        if (TryDecrementFailProducts.Contains(productId) || GetQuantity(productId, warehouseId) < amount)
         {
             return Task.FromResult(false);
         }
 
         Decrements.Add((productId, amount));
-        _stock[productId] = GetQuantity(productId) - amount;
+        var key = (productId, Normalize(warehouseId));
+        _stock[key] = _stock.GetValueOrDefault(key) - amount;
         return Task.FromResult(true);
     }
 
-    public Task<int> SetQuantityAsync(Guid productId, int quantity, CancellationToken cancellationToken = default)
+    public Task<int> SetQuantityAsync(Guid productId, Guid warehouseId, int quantity, CancellationToken cancellationToken = default)
     {
         _calls?.Add("SetQuantity");
         BookRead.Add(productId);
@@ -218,11 +249,11 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
         }
 
         Sets.Add((productId, quantity));
-        _stock[productId] = quantity;
+        _stock[(productId, Normalize(warehouseId))] = quantity;
         return Task.FromResult(1);
     }
 
-    public Task<decimal> GetAverageCostAsync(Guid productId, CancellationToken cancellationToken = default)
+    public Task<decimal> GetAverageCostAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default)
     {
         _calls?.Add("GetAverageCost");
         AverageCostReads.Add(productId);
@@ -230,7 +261,7 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     }
 
     public Task ApplyInboundCostAsync(
-        Guid productId, int quantity, decimal unitCost, CancellationToken cancellationToken = default)
+        Guid productId, Guid warehouseId, int quantity, decimal unitCost, CancellationToken cancellationToken = default)
     {
         _calls?.Add("ApplyInboundCost");
         InboundCosts.Add((productId, quantity, unitCost));
@@ -240,7 +271,7 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
             + Math.Round(quantity * unitCost, 4, MidpointRounding.AwayFromZero);
         CostAmounts[productId] = amount;
 
-        var qty = GetQuantity(productId);
+        var qty = GetQuantity(productId, warehouseId);
         if (qty != 0)
         {
             AverageCosts[productId] = Math.Round(amount / qty, 4, MidpointRounding.AwayFromZero);
@@ -250,19 +281,19 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     }
 
     public Task ApplyOutboundCostAsync(
-        Guid productId, decimal totalCost, CancellationToken cancellationToken = default)
+        Guid productId, Guid warehouseId, decimal totalCost, CancellationToken cancellationToken = default)
     {
         _calls?.Add("ApplyOutboundCost");
         OutboundCosts.Add((productId, totalCost));
 
         // 出库不改变均价；数量归零时成本额归 0（消除尾差）
-        var qty = GetQuantity(productId);
+        var qty = GetQuantity(productId, warehouseId);
         CostAmounts[productId] = qty == 0 ? 0m : CostAmounts.GetValueOrDefault(productId) - totalCost;
         return Task.CompletedTask;
     }
 
     public Task SetCostAsync(
-        Guid productId, decimal costAmount, decimal averageCost, CancellationToken cancellationToken = default)
+        Guid productId, Guid warehouseId, decimal costAmount, decimal averageCost, CancellationToken cancellationToken = default)
     {
         _calls?.Add("SetCost");
         CostAmounts[productId] = costAmount;
@@ -271,7 +302,7 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
     }
 
     public Task<IReadOnlyDictionary<Guid, int>> GetQuantitiesAsync(
-        IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+        Guid warehouseId, IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
     {
         _calls?.Add("GetQuantities");
         foreach (var id in productIds)
@@ -279,12 +310,27 @@ internal sealed class FakeInventoryRepository : IInventoryRepository
             BookRead.Add(id);
         }
 
-        var dict = productIds.ToDictionary(id => id, id => GetQuantity(id));
+        var dict = productIds.ToDictionary(id => id, id => GetQuantity(id, warehouseId));
         return Task.FromResult<IReadOnlyDictionary<Guid, int>>(dict);
     }
 
+    public Task<int> UpdateSafetyStockAsync(
+        Guid productId, Guid warehouseId, int safetyStock, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("UpdateSafetyStock");
+        var key = (productId, Normalize(warehouseId));
+        if (!_stock.ContainsKey(key))
+        {
+            // 与真实仓储一致：该仓无库存行时受影响行数为 0（调用方据此报 40400）
+            return Task.FromResult(0);
+        }
+
+        SafetyStockWrites.Add((productId, warehouseId, safetyStock));
+        return Task.FromResult(1);
+    }
+
     public Task<(IReadOnlyList<InventoryItem> Items, int Total)> GetPagedAsync(
-        string? keyword, Guid? categoryId, int page, int pageSize, CancellationToken cancellationToken = default)
+        string? keyword, Guid? categoryId, Guid? warehouseId, int page, int pageSize, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 }
 

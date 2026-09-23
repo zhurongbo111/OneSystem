@@ -39,6 +39,7 @@ public sealed class ExportStockTakesRequestHandler : IRequestHandler<ExportStock
             request.Type,
             request.Start,
             request.End,
+            request.WarehouseId,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);
@@ -63,6 +64,7 @@ public sealed class ExportStockTakesRequestHandler : IRequestHandler<ExportStock
             {
                 take.TakeNo,
                 ExportLabels.ToText(take.Type),
+                take.WarehouseName,
                 take.TakeDate,
                 take.ItemCount,
                 take.DiffItemCount,
@@ -98,6 +100,7 @@ public sealed class ExportStockTakesRequestHandler : IRequestHandler<ExportStock
                     [
                         new ExcelColumnModel { Header = "单号", ValueType = ExcelValueType.Text, Width = 20 },
                         new ExcelColumnModel { Header = "类型", ValueType = ExcelValueType.Text, Width = 12 },
+                        new ExcelColumnModel { Header = "仓库", ValueType = ExcelValueType.Text, Width = 16 },
                         new ExcelColumnModel { Header = "盘点日期", ValueType = ExcelValueType.Date, Width = 14 },
                         new ExcelColumnModel { Header = "明细行数", ValueType = ExcelValueType.Integer, Width = 12 },
                         new ExcelColumnModel { Header = "差异行数", ValueType = ExcelValueType.Integer, Width = 12 },

@@ -27,7 +27,7 @@ public sealed class GetSalesShipmentsRequestHandler : IRequestHandler<GetSalesSh
     {
         var (items, total) = await _salesShipmentRepository.GetPagedAsync(
             request.Keyword, request.PartnerId, request.OrderId, request.Start, request.End, request.SettlementState,
-            request.Page, request.PageSize, cancellationToken);
+            request.WarehouseId, request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<SalesShipmentListItemDto>
         {

@@ -64,6 +64,7 @@ using App.Core.Features.Employees.UpdateEmployeeStatus;
 using App.Core.Features.Inventory;
 using App.Core.Features.Inventory.ExportInventory;
 using App.Core.Features.Inventory.GetInventory;
+using App.Core.Features.Inventory.UpdateInventorySafetyStock;
 using App.Core.Features.LoginLogs;
 using App.Core.Features.LoginLogs.GetLoginLogs;
 using App.Core.Features.Partners;
@@ -201,6 +202,14 @@ using App.Core.Features.Vouchers.CreateVoucher;
 using App.Core.Features.Vouchers.GetVoucherById;
 using App.Core.Features.Vouchers.GetVouchers;
 using App.Core.Features.Vouchers.VoidVoucher;
+using App.Core.Features.Warehouses;
+using App.Core.Features.Warehouses.CreateWarehouse;
+using App.Core.Features.Warehouses.GetWarehouseById;
+using App.Core.Features.Warehouses.GetWarehousePickList;
+using App.Core.Features.Warehouses.GetWarehouses;
+using App.Core.Features.Warehouses.SetDefaultWarehouse;
+using App.Core.Features.Warehouses.UpdateWarehouse;
+using App.Core.Features.Warehouses.UpdateWarehouseStatus;
 using App.Core.Mediation;
 using App.Core.Responses;
 
@@ -349,6 +358,16 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<UpdatePartnerRequest, PartnerDto>, UpdatePartnerRequestHandler>();
         services.AddScoped<IRequestHandler<UpdatePartnerStatusRequest, PartnerDto>, UpdatePartnerStatusRequestHandler>();
 
+        // 仓库用例（erp-multi-warehouse，038）
+        services.AddScoped<IRequestHandler<UpdateInventorySafetyStockRequest, UpdateInventorySafetyStockResponse>, UpdateInventorySafetyStockRequestHandler>();
+        services.AddScoped<IRequestHandler<GetWarehousesRequest, PagedResult<WarehouseDto>>, GetWarehousesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateWarehouseRequest, WarehouseDto>, CreateWarehouseRequestHandler>();
+        services.AddScoped<IRequestHandler<GetWarehouseByIdRequest, WarehouseDto>, GetWarehouseByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateWarehouseRequest, WarehouseDto>, UpdateWarehouseRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateWarehouseStatusRequest, WarehouseDto>, UpdateWarehouseStatusRequestHandler>();
+        services.AddScoped<IRequestHandler<SetDefaultWarehouseRequest, WarehouseDto>, SetDefaultWarehouseRequestHandler>();
+        services.AddScoped<IRequestHandler<GetWarehousePickListRequest, IReadOnlyList<WarehousePickDto>>, GetWarehousePickListRequestHandler>();
+
         // 客户价格用例（erp-partner-price）
         services.AddScoped<IRequestHandler<GetPartnerPricesRequest, PagedResult<PartnerPriceListItemDto>>, GetPartnerPricesRequestHandler>();
         services.AddScoped<IRequestHandler<CreatePartnerPriceRequest, PartnerPriceDetailDto>, CreatePartnerPriceRequestHandler>();
@@ -489,6 +508,11 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdatePartnerPriceRequest>, UpdatePartnerPriceRequestValidator>();
         services.AddScoped<IValidator<GetEffectivePricesRequest>, GetEffectivePricesRequestValidator>();
         services.AddScoped<IValidator<GetInventoryRequest>, GetInventoryRequestValidator>();
+        services.AddScoped<IValidator<UpdateInventorySafetyStockRequest>, UpdateInventorySafetyStockRequestValidator>();
+        services.AddScoped<IValidator<GetWarehousesRequest>, GetWarehousesRequestValidator>();
+        services.AddScoped<IValidator<CreateWarehouseRequest>, CreateWarehouseRequestValidator>();
+        services.AddScoped<IValidator<UpdateWarehouseRequest>, UpdateWarehouseRequestValidator>();
+        services.AddScoped<IValidator<UpdateWarehouseStatusRequest>, UpdateWarehouseStatusRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseReceiptsRequest>, GetPurchaseReceiptsRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReceiptRequest>, CreatePurchaseReceiptRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseOrderPicksRequest>, GetPurchaseOrderPicksRequestValidator>();

@@ -337,6 +337,7 @@ public class AuditLogWriteIntegrationTests
         await new CreateStockTakeRequestHandler(
             new FakeStockTakeRepository(calls),
             products,
+            new FakeWarehouseRepository(),
             new FakeInventoryRepository(calls),
             new FakeStockMovementRepository(calls),
             new RecordingUnitOfWork(calls),
@@ -429,6 +430,7 @@ public class AuditLogWriteIntegrationTests
         var handler = new CreateProductRequestHandler(
             new ProductRepository(context),
             new CategoryRepository(context),
+            new WarehouseRepository(context),
             new InventoryRepository(context),
             new UnitOfWork(context),
             new StubCurrentUser(_operatorId),
@@ -471,6 +473,7 @@ public class AuditLogWriteIntegrationTests
             new FakeSalesOrderRepository(calls),
             new PartnerRepository(context),
             new ProductRepository(context),
+            new FakeWarehouseRepository(),
             inventory,
             new FakeStockMovementRepository(calls),
             new FakeSettlementQueryRepository(),
