@@ -31,6 +31,9 @@ export default [
       'no-undef': 'off',
       // 页面组件允许单词名（LoginView / HomeView 已多词，此处放宽）
       'vue/multi-word-component-names': 'off',
+      // 模板使用未导入的组件：Vue 会静默渲染为原生元素（抽屉 / 表单不出现），vue-tsc 也不报错
+      // （036 客户价格页曾中招）；Arco 组件（a-*）与 Arco 图标（icon-* / Icon*）为全局注册，故忽略
+      'vue/no-undef-components': ['error', { ignorePatterns: ['^a-', '^icon-', '^Icon'] }],
       // 项目约定：禁止 any
       '@typescript-eslint/no-explicit-any': 'error',
       // 组合式 API 书写规范：import 顺序（vue 生态 → 第三方 → @/ 内部 → 相对路径）
