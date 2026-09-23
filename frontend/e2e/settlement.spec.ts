@@ -378,17 +378,23 @@ test.describe('收付款与往来对账（集成）', () => {
     const token = await loginToken(request)
     const headers = { Authorization: `Bearer ${token}` }
 
-    const partnerRes = await request.get(
-      `${BACKEND}/api/partners?keyword=${customer}&page=1&pageSize=20`,
-      { headers },
-    )
-    const partnerId = (await partnerRes.json()).data.items[0].id as string
-
     const orderRes = await request.get(
       `${BACKEND}/api/sales-shipments?keyword=${orderNo}&page=1&pageSize=20`,
       { headers },
     )
-    const order = (await orderRes.json()).data.items[0] as { id: string; totalAmount: number }
+    const orders = (await orderRes.json()).data.items as {
+      id: string
+      shipmentNo: string
+      partnerId: string
+      partnerName: string
+      totalAmount: number
+    }[]
+    // 关键字搜索可能命中多条，取首条会拿到别的单据 / 客户（曾导致核销报 40113）
+    const order = orders.find((item) => item.shipmentNo === orderNo)
+    if (!order) throw new Error(`未按单号找到销售单 ${orderNo}（返回 ${orders.length} 条）`)
+    expect(order.partnerName).toBe(customer)
+    // 核销的往来单位以单据出参为准，不再按关键字搜伙伴列表取首条
+    const partnerId = order.partnerId
 
     const settlementDate = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`).toISOString()
 
