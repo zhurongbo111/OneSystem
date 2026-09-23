@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { gotoApp } from "./helpers/app";
+
 /** dev 后端健康检查地址 */
 const BACKEND_HEALTH = "http://localhost:5080/health";
 /** dev 测试账号（来自项目 seed 数据） */
@@ -17,7 +19,7 @@ test.describe("登录与路由守卫（集成）", () => {
   });
 
   test("未登录直接访问首页被重定向到登录页", async ({ page }) => {
-    await page.goto("/");
+    await gotoApp(page, "/");
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByText("测试账号：admin / admin123")).toBeVisible();
   });
@@ -57,8 +59,12 @@ test.describe("登录与路由守卫（集成）", () => {
     await page.getByPlaceholder("请输入密码").fill(CREDENTIALS.password);
     await page.getByRole("button", { name: "登录" }).click();
     await expect(page).toHaveURL(/\/$/);
-    await page.goto("/products");
+    await gotoApp(page, "/products");
     await expect(page).toHaveURL(/\/products$/);
+
+    // 等初次列表加载完成：「搜索」按钮在加载中为 loading 态，此期间点击会被 Arco 吞掉，
+    // 后续就没有受保护请求可触发 40100（表现为页面停在 /products 不跳转）
+    await page.waitForLoadState("networkidle");
 
     // 打「未整页刷新」标记，并把凭证改成无效值（请求拦截器从 localStorage 读取）
     await page.evaluate(() => {

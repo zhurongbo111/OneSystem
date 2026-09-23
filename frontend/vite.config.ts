@@ -1,7 +1,20 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 
 import vue from '@vitejs/plugin-vue'
+
+// 启动时一次性预打包的运行时依赖：直接取 package.json 的 dependencies，
+// 新增依赖自动纳入，无需手工维护列表。
+const { dependencies } = JSON.parse(
+  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8'),
+) as { dependencies: Record<string, string> }
+
+/**
+ * dependencies 只含包名，补这里的是「根包名之外的子路径入口」。
+ * 这类导入不会被包名覆盖，仍需显式声明，否则首次引到时同样会触发重新预打包。
+ */
+const SUBPATH_DEPS = ['@arco-design/web-vue/es/icon']
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,16 +24,7 @@ export default defineConfig({
   // 504（Outdated Optimize Dep），懒加载 chunk 失败 → 路由首次导航中断 → 白屏，
   // e2e 表现为偶发的「未登录访问首页未跳转登录页」（URL 停在 /，页面纯白）。
   optimizeDeps: {
-    include: [
-      'vue',
-      'vue-router',
-      'pinia',
-      'axios',
-      '@arco-design/web-vue',
-      '@arco-design/web-vue/es/icon',
-      '@lucide/vue',
-      '@tabler/icons-vue',
-    ],
+    include: [...Object.keys(dependencies), ...SUBPATH_DEPS],
   },
   resolve: {
     alias: {
