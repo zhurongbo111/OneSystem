@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-23
 ---
 
 # 设计规格：报价单（erp-quotation）
@@ -103,7 +103,7 @@ updated: 2026-09-20
 | `Id` | `Guid` | `uuid` | PK | |
 | `QuotationId` | `Guid` | `uuid` | NOT NULL，FK → `Quotations(Id)`，索引 | |
 | `ProductId` | `Guid` | `uuid` | NOT NULL，FK → `Products(Id)` | |
-| `ProductName` / `Unit` | `string` | `varchar(50)` / `varchar(20)` | NOT NULL | 名称 / 单位**快照** |
+| `ProductName` / `Unit` | `string` | `varchar(50)` / `varchar(10)` | NOT NULL | 名称 / 单位**快照**（列长同源 `ProductFieldConstraints`） |
 | `Quantity` | `int` | `integer` | NOT NULL，≥ 1 | |
 | `UnitPrice` | `decimal` | `numeric(18,2)` | NOT NULL，≥ 0 | 单价**快照** |
 | `Subtotal` | `decimal` | `numeric(18,2)` | NOT NULL | 后端计算 |
@@ -133,7 +133,7 @@ updated: 2026-09-20
 | `IQuotationRepository.UpdateStatusAsync(id, status, convertedOrderId?, convertedOrderNo?, ...)` | 作废 / 转单状态回写 |
 | `IQuotationRepository.GenerateNoAsync(date, ...)` | 单号 `QT` |
 
-读模型：`QuotationListItem`（含客户名 / 明细数）、`QuotationDetail`、`EffectivePriceItem`（复用 `036`）。
+读模型：`QuotationListItem`（主表实体 + 明细行数，明细数属联查聚合字段故独立成读模型；客户名已在主表快照列上、无需联查）；`GetDetailAsync` 返回「主表实体 + 明细行实体」元组，不另建读模型（后端规则 §4.3）。取价复用 `036` 的生效价出参，本域不新增。
 
 ### 3.2 错误码（`ErrorCode.cs`，从 `40166` 起）
 
@@ -159,7 +159,7 @@ updated: 2026-09-20
 
 ### 3.4 关键用例流程（Handler）
 
-- **CreateQuotation**：客户存在（`40400`）；明细非空、商品存在、数量 / 单价合法；后端重算小计 / 总额；生成单号；落库（同一事务）。
+- **CreateQuotation**：客户校验（存在 `40400` / 已停用 `40108` / 类型不含客户 `40109`，与 `024` 销售订单同口径——报价是其前段）；明细非空、商品存在 `40400`（停用 `40107`）、数量 / 单价合法；后端重算小计 / 总额；生成单号 `QT`（唯一索引冲突重试 3 次）；落库（同一事务）。
 - **UpdateQuotation**：取报价单（`40400`）→ `Status != Draft` → `40166` → 校验同上 → 明细**全量替换**（先删后插）。
 - **VoidQuotation**：`Status != Draft` → `40166` → `Status = Voided`。
 - **ConvertToOrder**：取报价单（`40400`）→ `Status != Draft` → `40167` → 在 `IUnitOfWork` 内：创建销售订单（`SalesOrders` + 明细，沿用 `024` 仓储 `GenerateOrderNoAsync`）+ 回写报价单（`ConvertedOrderId` / `ConvertedOrderNo` / `Status = Converted`）→ `CommitAsync`。
@@ -192,6 +192,7 @@ src/
 |---|---|---|
 | `quotations` | `quotations` | `QuotationsView` |
 | `quotations/new` | `quotationCreate` | `QuotationFormPage` |
+| `quotations/edit/:id` | `quotationEdit` | `QuotationFormPage`（新建 / 编辑共用，以 `route.name` 区分） |
 | `quotations/detail/:id` | `quotationDetail` | `QuotationDetailView` |
 
 - 「销售」分组续行「报价单」（置于「销售订单」前）；`meta.permission = 'quotations.view'`。
