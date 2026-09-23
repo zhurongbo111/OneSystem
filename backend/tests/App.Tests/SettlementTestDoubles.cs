@@ -25,7 +25,7 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
     { get; } = [];
 
     /// <summary>分页查询返回的行（由用例预置）</summary>
-    public IReadOnlyList<Settlement> PagedItems { get; set; } = Array.Empty<Settlement>();
+    public IReadOnlyList<SettlementListItem> PagedItems { get; set; } = Array.Empty<SettlementListItem>();
 
     /// <summary>分页查询返回的总数（由用例预置）</summary>
     public int PagedTotal { get; set; }
@@ -40,7 +40,27 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
     /// <summary>读取单据当前状态（供断言）</summary>
     public Settlement Get(Guid id) => _settlements[id];
 
-    public Task<(IReadOnlyList<Settlement> Items, int Total)> GetPagedAsync(
+    /// <summary>
+    /// 收付款单实体 → 列表读模型（字段与真实仓储投影一致；资金账户名由 <see cref="BankAccountNames"/> 预置时另行提供）
+    /// </summary>
+    public static SettlementListItem ToListItem(Settlement settlement) => new()
+    {
+        Id = settlement.Id,
+        SettlementNo = settlement.SettlementNo,
+        Type = settlement.Type,
+        PartnerId = settlement.PartnerId,
+        PartnerName = settlement.PartnerName,
+        SettlementDate = settlement.SettlementDate,
+        TotalAmount = settlement.TotalAmount,
+        Method = settlement.Method,
+        BankAccountId = settlement.BankAccountId,
+        BankAccountName = null,
+        Status = settlement.Status,
+        CreatedBy = settlement.CreatedBy,
+        CreatedAt = settlement.CreatedAt,
+    };
+
+    public Task<(IReadOnlyList<SettlementListItem> Items, int Total)> GetPagedAsync(
         string? keyword, SettlementType? type, Guid? partnerId, SettlementMethod? method,
         DateTimeOffset? start, DateTimeOffset? end, SettlementOrderType? orderType, Guid? orderId,
         int page, int pageSize, CancellationToken cancellationToken = default)
@@ -49,16 +69,39 @@ internal sealed class FakeSettlementRepository : ISettlementRepository
         return Task.FromResult((PagedItems, PagedTotal));
     }
 
-    public Task<(Settlement? Settlement, IReadOnlyList<SettlementItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<(SettlementDetail? Settlement, IReadOnlyList<SettlementItem> Items)> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         if (!_settlements.TryGetValue(id, out var settlement))
         {
-            return Task.FromResult<(Settlement?, IReadOnlyList<SettlementItem>)>((null, Array.Empty<SettlementItem>()));
+            return Task.FromResult<(SettlementDetail?, IReadOnlyList<SettlementItem>)>((null, Array.Empty<SettlementItem>()));
         }
 
         IReadOnlyList<SettlementItem> items = _items[id].OrderBy(i => i.Id).ToList(); // 与真实仓储一致：按 Id 还原插入顺序
-        return Task.FromResult((Settlement: (Settlement?)settlement, Items: items));
+        SettlementDetail detail = new()
+        {
+            Id = settlement.Id,
+            SettlementNo = settlement.SettlementNo,
+            Type = settlement.Type,
+            PartnerId = settlement.PartnerId,
+            PartnerName = settlement.PartnerName,
+            SettlementDate = settlement.SettlementDate,
+            TotalAmount = settlement.TotalAmount,
+            Method = settlement.Method,
+            BankAccountId = settlement.BankAccountId,
+            BankAccountName = BankAccountNameOf(settlement.BankAccountId),
+            Status = settlement.Status,
+            Remark = settlement.Remark,
+            CreatedBy = settlement.CreatedBy,
+            CreatedAt = settlement.CreatedAt,
+        };
+        return Task.FromResult((Settlement: (SettlementDetail?)detail, Items: items));
     }
+
+    /// <summary>资金账户名称：由用例预置，模拟真实仓储的联查（未关联时为 null）</summary>
+    public Dictionary<Guid, string> BankAccountNames { get; } = [];
+
+    private string? BankAccountNameOf(Guid? bankAccountId)
+        => bankAccountId is not null && BankAccountNames.TryGetValue(bankAccountId.Value, out var name) ? name : null;
 
     /// <summary>批量取核销明细（列表「单据类型」列聚合与 erp-export 导出共用）：与真实仓储同口径，按明细 Id 升序</summary>
     public Task<IReadOnlyList<SettlementItem>> GetItemsBySettlementIdsAsync(IReadOnlyCollection<Guid> settlementIds, CancellationToken cancellationToken = default)
