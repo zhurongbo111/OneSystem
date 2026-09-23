@@ -27,6 +27,7 @@ public class SettlementCreateAndVoidTests
         FakeSalesShipmentRepository SalesShipments,
         FakePurchaseReturnRepository PurchaseReturns,
         FakeSalesReturnRepository SalesReturns,
+        FakeBankAccountRepository BankAccounts,
         RecordingUnitOfWork Uow,
         StubCurrentUser User,
         List<string> Calls);
@@ -49,6 +50,7 @@ public class SettlementCreateAndVoidTests
             new FakeSalesShipmentRepository(calls),
             new FakePurchaseReturnRepository(calls),
             new FakeSalesReturnRepository(calls),
+            new FakeBankAccountRepository(),
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(Guid.NewGuid()),
             calls);
@@ -64,6 +66,7 @@ public class SettlementCreateAndVoidTests
             harness.PurchaseReturns,
             harness.SalesReturns,
             new PartnerRepository(harness.Context),
+            harness.BankAccounts,
             gl.Vouchers,
             gl.Mappings,
             gl.Periods,

@@ -59,7 +59,7 @@ public class SettlementQueryHandlerTests
     {
         var repository = new FakeSettlementRepository();
         var settlement = NewSettlement();
-        repository.PagedItems = new[] { settlement };
+        repository.PagedItems = new[] { FakeSettlementRepository.ToListItem(settlement) };
         repository.PagedTotal = 5;
         settlement.Remark = "备注一";
         // 混合核销两类单据：列表「单据类型」列按明细去重升序派生
@@ -117,7 +117,7 @@ public class SettlementQueryHandlerTests
     {
         var repository = new FakeSettlementRepository();
         var voided = NewSettlement(status: OrderStatus.Voided);
-        repository.PagedItems = new[] { voided };
+        repository.PagedItems = new[] { FakeSettlementRepository.ToListItem(voided) };
         repository.PagedTotal = 1;
 
         var result = await new GetSettlementsRequestHandler(repository).HandleAsync(new GetSettlementsRequest());
@@ -134,7 +134,7 @@ public class SettlementQueryHandlerTests
         var orderId = Guid.NewGuid();
         var matched = NewSettlement(totalAmount: 300m);
         var other = NewSettlement(totalAmount: 100m);
-        repository.PagedItems = new[] { matched, other };
+        repository.PagedItems = new[] { FakeSettlementRepository.ToListItem(matched), FakeSettlementRepository.ToListItem(other) };
         repository.PagedTotal = 2;
         repository.Seed(matched, new[]
         {
@@ -188,7 +188,7 @@ public class SettlementQueryHandlerTests
         var calls = new List<string>();
         var repository = new FakeSettlementRepository(calls)
         {
-            PagedItems = new[] { NewSettlement() },
+            PagedItems = new[] { FakeSettlementRepository.ToListItem(NewSettlement()) },
             PagedTotal = 1
         };
 
