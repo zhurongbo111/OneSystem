@@ -202,3 +202,56 @@ internal sealed class RecordingPurchaseReceiptRepository : IPurchaseReceiptRepos
     public Task<string> GenerateOrderNoAsync(string prefix, DateTimeOffset orderDate, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 }
+
+/// <summary>
+/// 客户价格仓储的记录型假实现（erp-export 客户价格导出用例用）：记录列表查询入参，
+/// 并按入参 `pageSize` 裁剪预设数据（用于验证「按上限取全量」与超限判定）。
+/// 本用例不触及的成员抛 <see cref="NotSupportedException"/>（导出只读，不写）。
+/// </summary>
+internal sealed class RecordingPartnerPriceRepository : IPartnerPriceRepository
+{
+    /// <summary>预置列表数据（导出取其中的前 `pageSize` 条）</summary>
+    public IReadOnlyList<PartnerPriceListItem> Items { get; set; } = [];
+
+    /// <summary>列表查询入参快照（partnerId, productId, keyword, page, pageSize）</summary>
+    public (Guid? PartnerId, Guid? ProductId, string? Keyword, int Page, int PageSize)? LastPagedArgs { get; private set; }
+
+    /// <inheritdoc />
+    public Task<(IReadOnlyList<PartnerPriceListItem> Items, int Total)> GetPagedAsync(
+        Guid? partnerId,
+        Guid? productId,
+        string? keyword,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        LastPagedArgs = (partnerId, productId, keyword, page, pageSize);
+        IReadOnlyList<PartnerPriceListItem> visible = Items.Take(pageSize).ToList();
+        return Task.FromResult((visible, Items.Count));
+    }
+
+    /// <inheritdoc />
+    public Task<PartnerPrice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public Task<bool> ExistsAsync(Guid partnerId, Guid productId, Guid? excludeId = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<EffectivePriceItem>> GetEffectiveAsync(
+        Guid partnerId, IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public Task AddAsync(PartnerPrice partnerPrice, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public Task UpdateAsync(PartnerPrice partnerPrice, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+}

@@ -10,7 +10,10 @@ internal static class SalesShipmentsDtoMapper
     /// <summary>
     /// 主表实体 + 明细行实体转详情 DTO
     /// </summary>
-    public static SalesShipmentDetailDto ToSalesShipmentDetailDto(SalesShipment order, IReadOnlyList<SalesShipmentItem> items)
+    public static SalesShipmentDetailDto ToSalesShipmentDetailDto(
+        SalesShipment order,
+        IReadOnlyList<SalesShipmentItem> items,
+        int paymentTermDays = 0)
         => new()
         {
             Id = order.Id.ToString(),
@@ -18,6 +21,8 @@ internal static class SalesShipmentsDtoMapper
             PartnerId = order.PartnerId.ToString(),
             PartnerName = order.PartnerName,
             OrderDate = order.OrderDate,
+            // 到期日 = 单据日期 + 客户账期天数（`036` §0.3，推导不落列）
+            DueDate = DateOnly.FromDateTime(order.OrderDate.UtcDateTime).AddDays(paymentTermDays).ToString("yyyy-MM-dd"),
             OrderId = order.OrderId?.ToString(),
             OrderNo = order.OrderNo,
             TotalAmount = order.TotalAmount,

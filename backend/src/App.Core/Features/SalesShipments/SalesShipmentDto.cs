@@ -20,6 +20,9 @@ public sealed class SalesShipmentDetailDto
     /// <summary>业务日期</summary>
     public required DateTimeOffset OrderDate { get; init; }
 
+    /// <summary>到期日（yyyy-MM-dd；单据日期 + 客户账期天数，`036` §0.3 推导，由后端计算）</summary>
+    public string? DueDate { get; init; }
+
     /// <summary>关联销售订单 id（可空：不关联订单的直通单据）</summary>
     public string? OrderId { get; init; }
 

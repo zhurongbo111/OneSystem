@@ -93,6 +93,7 @@ public sealed class PartnerPriceRepository : IPartnerPriceRepository
                 Price = x.price.Price,
                 SalePrice = x.product.SalePrice,
                 Remark = x.price.Remark,
+                CreatedAt = x.price.CreatedAt,
             })
             .ToListAsync(cancellationToken);
 

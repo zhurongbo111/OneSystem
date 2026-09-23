@@ -54,6 +54,9 @@ public sealed class CreatePartnerRequestHandler : IRequestHandler<CreatePartnerR
             Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
             Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
             Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
+            // 账期与信用额度（036）：新增时按入参落库，未传为 0（现结 / 不限）
+            PaymentTermDays = request.PaymentTermDays,
+            CreditLimit = request.CreditLimit,
             Status = PartnerStatus.Enabled,
             CreatedAt = now,
             UpdatedAt = now,
@@ -69,7 +72,9 @@ public sealed class CreatePartnerRequestHandler : IRequestHandler<CreatePartnerR
             .Add("contact", "联系人", null, partner.Contact)
             .Add("phone", "联系电话", null, partner.Phone)
             .Add("address", "地址", null, partner.Address)
-            .Add("remark", "备注", null, partner.Remark);
+            .Add("remark", "备注", null, partner.Remark)
+            .Add("paymentTermDays", "账期天数", null, AuditSummary.Count(partner.PaymentTermDays))
+            .Add("creditLimit", "信用额度", null, AuditSummary.Money(partner.CreditLimit));
         await _auditLogger.RecordAsync(new AuditEntry
         {
             Resource = AuditResource.Partner,

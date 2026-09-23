@@ -245,6 +245,9 @@ public static class Permissions
     /// <summary>删除客户价格</summary>
     public const string PartnerPricesDelete = "partnerPrices.delete";
 
+    /// <summary>导出客户价格</summary>
+    public const string PartnerPricesExport = "partnerPrices.export";
+
     // ===== 报表 =====
     /// <summary>查看报表</summary>
     public const string ReportsView = "reports.view";
@@ -444,7 +447,7 @@ public static class Permissions
         SettlementsView, SettlementsCreate, SettlementsVoid, SettlementsExport,
         ReconciliationView,
         InvoicesView, InvoicesCreate, InvoicesVoid, InvoicesExport,
-        PartnerPricesView, PartnerPricesCreate, PartnerPricesUpdate, PartnerPricesDelete,
+        PartnerPricesView, PartnerPricesCreate, PartnerPricesUpdate, PartnerPricesDelete, PartnerPricesExport,
         ReportsView, ReportsExport,
         CostsRecalculate,
         UsersView, UsersCreate, UsersUpdate, UsersStatus, UsersResetPassword,
@@ -499,7 +502,7 @@ public static class Permissions
         new("收付款", [new PermissionItem(SettlementsView, "查看"), new PermissionItem(SettlementsCreate, "新增"), new PermissionItem(SettlementsVoid, "作废"), new PermissionItem(SettlementsExport, "导出")]),
         new("往来对账", [new PermissionItem(ReconciliationView, "查看")]),
         new("发票管理", [new PermissionItem(InvoicesView, "查看"), new PermissionItem(InvoicesCreate, "新增"), new PermissionItem(InvoicesVoid, "作废"), new PermissionItem(InvoicesExport, "导出")]),
-        new("客户价格", [new PermissionItem(PartnerPricesView, "查看"), new PermissionItem(PartnerPricesCreate, "新增"), new PermissionItem(PartnerPricesUpdate, "编辑"), new PermissionItem(PartnerPricesDelete, "删除")]),
+        new("客户价格", [new PermissionItem(PartnerPricesView, "查看"), new PermissionItem(PartnerPricesCreate, "新增"), new PermissionItem(PartnerPricesUpdate, "编辑"), new PermissionItem(PartnerPricesDelete, "删除"), new PermissionItem(PartnerPricesExport, "导出")]),
         new("报表", [new PermissionItem(ReportsView, "查看"), new PermissionItem(ReportsExport, "导出")]),
         new("成本核算", [new PermissionItem(CostsRecalculate, "成本重算")]),
         new("用户管理", [new PermissionItem(UsersView, "查看"), new PermissionItem(UsersCreate, "新增"), new PermissionItem(UsersUpdate, "编辑"), new PermissionItem(UsersStatus, "启用 / 停用"), new PermissionItem(UsersResetPassword, "重置密码")]),

@@ -42,6 +42,26 @@ public class CreatePartnerRequestHandlerTests
     }
 
     [Fact]
+    public async Task 新增往来单位_应落库账期与信用额度()
+    {
+        var (context, handler, _) = CreateHandler();
+
+        var result = await handler.HandleAsync(new CreatePartnerRequest
+        {
+            Name = "客户E",
+            Type = PartnerType.Customer,
+            PaymentTermDays = 30,
+            CreditLimit = 1000m,
+        });
+
+        Assert.Equal(30, result.PaymentTermDays);
+        Assert.Equal(1000m, result.CreditLimit);
+        var partner = await context.Partners.SingleAsync(p => p.Name == "客户E");
+        Assert.Equal(30, partner.PaymentTermDays);
+        Assert.Equal(1000m, partner.CreditLimit);
+    }
+
+    [Fact]
     public async Task 新增往来单位_名称重复_应报PartnerNameExists()
     {
         var (_, handler, _) = CreateHandler();

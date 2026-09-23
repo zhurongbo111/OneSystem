@@ -343,7 +343,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                     throw new BusinessException(ErrorCode.NotFound, "销售出库单创建后读取失败");
                 }
 
-                return SalesShipmentsDtoMapper.ToSalesShipmentDetailDto(createdOrder, createdItems);
+                return SalesShipmentsDtoMapper.ToSalesShipmentDetailDto(createdOrder, createdItems, partner.PaymentTermDays);
             }
             catch (OrderNoConflictException) when (attempt < MaxOrderNoAttempts)
             {

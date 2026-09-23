@@ -4,18 +4,22 @@ using App.Core.Errors;
 namespace App.Core.Features.SalesShipments.GetSalesShipmentById;
 
 /// <summary>
-/// 销售单详情查询用例：不存在 → 40400；快照字段原样返回
+/// 销售单详情查询用例：不存在 → 40400；快照字段原样返回（到期日由客户账期推导，`036` §0.3）
 /// </summary>
 public sealed class GetSalesShipmentByIdRequestHandler : IRequestHandler<GetSalesShipmentByIdRequest, SalesShipmentDetailDto>
 {
     private readonly ISalesShipmentRepository _salesShipmentRepository;
+    private readonly IPartnerRepository _partnerRepository;
 
     /// <summary>
     /// 初始化销售单详情查询用例处理器
     /// </summary>
-    public GetSalesShipmentByIdRequestHandler(ISalesShipmentRepository salesShipmentRepository)
+    public GetSalesShipmentByIdRequestHandler(
+        ISalesShipmentRepository salesShipmentRepository,
+        IPartnerRepository partnerRepository)
     {
         _salesShipmentRepository = salesShipmentRepository;
+        _partnerRepository = partnerRepository;
     }
 
     /// <summary>
@@ -31,6 +35,8 @@ public sealed class GetSalesShipmentByIdRequestHandler : IRequestHandler<GetSale
             throw new BusinessException(ErrorCode.NotFound, "销售单不存在");
         }
 
-        return SalesShipmentsDtoMapper.ToSalesShipmentDetailDto(order, items);
+        // 到期日按客户当前账期推导（改账期会影响历史单据的到期日，规格 §5 已接受该语义）
+        var partner = await _partnerRepository.GetByIdAsync(order.PartnerId, cancellationToken);
+        return SalesShipmentsDtoMapper.ToSalesShipmentDetailDto(order, items, partner?.PaymentTermDays ?? 0);
     }
 }

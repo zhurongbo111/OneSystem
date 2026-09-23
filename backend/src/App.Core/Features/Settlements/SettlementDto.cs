@@ -148,6 +148,9 @@ public sealed class SettlementCandidateDto
 
     /// <summary>未结金额（= 总额 − 已结算金额，推导值）</summary>
     public required decimal UnsettledAmount { get; init; }
+
+    /// <summary>到期日（yyyy-MM-dd；单据日期 + 往来账期天数，`036` §0.3）</summary>
+    public string DueDate { get; init; } = string.Empty;
 }
 
 /// <summary>往来对账台账行出参模型</summary>

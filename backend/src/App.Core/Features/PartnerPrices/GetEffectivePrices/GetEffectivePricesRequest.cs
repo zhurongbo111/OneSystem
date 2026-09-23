@@ -10,6 +10,10 @@ public sealed class GetEffectivePricesRequest : IRequest<IReadOnlyList<Effective
     /// <summary>客户 id</summary>
     public Guid PartnerId { get; init; }
 
-    /// <summary>商品 id 集合（去重后 1 ~ 100 项）</summary>
-    public IReadOnlyList<Guid> ProductIds { get; init; } = Array.Empty<Guid>();
+    /// <summary>
+    /// 商品 id 集合（去重后 1 ~ 100 项）。
+    /// 必须为具体集合类型：<c>IReadOnlyList&lt;T&gt;</c> 等接口类型无法被 query 集合绑定器实例化，
+    /// 会静默绑定为空集合（表现为校验报「商品不能为空」）。
+    /// </summary>
+    public List<Guid> ProductIds { get; init; } = [];
 }
