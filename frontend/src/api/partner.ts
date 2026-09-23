@@ -15,6 +15,10 @@ export interface Partner {
   phone?: string | null
   address?: string | null
   remark?: string | null
+  /** 账期天数（0 = 现结；到期日 = 单据日期 + 账期） */
+  paymentTermDays: number
+  /** 信用额度（0 = 不限；销售出库创建时校验） */
+  creditLimit: number
   status: PartnerStatus
   createdAt: string
   updatedAt: string
@@ -43,6 +47,10 @@ export interface UpdatePartnerPayload {
   phone?: string
   address?: string
   remark?: string
+  /** 账期天数（0 = 现结；全量覆盖语义，缺即视为 0） */
+  paymentTermDays: number
+  /** 信用额度（0 = 不限；全量覆盖语义，缺即视为 0） */
+  creditLimit: number
 }
 
 /** 分页查询往来单位（erp-purchase / erp-sale 开单下拉数据源也复用本函数） */

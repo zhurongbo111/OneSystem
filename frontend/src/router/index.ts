@@ -323,6 +323,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'partner-prices',
+        name: 'partnerPrices',
+        component: () => import('@/views/PartnerPriceManagement/PartnerPricesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'invoices',
         name: 'invoices',
         component: () => import('@/views/InvoiceManagement/InvoicesView.vue'),
@@ -496,6 +502,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   settlementNew: 'settlements.create',
   settlementDetail: 'settlements.view',
   reconciliation: 'reconciliation.view',
+  partnerPrices: 'partnerPrices.view',
   invoices: 'invoices.view',
   invoiceNew: 'invoices.create',
   invoiceDetail: 'invoices.view',

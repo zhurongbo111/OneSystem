@@ -14,6 +14,10 @@ interface PartnerFormState {
   contact: string
   phone: string
   address: string
+  /** 账期天数（0 = 现结；到期日 = 单据日期 + 账期） */
+  paymentTermDays: number
+  /** 信用额度（0 = 不限） */
+  creditLimit: number
   remark: string
 }
 
@@ -40,6 +44,8 @@ function emptyForm(): PartnerFormState {
     contact: '',
     phone: '',
     address: '',
+    paymentTermDays: 0,
+    creditLimit: 0,
     remark: '',
   }
 }
@@ -123,6 +129,8 @@ async function loadPartner(id: string): Promise<void> {
     form.contact = detail.contact ?? ''
     form.phone = detail.phone ?? ''
     form.address = detail.address ?? ''
+    form.paymentTermDays = detail.paymentTermDays
+    form.creditLimit = detail.creditLimit
     form.remark = detail.remark ?? ''
     detailCreatedAt.value = detail.createdAt
     detailUpdatedAt.value = detail.updatedAt
@@ -151,6 +159,9 @@ async function onSubmit(): Promise<void> {
       contact: form.contact.trim() || undefined,
       phone: form.phone.trim() || undefined,
       address: form.address.trim() || undefined,
+      // 全量覆盖语义（AGENTS.md §4.5）：两字段必传，未设置即为 0（现结 / 不限）
+      paymentTermDays: form.paymentTermDays,
+      creditLimit: form.creditLimit,
       remark: form.remark.trim() || undefined,
     }
     if (props.mode === 'edit') {
@@ -258,6 +269,37 @@ async function onSubmit(): Promise<void> {
             placeholder="选填，≤ 100 字符"
             :disabled="isView || detailLoading"
             allow-clear
+          />
+        </a-form-item>
+
+        <!-- 账期与信用额度（036）：0 分别表示现结与不限；到期日与逾期由后端按账期推导，前端不重复计算 -->
+        <a-form-item
+          label="账期天数"
+          field="paymentTermDays"
+          extra="0 = 现结（到期日 = 单据日期）"
+        >
+          <a-input-number
+            v-model="form.paymentTermDays"
+            :min="0"
+            :max="3650"
+            :precision="0"
+            placeholder="0 - 3650 天"
+            :disabled="isView || detailLoading"
+          />
+        </a-form-item>
+
+        <a-form-item
+          label="信用额度"
+          field="creditLimit"
+          extra="0 = 不限；销售出库时校验「应收 + 本单 ≤ 额度」"
+        >
+          <a-input-number
+            v-model="form.creditLimit"
+            :min="0"
+            :max="9999999.99"
+            :precision="2"
+            placeholder="0 - 9999999.99"
+            :disabled="isView || detailLoading"
           />
         </a-form-item>
 

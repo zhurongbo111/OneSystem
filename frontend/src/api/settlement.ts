@@ -99,6 +99,8 @@ export interface SettlementCandidate {
   totalAmount: number
   settledAmount: number
   unsettledAmount: number
+  /** 到期日（yyyy-MM-dd；单据日期 + 往来账期，036 §0.3 由后端推导） */
+  dueDate: string
 }
 
 /** 可核销单据候选查询参数（对应后端 GetUnsettledOrdersRequest） */
@@ -109,7 +111,7 @@ export interface UnsettledOrdersQuery {
   pageSize: number
 }
 
-/** 往来对账台账行（对应后端 ReconciliationListItemDto） */
+/** 往来对账台账行（对应后端 ReconciliationListItemDto；账期与逾期字段由 036 追加） */
 export interface ReconciliationListItem {
   partnerId: string
   partnerName: string
@@ -117,6 +119,14 @@ export interface ReconciliationListItem {
   receivableAmount: number
   payableAmount: number
   unsettledOrderCount: number
+  /** 账期天数（0 = 现结） */
+  paymentTermDays: number
+  /** 应收未结单据的最早到期日（yyyy-MM-dd）；无未结应收时为 null */
+  earliestDueDate: string | null
+  /** 最大逾期天数（仅计未结且已过期；未逾期为 0） */
+  maxOverdueDays: number
+  /** 逾期单据数（未结且到期日早于今天） */
+  overdueOrderCount: number
 }
 
 /** 往来对账台账查询参数（对应后端 GetReconciliationRequest） */
@@ -125,6 +135,8 @@ export interface ReconciliationQuery {
   pageSize: number
   keyword?: string
   type?: PartnerType
+  /** 仅看存在逾期应收的往来（派生值过滤，036） */
+  overdueOnly?: boolean
 }
 
 /**

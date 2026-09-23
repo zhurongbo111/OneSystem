@@ -41,6 +41,7 @@ import {
   IconShoppingCart,
   IconSitemap,
   IconStack2,
+  IconTag,
   IconTags,
   IconTruckDelivery,
   IconTruckReturn,
@@ -91,7 +92,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
   sale: ['salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
-  fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'invoices', 'invoiceNew', 'invoiceDetail'],
+  fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'partnerPrices', 'invoices', 'invoiceNew', 'invoiceDetail'],
   finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
   system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees'],
@@ -116,6 +117,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   stockTakes: 'stockTakes.view',
   settlements: 'settlements.view',
   reconciliation: 'reconciliation.view',
+  partnerPrices: 'partnerPrices.view',
   invoices: 'invoices.view',
   accounts: 'accounts.view',
   taxRates: 'taxRates.view',
@@ -428,6 +430,16 @@ function onLogout(): void {
               <IconScale />
             </template>
             <span>往来对账</span>
+          </a-menu-item>
+          <!-- 客户价格（036）：价格标签语义，Tabler IconTag -->
+          <a-menu-item
+            v-if="isMenuVisible('partnerPrices')"
+            key="partnerPrices"
+          >
+            <template #icon>
+              <IconTag />
+            </template>
+            <span>客户价格</span>
           </a-menu-item>
           <a-menu-item
             v-if="isMenuVisible('invoices')"
