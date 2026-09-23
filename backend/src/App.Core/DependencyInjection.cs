@@ -136,6 +136,13 @@ using App.Core.Features.Reports.GetInventoryFlow;
 using App.Core.Features.Reports.GetPurchaseSummary;
 using App.Core.Features.Reports.GetSalesSummary;
 using App.Core.Features.Reports.GetStockBalance;
+using App.Core.Features.Quotations;
+using App.Core.Features.Quotations.ConvertToOrder;
+using App.Core.Features.Quotations.CreateQuotation;
+using App.Core.Features.Quotations.GetQuotationById;
+using App.Core.Features.Quotations.GetQuotations;
+using App.Core.Features.Quotations.UpdateQuotation;
+using App.Core.Features.Quotations.VoidQuotation;
 using App.Core.Features.SalesOrders;
 using App.Core.Features.SalesOrders.CloseSalesOrder;
 using App.Core.Features.SalesOrders.CreateSalesOrder;
@@ -395,6 +402,14 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidSalesOrderRequest, SalesOrderDetailDto>, VoidSalesOrderRequestHandler>();
         services.AddScoped<IRequestHandler<CloseSalesOrderRequest, SalesOrderDetailDto>, CloseSalesOrderRequestHandler>();
 
+        // 报价单用例（erp-quotation；意向单据，不触碰库存与资金）
+        services.AddScoped<IRequestHandler<GetQuotationsRequest, PagedResult<QuotationListItemDto>>, GetQuotationsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetQuotationByIdRequest, QuotationDetailDto>, GetQuotationByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateQuotationRequest, QuotationDetailDto>, CreateQuotationRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateQuotationRequest, QuotationDetailDto>, UpdateQuotationRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidQuotationRequest, QuotationDetailDto>, VoidQuotationRequestHandler>();
+        services.AddScoped<IRequestHandler<ConvertQuotationRequest, ConvertQuotationResultDto>, ConvertQuotationRequestHandler>();
+
         // 销售退货用例（erp-sale-return）
         services.AddScoped<IRequestHandler<GetSalesReturnsRequest, PagedResult<SalesReturnListItemDto>>, GetSalesReturnsRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesReturnByIdRequest, SalesReturnDetailDto>, GetSalesReturnByIdRequestHandler>();
@@ -484,6 +499,9 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CreateSalesOrderRequest>, CreateSalesOrderRequestValidator>();
         services.AddScoped<IValidator<UpdateSalesOrderRequest>, UpdateSalesOrderRequestValidator>();
         services.AddScoped<IValidator<GetSalesOrdersRequest>, GetSalesOrdersRequestValidator>();
+        services.AddScoped<IValidator<GetQuotationsRequest>, GetQuotationsRequestValidator>();
+        services.AddScoped<IValidator<CreateQuotationRequest>, CreateQuotationRequestValidator>();
+        services.AddScoped<IValidator<UpdateQuotationRequest>, UpdateQuotationRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseReturnsRequest>, GetPurchaseReturnsRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReturnRequest>, CreatePurchaseReturnRequestValidator>();
         services.AddScoped<IValidator<GetSalesShipmentsRequest>, GetSalesShipmentsRequestValidator>();

@@ -136,6 +136,12 @@ public class AppDbContext : DbContext
     /// <summary>客户协议价表（客户 × 商品，036-erp-partner-price）</summary>
     public DbSet<PartnerPrice> PartnerPrices => Set<PartnerPrice>();
 
+    /// <summary>报价单主表（037-erp-quotation）</summary>
+    public DbSet<Quotation> Quotations => Set<Quotation>();
+
+    /// <summary>报价单明细表（037-erp-quotation）</summary>
+    public DbSet<QuotationItem> QuotationItems => Set<QuotationItem>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -36,6 +36,10 @@ using App.Core.Features.Positions.UpdatePosition;
 using App.Core.Features.Positions.UpdatePositionStatus;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
+using App.Core.Features.Quotations.ConvertToOrder;
+using App.Core.Features.Quotations.CreateQuotation;
+using App.Core.Features.Quotations.UpdateQuotation;
+using App.Core.Features.Quotations.VoidQuotation;
 using App.Core.Features.Roles.CreateRole;
 using App.Core.Features.Roles.DeleteRole;
 using App.Core.Features.Roles.UpdateRole;
@@ -129,6 +133,10 @@ public class AuditLogScopeGuardTests
             { typeof(UpdateTaxRateStatusRequestHandler), AuditResource.TaxRate, AuditAction.StatusChange },
             { typeof(CreateInvoiceRequestHandler), AuditResource.Invoice, AuditAction.Create },
             { typeof(VoidInvoiceRequestHandler), AuditResource.Invoice, AuditAction.Void },
+            { typeof(CreateQuotationRequestHandler), AuditResource.Quotation, AuditAction.Create },
+            { typeof(UpdateQuotationRequestHandler), AuditResource.Quotation, AuditAction.Update },
+            { typeof(VoidQuotationRequestHandler), AuditResource.Quotation, AuditAction.Void },
+            { typeof(ConvertQuotationRequestHandler), AuditResource.Quotation, AuditAction.Update },
         };
 
     [Theory]

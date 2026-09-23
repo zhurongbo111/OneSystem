@@ -51,6 +51,16 @@ public static class AuditText
         _ => AuditSummary.Empty,
     };
 
+    /// <summary>报价单状态文案（`037`：草稿 / 已转订单 / 已作废）</summary>
+    /// <param name="status">报价单状态</param>
+    public static string QuotationStatus(QuotationStatus status) => status switch
+    {
+        Entities.QuotationStatus.Draft => "草稿",
+        Entities.QuotationStatus.Converted => "已转订单",
+        Entities.QuotationStatus.Voided => "已作废",
+        _ => AuditSummary.Empty,
+    };
+
     /// <summary>收付款方式文案</summary>
     /// <param name="method">结算方式</param>
     public static string SettlementMethod(SettlementMethod method) => method switch
