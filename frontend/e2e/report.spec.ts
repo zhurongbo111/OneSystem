@@ -81,8 +81,8 @@ async function createInitialStockTake(page: Page, code: string, quantity: number
   await expect(page).toHaveURL(/\/stock-takes\/new$/)
   await page.locator('.arco-radio-group').getByText('期初建账', { exact: true }).click()
 
-  // 商品下拉（表单页仅此一个 a-select）：选中后旧弹层 DOM 残留，选项按可见限定
-  const productSelect = page.locator('.arco-select')
+  // 商品下拉：表头还有「盘点仓」下拉（038），故限定到明细行内的那个；选中后旧弹层 DOM 残留，选项按可见限定
+  const productSelect = dataRows(page).first().locator('.arco-select')
   await productSelect.click()
   await productSelect.locator('input').fill(code)
   await page.locator('.arco-select-option:visible', { hasText: code }).first().click()

@@ -289,8 +289,8 @@ test.describe('采购退货（集成）', () => {
     await rangeInputs.nth(0).press('Enter')
     await rangeInputs.nth(1).fill(today)
     await rangeInputs.nth(1).press('Enter')
-    // 结算状态筛选：未结算
-    await page.locator('.toolbar-filter .arco-select').nth(1).click()
+    // 结算状态筛选：未结算（筛选行下拉顺序：供应商 → 出库仓(038) → 结算状态）
+    await page.locator('.toolbar-filter .arco-select').nth(2).click()
     await page.locator('.arco-select-option', { hasText: '未结算' }).click()
     await clickUntil(page, '搜索', dataRows(page).filter({ hasText: returnNo }).first())
     await expect(dataRows(page).first()).toContainText(returnNo)

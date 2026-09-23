@@ -126,8 +126,8 @@ async function createStockTake(
     await page.locator('.arco-radio-group').getByText('期初建账', { exact: true }).click()
   }
 
-  // 商品下拉（表单页仅此一个 a-select）
-  const productSelect = page.locator('.arco-select')
+  // 商品下拉：表头还有「盘点仓」下拉（038），故限定到明细行内的那个
+  const productSelect = dataRows(page).first().locator('.arco-select')
   await selectBySearch(page, productSelect, code)
   // 实盘数量（期初模式下还有成本单价输入，二者均为 a-input-number，取第一个）
   const actualInput = page.locator('.arco-input-number input').first()
@@ -280,7 +280,8 @@ test.describe('期初建账与库存盘点（集成）', () => {
     await expect(page).toHaveURL(/\/stock-takes\/new$/)
     await page.locator('.arco-radio-group').getByText('期初建账', { exact: true }).click()
 
-    const productSelect = page.locator('.arco-select')
+    // 表头还有「盘点仓」下拉（038），商品下拉取明细行内的那个
+    const productSelect = dataRows(page).first().locator('.arco-select')
     // 用例 1 已建账商品：下拉禁用并标注「已建账」（弹层 DOM 会残留旧选项，按可见断言）
     await productSelect.click()
     await productSelect.locator('input').fill(codeInitial)
@@ -345,7 +346,7 @@ test.describe('期初建账与库存盘点（集成）', () => {
     await page.getByRole('button', { name: '新建盘点' }).click()
     await expect(page).toHaveURL(/\/stock-takes\/new$/)
     await page.locator('.arco-radio-group').getByText('期初建账', { exact: true }).click()
-    await selectBySearch(page, page.locator('.arco-select'), code)
+    await selectBySearch(page, dataRows(page).first().locator('.arco-select'), code)
 
     // 只填实盘数量、不填成本单价 → 明细校验拦截（erp-cost 成本基线必填）
     const inputs = page.locator('.arco-input-number input')
