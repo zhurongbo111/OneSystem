@@ -126,6 +126,22 @@ public static class Permissions
     /// <summary>关闭销售订单</summary>
     public const string SalesOrdersClose = "salesOrders.close";
 
+    // ===== 报价单（037） =====
+    /// <summary>查看报价单</summary>
+    public const string QuotationsView = "quotations.view";
+
+    /// <summary>新增报价单</summary>
+    public const string QuotationsCreate = "quotations.create";
+
+    /// <summary>编辑报价单</summary>
+    public const string QuotationsUpdate = "quotations.update";
+
+    /// <summary>作废报价单</summary>
+    public const string QuotationsVoid = "quotations.void";
+
+    /// <summary>报价单转销售订单</summary>
+    public const string QuotationsConvert = "quotations.convert";
+
     // ===== 销售出库 =====
     /// <summary>查看销售出库单</summary>
     public const string SalesView = "sales.view";
@@ -437,6 +453,7 @@ public static class Permissions
         PurchasesView, PurchasesCreate, PurchasesVoid, PurchasesExport,
         PurchaseReturnsView, PurchaseReturnsCreate, PurchaseReturnsVoid, PurchaseReturnsSettle, PurchaseReturnsExport,
         SalesOrdersView, SalesOrdersCreate, SalesOrdersUpdate, SalesOrdersVoid, SalesOrdersClose,
+        QuotationsView, QuotationsCreate, QuotationsUpdate, QuotationsVoid, QuotationsConvert,
         SalesView, SalesCreate, SalesVoid, SalesExport,
         SalesReturnsView, SalesReturnsCreate, SalesReturnsVoid, SalesReturnsSettle, SalesReturnsExport,
         InventoryView, InventoryExport,
@@ -492,6 +509,7 @@ public static class Permissions
         new("采购入库", [new PermissionItem(PurchasesView, "查看"), new PermissionItem(PurchasesCreate, "新增"), new PermissionItem(PurchasesVoid, "作废"), new PermissionItem(PurchasesExport, "导出")]),
         new("采购退货", [new PermissionItem(PurchaseReturnsView, "查看"), new PermissionItem(PurchaseReturnsCreate, "新增"), new PermissionItem(PurchaseReturnsVoid, "作废"), new PermissionItem(PurchaseReturnsSettle, "结算"), new PermissionItem(PurchaseReturnsExport, "导出")]),
         new("销售订单", [new PermissionItem(SalesOrdersView, "查看"), new PermissionItem(SalesOrdersCreate, "新增"), new PermissionItem(SalesOrdersUpdate, "编辑"), new PermissionItem(SalesOrdersVoid, "作废"), new PermissionItem(SalesOrdersClose, "关闭")]),
+        new("报价单", [new PermissionItem(QuotationsView, "查看"), new PermissionItem(QuotationsCreate, "新增"), new PermissionItem(QuotationsUpdate, "编辑"), new PermissionItem(QuotationsVoid, "作废"), new PermissionItem(QuotationsConvert, "转订单")]),
         new("销售出库", [new PermissionItem(SalesView, "查看"), new PermissionItem(SalesCreate, "新增"), new PermissionItem(SalesVoid, "作废"), new PermissionItem(SalesExport, "导出")]),
         new("销售退货", [new PermissionItem(SalesReturnsView, "查看"), new PermissionItem(SalesReturnsCreate, "新增"), new PermissionItem(SalesReturnsVoid, "作废"), new PermissionItem(SalesReturnsSettle, "结算"), new PermissionItem(SalesReturnsExport, "导出")]),
         new("库存查询", [new PermissionItem(InventoryView, "查看"), new PermissionItem(InventoryExport, "导出")]),

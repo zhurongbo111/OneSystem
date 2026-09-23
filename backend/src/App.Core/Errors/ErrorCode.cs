@@ -200,6 +200,13 @@ public static class ErrorCode
     /// <summary>该客户 + 商品的协议价已存在</summary>
     public const int PartnerPriceExists = 40131;
 
+    // ===== 报价单（specs/037-erp-quotation/design.md §3.2） =====
+    /// <summary>报价单非草稿，不可编辑 / 作废（已转订单 / 已作废均锁定）</summary>
+    public const int QuotationNotEditable = 40166;
+
+    /// <summary>报价单不可转单（非草稿 / 已转订单 / 已作废）</summary>
+    public const int QuotationNotConvertible = 40167;
+
     // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
     /// <summary>角色名称已存在（忽略大小写）</summary>
     public const int RoleNameExists = 40173;

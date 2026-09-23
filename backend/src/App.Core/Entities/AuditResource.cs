@@ -89,4 +89,7 @@ public enum AuditResource
 
     /// <summary>资金账户（034）</summary>
     BankAccount = 27,
+
+    /// <summary>报价单（037）</summary>
+    Quotation = 28,
 }
