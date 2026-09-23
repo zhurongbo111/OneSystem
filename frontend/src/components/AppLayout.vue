@@ -27,6 +27,7 @@ import {
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconList,
+  IconNotebook,
   IconPackage,
   IconPackages,
   IconPercentage,
@@ -91,7 +92,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   sale: ['salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'invoices', 'invoiceNew', 'invoiceDetail'],
-  finance: ['accounts', 'taxRates', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
+  finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
   system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees'],
 }
@@ -118,6 +119,8 @@ const MENU_PERMISSIONS: Record<string, string> = {
   invoices: 'invoices.view',
   accounts: 'accounts.view',
   taxRates: 'taxRates.view',
+  bankAccounts: 'bankAccounts.view',
+  cashJournals: 'cashJournals.view',
   vouchers: 'vouchers.view',
   financialReports: 'financialReports.view',
   inventoryFlowReport: 'reports.view',
@@ -463,6 +466,24 @@ function onLogout(): void {
               <IconPercentage />
             </template>
             <span>税率</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('bankAccounts')"
+            key="bankAccounts"
+          >
+            <template #icon>
+              <IconWallet />
+            </template>
+            <span>资金账户</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('cashJournals')"
+            key="cashJournals"
+          >
+            <template #icon>
+              <IconNotebook />
+            </template>
+            <span>资金日记账</span>
           </a-menu-item>
           <a-menu-item
             v-if="isMenuVisible('vouchers')"
