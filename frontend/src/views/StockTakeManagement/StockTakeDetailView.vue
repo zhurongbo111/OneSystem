@@ -153,6 +153,9 @@ function onShowMovements(): void {
               {{ TYPE_META[detail.type].label }}
             </a-tag>
           </a-descriptions-item>
+          <a-descriptions-item label="盘点仓">
+            {{ detail.warehouseName }}
+          </a-descriptions-item>
           <a-descriptions-item label="盘点日期">
             {{ formatDateTime(detail.takeDate).slice(0, 10) }}
           </a-descriptions-item>

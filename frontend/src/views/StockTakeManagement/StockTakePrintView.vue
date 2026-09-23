@@ -130,6 +130,10 @@ async function onPrint(): Promise<void> {
               <span>{{ TYPE_LABELS[detail.type] }}</span>
             </span>
             <span>
+              <span class="print-meta-label">盘点仓：</span>
+              <span>{{ detail.warehouseName }}</span>
+            </span>
+            <span>
               <span class="print-meta-label">备注：</span>
               <span>{{ detail.remark || '-' }}</span>
             </span>

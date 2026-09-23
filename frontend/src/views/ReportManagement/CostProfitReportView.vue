@@ -268,6 +268,11 @@ function formatRate(value: number | null): string {
       </h1>
     </div>
 
+    <!-- 038：成本按仓维护、组织级为各仓合计；本报表不按仓拆分，故明确标注口径 -->
+    <a-alert type="info">
+      成本为全组织口径（各仓合计）：本报表按单据 / 商品 / 往来单位聚合，不按仓库拆分；按仓成本请查看库存查询页与库存余额表
+    </a-alert>
+
     <a-card
       :bordered="false"
       class="table-card"

@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 
 import { exportStockTakes } from '@/api/export'
 import { getStockTakes, toDateRange, type StockTakeListItem, type StockTakeType } from '@/api/stockTake'
+import { getWarehousePickList } from '@/api/warehouse'
+import type { WarehousePickItem } from '@/api/warehouse'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
@@ -38,18 +40,23 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-/** 单号关键词 / 类型 / 日期范围：输入态与已应用态分离（点搜索才生效） */
+/** 单号关键词 / 类型 / 盘点仓 / 日期范围：输入态与已应用态分离（点搜索才生效） */
 const keywordInput = ref('')
 const typeInput = ref<StockTakeType | undefined>(undefined)
+const warehouseInput = ref<string | undefined>(undefined)
 const dateRangeInput = ref<string[] | undefined>(undefined)
 const appliedKeyword = ref('')
 const appliedType = ref<StockTakeType | undefined>(undefined)
+const appliedWarehouse = ref<string | undefined>(undefined)
 const appliedRange = ref<[string, string] | null>(null)
+
+/** 仓库下拉数据源（仅启用仓，038） */
+const warehouses = ref<WarehousePickItem[]>([])
 
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
 const tableKey = computed(
-  () => `${appliedKeyword.value}|${appliedType.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}`,
+  () => `${appliedKeyword.value}|${appliedType.value ?? ''}|${appliedWarehouse.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}`,
 )
 
 /** 服务端分页配置 */
@@ -66,6 +73,7 @@ const pagination = computed(() => ({
 const columnOptions = [
   { label: '单号', value: 'takeNo' },
   { label: '类型', value: 'type' },
+  { label: '盘点仓', value: 'warehouseName' },
   { label: '盘点日期', value: 'takeDate' },
   { label: '明细行数', value: 'itemCount' },
   { label: '差异行数', value: 'diffItemCount' },
@@ -77,6 +85,7 @@ const columnOptions = [
 const visibleColumns = ref<string[]>([
   'takeNo',
   'type',
+  'warehouseName',
   'takeDate',
   'itemCount',
   'diffItemCount',
@@ -92,6 +101,10 @@ const columns = computed<TableColumnData[]>(() => {
   }
   if (visibleColumns.value.includes('type')) {
     cols.push({ title: '类型', slotName: 'type', width: 110, align: 'center' })
+  }
+  if (visibleColumns.value.includes('warehouseName')) {
+    // 盘点仓（038）：账面与差异都作用于该仓
+    cols.push({ title: '盘点仓', dataIndex: 'warehouseName', width: 140, ellipsis: true, tooltip: true })
   }
   if (visibleColumns.value.includes('takeDate')) {
     cols.push({ title: '盘点日期', slotName: 'takeDate', width: 110 })
@@ -117,8 +130,13 @@ const columns = computed<TableColumnData[]>(() => {
 const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width ?? 0), 0))
 
 // —— lifecycle ——
-onMounted(() => {
+onMounted(async () => {
   void fetchList()
+  try {
+    warehouses.value = await getWarehousePickList()
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
 })
 
 // —— methods ——
@@ -151,6 +169,7 @@ async function fetchList(): Promise<void> {
     const result = await getStockTakes({
       keyword: appliedKeyword.value.trim() || undefined,
       type: appliedType.value,
+      warehouseId: appliedWarehouse.value,
       start,
       end,
       page: page.value,
@@ -170,6 +189,7 @@ async function fetchList(): Promise<void> {
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedType.value = typeInput.value
+  appliedWarehouse.value = warehouseInput.value
   appliedRange.value = dateRangeInput.value ? (dateRangeInput.value as [string, string]) : null
   page.value = 1
   void fetchList()
@@ -179,9 +199,11 @@ function onSearch(): void {
 function onReset(): void {
   keywordInput.value = ''
   typeInput.value = undefined
+  warehouseInput.value = undefined
   dateRangeInput.value = undefined
   appliedKeyword.value = ''
   appliedType.value = undefined
+  appliedWarehouse.value = undefined
   appliedRange.value = null
   page.value = 1
   void fetchList()
@@ -260,7 +282,7 @@ function onPrint(row: Record<string, unknown>): void {
           :gutter="16"
           wrap
         >
-          <a-col :span="5">
+          <a-col :span="4">
             <a-input
               v-model="keywordInput"
               class="filter-bar__search"
@@ -269,7 +291,7 @@ function onPrint(row: Record<string, unknown>): void {
               @press-enter="onSearch"
             />
           </a-col>
-          <a-col :span="5">
+          <a-col :span="4">
             <a-select
               v-model="typeInput"
               class="filter-bar__type"
@@ -278,7 +300,16 @@ function onPrint(row: Record<string, unknown>): void {
               allow-clear
             />
           </a-col>
-          <a-col :span="7">
+          <a-col :span="4">
+            <a-select
+              v-model="warehouseInput"
+              class="filter-bar__warehouse"
+              :options="warehouses.map((w) => ({ label: w.name, value: w.id }))"
+              placeholder="全部盘点仓"
+              allow-clear
+            />
+          </a-col>
+          <a-col :span="6">
             <a-range-picker
               v-model="dateRangeInput"
               value-format="YYYY-MM-DD"

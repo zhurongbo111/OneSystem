@@ -6,6 +6,8 @@ import { getCategories } from '@/api/product'
 import type { Category } from '@/api/product'
 import { exportStockBalance, getStockBalance } from '@/api/report'
 import type { StockBalanceItem, StockBalanceSummary } from '@/api/report'
+import { getWarehousePickList } from '@/api/warehouse'
+import type { WarehousePickItem } from '@/api/warehouse'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { IconDownload, IconListDetails, IconRefresh, IconRestore, IconSearch } from '@tabler/icons-vue'
@@ -31,17 +33,23 @@ const summary = ref<StockBalanceSummary>({
   totalCostAmount: 0,
 })
 
-/** 分类 / 关键词：输入态与已应用态分离 */
+/** 分类 / 关键词 / 仓库：输入态与已应用态分离 */
 const keywordInput = ref('')
 const categoryIdInput = ref<string | undefined>(undefined)
+const warehouseIdInput = ref<string | undefined>(undefined)
 const appliedKeyword = ref('')
 const appliedCategoryId = ref<string | undefined>(undefined)
+const appliedWarehouseId = ref<string | undefined>(undefined)
 
 const categoryOptions = ref<Category[]>([])
+/** 仓库下拉数据源（仅启用仓，038；全部仓合并时数值为组织级） */
+const warehouseOptions = ref<WarehousePickItem[]>([])
 
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
-const tableKey = computed(() => `${appliedKeyword.value}|${appliedCategoryId.value ?? ''}`)
+const tableKey = computed(
+  () => `${appliedKeyword.value}|${appliedCategoryId.value ?? ''}|${appliedWarehouseId.value ?? ''}`,
+)
 
 const pagination = computed(() => ({
   current: page.value,
@@ -70,9 +78,14 @@ const columns: TableColumnData[] = [
 const tableScrollX = computed(() => columns.reduce((sum, c) => sum + (c.width ?? 0), 0))
 
 // —— lifecycle ——
-onMounted(() => {
+onMounted(async () => {
   void fetchCategories()
   void fetchList()
+  try {
+    warehouseOptions.value = await getWarehousePickList()
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
 })
 
 // —— methods ——
@@ -91,6 +104,7 @@ async function fetchList(): Promise<void> {
     const result = await getStockBalance({
       keyword: appliedKeyword.value.trim() || undefined,
       categoryId: appliedCategoryId.value,
+      warehouseId: appliedWarehouseId.value,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -108,6 +122,7 @@ async function fetchList(): Promise<void> {
 function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedCategoryId.value = categoryIdInput.value
+  appliedWarehouseId.value = warehouseIdInput.value
   page.value = 1
   void fetchList()
 }
@@ -115,8 +130,10 @@ function onSearch(): void {
 function onReset(): void {
   keywordInput.value = ''
   categoryIdInput.value = undefined
+  warehouseIdInput.value = undefined
   appliedKeyword.value = ''
   appliedCategoryId.value = undefined
+  appliedWarehouseId.value = undefined
   page.value = 1
   void fetchList()
 }
@@ -132,6 +149,7 @@ async function onExport(): Promise<void> {
     await exportStockBalance({
       keyword: appliedKeyword.value.trim() || undefined,
       categoryId: appliedCategoryId.value,
+      warehouseId: appliedWarehouseId.value,
     })
     if (total.value === 0) {
       Message.info('已导出空数据模板')
@@ -183,7 +201,7 @@ function formatRatio(ratio: number): string {
           :gutter="16"
           wrap
         >
-          <a-col :span="8">
+          <a-col :span="6">
             <a-input
               v-model="keywordInput"
               class="filter-bar__search"
@@ -205,7 +223,16 @@ function formatRatio(ratio: number): string {
               allow-clear
             />
           </a-col>
-          <a-col :span="12">
+          <a-col :span="4">
+            <a-select
+              v-model="warehouseIdInput"
+              class="filter-bar__warehouse"
+              :options="warehouseOptions.map((w) => ({ label: w.name, value: w.id }))"
+              placeholder="全部仓库"
+              allow-clear
+            />
+          </a-col>
+          <a-col :span="10">
             <div class="toolbar-filter__actions">
               <a-button
                 type="primary"

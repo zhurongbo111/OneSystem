@@ -115,6 +115,10 @@ async function onPrint(): Promise<void> {
               <span>{{ detail.partnerName }}</span>
             </span>
             <span>
+              <span class="print-meta-label">出库仓：</span>
+              <span>{{ detail.warehouseName }}</span>
+            </span>
+            <span>
               <span class="print-meta-label">单据日期：</span>
               <span>{{ formatDateTime(detail.returnDate).slice(0, 10) }}</span>
             </span>

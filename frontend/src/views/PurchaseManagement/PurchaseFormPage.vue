@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getPartners } from '@/api/partner'
@@ -14,6 +14,8 @@ import {
 } from '@/api/purchase'
 import type { PurchaseFormLine, PurchaseOrderPick } from '@/api/purchase'
 import { getPurchaseOrder } from '@/api/purchaseOrder'
+import { getWarehousePickList } from '@/api/warehouse'
+import type { WarehousePickItem } from '@/api/warehouse'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
 import { IconPlus } from '@tabler/icons-vue'
@@ -21,6 +23,8 @@ import { IconPlus } from '@tabler/icons-vue'
 // —— constants ——
 /** 明细行上限（OrderFieldConstraints.ItemsMaxCount） */
 const MAX_ITEMS = 100
+/** 商品下拉请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新仓数据（038） */
+let productFetchSeq = 0
 /** 明细数量边界（ProductFieldConstraints.QuantityMinValue / MaxValue） */
 const QUANTITY_MIN = 1
 const QUANTITY_MAX = 999999
@@ -76,6 +80,8 @@ const itemsErrorShown = ref(false)
 
 /** 表头 */
 const partnerId = ref<string | undefined>(undefined)
+/** 入库仓（038；默认仓预选，提交必带） */
+const warehouseId = ref<string | undefined>(undefined)
 const orderDate = ref(todayLocal())
 const remark = ref('')
 
@@ -84,15 +90,17 @@ const orderId = ref<string | undefined>(undefined)
 const orderPicks = ref<PurchaseOrderPick[]>([])
 const orderLinesLoading = ref(false)
 
-/** 供应商 / 商品下拉数据源（远程全量拉取，仅启用） */
+/** 供应商 / 商品 / 仓库下拉数据源（远程全量拉取，仅启用） */
 const partners = ref<Partner[]>([])
 const products = ref<ProductPickItem[]>([])
+const warehouses = ref<WarehousePickItem[]>([])
 
 /** 明细行（subtotal 为前端实时计算，仅展示；提交不含小计 / 总额） */
 const lines = ref<PurchaseFormLine[]>([newLine()])
 
 const rules = {
   partnerId: [{ required: true, message: '请选择供应商' }],
+  warehouseId: [{ required: true, message: '请选择入库仓' }],
   orderDate: [{ required: true, message: '请选择单据日期' }],
 }
 
@@ -141,18 +149,28 @@ const itemsInvalid = computed(
     ),
 )
 
+// —— watch ——
+/** 入库仓变化：商品下拉的「库存」为所选仓口径，随仓刷新（038） */
+watch(warehouseId, (v) => {
+  void refreshProducts(v)
+})
+
 // —— lifecycle ——
 onMounted(async () => {
   try {
     // 供应商查询仅支持单值 type，分两次拉取后前端取并集
-    const [supplier, both, pick] = await Promise.all([
+    const [supplier, both, warehousePicks] = await Promise.all([
       getPartners({ type: 1, status: 1, page: 1, pageSize: 100 }),
       getPartners({ type: 3, status: 1, page: 1, pageSize: 100 }),
-      getProductPickList(),
+      getWarehousePickList(),
     ])
     const seen = new Set<string>()
     partners.value = [...supplier.items, ...both.items].filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)))
-    products.value = pick
+    warehouses.value = warehousePicks
+    // 默认仓预选（038）：新建单据默认入库到默认仓
+    warehouseId.value = warehousePicks.find((w) => w.isDefault)?.id
+    // 商品下拉「库存」为所选仓口径（与 watch 同源，序号守卫只采纳最后一次响应）
+    await refreshProducts(warehouseId.value)
   } catch {
     // 错误提示已由请求层统一处理
   }
@@ -165,6 +183,19 @@ onMounted(async () => {
 })
 
 // —— methods ——
+/** 按所选仓刷新商品下拉（库存列随仓变化，038） */
+async function refreshProducts(warehouse?: string): Promise<void> {
+  const seq = ++productFetchSeq
+  try {
+    const picks = await getProductPickList(warehouse)
+    // 序号守卫：预选默认仓与用户改仓会各发一次请求，慢的旧响应不得覆盖新仓数据
+    if (seq !== productFetchSeq) return
+    products.value = picks
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
+}
+
 /** 供应商变化：清空已关联订单并重置明细，再按新供应商拉候选订单（候选随供应商变化） */
 async function onPartnerChange(value?: string): Promise<void> {
   partnerId.value = value
@@ -287,6 +318,8 @@ async function onSubmit(): Promise<void> {
     }
     const saved = await createPurchaseReceipt({
       partnerId: partnerId.value as string,
+      // 入库仓（038）：显式传仓，不依赖后端默认仓兜底
+      warehouseId: warehouseId.value,
       // 所选日期 → UTC 午夜 ISO 串（design §4.2；裸日期会被后端按服务器本地时区解析导致入库失败）
       orderDate: toUtcMidnight(orderDate.value),
       orderId: orderId.value,
@@ -318,7 +351,7 @@ async function onSubmit(): Promise<void> {
     <a-card :bordered="false">
       <a-form
         ref="formRef"
-        :model="{ partnerId, orderDate }"
+        :model="{ partnerId, warehouseId, orderDate }"
         :rules="rules"
         layout="vertical"
       >
@@ -357,6 +390,21 @@ async function onSubmit(): Promise<void> {
           </a-col>
         </a-row>
         <a-row :gutter="24">
+          <a-col :span="12">
+            <!-- 入库仓（038）：仅启用仓，默认仓预选；单据保存即固化 -->
+            <a-form-item
+              label="入库仓"
+              field="warehouseId"
+            >
+              <a-select
+                v-model="warehouseId"
+                :options="warehouses.map((w) => ({ label: w.name, value: w.id }))"
+                placeholder="请选择入库仓"
+                allow-search
+                :loading="warehouses.length === 0"
+              />
+            </a-form-item>
+          </a-col>
           <a-col :span="12">
             <a-form-item label="关联采购订单">
               <a-select

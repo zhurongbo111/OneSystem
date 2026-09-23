@@ -9,6 +9,8 @@ import {
   type StockTakeProductPick,
   type StockTakeType,
 } from '@/api/stockTake'
+import { getWarehousePickList } from '@/api/warehouse'
+import type { WarehousePickItem } from '@/api/warehouse'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
 import { IconPlus } from '@tabler/icons-vue'
@@ -16,6 +18,8 @@ import { IconPlus } from '@tabler/icons-vue'
 // —— constants ——
 /** 明细行上限（OrderFieldConstraints.ItemsMaxCount） */
 const MAX_ITEMS = 100
+/** 商品下拉请求序号：只采纳最后一次发起的请求结果，避免慢响应覆盖新仓账面（038） */
+let productFetchSeq = 0
 /** 实盘数量边界（StockTakeFieldConstraints.ActualQuantityMinValue / MaxValue） */
 const ACTUAL_MIN = 0
 const ACTUAL_MAX = 999999
@@ -77,10 +81,15 @@ const itemsErrorShown = ref(false)
 
 /** 表头（design §4.4：类型默认「库存盘点」、日期默认当天） */
 const takeType = ref<StockTakeType>(1)
+/** 盘点仓（038；默认仓预选；账面 / 差异 / 期初建账判定都按该仓） */
+const warehouseId = ref<string | undefined>(undefined)
 const takeDate = ref(todayLocal())
 const remark = ref('')
 
-/** 商品下拉数据源（启用商品 + 当前库存 + 是否已发生库存变动） */
+/** 仓库下拉数据源（仅启用仓，038） */
+const warehouses = ref<WarehousePickItem[]>([])
+
+/** 商品下拉数据源（启用商品 + **所选仓**账面 + 该仓是否已发生库存变动） */
 const products = ref<StockTakeProductPick[]>([])
 
 /** 明细行（账面 / 差异为前端实时计算，仅展示；提交只传实盘数量，后端重算差异） */
@@ -99,6 +108,7 @@ function newLine(): StockTakeFormLine {
 const lines = ref<StockTakeFormLine[]>([newLine()])
 
 const rules = {
+  warehouseId: [{ required: true, message: '请选择盘点仓' }],
   takeDate: [{ required: true, message: '请选择盘点日期' }],
 }
 
@@ -164,16 +174,38 @@ watch(takeType, (value) => {
   }
 })
 
+// 盘点仓变化：账面与「已建账」标记都是该仓口径，重新拉商品下拉（038）
+watch(warehouseId, (v) => {
+  if (v) void refreshProducts(v)
+})
+
 // —— lifecycle ——
 onMounted(async () => {
   try {
-    products.value = await getStockTakePickProducts()
+    warehouses.value = await getWarehousePickList()
+    // 默认仓预选（038）：账面与差异都作用于所选仓
+    warehouseId.value = warehouses.value.find((w) => w.isDefault)?.id
+    // 商品下拉按所选仓取账面（与 watch 同源，序号守卫只采纳最后一次响应）
+    if (warehouseId.value) await refreshProducts(warehouseId.value)
   } catch {
     // 错误提示已由请求层统一处理
   }
 })
 
 // —— methods ——
+/** 按所选仓刷新商品下拉（账面数量与「已建账」标记均按仓，038） */
+async function refreshProducts(warehouse: string): Promise<void> {
+  const seq = ++productFetchSeq
+  try {
+    const picks = await getStockTakePickProducts(warehouse)
+    // 序号守卫：预选默认仓与用户改仓会各发一次请求，慢的旧响应不得覆盖新仓账面
+    if (seq !== productFetchSeq) return
+    products.value = picks
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
+}
+
 function onLineProductChange(line: StockTakeFormLine, value?: string): void {
   line.productId = value
   // 切换商品后实盘需按新账面重新录入
@@ -222,6 +254,8 @@ async function onSubmit(): Promise<void> {
     }
     const saved = await createStockTake({
       type: takeType.value,
+      // 盘点仓（038）：显式传仓，账面 / 差异 / 库存设定都作用于该仓
+      warehouseId: warehouseId.value,
       // 所选日期 → UTC 午夜 ISO 串（design §4.2；裸日期会被后端按服务器本地时区解析导致入库失败）
       takeDate: toUtcMidnight(takeDate.value),
       // 成本单价仅期初建账模式传（erp-cost）：盘点模式按当时均价处理，传成本会被后端拒绝
@@ -252,7 +286,7 @@ async function onSubmit(): Promise<void> {
     <a-card :bordered="false">
       <a-form
         ref="formRef"
-        :model="{ takeDate }"
+        :model="{ warehouseId, takeDate }"
         :rules="rules"
         layout="vertical"
       >
@@ -260,7 +294,7 @@ async function onSubmit(): Promise<void> {
           基本信息
         </a-divider>
         <a-row :gutter="24">
-          <a-col :span="12">
+          <a-col :span="8">
             <a-form-item
               label="类型"
               field="takeType"
@@ -271,7 +305,22 @@ async function onSubmit(): Promise<void> {
               />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="8">
+            <!-- 盘点仓（038）：必选，默认仓预选；账面与差异均按该仓 -->
+            <a-form-item
+              label="盘点仓"
+              field="warehouseId"
+            >
+              <a-select
+                v-model="warehouseId"
+                :options="warehouses.map((w) => ({ label: w.name, value: w.id }))"
+                placeholder="请选择盘点仓"
+                allow-search
+                :loading="warehouses.length === 0"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
             <a-form-item
               label="盘点日期"
               field="takeDate"

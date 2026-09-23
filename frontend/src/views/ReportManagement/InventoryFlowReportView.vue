@@ -5,6 +5,8 @@ import { getCategories, getProductPickList } from '@/api/product'
 import type { Category, ProductPickItem } from '@/api/product'
 import { exportInventoryFlow, getInventoryFlow, toReportRangeUtc } from '@/api/report'
 import type { InventoryFlowItem, InventoryFlowSummary } from '@/api/report'
+import { getWarehousePickList } from '@/api/warehouse'
+import type { WarehousePickItem } from '@/api/warehouse'
 import { toDateInput } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
@@ -43,19 +45,23 @@ const page = ref(1)
 const pageSize = ref(20)
 const summary = ref<InventoryFlowSummary>({ openingQuantity: 0, inboundQuantity: 0, outboundQuantity: 0, closingQuantity: 0 })
 
-/** 期间 / 商品 / 分类 / 只看有变动：输入态与已应用态分离（点搜索才生效） */
+/** 期间 / 商品 / 分类 / 仓库 / 只看有变动：输入态与已应用态分离（点搜索才生效） */
 const rangeInput = ref<string[]>(defaultRange())
 const productIdInput = ref<string | undefined>(undefined)
 const categoryIdInput = ref<string | undefined>(undefined)
+const warehouseIdInput = ref<string | undefined>(undefined)
 const onlyChangedInput = ref(false)
 
 const appliedRange = ref<string[]>(defaultRange())
 const appliedProductId = ref<string | undefined>(undefined)
 const appliedCategoryId = ref<string | undefined>(undefined)
+const appliedWarehouseId = ref<string | undefined>(undefined)
 const appliedOnlyChanged = ref(false)
 
 const productOptions = ref<ProductPickItem[]>([])
 const categoryOptions = ref<Category[]>([])
+/** 仓库下拉数据源（仅启用仓，038；全部仓合并时数值为组织级） */
+const warehouseOptions = ref<WarehousePickItem[]>([])
 const visibleColumns = ref<string[]>([
   'code',
   'name',
@@ -70,7 +76,7 @@ const visibleColumns = ref<string[]>([
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
 const tableKey = computed(
-  () => `${appliedRange.value.join('~')}|${appliedProductId.value ?? ''}|${appliedCategoryId.value ?? ''}|${appliedOnlyChanged.value}`,
+  () => `${appliedRange.value.join('~')}|${appliedProductId.value ?? ''}|${appliedCategoryId.value ?? ''}|${appliedWarehouseId.value ?? ''}|${appliedOnlyChanged.value}`,
 )
 
 /** 服务端分页配置 */
@@ -123,11 +129,16 @@ onMounted(() => {
 })
 
 // —— methods ——
-/** 拉取商品 / 分类下拉数据（失败静默，不影响主列表） */
+/** 拉取商品 / 分类 / 仓库下拉数据（失败静默，不影响主列表） */
 async function fetchPicks(): Promise<void> {
   try {
-    const [products, categories] = await Promise.all([getProductPickList(), getCategories()])
+    const [products, categories, warehousePicks] = await Promise.all([
+      getProductPickList(),
+      getCategories(),
+      getWarehousePickList(),
+    ])
     productOptions.value = products
+    warehouseOptions.value = warehousePicks
     categoryOptions.value = categories
   } catch {
     // 错误提示已由请求层统一处理
@@ -145,6 +156,7 @@ async function fetchList(): Promise<void> {
       end,
       productId: appliedProductId.value,
       categoryId: appliedCategoryId.value,
+      warehouseId: appliedWarehouseId.value,
       onlyChanged: appliedOnlyChanged.value,
       page: page.value,
       pageSize: pageSize.value,
@@ -169,6 +181,7 @@ function onSearch(): void {
   appliedRange.value = [...rangeInput.value]
   appliedProductId.value = productIdInput.value
   appliedCategoryId.value = categoryIdInput.value
+  appliedWarehouseId.value = warehouseIdInput.value
   appliedOnlyChanged.value = onlyChangedInput.value
   page.value = 1
   void fetchList()
@@ -179,10 +192,12 @@ function onReset(): void {
   rangeInput.value = defaultRange()
   productIdInput.value = undefined
   categoryIdInput.value = undefined
+  warehouseIdInput.value = undefined
   onlyChangedInput.value = false
   appliedRange.value = defaultRange()
   appliedProductId.value = undefined
   appliedCategoryId.value = undefined
+  appliedWarehouseId.value = undefined
   appliedOnlyChanged.value = false
   page.value = 1
   void fetchList()
@@ -203,6 +218,7 @@ async function onExport(): Promise<void> {
       end,
       productId: appliedProductId.value,
       categoryId: appliedCategoryId.value,
+      warehouseId: appliedWarehouseId.value,
       onlyChanged: appliedOnlyChanged.value,
     })
     if (total.value === 0) {
@@ -247,7 +263,7 @@ function onPageSizeChange(size: number): void {
           :gutter="16"
           wrap
         >
-          <a-col :span="8">
+          <a-col :span="7">
             <a-range-picker
               v-model="rangeInput"
               class="filter-bar__range"
@@ -255,7 +271,7 @@ function onPageSizeChange(size: number): void {
               :allow-clear="false"
             />
           </a-col>
-          <a-col :span="5">
+          <a-col :span="4">
             <a-select
               v-model="productIdInput"
               class="filter-bar__product"
@@ -273,12 +289,21 @@ function onPageSizeChange(size: number): void {
               allow-clear
             />
           </a-col>
-          <a-col :span="3">
+          <a-col :span="4">
+            <a-select
+              v-model="warehouseIdInput"
+              class="filter-bar__warehouse"
+              :options="warehouseOptions.map((w) => ({ label: w.name, value: w.id }))"
+              placeholder="全部仓库"
+              allow-clear
+            />
+          </a-col>
+          <a-col :span="2">
             <a-checkbox v-model="onlyChangedInput">
               只看有变动
             </a-checkbox>
           </a-col>
-          <a-col :span="4">
+          <a-col :span="3">
             <div class="toolbar-filter__actions">
               <a-button
                 type="primary"

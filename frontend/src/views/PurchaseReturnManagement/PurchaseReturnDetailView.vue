@@ -162,6 +162,9 @@ function onGoSettlement(): void {
           <a-descriptions-item label="供应商">
             {{ detail.partnerName }}
           </a-descriptions-item>
+          <a-descriptions-item label="出库仓">
+            {{ detail.warehouseName }}
+          </a-descriptions-item>
           <a-descriptions-item label="退货日期">
             {{ formatDateTime(detail.returnDate).slice(0, 10) }}
           </a-descriptions-item>

@@ -41,6 +41,8 @@ export interface InventoryFlowQuery {
   end: string
   productId?: string
   categoryId?: string
+  /** 仓库 id，可空（038；不传 = 全部仓合并） */
+  warehouseId?: string
   onlyChanged?: boolean
   page: number
   pageSize: number
@@ -80,6 +82,8 @@ export interface StockBalanceSummary {
 export interface StockBalanceQuery {
   keyword?: string
   categoryId?: string
+  /** 仓库 id，可空（038；不传 = 全部仓合并） */
+  warehouseId?: string
   page: number
   pageSize: number
 }

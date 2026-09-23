@@ -11,6 +11,10 @@ export interface StockMovementListItem {
   productCode: string
   productName: string
   unit: string
+  /** 仓库 ID（038） */
+  warehouseId: string
+  /** 仓库名称（038） */
+  warehouseName: string
   movementType: StockMovementType
   quantity: number
   /** 本次变动成本单价（erp-cost；numeric(18,4)） */
@@ -27,6 +31,8 @@ export interface StockMovementListItem {
 export interface StockMovementQuery {
   keyword?: string
   productId?: string
+  /** 仓库 id，可空（038；不传 = 全部仓） */
+  warehouseId?: string
   type?: StockMovementType
   start?: string
   end?: string

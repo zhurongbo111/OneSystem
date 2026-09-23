@@ -184,6 +184,9 @@ function onOrderDetail(): void {
           <a-descriptions-item label="供应商">
             {{ detail.partnerName }}
           </a-descriptions-item>
+          <a-descriptions-item label="入库仓">
+            {{ detail.warehouseName }}
+          </a-descriptions-item>
           <a-descriptions-item label="单据日期">
             {{ formatDateTime(detail.orderDate).slice(0, 10) }}
           </a-descriptions-item>

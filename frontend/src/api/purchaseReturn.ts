@@ -13,6 +13,10 @@ export interface PurchaseReturnListItem {
   partnerId: string
   partnerName: string
   returnDate: string
+  /** 出库仓 id（038） */
+  warehouseId: string
+  /** 出库仓名称快照（038） */
+  warehouseName: string
   totalAmount: number
   settledAmount: number
   unsettledAmount: number
@@ -46,6 +50,8 @@ export interface PurchaseReturnQuery {
   pageSize: number
   keyword?: string
   partnerId?: string
+  /** 出库仓 id，可空（038；不传 = 全部仓） */
+  warehouseId?: string
   start?: string
   end?: string
   settlementState?: SettlementState
@@ -71,6 +77,8 @@ export interface PurchaseReturnFormLine {
 export interface CreatePurchaseReturnPayload {
   partnerId: string
   returnDate: string
+  /** 出库仓 id（038；不传 = 默认仓，前端一律显式传仓） */
+  warehouseId?: string
   items: { productId: string; quantity: number; unitPrice: number }[]
   remark?: string
 }

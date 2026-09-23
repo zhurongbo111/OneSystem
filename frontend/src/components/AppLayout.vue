@@ -8,6 +8,7 @@ import {
   IconArrowsExchange,
   IconBook2,
   IconBriefcase,
+  IconBuildingStore,
   IconBuildingWarehouse,
   IconCalculator,
   IconCash,
@@ -91,7 +92,7 @@ const selectedKeys = computed<string[]>(() => {
  */
 const MENU_GROUPS: Record<string, string[]> = {
   showcase: ['components', 'list', 'form'],
-  basedata: ['products', 'categories', 'partners'],
+  basedata: ['products', 'categories', 'partners', 'warehouses'],
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
   sale: ['quotations', 'quotationCreate', 'quotationEdit', 'quotationDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
@@ -109,6 +110,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   products: 'products.view',
   categories: 'categories.view',
   partners: 'partners.view',
+  warehouses: 'warehouses.view',
   purchaseOrders: 'purchaseOrders.view',
   purchases: 'purchases.view',
   purchaseReturns: 'purchaseReturns.view',
@@ -291,6 +293,15 @@ function onLogout(): void {
               <IconUsers />
             </template>
             <span>往来单位</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('warehouses')"
+            key="warehouses"
+          >
+            <template #icon>
+              <IconBuildingStore />
+            </template>
+            <span>仓库管理</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu
