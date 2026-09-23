@@ -3,6 +3,8 @@ using App.Core.Entities;
 using App.Core.Errors;
 using App.Core.Features.SalesShipments.GetSalesShipmentById;
 using App.Core.Features.SalesShipments.VoidSalesShipment;
+using App.Infrastructure;
+using App.Infrastructure.Repositories;
 
 namespace App.Tests;
 
@@ -16,6 +18,10 @@ namespace App.Tests;
 public class SalesShipmentLifecycleTests
 {
     private static readonly DateTimeOffset OrderDate = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    /// <summary>详情用例处理器：客户仓储用真实仓储 + InMemory（本类无该往来数据 → 账期默认 0，到期日 = 单据日期）</summary>
+    private static GetSalesShipmentByIdRequestHandler CreateGetByIdHandler(FakeSalesShipmentRepository orders)
+        => new(orders, new PartnerRepository(TestSupport.CreateDbContext()));
 
     /// <summary>
     /// 构造一张正常销售单（2 行明细：3×1.5 + 2×10 = 24.5）+ 商品 + 库存（10 / 8），预置进假仓储。
@@ -165,7 +171,7 @@ public class SalesShipmentLifecycleTests
     {
         var (orders, _, _, _, order, _, _, _) = SeedNormal();
         order.SettledAmount = settledAmount;
-        var handler = new GetSalesShipmentByIdRequestHandler(orders);
+        var handler = CreateGetByIdHandler(orders);
 
         var result = await handler.HandleAsync(new GetSalesShipmentByIdRequest { Id = order.Id });
 
@@ -181,7 +187,7 @@ public class SalesShipmentLifecycleTests
     public async Task 查询销售单详情_存在_应返回主表与明细()
     {
         var (orders, _, uow, _, order, _, _, _) = SeedNormal();
-        var handler = new GetSalesShipmentByIdRequestHandler(orders);
+        var handler = CreateGetByIdHandler(orders);
 
         var result = await handler.HandleAsync(new GetSalesShipmentByIdRequest { Id = order.Id });
 
@@ -199,7 +205,7 @@ public class SalesShipmentLifecycleTests
     public async Task 查询销售单详情_不存在_应报NotFound()
     {
         var (orders, _, uow, _, _, _, _, _) = SeedNormal();
-        var handler = new GetSalesShipmentByIdRequestHandler(orders);
+        var handler = CreateGetByIdHandler(orders);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => handler.HandleAsync(new GetSalesShipmentByIdRequest { Id = Guid.NewGuid() }));

@@ -81,6 +81,7 @@ internal static class SettlementsDtoMapper
             TotalAmount = candidate.TotalAmount,
             SettledAmount = candidate.SettledAmount,
             UnsettledAmount = candidate.UnsettledAmount,
+            DueDate = candidate.DueDate.ToString("yyyy-MM-dd"),
         };
 
     /// <summary>

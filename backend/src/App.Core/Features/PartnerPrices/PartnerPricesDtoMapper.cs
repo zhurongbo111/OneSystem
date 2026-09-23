@@ -43,6 +43,7 @@ internal static class PartnerPricesDtoMapper
             Price = item.Price,
             SalePrice = item.SalePrice,
             Remark = item.Remark,
+            CreatedAt = item.CreatedAt,
         };
 
     /// <summary>

@@ -1,4 +1,7 @@
 using App.Core.Entities;
+using App.Core.Features.PartnerPrices.CreatePartnerPrice;
+using App.Core.Features.PartnerPrices.GetPartnerPrices;
+using App.Core.Features.PartnerPrices.UpdatePartnerPrice;
 using App.Core.Features.Partners.CreatePartner;
 using App.Core.Features.Partners.GetPartners;
 using App.Core.Features.Partners.UpdatePartner;
@@ -94,7 +97,90 @@ public class PartnerFieldConsistencyTests
         Assert.False(new GetPartnersRequestValidator().Validate(new GetPartnersRequest { Page = 1, PageSize = 20, Keyword = tooLong }).IsValid);
     }
 
-    private static bool CreateValid(CreatePartnerRequestValidator validator, string? Contact = null, string? Phone = null, string? Address = null, string? Remark = null)
+    [Fact]
+    public void 协议价与信用额度_上界应与商品价格口径同源()
+    {
+        // 精度 numeric(18,2) 由 EF 配置给出，InMemory 提供程序无关系型元数据，故此处守护「口径同源」：
+        // 额度上界直接引用商品价格上界常量，协议价上下界同样取自同一来源
+        Assert.Equal(ProductFieldConstraints.PriceMaxValue, PartnerFieldConstraints.CreditLimitMaxValue);
+
+        Assert.True(UpdateValid(new UpdatePartnerRequestValidator(), CreditLimit: ProductFieldConstraints.PriceMaxValue));
+        Assert.False(UpdateValid(new UpdatePartnerRequestValidator(), CreditLimit: ProductFieldConstraints.PriceMaxValue + 0.01m));
+        // 新增侧与编辑侧同口径（036 §3.5：新增请求同样携带额度）
+        Assert.True(CreateValid(new CreatePartnerRequestValidator(), CreditLimit: ProductFieldConstraints.PriceMaxValue));
+        Assert.False(CreateValid(new CreatePartnerRequestValidator(), CreditLimit: ProductFieldConstraints.PriceMaxValue + 0.01m));
+    }
+
+    [Fact]
+    public void 协议价备注长度_应与备注常量一致()
+    {
+        using var dbContext = TestSupport.CreateDbContext();
+
+        Assert.Equal(
+            OrderFieldConstraints.RemarkMaxLength,
+            GetMaxLength<PartnerPrice>(dbContext, nameof(PartnerPrice.Remark)));
+    }
+
+    [Fact]
+    public void 协议价单价区间_新增与编辑应与商品价格同源()
+    {
+        var createValidator = new CreatePartnerPriceRequestValidator();
+        var updateValidator = new UpdatePartnerPriceRequestValidator();
+        var min = ProductFieldConstraints.PriceMinValue;
+        var max = ProductFieldConstraints.PriceMaxValue;
+
+        Assert.True(createValidator.Validate(CreatePriceRequest(min)).IsValid);
+        Assert.True(createValidator.Validate(CreatePriceRequest(max)).IsValid);
+        Assert.False(createValidator.Validate(CreatePriceRequest(max + 0.01m)).IsValid);
+        Assert.False(createValidator.Validate(CreatePriceRequest(min - 0.01m)).IsValid);
+
+        Assert.True(updateValidator.Validate(UpdatePriceRequest(min)).IsValid);
+        Assert.True(updateValidator.Validate(UpdatePriceRequest(max)).IsValid);
+        Assert.False(updateValidator.Validate(UpdatePriceRequest(max + 0.01m)).IsValid);
+        Assert.False(updateValidator.Validate(UpdatePriceRequest(min - 0.01m)).IsValid);
+    }
+
+    [Fact]
+    public void 账期天数上限_应取自单一常量()
+    {
+        var validator = new UpdatePartnerRequestValidator();
+
+        var result = validator.Validate(new UpdatePartnerRequest
+        {
+            Id = Guid.NewGuid(),
+            Type = PartnerType.Supplier,
+            PaymentTermDays = PartnerFieldConstraints.PaymentTermDaysMaxValue + 1,
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(
+            PartnerFieldConstraints.PaymentTermDaysMaxValue.ToString(),
+            string.Join('|', result.Errors.Select(e => e.ErrorMessage)));
+
+        // 新增侧同口径：上界取自同一常量，越界同样拒绝
+        var createValidator = new CreatePartnerRequestValidator();
+        Assert.True(CreateValid(createValidator, PaymentTermDays: PartnerFieldConstraints.PaymentTermDaysMaxValue));
+        Assert.False(CreateValid(createValidator, PaymentTermDays: PartnerFieldConstraints.PaymentTermDaysMaxValue + 1));
+    }
+
+    [Fact]
+    public void 客户价查询关键词长度_应不超过对应列长度()
+    {
+        var ok = new string('a', PartnerFieldConstraints.KeywordMaxLength);
+        var tooLong = new string('a', PartnerFieldConstraints.KeywordMaxLength + 1);
+        var validator = new GetPartnerPricesRequestValidator();
+
+        Assert.True(validator.Validate(new GetPartnerPricesRequest { Keyword = ok }).IsValid);
+        Assert.False(validator.Validate(new GetPartnerPricesRequest { Keyword = tooLong }).IsValid);
+    }
+
+    private static CreatePartnerPriceRequest CreatePriceRequest(decimal price)
+        => new() { PartnerId = Guid.NewGuid(), ProductId = Guid.NewGuid(), Price = price };
+
+    private static UpdatePartnerPriceRequest UpdatePriceRequest(decimal price)
+        => new() { Id = Guid.NewGuid(), Price = price };
+
+    private static bool CreateValid(CreatePartnerRequestValidator validator, string? Contact = null, string? Phone = null, string? Address = null, string? Remark = null, int? PaymentTermDays = null, decimal? CreditLimit = null)
         => validator.Validate(new CreatePartnerRequest
         {
             Name = "供应商A",
@@ -103,9 +189,11 @@ public class PartnerFieldConsistencyTests
             Phone = Phone,
             Address = Address,
             Remark = Remark,
+            PaymentTermDays = PaymentTermDays ?? 0,
+            CreditLimit = CreditLimit ?? 0m,
         }).IsValid;
 
-    private static bool UpdateValid(UpdatePartnerRequestValidator validator, string? Contact = null, string? Phone = null, string? Address = null, string? Remark = null)
+    private static bool UpdateValid(UpdatePartnerRequestValidator validator, string? Contact = null, string? Phone = null, string? Address = null, string? Remark = null, decimal? CreditLimit = null)
         => validator.Validate(new UpdatePartnerRequest
         {
             Id = Guid.NewGuid(),
@@ -114,5 +202,6 @@ public class PartnerFieldConsistencyTests
             Phone = Phone,
             Address = Address,
             Remark = Remark,
+            CreditLimit = CreditLimit ?? 0m,
         }).IsValid;
 }

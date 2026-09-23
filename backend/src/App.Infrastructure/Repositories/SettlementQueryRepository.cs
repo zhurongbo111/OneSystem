@@ -91,7 +91,18 @@ public sealed class SettlementQueryRepository : ISettlementQueryRepository
         }
 
         var total = candidates.Count;
+
+        // 到期日 = 单据日期 + 往来账期天数（`036` §0.3）：到期日不落列，在此统一推导
+        var paymentTermDays = await _dbContext.Partners.AsNoTracking()
+            .Where(p => p.Id == partnerId)
+            .Select(p => p.PaymentTermDays)
+            .FirstOrDefaultAsync(cancellationToken);
+
         var items = candidates
+            .Select(c => c with
+            {
+                DueDate = DateOnly.FromDateTime(c.OrderDate.UtcDateTime).AddDays(paymentTermDays),
+            })
             .OrderByDescending(c => c.OrderDate)
             .ThenByDescending(c => c.OrderNo)
             .Skip((page - 1) * pageSize)

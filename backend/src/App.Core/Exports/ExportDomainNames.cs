@@ -57,6 +57,9 @@ public static class ExportDomainNames
     /// <summary>发票登记</summary>
     public const string Invoices = "发票";
 
+    /// <summary>客户价格（`036`）</summary>
+    public const string PartnerPrices = "客户价格";
+
     /// <summary>单据类导出的「单据」工作表名（明细表见 <see cref="DetailSheet"/>）</summary>
     public const string DocumentSheet = "单据";
 

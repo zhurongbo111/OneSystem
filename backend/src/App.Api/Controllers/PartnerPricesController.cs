@@ -1,10 +1,12 @@
 using App.Api.Authorization;
+using App.Api.Http;
 
 using App.Core.Abstractions;
 using App.Core.Auth;
 using App.Core.Features.PartnerPrices;
 using App.Core.Features.PartnerPrices.CreatePartnerPrice;
 using App.Core.Features.PartnerPrices.DeletePartnerPrice;
+using App.Core.Features.PartnerPrices.ExportPartnerPrices;
 using App.Core.Features.PartnerPrices.GetEffectivePrices;
 using App.Core.Features.PartnerPrices.GetPartnerPriceById;
 using App.Core.Features.PartnerPrices.GetPartnerPrices;
@@ -66,6 +68,18 @@ public class PartnerPricesController : ControllerBase
         [FromQuery] GetEffectivePricesRequest request,
         CancellationToken cancellationToken)
         => ApiResponseFactory.Ok(await _mediator.Send(request, cancellationToken));
+
+    /// <summary>
+    /// 导出客户价格列表（Excel；取当前筛选全量，成功返回二进制文件流，契约例外见 specs/027-erp-export/design.md §0.1）
+    /// </summary>
+    [ProducesResponseType(statusCode: StatusCodes.Status200OK, type: typeof(FileResult))]
+    [HttpGet("export")]
+    [RequirePermission(Permissions.PartnerPricesExport)]
+    public async Task<IActionResult> Export([FromQuery] ExportPartnerPricesRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(request, cancellationToken);
+        return File(result.Content, ExportFileTypes.Xlsx, result.FileName);
+    }
 
     /// <summary>
     /// 查询客户协议价详情

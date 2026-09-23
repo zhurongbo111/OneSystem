@@ -34,4 +34,7 @@ public sealed record PartnerPriceListItem
 
     /// <summary>备注</summary>
     public string? Remark { get; init; }
+
+    /// <summary>创建时间（列表按此倒序，规格 §4.4 列之一）</summary>
+    public required DateTimeOffset CreatedAt { get; init; }
 }

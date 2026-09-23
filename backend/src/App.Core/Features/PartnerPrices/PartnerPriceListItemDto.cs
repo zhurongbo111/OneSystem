@@ -34,4 +34,7 @@ public sealed class PartnerPriceListItemDto
 
     /// <summary>备注</summary>
     public string? Remark { get; init; }
+
+    /// <summary>创建时间</summary>
+    public DateTimeOffset CreatedAt { get; init; }
 }

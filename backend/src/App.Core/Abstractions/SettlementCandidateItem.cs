@@ -27,4 +27,7 @@ public sealed record SettlementCandidateItem
 
     /// <summary>未结金额 = 总额 − 已结算金额（推导，不落列）</summary>
     public decimal UnsettledAmount => TotalAmount - SettledAmount;
+
+    /// <summary>到期日 = 单据日期 + 往来账期天数（`036` §0.3 推导，由仓储计算，前端不做日期加减）</summary>
+    public DateOnly DueDate { get; init; }
 }
