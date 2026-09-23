@@ -18,6 +18,7 @@ import {
   IconCoin,
   IconComponents,
   IconDatabase,
+  IconFileDollar,
   IconFileInvoice,
   IconFileText,
   IconHistory,
@@ -67,6 +68,8 @@ const MENU_ROUTE_MAP: Record<string, string> = {
   purchaseOrderDetail: 'purchaseOrders',
   purchaseDetail: 'purchases',
   purchaseReturnDetail: 'purchaseReturns',
+  quotationEdit: 'quotations',
+  quotationDetail: 'quotations',
   salesOrderEdit: 'salesOrders',
   salesOrderDetail: 'salesOrders',
   salesDetail: 'sales',
@@ -90,7 +93,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   showcase: ['components', 'list', 'form'],
   basedata: ['products', 'categories', 'partners'],
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
-  sale: ['salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
+  sale: ['quotations', 'quotationCreate', 'quotationEdit', 'quotationDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'partnerPrices', 'invoices', 'invoiceNew', 'invoiceDetail'],
   finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
@@ -109,6 +112,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   purchaseOrders: 'purchaseOrders.view',
   purchases: 'purchases.view',
   purchaseReturns: 'purchaseReturns.view',
+  quotations: 'quotations.view',
   salesOrders: 'salesOrders.view',
   sales: 'sales.view',
   salesReturns: 'salesReturns.view',
@@ -337,6 +341,15 @@ function onLogout(): void {
           <template #title>
             <span>销售</span>
           </template>
+          <a-menu-item
+            v-if="isMenuVisible('quotations')"
+            key="quotations"
+          >
+            <template #icon>
+              <IconFileDollar />
+            </template>
+            <span>报价单</span>
+          </a-menu-item>
           <a-menu-item
             v-if="isMenuVisible('salesOrders')"
             key="salesOrders"
