@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：商品管理（erp-product）
@@ -10,6 +10,7 @@ updated: 2026-09-22
 > 本规格为进销存功能组商品域底座，库存台账与开单商品选择接口的消费方为 erp-inventory-query / erp-purchase / erp-sale。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `products.view` / `create` / `update` / `status` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-audit-log）**：本域商品（创建 / 更新 / 启停）与分类（创建 / 更新 / 删除）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
+> **演进（erp-multi-warehouse，`038`）**：`Inventory` 唯一键升级为 `(ProductId, WarehouseId)` 并加仓级 `SafetyStock`（新建商品为**每个启用仓**建 0 行、阈值取商品档案值）；`Products.SafetyStock` 语义收敛为「组织级提醒线 + 新建库存行的初始值」，低库存判定唯一来源是**仓级阈值**（库存查询页 / 库存余额表）。商品档案的 `stockQuantity` / `isBelowSafetyStock` 为**组织级视图**（Σ 各仓 vs 档案阈值）；开单选品接口 `GET /api/products/pick?warehouseId=` 的库存为所选仓口径。详见 `specs/038-erp-multi-warehouse/design.md` §0。
 
 ## 1. 总体设计
 
@@ -73,7 +74,7 @@ updated: 2026-09-22
 | `Quantity` | `int` | `integer` | NOT NULL，默认 0 | 当前库存（**允许为负**：仅采购作废回冲可产生，见 §5） |
 | `UpdatedAt` | `DateTimeOffset` | `timestamptz` | NOT NULL | 最近变动时间 |
 
-- 无软删除（商品停用不删库存行）；无 `WarehouseId`（单仓库；未来多仓库加该列并把唯一约束改为 `(WarehouseId, ProductId)`，其余结构不动）。
+- 无软删除（商品停用不删库存行）。**（`038` 已落地）** 本表已加 `WarehouseId`（NOT NULL、FK → `Warehouses`）、`SafetyStock`（仓级阈值，新建行取商品档案阈值），唯一键改为 `(ProductId, WarehouseId)`、并加 `IX_Inventory_WarehouseId`；表结构以 `specs/038-erp-multi-warehouse/design.md` §2 为准。
 - **原子增减**（EF Core `ExecuteUpdateAsync` 表达，无裸 SQL，满足后端规则 §5.1）：
   - `Task IncrementAsync(Guid productId, int delta, ...)` —— `Quantity = Quantity + delta, UpdatedAt = now WHERE ProductId = @id`；
   - `Task<bool> TryDecrementAsync(Guid productId, int amount, ...)` —— `Quantity = Quantity - amount WHERE ProductId = @id AND Quantity >= amount`，返回受影响行数是否 ≥ 1（**数据库层防超卖**，并发下无需行锁）。

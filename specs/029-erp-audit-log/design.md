@@ -20,7 +20,8 @@ updated: 2026-09-23
 | 商品 `Product` | 创建 / 更新 / 启停 | `Products/CreateProduct` / `UpdateProduct` / `UpdateProductStatus` | 「新增商品 编码 A001 名称 螺丝」/「修改商品 A001」/「停用商品 A001」 |
 | 分类 `Category` | 创建 / 更新 / 删除 | `Categories/CreateCategory` / `UpdateCategory` / `DeleteCategory` | 「新增分类 五金」/「删除分类 五金」 |
 | 往来单位 `Partner` | 创建 / 更新 / 启停 | `Partners/*` | 「新增往来单位 甲供应商（供应商）」/「停用往来单位 甲供应商」 |
-| 仓库（`038`） `Warehouse` | 创建 / 更新 / 启停 / 设默认 | `Warehouses/*` | 「新增仓库 上海仓（SH）」/「设置默认仓库 上海仓」 |
+| 仓库（`038`） `Warehouse` | 创建 / 更新 / 启停 / 设默认 | `Warehouses/*` | 「新增仓库 上海仓」/「编辑仓库 上海仓」/「停用仓库 上海仓」/「设为默认仓 上海仓」 |
+| 库存安全阈值（`038`） `Inventory` | 更新（仓级安全库存维护） | `Inventory/UpdateInventorySafetyStock` | 「维护安全库存 A001（上海仓）：0 → 10」 |
 | 客户价格（`036`） `PartnerPrice` | 创建 / 更新 / 删除 | `PartnerPrices/*` | 「设置客户价 甲客户 / A001 = 8.80」 |
 | 报价单（`037`） `Quotation` | 创建 / 更新（含转销售订单）/ 作废 | `Quotations/CreateQuotation` / `UpdateQuotation` / `ConvertToOrder` / `VoidQuotation` | 「创建报价单 QT…（客户 乙，2 行，金额 30.00）」/「报价单 QT… 转销售订单 SO…」/「作废报价单 QT…」 |
 | 用户 `User` | 创建 / 更新 / 启停 / 重置密码 / 角色变更 | `Users/*`（`028` 的 `roleIds`） | 「新增用户 zhangsan（张三）」/「重置用户 zhangsan 密码」/「调整用户 zhangsan 角色：Staff → 仓管,财务」 |
@@ -42,6 +43,7 @@ updated: 2026-09-23
 | 记账凭证 / 会计期间（`033`） `Voucher` / `AccountingPeriod` | 创建（录入手工凭证）/ 作废 / 结账 / 反结账 / 映射维护（`Update`） | `Vouchers/CreateVoucher` / `VoidVoucher`、`AccountingPeriods/ClosePeriod` / `ReversePeriod`、`UpdateAccountMappings` | 「记账凭证 记-202609-0001（摘要，借贷合计 20.00）」/「作废记账凭证 记-…」/「结账期间 2026-09」/「反结账期间 2026-09」/「维护科目映射 8 项」 |
 
 - **范围外动作**：登录（`009` 已有）、查询 / 打印 / 导出（读操作）、密码哈希值本身、任何系统内部任务（如预警扫描生成站内信——属系统动作，`041` 自记）。
+- **`038`（erp-multi-warehouse）续行**：五类单据（采购入库 / 销售出库 / 采购退货 / 销售退货 / 库存盘点）的摘要模板追加**仓库名**（如「创建采购入库单 GR…（供应商：甲、入库仓：默认仓、2 行、金额 35.00）」），并新增上表的 `Inventory` 资源（仓级安全库存维护）。
 
 ### 0.2 摘要与字段规则
 
@@ -169,7 +171,9 @@ updated: 2026-09-23
 | 角色 | `CreateRole` / `UpdateRole` / `DeleteRole` | `Create` / `Update` / `Delete` | 名称 / 备注 / 权限点增删差异文本 |
 | 单据（采购 / 销售 / 退货） | `Create*` / `Void*` / `Update*Settlement` | `Create` / `Void` / `Settle` | 单号 / 往来 / 金额 / 明细行数 / 状态前后值 |
 | 收付款 | `CreateSettlement` / `VoidSettlement` | `Create` / `Void` | 单号 / 往来 / 金额 / 核销单据号列表 |
-| 盘点 | `CreateStockTake` | `Adjust` | 单号 / 类型 / 明细行数 / 差异行数 |
+| 盘点 | `CreateStockTake` | `Adjust` | 单号 / 类型 / 明细行数 / 差异行数 / 盘点仓名（`038` 续行） |
+| 仓库（`038`） | `CreateWarehouse` / `UpdateWarehouse` / `UpdateWarehouseStatus` / `SetDefaultWarehouse` | `Create` / `Update` / `StatusChange` / `Update` | 名称 / 编码 / 地址 / 联系人 / 电话 / 备注的前后值；启停记状态前后值；设默认记仓库名 |
+| 仓级安全库存（`038`） | `UpdateInventorySafetyStock` | `Update` | 商品 / 仓库 / 阈值前后值（`Inventory` 资源） |
 | 成本重算 | `RecalculateCosts` | `Recalculate` | 流水条数 / 缺价条数 |
 
 - 每处接入仅追加 ~3–6 行（构造 `AuditEntry` + `RecordAsync`），不改业务判定与错误码。

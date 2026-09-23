@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：销售出库（erp-sale）
@@ -10,6 +10,7 @@ updated: 2026-09-22
 > **本规格继承 erp-purchase design §0「单据域共用约定」**：`SalesShipments` / `SalesShipmentItems` 与 `PurchaseReceipts` / `PurchaseReceiptItems` 结构完全同构，实现时照抄 erp-purchase 模板并按 §1 替换规则替换差异点；共用枚举（`OrderStatus`）、常量（`OrderFieldConstraints` + `ProductFieldConstraints` 的 quantity / unitPrice 边界）、单号生成（`GenerateOrderNoAsync`，前缀参数化）、校验结构**均不重复定义**。本规格只定义销售特有差异。
 > **演进（`023-erp-settlement` / `024-erp-order-flow`）**：本规格单据域已被两者改写（结算金额化 + 已核销禁作废 + 核销取数只查主表；表 / 路由 / 单号前缀重命名 + 可关联销售订单 + 列表数量合计）。**本正文已按现行为准**，决策与判据分别见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6 与 `specs/024-erp-order-flow/design.md` §3 / §4。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `sales.view` / `create` / `void` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮（新增 / 作废 / 导出）由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-multi-warehouse，`038`）**：开单页表头新增「出库仓」下拉（仅启用仓、默认仓预选、提交必带 `warehouseId`），单据落 `WarehouseId` + 仓名快照、库存扣减与流水按该仓（不足即 `40103`，message 含仓名）；列表加「出库仓」列与筛选，详情 / 打印展示仓名。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.4。
 > **演进（erp-audit-log）**：本域销售出库（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-general-ledger）**：本域销售出库单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（收入分录借「应收账款」、贷「主营业务收入」，成本结转分录借「主营业务成本」、贷「库存商品」，同凭证呈现）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
 > **演进（erp-partner-price）**：开单页选中客户后按商品**批量取价**（协议价优先、未配置取商品销售价，一次请求），明细行单价默认填充生效价并标注来源（协议价 / 默认价），用户仍可手工改价（改后标注消失）；创建用例追加**信用额度校验**（额度 > 0 时「当前应收 + 本单 ≤ 额度」，超限 `40130`，位置在扣库存之前，额度 0 视为不限）。企业允许临时议价，故后端仍按前端传入单价落库（不强制回填协议价）。口径见 `specs/036-erp-partner-price/design.md` §0.1 / §0.4。

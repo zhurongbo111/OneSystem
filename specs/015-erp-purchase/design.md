@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 设计规格：采购入库（erp-purchase）
@@ -10,6 +10,7 @@ updated: 2026-09-22
 > 本规格为进销存功能组**单据域首个规格**，其数据模型 / 仓储 / 单号 / 校验约定为采购 / 销售共用，erp-sale 照抄本规格模板实现（见 §0 替换规则）。
 > **演进（`023-erp-settlement` / `024-erp-order-flow`）**：本规格单据域已被两者改写（结算金额化 + 已核销禁作废 + 核销取数只查主表；表 / 路由 / 单号前缀重命名 + 可关联采购订单 + 列表数量合计）。**本正文已按现行为准**，决策与判据分别见 `specs/023-erp-settlement/design.md` §0 / §3.1.1 / §3.6 与 `specs/024-erp-order-flow/design.md` §3 / §4。
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `purchases.view` / `create` / `void` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮（新增 / 作废 / 导出）由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
+> **演进（erp-multi-warehouse，`038`）**：开单页表头新增「入库仓」下拉（仅启用仓、默认仓预选、提交必带 `warehouseId`），单据落 `WarehouseId` + 仓名快照、库存与流水按该仓；列表加「入库仓」列与筛选，详情 / 打印展示仓名；停用仓 `40123`、不存在 `40400`、该仓库存不足 `40103`（message 含仓名）。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.4。
 > **演进（erp-audit-log）**：本域采购入库（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-general-ledger）**：本域采购入库单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（借「库存商品」、贷「应付账款」，金额为单据总额）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
 
