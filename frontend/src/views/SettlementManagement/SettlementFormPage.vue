@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { getBankAccounts } from '@/api/bankAccount'
+import type { BankAccountListItem } from '@/api/bankAccount'
 import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
 import {
@@ -79,10 +81,15 @@ const type = ref<SettlementType>(0)
 const partnerId = ref<string | undefined>(undefined)
 const settlementDate = ref(todayLocal())
 const method = ref<SettlementMethod>(0)
+/** 资金账户（034-erp-cash；现金 / 银行转账才需选账户，「其他」不关联） */
+const bankAccountId = ref<string | undefined>(undefined)
 const remark = ref('')
 
 /** 往来下拉数据源（全部启用往来；不按类型过滤，收款可对供应商收回退货退款） */
 const partners = ref<Partner[]>([])
+
+/** 资金账户下拉数据源（全部启用账户，按结算方式过滤类型） */
+const bankAccounts = ref<BankAccountListItem[]>([])
 
 /** 可核销单据候选（未结 + 未作废）与已选核销行 */
 const candidates = ref<CandidateRow[]>([])
@@ -102,6 +109,18 @@ const partnerOptions = computed(() => partners.value.map((p) => ({ label: p.name
 /** 表格行选择配置 */
 const rowSelection = computed(() => ({ type: 'checkbox' as const, showCheckedAll: true }))
 
+/**
+ * 资金账户下拉：按结算方式过滤账户类型（现金 → 现金账户、银行转账 → 银行账户，其他不关联账户）。
+ * 与后端校验同源（不匹配 → 40162），避免用户选了不匹配的类型才在提交时报错。
+ */
+const bankAccountOptions = computed(() => {
+  const expectedType = method.value === 0 ? 1 : method.value === 1 ? 2 : 0
+  if (expectedType === 0) return []
+  return bankAccounts.value
+    .filter((a) => a.status === 1 && a.type === expectedType)
+    .map((a) => ({ label: `${a.code} ${a.name}`, value: a.id }))
+})
+
 /** 收付款总额 = Σ 本次核销金额（仅展示，后端落库时重算） */
 const totalAmount = computed(() =>
   candidates.value
@@ -114,6 +133,13 @@ onMounted(async () => {
   try {
     const result = await getPartners({ status: 1, page: 1, pageSize: 100 })
     partners.value = result.items
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
+
+  try {
+    const accounts = await getBankAccounts({ status: 1, page: 1, pageSize: 100 })
+    bankAccounts.value = accounts.items
   } catch {
     // 错误提示已由请求层统一处理
   }
@@ -171,6 +197,11 @@ function onTypeChange(): void {
 function onPartnerChange(): void {
   resetItems()
   void loadCandidates()
+}
+
+/** 切结算方式：现金 / 银行转账切换时账户类型不同，重置已选账户 */
+function onMethodChange(): void {
+  bankAccountId.value = undefined
 }
 
 /** 勾选变化：新选中行默认填入未结金额，取消选中行移除金额 */
@@ -239,6 +270,7 @@ async function onSubmit(): Promise<void> {
       // 所选日期 → UTC 午夜 ISO 串（裸日期会被后端按服务器本地时区解析导致入库失败）
       settlementDate: toUtcMidnight(settlementDate.value),
       method: method.value,
+      bankAccountId: bankAccountId.value,
       items: selectedRows.map((c) => ({
         orderType: c.orderType,
         orderId: c.orderId,
@@ -319,6 +351,22 @@ async function onSubmit(): Promise<void> {
                 v-model="method"
                 :options="methodOptions"
                 placeholder="请选择收付款方式"
+                @change="onMethodChange"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item
+              label="资金账户"
+              :extra="method === 2 ? '「其他」结算方式不关联资金账户' : undefined"
+            >
+              <a-select
+                v-model="bankAccountId"
+                :options="bankAccountOptions"
+                :placeholder="method === 2 ? '「其他」结算方式无需选择账户' : '请选择资金账户（可空）'"
+                :disabled="bankAccountOptions.length === 0"
+                allow-search
+                allow-clear
               />
             </a-form-item>
           </a-col>

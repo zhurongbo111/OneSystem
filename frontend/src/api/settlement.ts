@@ -26,6 +26,10 @@ export interface SettlementListItem {
   settlementDate: string
   totalAmount: number
   method: SettlementMethod
+  /** 资金账户 id（034-erp-cash；「其他」结算方式不关联账户） */
+  bankAccountId?: string | null
+  /** 资金账户名称（联查带出，可空） */
+  bankAccountName?: string | null
   status: OrderStatus
   createdAt: string
   /** 本次核销金额（仅按被核销单据反查时返回，普通列表为 null） */
@@ -81,6 +85,8 @@ export interface CreateSettlementPayload {
   settlementDate: string
   method: SettlementMethod
   items: CreateSettlementItemPayload[]
+  /** 资金账户 id（可空；现金 → 现金账户、银行转账 → 银行账户，不匹配返回 40162） */
+  bankAccountId?: string
   remark?: string
 }
 
