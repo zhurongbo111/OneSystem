@@ -32,6 +32,11 @@ const MOVEMENT_TYPE_META: Record<StockMovementType, { label: string; color: stri
   8: { label: '采购退货作废', color: 'magenta' },
   9: { label: '销售退货', color: 'cyan' },
   10: { label: '销售退货作废', color: 'pinkpurple' },
+  // 039-erp-transfer 调拨流水：文案 / 颜色以 specs/019 §0 续行为准
+  11: { label: '调拨转出', color: 'geekblue' },
+  12: { label: '调拨转入', color: 'lime' },
+  13: { label: '调拨转出作废', color: 'volcano' },
+  14: { label: '调拨转入作废', color: 'magenta' },
 }
 
 /** 类型下拉选项（取 §0 文案） */

@@ -12,6 +12,7 @@ import type { SalesReturnQuery } from './saleReturn'
 import type { SettlementQuery } from './settlement'
 import type { StockMovementQuery } from './stockMovement'
 import type { StockTakeQuery } from './stockTake'
+import type { TransferQuery } from './transfer'
 
 /**
  * 列表导出 Excel（erp-export）：导出**当前筛选条件下的全量数据**（不受分页限制，服务端生成 xlsx）。
@@ -84,4 +85,9 @@ export function exportStockTakes(params: Omit<StockTakeQuery, 'page' | 'pageSize
 /** 导出员工档案列表 */
 export function exportEmployees(params: Omit<GetEmployeesParams, 'page' | 'pageSize'>): Promise<void> {
   return downloadBlob('/employees/export', params)
+}
+
+/** 导出调拨单（工作表：单据 + 明细，design §0.2 续行 039） */
+export function exportTransfers(params: Omit<TransferQuery, 'page' | 'pageSize'>): Promise<void> {
+  return downloadBlob('/transfers/export', params)
 }
