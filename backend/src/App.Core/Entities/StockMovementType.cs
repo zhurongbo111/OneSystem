@@ -36,4 +36,16 @@ public enum StockMovementType
 
     /// <summary>销售退货作废（减少，erp-sale-return）</summary>
     SalesReturnVoid = 10,
+
+    /// <summary>调拨转出（减少，erp-transfer）</summary>
+    TransferOut = 11,
+
+    /// <summary>调拨转入（增加，erp-transfer）</summary>
+    TransferIn = 12,
+
+    /// <summary>调拨转出作废（增加，erp-transfer）</summary>
+    TransferOutVoid = 13,
+
+    /// <summary>调拨转入作废（减少，erp-transfer）</summary>
+    TransferInVoid = 14,
 }
