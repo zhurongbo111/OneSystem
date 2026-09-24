@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-09-23
 ---
 
 # 设计规格：仓库调拨（erp-transfer）
@@ -184,7 +184,7 @@ src/
 ### 4.2 接口层
 
 - `src/api/transfer.ts`：类型与后端 DTO 一一对应；`getTransfers` / `createTransfer` / `getTransferById` / `voidTransfer`。
-- 仓库下拉复用 `src/api/warehouse.ts` 的 `getWarehousePickList`；商品下拉复用 `src/api/product.ts` 的 `getProductPickList`（含各仓库存需按仓查询 —— 决策：`pick` 返回库存合计即可，明细行选择转出仓后**逐行按需查询该仓库存**（复用 `getInventory({ productId, warehouseId })`，`pageSize = 1`），避免为调拨新增专用接口（见 §5）。
+- 仓库下拉复用 `src/api/warehouse.ts` 的 `getWarehousePickList`；商品下拉复用 `src/api/product.ts` 的 `getProductPickList`，**传 `fromWarehouseId` 取该仓口径库存**（与 `erp-purchase-return` 同模式：`pick` 一次拉回全部商品的该仓库存，明细行选中商品即同步 `stockQuantity` 快照，转出仓切换时重拉并刷新已选行的快照，序号守卫防乱序——避免为调拨新增「按仓 + 商品」专用接口；`getInventory` 不支持 `productId` 过滤，故不复用它做逐行查询）。
 
 ### 4.3 路由与菜单
 
@@ -225,7 +225,7 @@ src/
 | 明细不存成本单价 | 成本只在流水 | `026` 已把成本落在流水；明细再存一份就是第二口径（后端规则 §5.3 精神） |
 | 单仓对（一进一出） | 不建中间表 | 一张调拨单只有一对来源 / 目标仓，中间表纯冗余 |
 | 作废允许冲负 | `IncrementAsync` 无下限 | 与采购 / 销售 / 退货作废对称：期间货可能已被卖掉，作废必须可执行 |
-| 可用库存按需查询 | 复用 `getInventory({ productId, warehouseId })` | 避免为调拨新增「按仓 + 商品」专用接口；`028` 的 `inventory.view` 权限天然覆盖，前端实现简单 |
+| 可用库存按需查询 | 复用 `getProductPickList(fromWarehouseId)` 同口径快照 | 避免为调拨新增「按仓 + 商品」专用接口；`getInventory` 不支持 `productId` 过滤，`pick` 一次拉回该仓全部商品库存即可覆盖明细行需求，与 `erp-purchase-return` 同模式 |
 | 单号 `TR` | `ROADMAP` §6.7 分配 | 新增单据类型前先查前缀表，避免冲突（本规格落地时在表中把 `039` 行标记为已启用） |
 | 权限点 | `transfers.view/create/void/export`（`028` §0.2 已登记） | 权限清单唯一事实源，无需新增行 |
 | 无 RBAC 特例 | 复用现有权限点 | 同上 |

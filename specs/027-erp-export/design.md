@@ -44,6 +44,7 @@ updated: 2026-09-23
 | 销售退货 | `GET /api/sales-returns/export` | `SalesReturns/ExportSalesReturns` | 2 张 |
 | 收付款单 | `GET /api/settlements/export` | `Settlements/ExportSettlements` | 2 张（单据 + 核销明细） |
 | 库存盘点 | `GET /api/stock-takes/export` | `StockTakes/ExportStockTakes` | 2 张（单据 + 明细） |
+| 调拨列表（`039` 续行） | `GET /api/transfers/export` | `Transfers/ExportTransfers` | 2 张（单据 + 明细） |
 | 发票登记（`032` 续行） | `GET /api/invoices/export` | `Invoices/ExportInvoices` | 2 张（单据 + 关联明细） |
 | 进销存报表 | `GET /api/reports/inventory-flow/export` | `Reports/ExportInventoryFlow` | 1 张（含合计行） |
 | 库存余额表 | `GET /api/reports/stock-balance/export` | `Reports/ExportStockBalance` | 1 张（含合计行） |
