@@ -120,6 +120,11 @@ using App.Core.Features.PurchaseReturns.ExportPurchaseReturns;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturnById;
 using App.Core.Features.PurchaseReturns.GetPurchaseReturns;
 using App.Core.Features.PurchaseReturns.VoidPurchaseReturn;
+using App.Core.Features.Transfers;
+using App.Core.Features.Transfers.CreateTransfer;
+using App.Core.Features.Transfers.GetTransferById;
+using App.Core.Features.Transfers.GetTransfers;
+using App.Core.Features.Transfers.VoidTransfer;
 using App.Core.Features.Reports;
 using App.Core.Features.Reports.ExportCostProfit;
 using App.Core.Features.Roles;
@@ -403,6 +408,12 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<CreatePurchaseReturnRequest, PurchaseReturnDetailDto>, CreatePurchaseReturnRequestHandler>();
         services.AddScoped<IRequestHandler<VoidPurchaseReturnRequest, PurchaseReturnDetailDto>, VoidPurchaseReturnRequestHandler>();
 
+        // 调拨单用例（erp-transfer）
+        services.AddScoped<IRequestHandler<GetTransfersRequest, PagedResult<TransferListItemDto>>, GetTransfersRequestHandler>();
+        services.AddScoped<IRequestHandler<GetTransferByIdRequest, TransferDetailDto>, GetTransferByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateTransferRequest, TransferDetailDto>, CreateTransferRequestHandler>();
+        services.AddScoped<IRequestHandler<VoidTransferRequest, TransferDetailDto>, VoidTransferRequestHandler>();
+
         // 销售管理用例（erp-sale）
         services.AddScoped<IRequestHandler<GetSalesShipmentsRequest, PagedResult<SalesShipmentListItemDto>>, GetSalesShipmentsRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesShipmentByIdRequest, SalesShipmentDetailDto>, GetSalesShipmentByIdRequestHandler>();
@@ -528,6 +539,8 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdateQuotationRequest>, UpdateQuotationRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseReturnsRequest>, GetPurchaseReturnsRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReturnRequest>, CreatePurchaseReturnRequestValidator>();
+        services.AddScoped<IValidator<GetTransfersRequest>, GetTransfersRequestValidator>();
+        services.AddScoped<IValidator<CreateTransferRequest>, CreateTransferRequestValidator>();
         services.AddScoped<IValidator<GetSalesShipmentsRequest>, GetSalesShipmentsRequestValidator>();
         services.AddScoped<IValidator<CreateSalesShipmentRequest>, CreateSalesShipmentRequestValidator>();
         services.AddScoped<IValidator<GetSalesOrderPicksRequest>, GetSalesOrderPicksRequestValidator>();

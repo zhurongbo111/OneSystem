@@ -145,6 +145,12 @@ public class AppDbContext : DbContext
     /// <summary>报价单明细表（037-erp-quotation）</summary>
     public DbSet<QuotationItem> QuotationItems => Set<QuotationItem>();
 
+    /// <summary>调拨单表（039-erp-transfer）</summary>
+    public DbSet<Transfer> Transfers => Set<Transfer>();
+
+    /// <summary>调拨单明细表（039-erp-transfer）</summary>
+    public DbSet<TransferItem> TransferItems => Set<TransferItem>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

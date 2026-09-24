@@ -97,6 +97,9 @@ public static class DependencyInjection
         // 报价单（erp-quotation）：报价单 + 明细
         services.AddScoped<IQuotationRepository, QuotationRepository>();
 
+        // 调拨单（erp-transfer）：调拨单 + 明细（双仓库存 + 四类流水）
+        services.AddScoped<ITransferRepository, TransferRepository>();
+
         // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();

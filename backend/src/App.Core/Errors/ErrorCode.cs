@@ -114,6 +114,10 @@ public static class ErrorCode
     /// <summary>仓库名称已存在</summary>
     public const int WarehouseNameExists = 40125;
 
+    // ===== 调拨（specs/039-erp-transfer/design.md §3.2） =====
+    /// <summary>转出仓与转入仓不能相同</summary>
+    public const int TransferSameWarehouse = 40126;
+
     // ===== 组织架构与员工档案（specs/030-erp-org-employee/design.md §3.2） =====
     /// <summary>部门编码已存在</summary>
     public const int DepartmentCodeExists = 40138;
