@@ -193,13 +193,12 @@ async function searchMovementByOrderNo(page: Page, orderNo: string): Promise<voi
   await searchAndWaitHit(page, orderNo)
 }
 
-/** 在退货列表按单号搜索（同样等到所有行都命中该单号，避免误判过滤已生效） */
+/** 在退货列表按单号搜索（用 searchAndWaitHit：重试点击避免 loading 期间被吞） */
 async function searchReturnByNo(page: Page, returnNo: string): Promise<void> {
   const input = page.getByPlaceholder('搜索单号 / 客户')
   await input.fill(returnNo)
   await expect(input).toHaveValue(returnNo)
-  await page.getByRole('button', { name: '搜索', exact: true }).click()
-  await expect(dataRows(page).filter({ hasNotText: returnNo })).toHaveCount(0, { timeout: 15000 })
+  await searchAndWaitHit(page, returnNo)
 }
 
 test.describe('销售退货（集成）', () => {
