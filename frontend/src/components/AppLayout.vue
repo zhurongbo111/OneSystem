@@ -75,6 +75,7 @@ const MENU_ROUTE_MAP: Record<string, string> = {
   salesOrderDetail: 'salesOrders',
   salesDetail: 'sales',
   saleReturnDetail: 'salesReturns',
+  transferDetail: 'transfers',
   settlementDetail: 'settlements',
 }
 
@@ -95,7 +96,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   basedata: ['products', 'categories', 'partners', 'warehouses'],
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
   sale: ['quotations', 'quotationCreate', 'quotationEdit', 'quotationDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
-  stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail'],
+  stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'transfers', 'transferNew', 'transferDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'partnerPrices', 'invoices', 'invoiceNew', 'invoiceDetail'],
   finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
@@ -121,6 +122,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   inventory: 'inventory.view',
   stockMovements: 'stockMovements.view',
   stockTakes: 'stockTakes.view',
+  transfers: 'transfers.view',
   settlements: 'settlements.view',
   reconciliation: 'reconciliation.view',
   partnerPrices: 'partnerPrices.view',
@@ -425,6 +427,15 @@ function onLogout(): void {
               <IconClipboardCheck />
             </template>
             <span>库存盘点</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('transfers')"
+            key="transfers"
+          >
+            <template #icon>
+              <IconArrowsExchange />
+            </template>
+            <span>调拨单</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu
