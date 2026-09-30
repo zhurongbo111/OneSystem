@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-30
 ---
 
 # 任务清单：API 文档 Swagger（api-swagger）
