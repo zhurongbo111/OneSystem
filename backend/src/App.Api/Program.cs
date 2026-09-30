@@ -64,6 +64,7 @@ builder.Services.AddTelemetry();
 var app = builder.Build();
 
 // ========== 管道：全局异常 → 路由 → 认证/授权 → 控制器（认证失败由 JwtBearerEvents.OnChallenge 统一返回 code 40100）==========
+app.UseStaticFiles();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseRouting();
 if (app.Environment.IsDevelopment())
@@ -76,9 +77,10 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
-// ========== 数据库初始化：迁移（仅 dev 自动执行，生产由发布流程显式执行）+ 内置管理员种子（幂等）==========
-await DatabaseInitializer.InitializeAsync(app.Services, app.Environment.IsDevelopment());
+// ========== 数据库初始化：迁移+ 内置管理员种子（幂等）==========
+await DatabaseInitializer.InitializeAsync(app.Services);
 
 app.Logger.LogInformation("App.Api 启动完成，环境={Environment}", app.Environment.EnvironmentName);
 app.Run();

@@ -118,7 +118,7 @@ public class VoucherFieldConsistencyTests
         await using var dbContext = TestSupport.CreateDbContext();
         using var services = CreateInitializerServices(dbContext);
 
-        await DatabaseInitializer.InitializeAsync(services, applyMigrations: false);
+        await DatabaseInitializer.InitializeAsync(services);
 
         var year = DateTimeOffset.UtcNow.Year;
         Assert.Equal(12, await dbContext.AccountingPeriods.CountAsync(p => p.Year == year));
@@ -139,7 +139,7 @@ public class VoucherFieldConsistencyTests
         Assert.All(mappedAccounts, code => Assert.Contains(code, codes));
 
         // 幂等：重复执行不重复写入
-        await DatabaseInitializer.InitializeAsync(services, applyMigrations: false);
+        await DatabaseInitializer.InitializeAsync(services);
         Assert.Equal(12, await dbContext.AccountingPeriods.CountAsync(p => p.Year == year));
         Assert.Equal(AccountMappingKeys.All.Count, await dbContext.AccountMappings.CountAsync());
     }

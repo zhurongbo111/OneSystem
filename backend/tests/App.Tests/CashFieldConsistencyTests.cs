@@ -120,7 +120,7 @@ public class CashFieldConsistencyTests
         await using var dbContext = TestSupport.CreateDbContext();
         using var services = CreateInitializerServices(dbContext);
 
-        await DatabaseInitializer.InitializeAsync(services, applyMigrations: false);
+        await DatabaseInitializer.InitializeAsync(services);
         var cash = Assert.Single(await dbContext.BankAccounts.ToListAsync());
 
         Assert.Equal(DatabaseInitializer.PresetCashAccountCode, cash.Code);
@@ -131,7 +131,7 @@ public class CashFieldConsistencyTests
         Assert.Null(cash.AccountNo);
 
         // 幂等：重复执行不重复写入
-        await DatabaseInitializer.InitializeAsync(services, applyMigrations: false);
+        await DatabaseInitializer.InitializeAsync(services);
         Assert.Equal(1, await dbContext.BankAccounts.CountAsync());
     }
 
