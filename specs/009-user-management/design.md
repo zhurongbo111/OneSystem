@@ -1,6 +1,6 @@
 ---
 created: 2026-09-10
-updated: 2026-09-22
+updated: 2026-09-30
 ---
 
 # 设计规格：用户管理（user-management）
@@ -128,7 +128,7 @@ updated: 2026-09-22
   1. `db.Database.IsRelational()` 为真时执行 `MigrateAsync()`（应用迁移）；非关系型（集成测试 InMemory）跳过。
   2. 若 `Users` 表为空，则创建内置管理员：`Username=admin`、`DisplayName=管理员`、`Status=Enabled`、`PasswordHash=PasswordHasher.Hash("admin123")`、`CreatedAt/UpdatedAt=UtcNow`、`CreatedBy/UpdatedBy=null`。
 - 运行于**所有环境**：无注册入口，缺少引导管理员会导致系统被锁死。
-- 自动迁移仅在 `IServiceProvider` 可解析环境且为 `Development` 时执行；非 dev（含生产）由运维执行 `dotnet ef database update`，种子仍按"表空才建"执行 → 若生产数据库不可达，启动将失败（属真实依赖，符合预期）。
+- **自动迁移在所有环境执行**：关系型提供程序（PostgreSQL）一律在启动时 `MigrateAsync()`，非关系型（集成测试 InMemory）跳过；种子仍按"表空才建"幂等执行 → 若生产数据库不可达，启动将失败（属真实依赖，符合预期）。
 - 集成测试使用被替换为 **InMemory** 的 `AppDbContext`：跳过迁移，执行种子 → 既有 `admin/admin123` 登录用例继续通过。
 
 ## 3. 后端设计
@@ -350,7 +350,7 @@ src/
 | 密码用 PBKDF2-HMAC-SHA256 自研 `PasswordHasher` | 不引入额外依赖（`Rfc2898DeriveBytes` 内置），带随机盐、定长比较；替换脚手架明文密码 |
 | 只禁用不删除 | 保留历史数据与审计；无删除接口，规避关联数据风险 |
 | 启动时按需种子管理员，且对所有环境生效 | 无注册入口，缺引导管理员会导致系统不可用；"表空才建"保证幂等、不覆盖已有数据 |
-| 自动迁移仅 Development | 生产改库应由发布流程显式执行，避免应用启动即改结构；种子仍幂等执行 |
+| 自动迁移在所有环境执行 | 启动即迁移到位、简化部署（无需发布流程单独跑 `dotnet ef database update`）；EF 迁移幂等，重复启动不重复应用；种子仍"表空才建"幂等 |
 | 服务端分页（非前端 Mock 分页） | 用户数据来自数据库，需服务端分页；沿用 `AGENTS.md` §4.3 分页契约 |
 | 列表/详情拆分 `UserListItemDto` / `UserDetailDto`，`UserDto` 仅用于认证 | 列表不需要全部字段；认证的 `UserDto` 保持精简，`GetCurrentUser` 无需查库 |
 | 禁用不做 token 即时吊销 | JWT 无状态，即时吊销需黑名单 / 每请求查库，本期不做（已列入范围外） |

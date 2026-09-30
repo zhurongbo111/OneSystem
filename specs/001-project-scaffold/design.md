@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-20
+updated: 2026-09-30
 ---
 
 # 设计规格：项目脚手架（project-scaffold）
@@ -65,7 +65,7 @@ updated: 2026-09-20
 - `App.Api/Middleware/GlobalExceptionMiddleware`：
   - `BusinessException` → 返回其 `Code` / `Message`；
   - 其他异常 → `50000`，日志记录异常 + 上下文（含 `Activity.Current?.TraceId`）。
-- 全局异常中间件置于管道最前，替代 `UseExceptionHandler`。
+- 全局异常中间件置于 `UseStaticFiles` 之后、`UseRouting` 之前（静态文件命中即直接下发、不经异常处理），替代 `UseExceptionHandler`。
 
 ### 2.5 JWT 认证
 
@@ -85,7 +85,7 @@ updated: 2026-09-20
   - 白名单改用特性表达（不再维护路径前缀）：`AuthController.Login`、`HealthController` 标注 `[AllowAnonymous]`；`UsersController` 标注 `[Authorize]`；
   - 未认证统一 40100：`JwtBearerEvents.OnChallenge` 跳过默认 HTTP 401（`HandleResponse()`），改为返回 HTTP 200 + `{ code: 40100, message: "未登录或 token 无效" }`，保持全站 HTTP 200 约定；`OnAuthenticationFailed` 记录 warning 日志（含 traceId）；
   - 校验通过后由认证中间件写入 `HttpContext.User`（ClaimsPrincipal；`sub` 经默认入站映射为 `ClaimTypes.NameIdentifier`），`ICurrentUser` 从该 principal 读取。
-- **管道**：`UseRouting → UseAuthentication → UseAuthorization → MapControllers`，不再使用自研认证中间件。
+- **管道**：`UseStaticFiles → GlobalExceptionMiddleware → UseRouting → UseAuthentication → UseAuthorization → MapControllers → MapFallbackToFile("index.html")`，不再使用自研认证中间件；静态文件与 SPA 回退见 §2.10。
 
 ### 2.6 接口设计
 
@@ -132,8 +132,9 @@ updated: 2026-09-20
 
 - `appsettings.json`（非敏感默认值）：`Jwt:Issuer/Audience/ExpiresMinutes`；敏感项（密钥、连接串）一律环境变量。
 - `appsettings.Development.json`：空对象。
-- dev 启动：`http://localhost:5080`（`launchSettings.json`）。
-- 生产：`ASPNETCORE_ENVIRONMENT=Production` + 环境变量注入敏感配置。
+- dev 启动：`http://localhost:5080`（`launchSettings.json`）；前端 dev 由 Vite 5173 独立提供（`/api` 经 proxy 转发）。
+- **生产（单端口部署）**：`ASPNETCORE_ENVIRONMENT=Production` + 环境变量注入敏感配置；API **同端口托管前端构建产物**——`npm run build` 的产物（`frontend/dist`，含 `index.html`）发布时置于 `App.Api` 的 `wwwroot`（WebRoot，不入仓库），管道 `UseStaticFiles` 下发静态资源，`MapFallbackToFile("index.html").AllowAnonymous()` 兜底**所有未命中控制器 / 静态文件的请求**（即 SPA 前端路由）回 `index.html`，由前端路由自行接管（history 模式深链可直接访问）；`index.html` 本身标 `[AllowAnonymous]`，未登录也能拉到壳页，登录态仍由前端守卫 + `/api` 校验把关。
+- **副作用**：`MapFallbackToFile` 带默认 `nonfile` 路由约束，回退仅对**无扩展名**的未匹配路径生效——前端路由（`/products` 等）、裸 `/swagger`、不存在的 `/api/foo` 回 `index.html` 壳页（不再 `40100`）；**带扩展名**的未匹配路径（`/swagger/v1/swagger.json`、`/foo.css` 等）仍落到认证挑战返回 `40100`（行为不变，`003` §2.1 的「`/swagger/v1/swagger.json` 生产返回 40100」依然成立）。既有受保护 API 命中控制器、返回统一响应，不受影响。
 
 ## 3. 前端设计
 
@@ -203,6 +204,7 @@ frontend/
 | 不设 Service 层，RequestHandler 直接依赖仓储 | 避免贫血的业务编排层；跨仓储事务用 IUnitOfWork 显式控制 |
 | 登录示例账号放 `InMemoryUserRepository`（App.Infrastructure） | 脚手架无真实用户表；以仓储接口（App.Core.Abstractions）划边界，首个业务功能直接替换为 EF Core 实现 |
 | `AppDbContext` 暂空、不建迁移 | 无实体则无表；后续功能建表时再走 Migrations |
+| 生产单端口托管前端构建产物（`UseStaticFiles` + `MapFallbackToFile("index.html")`） | API 与前端同源同端口，省一层反向代理 / 域名配置；`index.html` 标 `[AllowAnonymous]` 让未登录也能拉到壳页（登录态仍由前端守卫 + `/api` 校验把关）；静态资源经 `UseStaticFiles` 直接下发，`MapFallbackToFile` 仅在非 API 路径兜底回 SPA 壳页，history 模式深链可直开 |
 | HTTP 状态码恒 200，业务码表达结果 | 与 AGENTS.md 4.1 统一响应约定一致，前端按 `code` 分支处理 |
 | dev 下 JWT 密钥自动生成兜底 | 本地开箱即用；prod 缺失即启动失败，避免裸奔 |
 | 集成测试工厂切换环境用 `builder.UseEnvironment(...)` 而非 `UseSetting("ASPNETCORE_ENVIRONMENT", ...)` | WebApplicationFactory 下 `UseSetting` 设置 `ASPNETCORE_ENVIRONMENT` 对 `IWebHostEnvironment` **不生效**（实证：工厂一直实际运行在 Development）。`UseEnvironment` 直接替换环境名可靠生效；且 Production 下 JWT 密钥校验读取**进程环境变量**（`JWT__SECRET`，Program 早期、in-memory 配置不可见），工厂需在静态构造中 `Environment.SetEnvironmentVariable("JWT__SECRET", ...)` 提供测试密钥 |

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-20
+updated: 2026-09-30
 ---
 
 # 任务清单：项目脚手架（project-scaffold）
@@ -24,6 +24,7 @@ updated: 2026-09-20
 - [x] B15 格式校验全局统一（后端规则 §4.2）：`Mediator.Send` 分发前按请求运行时类型经 DI 解析 `IValidator<TRequest>` 统一执行，失败抛 `BusinessException(40000)`，未注册校验器自动跳过；`LoginRequestHandler` 移除校验器注入与校验逻辑；单测同步（Mediator 新增校验用例）
 - [x] B16 JWT 校验改为 ASP.NET Core 默认认证：`AddAuthentication().AddJwtBearer()`（`TokenValidationParameters` 与签发共用 `JwtOptions`，`ClockSkew` 30 秒）+ `FallbackPolicy` 默认要求登录，`JwtBearerEvents.OnChallenge` 统一返回 `code: 40100`（HTTP 200）；`AuthController.Login` / `HealthController` 标注 `[AllowAnonymous]`、`UsersController` 标注 `[Authorize]`；删除 `JwtAuthenticationMiddleware` 与 `TokenService.Validate`
 - [x] B17 `cd backend && dotnet build` 与 `dotnet test` 通过
+- [x] B18 生产单端口托管前端构建产物：`Program` 管道前置 `app.UseStaticFiles()`、`MapControllers()` 后追加 `app.MapFallbackToFile("index.html").AllowAnonymous()`（非 API 路径回 SPA 壳页，`wwwroot` 于发布时由 `npm run build` 产物填充，不入仓库）
 
 ## 前端
 

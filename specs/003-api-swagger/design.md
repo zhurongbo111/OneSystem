@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-30
 ---
 
 # 设计规格：API 文档 Swagger（api-swagger）
@@ -22,7 +22,7 @@ updated: 2026-09-09
 - 仅当 `builder.Environment.IsDevelopment()` 为真时：
   - `builder.Services.AddSwaggerGen(...)`（注册配置）；
   - 管道 `app.UseSwagger()` + `app.UseSwaggerUI()`，**置于 `UseRouting` 之后、`UseAuthentication` / `UseAuthorization` 之前**（dev 启动后 `/swagger` 可达，且 Swagger 端点命中即短路、不进入认证管道）。
-- 非 dev（Production）：不注册、不映射，`/swagger*` 路径回落到认证挑战，按全站约定返回 `code: 40100`（HTTP 200），不泄露任何 API 结构。
+- 非 dev（Production）：不注册、不映射。Swagger **文档**端点 `/swagger/v1/swagger.json`（带扩展名）因 `001` 引入的 SPA返回 `index.html` 壳页（同样不泄露结构，见 `specs/001-project-scaffold/design.md` §2.10）。
 - 开关判断集中在 `Program.cs` 两个 `if` 块（服务注册 + 管道）内，不散落多处。
 - **管道顺序要点**：`UseSwagger` / `UseSwaggerUI` 注册端点（`/swagger/v1/swagger.json`、`/swagger/index.html` 等）后，dev 下请求命中端点即在认证**之前**返回，无需任何"放行"处理；`/swagger`（无尾段）由 UI 中间件 302 到 `/swagger/index.html`。
 

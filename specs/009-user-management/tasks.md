@@ -1,6 +1,6 @@
 ---
 created: 2026-09-10
-updated: 2026-09-22
+updated: 2026-09-30
 ---
 
 # 任务清单：用户管理（user-management）
@@ -21,6 +21,7 @@ updated: 2026-09-22
 - [x] T10 时间字段统一 `DateTimeOffset`（`User` / `UserLoginLog` 实体、`UserListItemDto` / `UserDetailDto` / `LoginLogListItemDto`、两个仓储接口与实现、`GetLoginLogsRequest` 入参、各 Handler 与 `DatabaseInitializer`、`TokenService` 签发边界显式 `UtcDateTime`）；移除 `GetLoginLogsRequestHandler.ToUtc` 归一化逻辑
 - [x] T11 迁移 `ConvertTimestampsToDateTimeOffset`：`Up` / `Down` 为空（Npgsql 下 `DateTime` 与 `DateTimeOffset` 同为 `timestamptz`，结构无变化），仅同步 EF 模型快照
 - [x] T12 新增 `App.Core/Entities/UserFieldConstraints.cs` 作为字段约束单一来源；EF 配置（`UserConfiguration`、`UserLoginLogConfiguration`、`ClientInfoAccessor` UA 截断）与全部 `RequestValidator` 改为引用；`LoginRequestValidator` 密码区间由 ≤128 收敛为 6–32，手机号补 `MaximumLength`
+- [x] T12.5 迁移为**所有环境自动执行**：`DatabaseInitializer.InitializeAsync`，关系型库一律 `MigrateAsync()`；
 
 ## 2. 后端 · 请求上下文抽象
 

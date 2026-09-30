@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-20
+updated: 2026-09-30
 ---
 
 # 需求规格：项目脚手架（project-scaffold）
@@ -31,6 +31,7 @@ updated: 2026-09-20
 - F11 前端接口层：`src/api/` 统一封装，拦截器解包 `{ code, message, data }`，`code !== 0` 时 `Message.error` 提示；请求自动附加 `Authorization: Bearer <token>`；收到 40100 清凭证与认证状态，并以 **SPA 路由跳转**进入登录页（防重复跳转、不整页刷新，保留回跳目标，重新登录后回到失效前所在页面）。
 - F12 前端页面：登录页（调用登录接口）、首页（展示当前登录用户，需登录态，未登录跳转登录页）。
 - F13 后端用例统一入口：用例由请求标记 `IRequest<TResponse>` 与处理器 `IRequestHandler<TRequest,TResponse>` 构成；Controller 只依赖自研中介 `IMediator`（`App.Core/Mediation` 实现，简化版 MediatR）经 `Send(Request)` 触发用例，不直接依赖具体 Handler（规范见后端规则 §4.2）。
+- F14 生产单端口托管前端构建产物（2026-09-30）：API 同端口提供前端 `npm run build` 产物——`UseStaticFiles` 下发静态资源、`MapFallbackToFile("index.html").AllowAnonymous()` 兜底非 API 路径回 SPA 壳页（history 模式深链可直开）；dev 前端仍由 Vite 5173 独立提供。
 
 ## 4. 验收标准
 
@@ -40,6 +41,7 @@ updated: 2026-09-20
 4. `cd frontend && npm install && npm run dev` 启动后，登录页可成功登录并跳转首页，首页展示当前用户名；退出登录后访问首页被重定向到登录页。
 5. `cd frontend && npm run build` 构建成功，无 TypeScript 错误。
 6. 代码与 `AGENTS.md`、backend / frontend 专项规则一致（目录结构、命名、注释语言等）。
+7. 生产：`npm run build` 产物置于 `App.Api/wwwroot` 后启动，任意前端路由（如 `/products`）返回 `index.html`，`/api/*` 仍返回统一响应。
 
 ## 5. 范围外（不做）
 
