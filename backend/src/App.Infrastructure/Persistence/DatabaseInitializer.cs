@@ -29,11 +29,9 @@ public static class DatabaseInitializer
     /// 执行数据库初始化（在 Program 中于 app.Run() 之前调用一次）
     /// </summary>
     /// <param name="services">应用根服务提供器（内部自建 scope）</param>
-    /// <param name="applyMigrations">是否执行迁移（仅 Development 为 true，生产由发布流程显式执行）</param>
     /// <param name="cancellationToken">取消令牌</param>
     public static async Task InitializeAsync(
         IServiceProvider services,
-        bool applyMigrations,
         CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();
@@ -43,7 +41,7 @@ public static class DatabaseInitializer
             ?.CreateLogger(typeof(DatabaseInitializer).FullName!);
 
         // InMemory（集成测试）等非关系型提供程序不支持迁移，跳过
-        if (applyMigrations && dbContext.Database.IsRelational())
+        if (dbContext.Database.IsRelational())
         {
             await dbContext.Database.MigrateAsync(cancellationToken);
         }

@@ -157,7 +157,7 @@ public class FinanceMasterFieldConsistencyTests
         await using var dbContext = TestSupport.CreateDbContext();
         using var services = CreateInitializerServices(dbContext);
 
-        await DatabaseInitializer.InitializeAsync(services, applyMigrations: false);
+        await DatabaseInitializer.InitializeAsync(services);
         var accounts = await dbContext.Accounts.ToListAsync();
 
         Assert.Equal(15, accounts.Count);
@@ -180,7 +180,7 @@ public class FinanceMasterFieldConsistencyTests
             && account.Direction == AccountDirection.Credit);
 
         // 幂等：重复执行不重复写入
-        await DatabaseInitializer.InitializeAsync(services, applyMigrations: false);
+        await DatabaseInitializer.InitializeAsync(services);
         Assert.Equal(15, await dbContext.Accounts.CountAsync());
     }
 
