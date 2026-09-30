@@ -24,6 +24,8 @@ internal static class JwtBearerExtensions
     /// <param name="configuration">配置（含 Jwt 配置节，密钥已由 Program 完成 dev 兜底 / prod 缺失校验）</param>
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
