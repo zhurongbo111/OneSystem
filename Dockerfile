@@ -15,7 +15,6 @@
 #     onsystem-app
 #   # ASPNETCORE_ENVIRONMENT 运行时指定（不指定时框架默认为 Production）；
 #   # Development 可开 Swagger（/swagger），不推荐用于共享环境
-#   # 如需持久化 NLog 文件日志，追加：-v onsystem-logs:/app/logs
 
 ARG NODE_VERSION=20
 ARG DOTNET_VERSION=8.0

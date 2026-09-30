@@ -139,7 +139,7 @@
 - 环境只分 `dev`（开发）/ `prod`（生产）两个，后续按需扩展。
 - 配置原则：非敏感配置放配置文件并按环境区分；敏感配置（数据库连接串、JWT 密钥等）只从环境变量读取，禁止硬编码、禁止入库。
   - **dev 例外**：本地开发库的连接串允许明文写入 `appsettings.Development.json`（**仅限本地 / 开发库**，不得为生产或共享环境凭据）；prod 及任何共享环境一律只从环境变量读取。
-- 可观测性：后端集成 OpenTelemetry（Tracing + Metrics），日志使用 NLog 对接默认 `ILogger<T>` 框架，细则见后端规则。
+- 可观测性：后端集成 OpenTelemetry（Tracing + Metrics），日志使用框架默认 `ILogger<T>`（控制台输出，级别按环境区分），细则见后端规则。
 - **部署形态（生产单端口）**：一体化 Docker 镜像（仓库根 `Dockerfile` / `.dockerignore`）——前端构建产物并入后端发布输出的 `wwwroot`，由 API 同端口（5080）托管，无 Nginx；生产运行环境 `ASPNETCORE_ENVIRONMENT=Production`。构建 / 运行命令与注入项见 `Dockerfile` 头部注释；管道与 SPA 回退细节见 `specs/001-project-scaffold/design.md` §2.10。
 
 ## 8. Git 分支与提交

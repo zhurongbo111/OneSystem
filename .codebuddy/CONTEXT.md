@@ -15,7 +15,7 @@
 backend/
 ├── App.sln / .editorconfig
 ├── src/
-│   ├── App.Api/             # Program.cs；Authentication/、Authorization/（权限特性与过滤器）、Controllers/、Http/、Middleware/、Swagger/、appsettings*.json、nlog.config
+│   ├── App.Api/             # Program.cs；Authentication/、Authorization/（权限特性与过滤器）、Controllers/、Http/、Middleware/、Swagger/、appsettings*.json
 │   ├── App.Core/            # DependencyInjection.cs（AddCore）；Abstractions/、Auth/、Entities/、Errors/、Exports/、Mediation/、Features/
 │   └── App.Infrastructure/  # DependencyInjection.cs（AddInfrastructure）、AppDbContext.cs、Migrations/、Persistence/、Repositories/、Exports/
 └── tests/App.Tests/         # 每 Handler 一个测试文件 + ApiIntegration / FieldValidationConsistency / TestSupport + 横切守卫（ApiPermissionMatrix：全部 Controller 动作权限标注守卫）

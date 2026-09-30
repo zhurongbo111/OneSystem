@@ -121,8 +121,8 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 
 ## 7. 日志与可观测性
 
-- 日志集成 NLog 并对接默认 `ILogger<T>`；业务代码只注入 `ILogger<T>`，禁止直接调用 NLog。配置放 `App.Api`，输出控制台 + 滚动文件，布局含 traceId（要求见 `AGENTS.md` §5）。
-- 日志级别：**dev / prod 均 Info 起**，框架日志（`Microsoft.*` / `System.*`）单独以 Warn 起压噪（见 `nlog.config`）——不靠整体降级减少噪音，否则会连带丢弃 Info 级业务日志。
+- 日志使用框架默认 `ILogger<T>`（`Program` 默认控制台提供器）；业务代码只注入 `ILogger<T>`。
+- 控制台提供器 `MinimumLevel = Information`，框架噪音（`Microsoft.*` / `System.*`）在 `appsettings.json` 的 `Logging:LogLevel` 单独以 `Warning` 压噪——不靠整体降级减少噪音，否则会连带丢弃 Info 级业务日志。
 - 可观测性集成 OpenTelemetry（Tracing + Metrics）：在 `App.Api` 引入 SDK，自动埋点 ASP.NET Core 与 EF Core；导出目标按环境配置（dev 可不导出，prod 导出至 collector）。
 
 ## 8. 环境配置与部署

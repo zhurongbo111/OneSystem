@@ -10,13 +10,7 @@ using App.Core.Auth;
 using App.Infrastructure;
 using App.Infrastructure.Persistence;
 
-using NLog;
-using NLog.Web;
-
 var builder = WebApplication.CreateBuilder(args);
-
-// ========== 日志（NLog 对接 ILogger<T>，级别：dev=Info / prod=Warning，见 nlog.config）==========
-builder.Host.UseNLog();
 
 // ========== JWT 配置（密钥等敏感项从环境变量注入，dev 缺失时生成随机兜底密钥）==========
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
@@ -30,7 +24,8 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
 
     jwtSecret = TokenService.GenerateDevSecret();
     builder.Configuration[JwtOptions.SectionName + ":Secret"] = jwtSecret;
-    LogManager.GetCurrentClassLogger().Warn("未配置 JWT__SECRET，已使用开发环境随机兜底密钥（进程重启后已签发 token 失效）");
+    // 此时日志管道尚未构建，只能写控制台；该告警仅在 dev 环境触发
+    Console.WriteLine("警告：未配置 JWT__SECRET，已使用开发环境随机兜底密钥（进程重启后已签发 token 失效）");
 }
 
 // ========== 服务注册 ==========
@@ -63,6 +58,8 @@ builder.Services.AddTelemetry();
 
 var app = builder.Build();
 
+app.Logger.LogInformation("App.Api 启动完成，环境={Environment}", app.Environment.EnvironmentName);
+
 // ========== 管道：全局异常 → 路由 → 认证/授权 → 控制器（认证失败由 JwtBearerEvents.OnChallenge 统一返回 code 40100）==========
 app.UseStaticFiles();
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -82,7 +79,6 @@ app.MapFallbackToFile("index.html").AllowAnonymous();
 // ========== 数据库初始化：迁移+ 内置管理员种子（幂等）==========
 await DatabaseInitializer.InitializeAsync(app.Services);
 
-app.Logger.LogInformation("App.Api 启动完成，环境={Environment}", app.Environment.EnvironmentName);
 app.Run();
 
 /// <summary>
