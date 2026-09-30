@@ -144,6 +144,7 @@ Vue 3 + TypeScript（`<script setup lang="ts">` 组合式 API，**禁止 Options
 
 - 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod）；实现上使用 Vite 多环境文件 `.env.development` / `.env.production`。
 - API 基础地址通过 `import.meta.env.VITE_API_BASE_URL` 读取；dev 环境指向本地 / dev 后端（可用 Vite proxy）。
+- **生产为 API 同端口单端口部署（强制）**：`.env.production` 的 `VITE_API_BASE_URL` 必须保持 `/api`（同源相对路径）；构建产物 `dist` 由后端发布时并入 `wwwroot` 托管（见 `AGENTS.md` §7 与 `specs/001-project-scaffold/design.md` §2.10），前端**禁止**假定存在独立静态服务器 / 反向代理，禁止在 `VITE_API_BASE_URL` 写绝对地址。
 - 接口行为以联调结果为准。
 
 ## 10. 测试（e2e）

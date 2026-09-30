@@ -1,0 +1,10 @@
+# 构建上下文只保留 Dockerfile 必需内容，排除本机构建产物与无关目录
+**/bin/
+**/obj/
+frontend/node_modules/
+frontend/dist/
+backend/tests/
+specs/
+.codebuddy/
+.git/
+.gitattributes

@@ -85,6 +85,7 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 ### 5.1 表结构与迁移
 
 - 所有表结构变更必须走 EF Core Migrations；禁止手写 DDL，禁止修改已应用的迁移文件。
+- **迁移执行（启动自动）**：关系型库在所有环境启动时自动执行 `MigrateAsync()`（`DatabaseInitializer`）；非关系型（集成测试 InMemory）跳过。决策与理由见 `specs/009-user-management/design.md` §2.5。
 - 业务代码中禁止裸 SQL；确需 EF Core 无法表达的场景，必须在规格中说明并经用户确认。
 - 实体名 PascalCase 单数；表名默认与实体名一致，规格可另行定义。
 
@@ -124,10 +125,12 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 - 日志级别：**dev / prod 均 Info 起**，框架日志（`Microsoft.*` / `System.*`）单独以 Warn 起压噪（见 `nlog.config`）——不靠整体降级减少噪音，否则会连带丢弃 Info 级业务日志。
 - 可观测性集成 OpenTelemetry（Tracing + Metrics）：在 `App.Api` 引入 SDK，自动埋点 ASP.NET Core 与 EF Core；导出目标按环境配置（dev 可不导出，prod 导出至 collector）。
 
-## 8. 环境配置
+## 8. 环境配置与部署
 
 - 环境划分与配置原则见 `AGENTS.md` §7（仅 dev / prod）；实现上通过 `ASPNETCORE_ENVIRONMENT` + `appsettings.{Environment}.json` 区分，`appsettings` 只放非敏感默认值与非生产凭据（dev 允许连接串明文）；代码内一律禁止硬编码凭据。
-- 后端敏感项清单：数据库连接串、JWT 密钥、OTel 导出端点。
+- 后端敏感项清单：数据库连接串、JWT 密钥、OTel 导出端点；生产一律经环境变量注入（`ConnectionStrings__Default` / `JWT__SECRET` 等，与 `AGENTS.md` §7 一致）。
+- **生产托管前端（强制）**：`App.Api` 发布输出必须包含前端构建产物——`npm run build` 的 `frontend/dist` 整体置于发布输出的 `wwwroot`（WebRoot，不入仓库）；`UseStaticFiles` 与 SPA 回退 `MapFallbackToFile("index.html")` 的管道顺序及回退副作用见 `specs/001-project-scaffold/design.md` §2.10。前端构建命令变更（如 dist 产物路径）须同步 `Dockerfile`。
+- **部署形态（一体化镜像）**：仓库根 `Dockerfile` 三阶段构建（前端构建 → 后端发布并入 `wwwroot` → 运行时），单端口 5080、无 Nginx；构建 / 运行命令与敏感项注入见 `Dockerfile` 头部注释，排除清单见 `.dockerignore`。修改 `Dockerfile` / `.dockerignore` / 生产运行时行为须与 `specs/001-project-scaffold/design.md` §2.10 保持一致。
 
 ## 9. 测试
 
