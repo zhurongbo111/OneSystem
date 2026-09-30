@@ -73,14 +73,14 @@ updated: 2026-09-30
 
 | 环境变量 | 配置键 | 说明 |
 |---|---|---|
-| `JWT__SECRET` | `Jwt:Secret` | HMAC-SHA256 密钥（≥32 字符），禁止入库 |
+| `JWT__SECRET` | `Jwt:Secret` | HMAC-SHA256 密钥（≥32 字符），prod 禁止入库（见下行 dev 兜底） |
 | `JWT__EXPIRES_MINUTES` | `Jwt:ExpiresMinutes` | 默认 120 |
 | `JWT__ISSUER` / `JWT__AUDIENCE` | `Jwt:Issuer` / `Jwt:Audience` | 默认 "app-api" / "app-web" |
 
-- **Dev 兜底**：`ASPNETCORE_ENVIRONMENT=Development` 且未配置 `JWT__SECRET` 时，启动时生成随机密钥并打 Warning 日志（本地开箱即用，重启后 token 失效）；Production 下缺失则启动抛异常。
+- **Dev 兜底**：`ASPNETCORE_ENVIRONMENT=Development` 时 `Jwt:Secret` 可明文存 `appsettings.Development.json`（dev 固定密钥，重启后已签发 token 仍有效；**仅限本地开发库凭据**，不得为生产 / 共享环境密钥）；Production 下缺失则 JWT 不可用（`AddJwtAuthentication` 读取 `Jwt` 配置节，prod 一律经环境变量注入）。
 - **签发**（App.Core/Auth/TokenService）：claims 含 `sub`（用户 id）、`username`、`displayName`、`iss`/`aud`/`exp`；`HS256`。
 - **校验**：使用 ASP.NET Core 默认认证框架 `Microsoft.AspNetCore.Authentication.JwtBearer`（`App.Api` 注册，见 `App.Api/Authentication/JwtBearerExtensions`）：
-  - `AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...)`：`TokenValidationParameters` 校验 Issuer / Audience / 签名密钥 / 有效期（`ClockSkew` 30 秒），配置值与签发共用 `JwtOptions`；
+  - `AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...)`：`TokenValidationParameters` 校验 Issuer / Audience / 签名密钥 / 有效期（`ClockSkew` 30 秒），配置值与签发共用 `JwtOptions`（`services.Configure<JwtOptions>` 在 `AddJwtAuthentication` 内注册）；
   - `AddAuthorization` 设置 `FallbackPolicy = RequireAuthenticatedUser()`：除显式标注 `[AllowAnonymous]` 的接口外，全部默认要求登录，等价于原"白名单外全局校验"语义；
   - 白名单改用特性表达（不再维护路径前缀）：`AuthController.Login`、`HealthController` 标注 `[AllowAnonymous]`；`UsersController` 标注 `[Authorize]`；
   - 未认证统一 40100：`JwtBearerEvents.OnChallenge` 跳过默认 HTTP 401（`HandleResponse()`），改为返回 HTTP 200 + `{ code: 40100, message: "未登录或 token 无效" }`，保持全站 HTTP 200 约定；`OnAuthenticationFailed` 记录 warning 日志（含 traceId）；
@@ -121,8 +121,8 @@ updated: 2026-09-30
 ### 2.9 日志与可观测性（App.Api）
 
 - **日志（框架默认 `ILogger<T>`）**：
-  - 输出：控制台（`Program` 默认提供器），无文件输出；
-  - 级别：dev / prod 业务日志均 Info 起；框架日志 `Microsoft.*` / `System.*` 降为 Warn 压噪（`appsettings.json` 的 `Logging:LogLevel`）；
+  - 输出：控制台（`AddApi` 内 `Logging.ClearProviders()` 后显式 `AddConsole()`，清除默认提供器只留控制台），无文件输出；
+  - 级别：dev / prod 业务日志均 Info 起；框架日志 `Microsoft.*` / `System.*` 降为 Warn 压噪（`appsettings.json` 的 `Logging:LogLevel`），`Microsoft.Hosting` 例外保持 Info（宿主机启动 / 停机日志）；
   - traceId：异常日志由 `GlobalExceptionMiddleware` 显式记录 `Activity.Current.TraceId`（见 §2.3）；
   - 业务代码只用 `ILogger<T>`，不引入第三方日志框架。
 - **OpenTelemetry**：`AddOpenTelemetry().WithTracing(AspNetCore + EF Core 自动埋点).WithMetrics(AspNetCore + Runtime 自动埋点)`；
@@ -130,8 +130,8 @@ updated: 2026-09-30
 
 ### 2.10 配置与运行
 
-- `appsettings.json`（非敏感默认值）：`Jwt:Issuer/Audience/ExpiresMinutes`；敏感项（密钥、连接串）一律环境变量。
-- `appsettings.Development.json`：空对象。
+- `appsettings.json`（非敏感默认值）：`Jwt:Issuer/Audience/ExpiresMinutes`、`ConnectionStrings:Default` 空值、`Logging:LogLevel`（`Microsoft.Hosting` 保持 Info）；生产敏感项（密钥、连接串）一律环境变量。
+- `appsettings.Development.json`：dev 明文配置，`ConnectionStrings:Default`（本地开发库）与 `Jwt:Secret`（dev 兜底，见 §2.5）。
 - dev 启动：`http://localhost:5080`（`launchSettings.json`）；前端 dev 由 Vite 5173 独立提供（`/api` 经 proxy 转发）。
 - **生产（单端口部署）**：`ASPNETCORE_ENVIRONMENT=Production` + 环境变量注入敏感配置；API **同端口托管前端构建产物**——`npm run build` 的产物（`frontend/dist`，含 `index.html`）发布时置于 `App.Api` 的 `wwwroot`（WebRoot，不入仓库），管道 `UseStaticFiles` 下发静态资源，`MapFallbackToFile("index.html").AllowAnonymous()` 兜底**所有未命中控制器 / 静态文件的请求**（即 SPA 前端路由）回 `index.html`，由前端路由自行接管（history 模式深链可直接访问）；`index.html` 本身标 `[AllowAnonymous]`，未登录也能拉到壳页，登录态仍由前端守卫 + `/api` 校验把关。
 - **副作用**：`MapFallbackToFile` 带默认 `nonfile` 路由约束，回退仅对**无扩展名**的未匹配路径生效——前端路由（`/products` 等）、裸 `/swagger`、不存在的 `/api/foo` 回 `index.html` 壳页（不再 `40100`）；**带扩展名**的未匹配路径（`/swagger/v1/swagger.json`、`/foo.css` 等）仍落到认证挑战返回 `40100`（行为不变，`003` §2.1 的「`/swagger/v1/swagger.json` 生产返回 40100」依然成立）。既有受保护 API 命中控制器、返回统一响应，不受影响。
@@ -206,5 +206,6 @@ frontend/
 | `AppDbContext` 暂空、不建迁移 | 无实体则无表；后续功能建表时再走 Migrations |
 | 生产单端口托管前端构建产物（`UseStaticFiles` + `MapFallbackToFile("index.html")`） | API 与前端同源同端口，省一层反向代理 / 域名配置；`index.html` 标 `[AllowAnonymous]` 让未登录也能拉到壳页（登录态仍由前端守卫 + `/api` 校验把关）；静态资源经 `UseStaticFiles` 直接下发，`MapFallbackToFile` 仅在非 API 路径兜底回 SPA 壳页，history 模式深链可直开 |
 | HTTP 状态码恒 200，业务码表达结果 | 与 AGENTS.md 4.1 统一响应约定一致，前端按 `code` 分支处理 |
-| dev 下 JWT 密钥自动生成兜底 | 本地开箱即用；prod 缺失即启动失败，避免裸奔 |
-| 集成测试工厂切换环境用 `builder.UseEnvironment(...)` 而非 `UseSetting("ASPNETCORE_ENVIRONMENT", ...)` | WebApplicationFactory 下 `UseSetting` 设置 `ASPNETCORE_ENVIRONMENT` 对 `IWebHostEnvironment` **不生效**（实证：工厂一直实际运行在 Development）。`UseEnvironment` 直接替换环境名可靠生效；且 Production 下 JWT 密钥校验读取**进程环境变量**（`JWT__SECRET`，Program 早期、in-memory 配置不可见），工厂需在静态构造中 `Environment.SetEnvironmentVariable("JWT__SECRET", ...)` 提供测试密钥 |
+| dev 下 JWT 密钥明文存 `appsettings.Development.json` 兜底 | 本地开箱即用且密钥固定（重启后已签发 token 仍有效，优于随机生成）；仅限本地开发库凭据（`AGENTS.md` §7 dev 例外）；prod 一律环境变量注入 |
+| 集成测试工厂切换环境用 `builder.UseEnvironment(...)` 而非 `UseSetting("ASPNETCORE_ENVIRONMENT", ...)` | WebApplicationFactory 下 `UseSetting` 设置 `ASPNETCORE_ENVIRONMENT` 对 `IWebHostEnvironment` **不生效**（实证：工厂一直实际运行在 Development）。`UseEnvironment` 直接替换环境名可靠生效；且 JWT 密钥按配置节加载（`appsettings` / 进程环境变量均可），Production 工厂仍经 `Environment.SetEnvironmentVariable("JWT__SECRET", ...)` 提供测试密钥（`appsettings.Development.json` 在 Production 不加载，in-memory 配置对既有测试保持零改动） |
+| `App.Api` 服务注册抽 `DependencyInjection.cs`（`AddApi` 扩展），`Program.cs` 只留管道装配（`ConfigureApp` 静态方法） | `Program.cs` 是 top-level statements 文件，混入多段注册后冗长；按 Core / Infrastructure / Api 各持一个 `AddXxx` 扩展对齐分层，`Program` 保持入口可读 |

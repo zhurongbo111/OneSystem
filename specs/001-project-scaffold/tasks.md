@@ -11,7 +11,7 @@ updated: 2026-09-30
 - [x] B2 引入 NuGet 包（EF Core / Npgsql / NLog / OpenTelemetry / JWT / xUnit / Mvc.Testing / InMemory），版本锁定兼容 net8.0
 - [x] B3 实现统一响应 `ApiResponse` / `ApiResponse<T>` / 工厂与错误码常量（App.Core）
 - [x] B4 实现 `BusinessException` 与 `GlobalExceptionMiddleware`（含 traceId 日志）
-- [x] B5 实现 JWT 签发：`JwtOptions`、`TokenService`（claims：sub / username / displayName，HS256）、dev 缺失密钥时随机兜底（校验链路见 B16）
+- [x] B5 实现 JWT 签发：`JwtOptions`、`TokenService`（claims：sub / username / displayName，HS256）、dev 密钥兜底（后改为明文存 `appsettings.Development.json`，见 B19；校验链路见 B16）
 - [x] B6 实现用例（每 API 一组 Request/RequestValidator/RequestHandler/Response）：登录与获取当前用户示例；`IUserRepository` 接口 + 内存实现、`IUnitOfWork`
 - [x] B7 实现 `AuthController`、`UsersController`、`HealthController`
 - [x] B8 实现 `AppDbContext`（空）、仓储内存实现与 `IUnitOfWork`、EF Core UseNpgsql 与 DI 注册
@@ -25,6 +25,8 @@ updated: 2026-09-30
 - [x] B16 JWT 校验改为 ASP.NET Core 默认认证：`AddAuthentication().AddJwtBearer()`（`TokenValidationParameters` 与签发共用 `JwtOptions`，`ClockSkew` 30 秒）+ `FallbackPolicy` 默认要求登录，`JwtBearerEvents.OnChallenge` 统一返回 `code: 40100`（HTTP 200）；`AuthController.Login` / `HealthController` 标注 `[AllowAnonymous]`、`UsersController` 标注 `[Authorize]`；删除 `JwtAuthenticationMiddleware` 与 `TokenService.Validate`
 - [x] B17 `cd backend && dotnet build` 与 `dotnet test` 通过
 - [x] B18 生产单端口托管前端构建产物：`Program` 管道前置 `app.UseStaticFiles()`、`MapControllers()` 后追加 `app.MapFallbackToFile("index.html").AllowAnonymous()`（非 API 路径回 SPA 壳页，`wwwroot` 于发布时由 `npm run build` 产物填充，不入仓库）
+- [x] B19 dev JWT 密钥兜底改为明文存 `appsettings.Development.json`（固定密钥，重启后 token 仍有效）：移除 `Program` 早期的随机兜底密钥生成（`Console` 告警）与 prod 缺失启动抛异常逻辑，`Configure<JwtOptions>` 移入 `AddJwtAuthentication`；`appsettings.json` 的 `Logging:LogLevel` 增 `Microsoft.Hosting: Information`（宿主机启动 / 停机日志）
+- [x] B20 `App.Api` 启动重构：服务注册下沉 `DependencyInjection.cs`（`AddApi` 扩展，含 `Logging.ClearProviders()` + `AddConsole()`），`Program.cs` 只留管道装配（`ConfigureApp` 静态方法）；管道顺序 `UseStaticFiles → Swagger（dev）→ GlobalExceptionMiddleware → UseRouting → 认证/授权 → 控制器 → SPA 回退`
 
 ## 前端
 
