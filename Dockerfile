@@ -43,6 +43,6 @@ WORKDIR /app
 COPY --from=backend-build /src/publish ./
 # 环境由运行时 -e ASPNETCORE_ENVIRONMENT 指定（缺省即 Production；Development 开 Swagger）
 # 与 dev 端口保持一致，容器内监听所有网卡
-ENV ASPNETCORE_URLS=http://+:5080
-EXPOSE 5080
+ENV ASPNETCORE_URLS=http://+:80
+EXPOSE 80
 ENTRYPOINT ["dotnet", "App.Api.dll"]
