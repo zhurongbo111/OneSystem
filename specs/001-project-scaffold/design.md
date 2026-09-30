@@ -15,7 +15,7 @@ updated: 2026-09-30
 ├── backend/
 │   ├── App.sln
 │   ├── src/
-│   │   ├── App.Api/            # Controller、中间件、全局异常、NLog、OTel、Program
+│   │   ├── App.Api/            # Controller、中间件、全局异常、OTel、Program
 │   │   ├── App.Core/           # Features（Request/RequestValidator/RequestHandler/Response）、实体、仓储接口、统一响应、异常、JWT 签发、中介（IMediator/Mediator）
 │   │   └── App.Infrastructure/ # AppDbContext、Repository 实现（脚手架阶段为内存实现）、UnitOfWork 实现
 │   └── tests/
@@ -31,7 +31,7 @@ updated: 2026-09-30
 
 | 项目 | 说明 | 关键包 |
 |---|---|---|
-| App.Api | Web API 入口 | NLog.Web.AspNetCore、OpenTelemetry.* |
+| App.Api | Web API 入口 | OpenTelemetry.* |
 | App.Core | 业务核心 | FluentValidation、System.IdentityModel.Tokens.Jwt、Microsoft.Extensions.*（Abstractions / DependencyInjection / Logging / Configuration / Http） |
 | App.Infrastructure | 数据访问 | Microsoft.EntityFrameworkCore、Npgsql.EntityFrameworkCore.PostgreSQL |
 | App.Tests | 单元测试 | xunit、Microsoft.NET.Test.Sdk、Microsoft.AspNetCore.Mvc.Testing、Microsoft.EntityFrameworkCore.InMemory |
@@ -120,11 +120,11 @@ updated: 2026-09-30
 
 ### 2.9 日志与可观测性（App.Api）
 
-- **NLog**（`nlog.config`，随 Api 项目复制输出）：
-  - targets：控制台 + 文件 `logs/app-{shortdate}.log`（滚动归档，保留 10 份）；
-  - 级别：`ASPNETCORE_ENVIRONMENT=Development` → Info；其他（prod）→ Warning；
-  - 布局含 `${aspnet-TraceIdentifier}`（traceId）；
-  - 接入：`builder.Host.UseNLog()`，业务代码只用 `ILogger<T>`。
+- **日志（框架默认 `ILogger<T>`）**：
+  - 输出：控制台（`Program` 默认提供器），无文件输出；
+  - 级别：dev / prod 业务日志均 Info 起；框架日志 `Microsoft.*` / `System.*` 降为 Warn 压噪（`appsettings.json` 的 `Logging:LogLevel`）；
+  - traceId：异常日志由 `GlobalExceptionMiddleware` 显式记录 `Activity.Current.TraceId`（见 §2.3）；
+  - 业务代码只用 `ILogger<T>`，不引入第三方日志框架。
 - **OpenTelemetry**：`AddOpenTelemetry().WithTracing(AspNetCore + EF Core 自动埋点).WithMetrics(AspNetCore + Runtime 自动埋点)`；
   - 仅当环境变量 `OTEL_EXPORTER_OTLP_ENDPOINT` 非空时追加 OTLP 导出（dev 默认不导出，prod 导出至 collector）。
 

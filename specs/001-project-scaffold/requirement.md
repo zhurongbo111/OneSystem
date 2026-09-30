@@ -24,7 +24,7 @@ updated: 2026-09-30
 - F4 JWT 认证：`POST /api/auth/login` 签发 token；`/api/auth` 白名单放行；其余接口校验失败返回 `code: 40100`。
 - F5 示例资源：`GET /api/users/me`（需登录，返回当前用户 DTO），验证认证链路。
 - F6 健康检查：`GET /health` 返回 `{ code: 0, message: "success", data: "healthy" }`，无需认证。
-- F7 可观测性：NLog（控制台 + 滚动文件，dev=Info / prod=Warning）对接 `ILogger<T>`；OpenTelemetry Tracing + Metrics 接入（dev 默认不导出）。
+- F7 可观测性：框架默认 `ILogger<T>` 控制台输出（业务日志 Info 起，`Microsoft.*` / `System.*` 框架日志 Warn 起压噪）；OpenTelemetry Tracing + Metrics 接入（dev 默认不导出）。
 - F8 环境配置：dev / prod 通过 `ASPNETCORE_ENVIRONMENT` 区分；数据库连接串、JWT 密钥等敏感配置从环境变量读取。
 - F9 后端单元测试：统一响应、异常处理、登录用例 RequestHandler 的公共方法单测通过。
 - F10 前端项目骨架：Vite + Vue 3 + TS + Arco Design + Pinia + vue-router + Axios，目录结构符合前端规则第 2 节。
