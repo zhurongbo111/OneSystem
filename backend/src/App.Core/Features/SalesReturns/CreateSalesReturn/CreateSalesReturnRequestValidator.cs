@@ -37,6 +37,24 @@ public sealed class CreateSalesReturnRequestValidator : AbstractValidator<Create
                 item.RuleFor(i => i.UnitPrice)
                     .InclusiveBetween(ProductFieldConstraints.PriceMinValue, ProductFieldConstraints.PriceMaxValue)
                     .WithMessage("单价超出允许范围");
+
+                // 批次（040）：batchId 与 newBatchNo 互斥（同时提供 → 40000，防歧义）
+                item.RuleFor(i => i)
+                    .Must(line => line.BatchId is null || string.IsNullOrWhiteSpace(line.NewBatchNo))
+                    .WithMessage("批次 id 与就地新建批次号不可同时提供");
+
+                // 就地新建批次：批次号格式（同 BatchFieldConstraints 常量）+ 日期先后
+                item.RuleFor(i => i.NewBatchNo)
+                    .NotEmpty()
+                    .Length(BatchFieldConstraints.BatchNoMinLength, BatchFieldConstraints.BatchNoMaxLength)
+                    .Matches(BatchFieldConstraints.BatchNoPattern)
+                    .WithMessage("批次号格式不正确（1–50 位字母 / 数字 / 下划线 / 连字符）")
+                    .When(i => i.NewBatchNo is not null);
+                item.RuleFor(i => i)
+                    .Must(line => line.NewExpiryDate is null || line.NewProductionDate is null
+                        || line.NewExpiryDate.Value >= line.NewProductionDate.Value)
+                    .WithMessage("到期日不能早于生产日期")
+                    .When(i => i.NewBatchNo is not null);
             });
 
         RuleFor(x => x.Remark).MaximumLength(OrderFieldConstraints.RemarkMaxLength).When(x => x.Remark is not null)

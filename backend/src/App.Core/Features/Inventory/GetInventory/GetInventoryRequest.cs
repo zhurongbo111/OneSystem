@@ -22,4 +22,13 @@ public sealed class GetInventoryRequest : IRequest<PagedResult<InventoryItemDto>
 
     /// <summary>仓库 id，可空（不传 = 全部仓，038）</summary>
     public Guid? WarehouseId { get; init; }
+
+    /// <summary>批次 id，可空（040：按批次筛选）</summary>
+    public Guid? BatchId { get; init; }
+
+    /// <summary>批次号，可空（040：按批次号模糊筛选，大小写不敏感；与 <see cref="BatchId"/> 同时提供时取交集）</summary>
+    public string? BatchNo { get; init; }
+
+    /// <summary>是否按批次展开行（040，默认 false = 按「商品 × 仓」汇总）</summary>
+    public bool ExpandBatch { get; init; }
 }

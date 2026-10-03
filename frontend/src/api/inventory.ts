@@ -15,6 +15,16 @@ export interface InventoryItem {
   stockQuantity: number
   /** 仓级安全库存阈值（038 起为低库存判定的唯一来源） */
   safetyStock: number
+  /** 批次 ID（040：展开批次视图有值，汇总视图为 null） */
+  batchId: string | null
+  /** 批次号（040；汇总视图为 null） */
+  batchNo: string | null
+  /** 到期日（040；null = 永不过期或汇总视图） */
+  expiryDate: string | null
+  /** 是否已过期（040） */
+  isExpired: boolean
+  /** 是否近效期（040） */
+  isNearExpiry: boolean
   isBelowSafetyStock: boolean
   /** 最近库存变动时间（无库存行时为 null） */
   updatedAt: string | null
@@ -25,6 +35,12 @@ export interface InventoryListQuery {
   keyword?: string
   categoryId?: string
   warehouseId?: string
+  /** 批次 id（040：按批次精确筛选） */
+  batchId?: string
+  /** 批次号模糊筛选（040，大小写不敏感；与 batchId 同时提供时取交集） */
+  batchNo?: string
+  /** 是否按批次展开行（040，默认 false = 按「商品 × 仓」汇总） */
+  expandBatch?: boolean
   page: number
   pageSize: number
 }

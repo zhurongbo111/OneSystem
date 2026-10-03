@@ -62,7 +62,7 @@ public class TransferLifecycleTests
         context.SaveChanges();
         return new CreateTransferRequestHandler(
             transfers, warehouses, new ProductRepository(context),
-            inventory, movements, uow, user, TestSupport.AuditLogger);
+            inventory, movements, new FakeBatchRepository(), new TestClock(TransferDate), uow, user, TestSupport.AuditLogger);
     }
 
     // ============================== CreateTransfer 成功 ==============================

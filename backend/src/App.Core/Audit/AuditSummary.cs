@@ -52,6 +52,38 @@ public static class AuditSummary
     }
 
     /// <summary>
+    /// 批次明细摘要片段（040 §3.9：按批次出库 / 入库的摘要含批次号，形如「商品 A / 批次 B1」）；
+    /// 仅列出前 <paramref name="maxItems"/> 条，超出追加「等 N 条」；全部行无批次时返回空串（摘要维持原样）
+    /// </summary>
+    /// <param name="lines">单据明细行</param>
+    /// <param name="nameOf">行 → 商品名快照</param>
+    /// <param name="batchNoOf">行 → 批次号快照（可空）</param>
+    /// <param name="maxItems">最多列出的明细条数</param>
+    public static string BatchItems<T>(
+        IReadOnlyList<T> lines,
+        Func<T, string> nameOf,
+        Func<T, string?> batchNoOf,
+        int maxItems = 5)
+    {
+        var parts = lines
+            .Select(i => (Name: nameOf(i), BatchNo: batchNoOf(i)))
+            .Where(x => !string.IsNullOrWhiteSpace(x.BatchNo))
+            .Take(maxItems)
+            .Select(x => $"{x.Name} / 批次 {x.BatchNo}")
+            .ToList();
+
+        if (parts.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var total = lines.Count(i => !string.IsNullOrWhiteSpace(batchNoOf(i)));
+        return parts.Count < total
+            ? $"+ 批次明细：{string.Join("、", parts)} 等 {Count(total)} 条"
+            : $"+ 批次明细：{string.Join("、", parts)}";
+    }
+
+    /// <summary>
     /// 集合差异文本：新增项前缀 <c>+</c>、移除项前缀 <c>-</c>，按「先增后减」拼接；无差异返回占位符
     /// </summary>
     /// <param name="before">变更前的集合</param>

@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Batches;
 using App.Core.Features.Warehouses;
 using App.Core.Finance;
 
@@ -37,6 +38,8 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
+    private readonly IBatchRepository _batchRepository;
+    private readonly ISystemClock _clock;
 
     /// <summary>
     /// 初始化新增采购入库单用例处理器
@@ -55,7 +58,9 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         IAccountRepository accountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAuditLogger auditLogger)
+        IAuditLogger auditLogger,
+        IBatchRepository batchRepository,
+        ISystemClock clock)
     {
         _purchaseReceiptRepository = purchaseReceiptRepository;
         _purchaseOrderRepository = purchaseOrderRepository;
@@ -71,6 +76,8 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
+        _batchRepository = batchRepository;
+        _clock = clock;
     }
 
     /// <summary>
@@ -209,12 +216,34 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     UpdatedBy = operatorId,
                 };
 
+                // 批次解析（040，事务内执行：就地新建批次与单据同事务，回滚时批次一并回滚）
+                // 入库类不拦截过期批次（outbound = false）
+                var resolvedBatches = new List<ResolvedBatch?>(request.Items.Count);
+                foreach (var line in request.Items)
+                {
+                    var p0 = products[line.ProductId];
+                    resolvedBatches.Add(await BatchLineResolver.ResolveAsync(
+                        p0.IsBatchManaged,
+                        p0.Id,
+                        line.BatchId,
+                        line.NewBatchNo,
+                        line.NewProductionDate,
+                        line.NewExpiryDate,
+                        _batchRepository,
+                        outbound: false,
+                        _clock.Today,
+                        operatorId,
+                        cancellationToken));
+                }
+
                 // 明细行按请求顺序生成顺序 Guid（SequentialGuidGenerator，见 design.md §3.1），
                 // 保证持久化顺序与请求顺序一致（仓储按 Id 排序还原明细顺序）
                 var items = new List<PurchaseReceiptItem>(request.Items.Count);
-                foreach (var line in request.Items)
+                for (var index = 0; index < request.Items.Count; index++)
                 {
+                    var line = request.Items[index];
                     var p = products[line.ProductId];
+                    var batch = resolvedBatches[index];
                     items.Add(new PurchaseReceiptItem
                     {
                         Id = SequentialGuidGenerator.NewSequential(),
@@ -226,26 +255,29 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                         UnitPrice = line.UnitPrice,
                         Subtotal = line.UnitPrice * line.Quantity,
                         OrderItemId = line.OrderItemId,
+                        BatchId = batch?.BatchId,
+                        BatchNo = batch?.BatchNo,
                     });
                 }
 
                 await _purchaseReceiptRepository.AddAsync(order, items, cancellationToken);
                 foreach (var item in items)
                 {
-                    // 采购入库：入库仓库存 += 数量（同事务，回冲在作废用例执行）
+                    // 采购入库：入库仓库存 += 数量（040 起按批次行；同事务，回冲在作废用例执行）
                     await _inventoryRepository.IncrementAsync(
-                        item.ProductId, warehouse.Id, item.Quantity, cancellationToken);
+                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, cancellationToken);
 
-                    // 成本：入库按采购单明细单价加权（erp-cost design §0.2）—— 先加数量再加金额（按仓分账）
+                    // 成本：入库按采购单明细单价加权（erp-cost design §0.2；040 起按批次行记账）—— 先加数量再加金额
                     await _inventoryRepository.ApplyInboundCostAsync(
-                        item.ProductId, warehouse.Id, item.Quantity, item.UnitPrice, cancellationToken);
+                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, item.UnitPrice, cancellationToken);
 
-                    // 库存流水：与库存增减同事务，1:1 追加并带变动仓（erp-stock-movement design §3.7）
+                    // 库存流水：与库存增减同事务，1:1 追加并带变动仓（erp-stock-movement design §3.7；040 带批次）
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
                         WarehouseId = warehouse.Id,
+                        BatchId = item.BatchId,
                         MovementType = StockMovementType.PurchaseInbound,
                         Quantity = item.Quantity,
                         UnitCost = item.UnitPrice,
@@ -301,7 +333,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     Action = AuditAction.Create,
                     ResourceId = order.Id,
                     ResourceNo = order.ReceiptNo,
-                    Summary = $"创建采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、入库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
+                    Summary = $"创建采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、入库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}",
                     Changes = createdReceiptChangeBuilder.Build(),
                     ChangesTruncated = createdReceiptChangeBuilder.Truncated,
                     UtcNow = now,

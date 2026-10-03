@@ -48,6 +48,7 @@ internal static class ProductDtoMapper
             StockQuantity = detail.StockQuantity,
             IsBelowSafetyStock = IsBelowSafetyStock(detail.SafetyStock, detail.StockQuantity),
             Status = (int)detail.Status,
+            IsBatchManaged = detail.IsBatchManaged,
             Remark = detail.Remark,
             CreatedAt = detail.CreatedAt,
             UpdatedAt = detail.UpdatedAt,
@@ -71,6 +72,7 @@ internal static class ProductDtoMapper
             StockQuantity = stockQuantity,
             IsBelowSafetyStock = IsBelowSafetyStock(product.SafetyStock, stockQuantity),
             Status = (int)product.Status,
+            IsBatchManaged = product.IsBatchManaged,
             Remark = product.Remark,
             CreatedAt = product.CreatedAt,
             UpdatedAt = product.UpdatedAt,
@@ -87,6 +89,7 @@ internal static class ProductDtoMapper
             PurchasePrice = item.PurchasePrice,
             SalePrice = item.SalePrice,
             StockQuantity = item.StockQuantity,
+            IsBatchManaged = item.IsBatchManaged,
         };
 
     /// <summary>低库存判定：阈值为 0 不提醒，否则当前库存小于阈值即提醒</summary>

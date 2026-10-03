@@ -17,6 +17,13 @@ using App.Core.Features.AuditLogs;
 using App.Core.Features.AuditLogs.GetAuditLogById;
 using App.Core.Features.AuditLogs.GetAuditLogs;
 using App.Core.Features.Auth.Login;
+using App.Core.Features.Batches;
+using App.Core.Features.Batches.CreateBatch;
+using App.Core.Features.Batches.GetBatchById;
+using App.Core.Features.Batches.GetBatches;
+using App.Core.Features.Batches.GetBatchPickList;
+using App.Core.Features.Batches.UpdateBatch;
+using App.Core.Features.Batches.UpdateBatchStatus;
 using App.Core.Features.BankAccounts;
 using App.Core.Features.BankAccounts.CreateBankAccount;
 using App.Core.Features.BankAccounts.DeleteBankAccount;
@@ -381,6 +388,14 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<DeletePartnerPriceRequest, object?>, DeletePartnerPriceRequestHandler>();
         services.AddScoped<IRequestHandler<GetEffectivePricesRequest, IReadOnlyList<EffectivePriceDto>>, GetEffectivePricesRequestHandler>();
 
+        // 批次与保质期用例（erp-batch-expiry）
+        services.AddScoped<IRequestHandler<GetBatchesRequest, PagedResult<BatchListItemDto>>, GetBatchesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateBatchRequest, BatchDetailDto>, CreateBatchRequestHandler>();
+        services.AddScoped<IRequestHandler<GetBatchByIdRequest, BatchDetailDto>, GetBatchByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateBatchRequest, BatchDetailDto>, UpdateBatchRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateBatchStatusRequest, BatchDetailDto>, UpdateBatchStatusRequestHandler>();
+        services.AddScoped<IRequestHandler<GetBatchPickListRequest, IReadOnlyList<BatchPickDto>>, GetBatchPickListRequestHandler>();
+
         // 库存查询用例（erp-inventory-query）
         services.AddScoped<IRequestHandler<GetInventoryRequest, PagedResult<InventoryItemDto>>, GetInventoryRequestHandler>();
 
@@ -557,6 +572,11 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetUnsettledOrdersRequest>, GetUnsettledOrdersRequestValidator>();
         services.AddScoped<IValidator<GetReconciliationRequest>, GetReconciliationRequestValidator>();
         services.AddScoped<IValidator<GetStockMovementsRequest>, GetStockMovementsRequestValidator>();
+        services.AddScoped<IValidator<GetBatchesRequest>, GetBatchesRequestValidator>();
+        services.AddScoped<IValidator<CreateBatchRequest>, CreateBatchRequestValidator>();
+        services.AddScoped<IValidator<UpdateBatchRequest>, UpdateBatchRequestValidator>();
+        services.AddScoped<IValidator<UpdateBatchStatusRequest>, UpdateBatchStatusRequestValidator>();
+        services.AddScoped<IValidator<GetBatchPickListRequest>, GetBatchPickListRequestValidator>();
         services.AddScoped<IValidator<GetStockTakesRequest>, GetStockTakesRequestValidator>();
         services.AddScoped<IValidator<CreateStockTakeRequest>, CreateStockTakeRequestValidator>();
         services.AddScoped<IValidator<GetInventoryFlowRequest>, GetInventoryFlowRequestValidator>();

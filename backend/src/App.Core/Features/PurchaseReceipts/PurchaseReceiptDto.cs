@@ -78,6 +78,12 @@ public sealed class PurchaseReceiptItemDto
     /// <summary>计量单位快照</summary>
     public required string Unit { get; init; }
 
+    /// <summary>批次 id（040：按批次商品有值，非批次 null）</summary>
+    public string? BatchId { get; init; }
+
+    /// <summary>批次号快照（040；非批次为 null）</summary>
+    public string? BatchNo { get; init; }
+
     /// <summary>数量</summary>
     public required int Quantity { get; init; }
 

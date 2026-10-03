@@ -79,6 +79,8 @@ const columns: TableColumnData[] = [
   { title: '变动时间', slotName: 'createdAt', width: 180 },
   { title: '商品编码', dataIndex: 'productCode', width: 160, ellipsis: true, tooltip: true },
   { title: '商品名称', dataIndex: 'productName', width: 180, ellipsis: true, tooltip: true },
+  // 批次号（040）：按批次流水有值，非批次流水为 -
+  { title: '批次号', slotName: 'batchNo', width: 140, ellipsis: true, tooltip: true },
   { title: '单位', dataIndex: 'unit', width: 80, align: 'center' },
   // 仓库列（038）：一条流水的仓 = 其数量实际变动的仓
   { title: '仓库', dataIndex: 'warehouseName', width: 140, ellipsis: true, tooltip: true },
@@ -369,6 +371,14 @@ function onPageSizeChange(size: number): void {
         <template #seq="{ rowIndex }">
           {{ (page - 1) * pageSize + rowIndex + 1 }}
         </template>
+        <!-- 批次号（040）：按批次流水有值，非批次流水为 - -->
+        <template #batchNo="{ record }">
+          <span v-if="(record as StockMovementListItem).batchNo">{{ (record as StockMovementListItem).batchNo }}</span>
+          <span
+            v-else
+            class="cell-empty"
+          >-</span>
+        </template>
         <template #createdAt="{ record }">
           {{ formatDateTime((record as StockMovementListItem).createdAt) }}
         </template>
@@ -478,5 +488,10 @@ function onPageSizeChange(size: number): void {
 .qty-minus {
   color: var(--color-danger-6);
   font-weight: 600;
+}
+
+/* 空值占位（批次号无值时） */
+.cell-empty {
+  color: var(--color-text-3);
 }
 </style>

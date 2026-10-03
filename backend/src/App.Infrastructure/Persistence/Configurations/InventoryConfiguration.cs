@@ -31,8 +31,13 @@ internal sealed class InventoryConfiguration : IEntityTypeConfiguration<Inventor
             .IsRequired()
             .HasColumnType("numeric(18,4)");
 
-        // 库存的唯一粒度 = 商品 × 仓库（038 维度升级；原「ProductId 唯一」单仓约束已删除）
-        builder.HasIndex(i => new { i.ProductId, i.WarehouseId }).IsUnique();
+        // 库存的唯一粒度 = 商品 × 仓库 × 批次（040 维度升级；038 的「ProductId + WarehouseId 唯一」被取代）
+        builder.HasIndex(i => new { i.ProductId, i.WarehouseId, i.BatchId }).IsUnique();
+
+        // 非批次商品部分唯一索引：BatchId IS NULL 行保持 038 的「(商品, 仓) 唯一」语义（040 §0 / §2.3）
+        builder.HasIndex(i => new { i.ProductId, i.WarehouseId })
+            .HasFilter("\"BatchId\" IS NULL")
+            .IsUnique();
 
         // 外键不级联删除：商品 / 仓库停用不删库存行
         builder.HasOne<Product>()
@@ -42,6 +47,10 @@ internal sealed class InventoryConfiguration : IEntityTypeConfiguration<Inventor
         builder.HasOne<Warehouse>()
             .WithMany()
             .HasForeignKey(i => i.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Batch>()
+            .WithMany()
+            .HasForeignKey(i => i.BatchId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

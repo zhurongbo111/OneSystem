@@ -10,7 +10,7 @@ import type { Category } from '@/api/product'
 import { getWarehousePickList } from '@/api/warehouse'
 import type { WarehousePickItem } from '@/api/warehouse'
 import { useAuthStore } from '@/stores/auth'
-import { formatDateTime } from '@/utils/datetime'
+import { formatDate, formatDateTime } from '@/utils/datetime'
 import { Message } from '@arco-design/web-vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import {
@@ -56,13 +56,15 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-/** 关键词 / 分类 / 仓库：输入态与已应用态分离（点搜索才生效） */
+/** 关键词 / 分类 / 仓库 / 批次号：输入态与已应用态分离（点搜索才生效） */
 const keywordInput = ref('')
 const categoryIdInput = ref<string | undefined>(undefined)
 const warehouseIdInput = ref<string | undefined>(undefined)
+const batchNoInput = ref('')
 const appliedKeyword = ref('')
 const appliedCategoryId = ref<string | undefined>(undefined)
 const appliedWarehouseId = ref<string | undefined>(undefined)
+const appliedBatchNo = ref('')
 /** 分类下拉数据源（复用 product.ts getCategories，全量，量小） */
 const categoryOptions = ref<Category[]>([])
 /** 仓库下拉数据源（仅启用仓，038） */
@@ -85,11 +87,14 @@ const visibleColumns = ref<string[]>([
   'updatedAt',
 ])
 
+/** 是否按批次展开行（040）：切换后重新查询；展开视图一行 = 商品 × 仓 × 批次，追加批次号 / 到期日列、隐藏安全阈值列 */
+const expandBatch = ref(false)
+
 // —— computed ——
-/** 表格重挂载 key：已应用条件变化时回到第 1 页 */
+/** 表格重挂载 key：已应用条件 / 展开态变化时回到第 1 页 */
 const tableKey = computed(
   () =>
-    `${appliedKeyword.value}|${appliedCategoryId.value ?? ''}|${appliedWarehouseId.value ?? ''}`,
+    `${appliedKeyword.value}|${appliedCategoryId.value ?? ''}|${appliedWarehouseId.value ?? ''}|${appliedBatchNo.value}|${expandBatch.value ? 'b' : ''}`,
 )
 
 
@@ -125,13 +130,18 @@ const columns = computed<TableColumnData[]>(() => {
   if (visibleColumns.value.includes('stockQuantity')) {
     cols.push({ title: '当前库存', slotName: 'stockQuantity', width: 140, align: 'center' })
   }
-  if (visibleColumns.value.includes('safetyStock')) {
+  // 展开批次视图（040）：追加批次号 / 到期日（近效期 / 已过期标签）；安全阈值列仅汇总视图显示
+  if (expandBatch.value) {
+    cols.push({ title: '批次号', slotName: 'batchNo', width: 160, ellipsis: true, tooltip: true })
+    cols.push({ title: '到期日', slotName: 'expiryDate', width: 150 })
+  }
+  if (visibleColumns.value.includes('safetyStock') && !expandBatch.value) {
     cols.push({ title: '安全阈值', dataIndex: 'safetyStock', width: 100, align: 'center' })
   }
   if (visibleColumns.value.includes('updatedAt')) {
     cols.push({ title: '最近变动时间', slotName: 'updatedAt', width: 172 })
   }
-  // 操作列固定显示：流水下钻（只读）+ 安全库存（038 唯一写入口，权限 inventory.update）
+  // 操作列固定显示：流水下钻（只读）+ 安全库存（038 唯一写入口，权限 inventory.update；展开视图仅流水）
   cols.push({ title: '操作', slotName: 'actions', width: 180, fixed: 'right' })
   return cols
 })
@@ -171,9 +181,11 @@ async function fetchWarehouses(): Promise<void> {
   }
 }
 
-/** 行唯一键：038 起一行 = 商品 × 仓，仅 productId 在「全部仓」下会重复 */
+/** 行唯一键：038 起一行 = 商品 × 仓；040 展开批次后一行 = 商品 × 仓 × 批次 */
 function rowKey(record: InventoryItem): string {
-  return `${record.productId}:${record.warehouseId}`
+  return expandBatch.value
+    ? `${record.productId}:${record.warehouseId}:${record.batchId ?? ''}`
+    : `${record.productId}:${record.warehouseId}`
 }
 
 /** 拉取当前条件下的库存列表（请求序号防止乱序响应覆盖最新结果） */
@@ -185,6 +197,9 @@ async function fetchList(): Promise<void> {
       keyword: appliedKeyword.value.trim() || undefined,
       categoryId: appliedCategoryId.value,
       warehouseId: appliedWarehouseId.value,
+      batchNo: appliedBatchNo.value.trim() || undefined,
+      // 展开批次（040）：切换后整页重新查询（tableKey 变化回第 1 页）
+      expandBatch: expandBatch.value || undefined,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -203,6 +218,7 @@ function onSearch(): void {
   appliedKeyword.value = keywordInput.value
   appliedCategoryId.value = categoryIdInput.value
   appliedWarehouseId.value = warehouseIdInput.value
+  appliedBatchNo.value = batchNoInput.value
   page.value = 1
   void fetchList()
 }
@@ -212,15 +228,24 @@ function onReset(): void {
   keywordInput.value = ''
   categoryIdInput.value = undefined
   warehouseIdInput.value = undefined
+  batchNoInput.value = ''
   appliedKeyword.value = ''
   appliedCategoryId.value = undefined
   appliedWarehouseId.value = undefined
+  appliedBatchNo.value = ''
   page.value = 1
   void fetchList()
 }
 
 /** 刷新当前页 */
 function onRefresh(): void {
+  void fetchList()
+}
+
+/** 切换「展开批次」（040）：重新查询并回到第 1 页（tableKey 变化自动重挂载） */
+function onToggleExpandBatch(value: boolean | (string | number | boolean)[]): void {
+  expandBatch.value = typeof value === 'boolean' ? value : false
+  page.value = 1
   void fetchList()
 }
 
@@ -243,6 +268,8 @@ async function onExport(): Promise<void> {
       keyword: appliedKeyword.value.trim() || undefined,
       categoryId: appliedCategoryId.value,
       warehouseId: appliedWarehouseId.value,
+      batchNo: appliedBatchNo.value.trim() || undefined,
+      expandBatch: expandBatch.value || undefined,
     })
     if (total.value === 0) {
       Message.info('已导出空数据模板')
@@ -345,7 +372,16 @@ async function onSaveSafetyStock(): Promise<void> {
               allow-clear
             />
           </a-col>
-          <a-col :span="10">
+          <a-col :span="4">
+            <a-input
+              v-model="batchNoInput"
+              class="filter-bar__batch-no"
+              placeholder="搜索批次号"
+              allow-clear
+              @press-enter="onSearch"
+            />
+          </a-col>
+          <a-col :span="6">
             <div class="toolbar-filter__actions">
               <a-button
                 type="primary"
@@ -370,8 +406,20 @@ async function onSaveSafetyStock(): Promise<void> {
           </a-col>
         </a-row>
 
-        <!-- 操作行：导出 + 列设置 + 刷新（只读页无新增 / 编辑） -->
+        <!-- 操作行：展开批次（040）+ 导出 + 列设置 + 刷新（只读页无新增 / 编辑） -->
         <div class="toolbar-actions">
+          <a-checkbox
+            :model-value="expandBatch"
+            class="toolbar-actions__expand"
+            @change="onToggleExpandBatch"
+          >
+            展开批次
+          </a-checkbox>
+          <a-divider
+            v-if="expandBatch"
+            direction="vertical"
+            class="toolbar-actions__divider"
+          />
           <a-button
             size="small"
             :loading="exporting"
@@ -452,6 +500,38 @@ async function onSaveSafetyStock(): Promise<void> {
           >
             低于安全库存
           </a-tag>
+        </template>
+        <!-- 批次号（040 展开批次视图） -->
+        <template #batchNo="{ record }">
+          <span v-if="(record as InventoryItem).batchNo">{{ (record as InventoryItem).batchNo }}</span>
+          <span
+            v-else
+            class="cell-empty"
+          >-</span>
+        </template>
+        <!-- 到期日（040 展开批次视图）：近效期 / 已过期标签 -->
+        <template #expiryDate="{ record }">
+          <template v-if="(record as InventoryItem).expiryDate">
+            <span>{{ formatDate((record as InventoryItem).expiryDate as string) }}</span>
+            <a-tag
+              v-if="(record as InventoryItem).isExpired"
+              color="red"
+              size="small"
+            >
+              已过期
+            </a-tag>
+            <a-tag
+              v-else-if="(record as InventoryItem).isNearExpiry"
+              color="orange"
+              size="small"
+            >
+              近效期
+            </a-tag>
+          </template>
+          <span
+            v-else
+            class="cell-empty"
+          >-</span>
         </template>
         <template #updatedAt="{ record }">
           {{ formatDateTime((record as InventoryItem).updatedAt) }}
@@ -570,9 +650,14 @@ async function onSaveSafetyStock(): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+/* 「展开批次」复选框靠左，其余操作按钮靠右 */
+.toolbar-actions__expand {
+  margin-right: auto;
 }
 
 .toolbar-actions__divider {
@@ -604,6 +689,11 @@ async function onSaveSafetyStock(): Promise<void> {
 .stock-below {
   color: var(--color-danger-6);
   font-weight: 600;
+}
+
+/* 空值占位（批次号 / 到期日无值时） */
+.cell-empty {
+  color: var(--color-text-3);
 }
 
 .col-settings {

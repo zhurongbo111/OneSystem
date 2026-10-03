@@ -25,6 +25,8 @@ export interface Product {
   stockQuantity: number
   isBelowSafetyStock: boolean
   status: ProductStatus
+  /** 是否按批次管理（040） */
+  isBatchManaged: boolean
   remark: string | null
   createdAt: string
   updatedAt: string
@@ -39,6 +41,8 @@ export interface ProductPickItem {
   purchasePrice: number
   salePrice: number
   stockQuantity: number
+  /** 是否按批次管理（040：开单明细批次列显隐用） */
+  isBatchManaged: boolean
 }
 
 /** 商品分类（对应后端 CategoryDto） */
@@ -66,6 +70,8 @@ export interface CreateProductPayload {
   purchasePrice: number
   salePrice: number
   safetyStock: number
+  /** 是否按批次管理（040） */
+  isBatchManaged: boolean
   remark?: string
 }
 
@@ -77,6 +83,8 @@ export interface UpdateProductPayload {
   purchasePrice: number
   salePrice: number
   safetyStock: number
+  /** 是否按批次管理（040） */
+  isBatchManaged: boolean
   remark?: string
 }
 

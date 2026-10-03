@@ -43,4 +43,16 @@ public sealed class CreatePurchaseReceiptItem
 
     /// <summary>关联采购订单明细行 id，可空（关联订单时必填，指向本次收货对应的订单行）</summary>
     public Guid? OrderItemId { get; init; }
+
+    /// <summary>批次 id，可空：按批次管理商品必填；与 newBatchNo 互斥（040）</summary>
+    public Guid? BatchId { get; init; }
+
+    /// <summary>就地新建批次号，可空：代替 batchId（040；与 batchId 互斥）</summary>
+    public string? NewBatchNo { get; init; }
+
+    /// <summary>就地新建批次的生产日期（UTC 午夜，可空；与 newBatchNo 配套）</summary>
+    public DateTimeOffset? NewProductionDate { get; init; }
+
+    /// <summary>就地新建批次的到期日（UTC 午夜，可空；与 newBatchNo 配套）</summary>
+    public DateTimeOffset? NewExpiryDate { get; init; }
 }

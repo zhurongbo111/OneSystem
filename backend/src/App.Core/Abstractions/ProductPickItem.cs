@@ -25,4 +25,7 @@ public sealed record ProductPickItem
 
     /// <summary>当前库存（联查 Inventory 带出）</summary>
     public required int StockQuantity { get; init; }
+
+    /// <summary>是否按批次管理（040：盘点拆行 / 开单批次列显示用）</summary>
+    public required bool IsBatchManaged { get; init; }
 }

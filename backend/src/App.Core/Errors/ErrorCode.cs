@@ -224,6 +224,16 @@ public static class ErrorCode
     /// <summary>报价单不可转单（非草稿 / 已转订单 / 已作废）</summary>
     public const int QuotationNotConvertible = 40167;
 
+    // ===== 批次与保质期（specs/040-erp-batch-expiry/design.md §3.2） =====
+    /// <summary>按批次管理的商品必须指定批次</summary>
+    public const int BatchRequired = 40127;
+
+    /// <summary>批次已过期，禁止出库（message 含批次号与到期日）</summary>
+    public const int BatchExpired = 40128;
+
+    /// <summary>同商品下批次号已存在（大小写不敏感）</summary>
+    public const int BatchNoExists = 40129;
+
     // ===== RBAC 角色权限（specs/028-erp-rbac/design.md §1.2） =====
     /// <summary>角色名称已存在（忽略大小写）</summary>
     public const int RoleNameExists = 40173;

@@ -1,9 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-import { clickUntil, clickUntilCount } from './helpers/action'
+import { clickUntil } from './helpers/action'
 import { loginAs } from './helpers/auth'
 import { clickMenuItem } from './helpers/menu'
-import { expectMessage, messageLocator } from './helpers/message'
+import { expectMessage } from './helpers/message'
 import { searchAndWaitHit } from './helpers/table-search'
 
 /**

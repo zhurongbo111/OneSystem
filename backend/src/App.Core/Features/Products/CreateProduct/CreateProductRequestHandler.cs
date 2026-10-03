@@ -76,6 +76,7 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
             PurchasePrice = request.PurchasePrice,
             SalePrice = request.SalePrice,
             SafetyStock = request.SafetyStock,
+            IsBatchManaged = request.IsBatchManaged,
             Status = ProductStatus.Enabled,
             Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
             CreatedAt = now,
@@ -92,6 +93,7 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
             .Add("purchasePrice", "采购价", null, AuditSummary.Money(product.PurchasePrice))
             .Add("salePrice", "销售价", null, AuditSummary.Money(product.SalePrice))
             .Add("safetyStock", "安全库存", null, AuditSummary.Quantity(product.SafetyStock))
+            .Add("isBatchManaged", "按批次管理", null, product.IsBatchManaged ? "开启" : "关闭")
             .Add("remark", "备注", null, product.Remark);
 
         // 商品与库存初始化行在同一事务内落库
@@ -101,12 +103,18 @@ public sealed class CreateProductRequestHandler : IRequestHandler<CreateProductR
             await _productRepository.AddAsync(product, cancellationToken);
 
             // 为每个启用仓建 0 库存行（038）：安全库存取商品档案阈值作为各仓初始值；
-            // 无启用仓不可能（默认仓必存在且不可停用）
-            var warehouses = await _warehouseRepository.GetEnabledAsync(cancellationToken);
-            foreach (var warehouse in warehouses)
+            // 无启用仓不可能（默认仓必存在且不可停用）。
+            // 按批次商品**不**建非批次（batchId = null）种子行（040）：其库存行仅由带批次入库按
+            // (商品, 仓, 批次) 创建，否则库存「展开批次」视图会多出每仓一条空批次行（违反规格「按批次
+            // 商品展开后仅显示其批次行」，且行数随启用仓数量漂移）。非批次商品维持 038 行为不变。
+            if (!product.IsBatchManaged)
             {
-                await _inventoryRepository.EnsureRowAsync(
-                    product.Id, warehouse.Id, product.SafetyStock, cancellationToken);
+                var warehouses = await _warehouseRepository.GetEnabledAsync(cancellationToken);
+                foreach (var warehouse in warehouses)
+                {
+                    await _inventoryRepository.EnsureRowAsync(
+                        product.Id, warehouse.Id, null, product.SafetyStock, cancellationToken);
+                }
             }
 
             // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志

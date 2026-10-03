@@ -30,6 +30,12 @@ public sealed record StockMovementListItemDto
     /// <summary>仓库名称（联查 Warehouses 带出，038）</summary>
     public required string WarehouseName { get; init; }
 
+    /// <summary>批次 ID（040；非批次流水为 null）</summary>
+    public string? BatchId { get; init; }
+
+    /// <summary>批次号（联查 Batches 带出；非批次流水为 null）</summary>
+    public string? BatchNo { get; init; }
+
     /// <summary>变动类型（原始枚举，前端按 §0 表转文案 / 颜色）</summary>
     public required StockMovementType MovementType { get; init; }
 

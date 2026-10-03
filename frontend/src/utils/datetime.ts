@@ -19,3 +19,15 @@ export function formatDateTime(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return '-'
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
+
+/**
+ * 格式化为本地 `YYYY-MM-DD`（仅日期，如批次到期日）；空值或非法值返回 `-`。
+ * 裸日期 `YYYY-MM-DD` 原样返回（它已是日历日，避免 `new Date` 时区漂移）。
+ */
+export function formatDate(value: string | null | undefined): string {
+  if (!value) return '-'
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '-'
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}

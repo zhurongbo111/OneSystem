@@ -34,6 +34,8 @@ internal static class SalesReturnsDtoMapper
                 ProductId = i.ProductId.ToString(),
                 ProductName = i.ProductName,
                 Unit = i.Unit,
+                BatchId = i.BatchId?.ToString(),
+                BatchNo = i.BatchNo,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
                 Subtotal = i.Subtotal,

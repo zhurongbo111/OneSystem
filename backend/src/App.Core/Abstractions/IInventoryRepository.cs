@@ -2,91 +2,124 @@ namespace App.Core.Abstractions;
 
 /// <summary>
 /// 库存台账仓储接口（实现见 App.Infrastructure；EF Core + PostgreSQL）。
-/// 库存的定位维度是**商品 × 仓库**（<c>(ProductId, WarehouseId)</c> 唯一，specs/038-erp-multi-warehouse/design.md §0）；
+/// 库存的定位维度是**商品 × 仓库 × 批次**（<c>(ProductId, WarehouseId, BatchId)</c> 唯一，
+/// specs/040-erp-batch-expiry/design.md §2.3）；<c>batchId</c> 为 null 的行对应未启用批次管理的商品
+/// （与 038 的「商品 × 仓库」语义完全一致）。
 /// 原子增减用 EF Core ExecuteUpdate 表达（无裸 SQL），
-/// 由 erp-purchase（入库 / 作废回冲）、erp-sale（条件扣减防超卖）、erp-stock-take（盘点按仓设定）消费。
+/// 由 erp-purchase（入库 / 作废回冲）、erp-sale（条件扣减防超卖）、erp-stock-take（盘点按仓按批次设定）消费。
 /// </summary>
 public interface IInventoryRepository
 {
     /// <summary>
-    /// 确保「商品 × 仓库」库存行存在（不存在则新建 <c>Quantity = 0</c>，安全库存取入参初始值）。
-    /// 商品新建时为每个启用仓逐仓调用（与商品写同一事务，由 Handler 用 IUnitOfWork 包裹）。
+    /// 确保「商品 × 仓库 × 批次」库存行存在（不存在则新建 <c>Quantity = 0</c>，安全库存取入参初始值）。
+    /// 商品新建时为每个启用仓逐仓调用（非批次行，batchId = null；与商品写同一事务，由 Handler 用 IUnitOfWork 包裹）。
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空：未启用批次管理的商品传 null）</param>
     /// <param name="safetyStock">该仓安全库存初始值（取商品档案阈值）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task EnsureRowAsync(
-        Guid productId, Guid warehouseId, int safetyStock, CancellationToken cancellationToken = default);
+        Guid productId, Guid warehouseId, Guid? batchId, int safetyStock, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 查询商品在某仓的当前库存（无库存行时按 0 计）
+    /// 查询商品在某仓某批次行的当前库存（无库存行时按 0 计）
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    Task<int> GetQuantityAsync(Guid productId, Guid warehouseId, CancellationToken cancellationToken = default);
+    Task<int> GetQuantityAsync(
+        Guid productId, Guid warehouseId, Guid? batchId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 查询商品的**全组织库存合计**（Σ 各仓库存；商品停用判断等组织级场景用）
+    /// 查询商品的**全组织库存合计**（Σ 各仓各批次行；商品停用判断等组织级场景用）
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<int> GetTotalQuantityAsync(Guid productId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 原子增加某仓库存（<c>Quantity = Quantity + delta</c>，delta 允许为负 —— 采购入库 / 采购作废回冲）。
-    /// 该仓无库存行且 delta 为正时先建行（安全库存取商品档案阈值）再累加（仓后建场景）。
+    /// 查询商品在某仓的库存合计（Σ 该仓所有批次行；开单「可用库存」展示等场景用）
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task<int> GetWarehouseQuantityAsync(
+        Guid productId, Guid warehouseId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 原子增加某仓某批次行库存（<c>Quantity = Quantity + delta</c>，delta 允许为负 —— 采购入库 / 采购作废回冲）。
+    /// 该行不存在且 delta 为正时先建行（安全库存取商品档案阈值）再累加（仓后建 / 批次后建行场景）。
+    /// </summary>
+    /// <param name="productId">商品 id</param>
+    /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空）</param>
     /// <param name="delta">增量（可正可负）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task IncrementAsync(
-        Guid productId, Guid warehouseId, int delta, CancellationToken cancellationToken = default);
+        Guid productId, Guid warehouseId, Guid? batchId, int delta, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 原子条件扣减某仓库存（<c>Quantity = Quantity - amount WHERE Quantity &gt;= amount</c>，数据库层防超卖）。
-    /// 判断与扣减在数据库行锁内原子完成，并发下无需显式行锁 / 乐观版本号；该仓无库存行时返回 false（视为 0）。
+    /// 原子条件扣减某仓某批次行库存（<c>Quantity = Quantity - amount WHERE Quantity &gt;= amount</c>，数据库层防超卖）。
+    /// 判断与扣减在数据库行锁内原子完成，并发下无需显式行锁 / 乐观版本号；该行无库存行时返回 false（视为 0）。
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空）</param>
     /// <param name="amount">扣减量（正数）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>是否扣减成功（该仓库存不足时返回 false）</returns>
+    /// <returns>是否扣减成功（该批次行库存不足时返回 false）</returns>
     Task<bool> TryDecrementAsync(
-        Guid productId, Guid warehouseId, int amount, CancellationToken cancellationToken = default);
+        Guid productId, Guid warehouseId, Guid? batchId, int amount, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 原子设定某仓库存为指定值（盘点 / 期初建账按实盘数量校正账面，erp-stock-take）。
-    /// 用 EF Core ExecuteUpdate 表达（无裸 SQL），行锁内原子完成；该仓无库存行时不产生更新（返回 0 行）。
+    /// 原子设定某仓某批次行库存为指定值（盘点 / 期初建账按实盘数量校正账面，erp-stock-take / 040 按批次盘点）。
+    /// 用 EF Core ExecuteUpdate 表达（无裸 SQL），行锁内原子完成；该行无库存行时不产生更新（返回 0 行）。
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空）</param>
     /// <param name="quantity">目标库存（≥ 0）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>受影响的行数（0 表示该仓无库存行，1 表示已设定）</returns>
+    /// <returns>受影响的行数（0 表示该行无库存行，1 表示已设定）</returns>
     Task<int> SetQuantityAsync(
-        Guid productId, Guid warehouseId, int quantity, CancellationToken cancellationToken = default);
+        Guid productId, Guid warehouseId, Guid? batchId, int quantity, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 批量读取多个商品在某仓的当前库存（无库存行的商品按 0 计，erp-stock-take 读所选仓账面用）。
+    /// 批量读取多个商品在某仓的当前库存合计（不带批次：按批次行 Σ 汇总；无库存行按 0 计，erp-stock-take 汇总展示用）。
+    /// 按批次商品的盘点账面请用 <see cref="GetBatchQuantitiesAsync"/> 按批次行读取。
     /// </summary>
     /// <param name="warehouseId">仓库 id</param>
     /// <param name="productIds">商品 id 集合</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>商品 id → 该仓当前库存（缺失商品为 0）</returns>
+    /// <returns>商品 id → 该仓当前库存合计（缺失商品为 0）</returns>
     Task<IReadOnlyDictionary<Guid, int>> GetQuantitiesAsync(
         Guid warehouseId, IReadOnlyList<Guid> productIds, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 库存分页查询（erp-inventory-query）：联查 Inventory / Products / Categories / Warehouses，
+    /// 读取商品在某仓的**按批次行**库存（040 按批次盘点 / 批次下拉可用库存用）
+    /// </summary>
+    /// <param name="warehouseId">仓库 id</param>
+    /// <param name="productId">商品 id</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>批次 id → 该批次行库存（含数量 0 的行）</returns>
+    Task<IReadOnlyDictionary<Guid, int>> GetBatchQuantitiesAsync(
+        Guid warehouseId, Guid productId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 库存分页查询（erp-inventory-query + 040 批次展开）：联查 Inventory / Products / Categories / Warehouses / Batches，
     /// 仅启用商品（Products.Status = Enabled）；keyword 模糊匹配编码 / 名称；categoryId 精确匹配；
-    /// warehouseId 精确匹配（可空 = 全部仓，038）；按 Products.Code 升序。低库存判定不在本方法，由 Handler 计算。
+    /// warehouseId 精确匹配（可空 = 全部仓，038）；batchId 精确匹配（可空，040）；按 Products.Code 升序。低库存判定不在本方法，由 Handler 计算。
+    /// <c>expandBatch = true</c> 时按「商品 × 仓 × 批次」展开行（带批次号 / 到期日；汇总视图的安全库存判定用
+    /// <c>SUM(Quantity)</c> 与 <c>MAX(SafetyStock)</c>，040 §0）；否则维持按「商品 × 仓」汇总（批次字段为 null，与 038 一致）。
     /// </summary>
     /// <param name="keyword">关键词（编码 / 名称），可空</param>
     /// <param name="categoryId">分类 id，可空</param>
     /// <param name="warehouseId">仓库 id，可空（不传 = 全部仓）</param>
+    /// <param name="batchId">批次 id，可空（040）</param>
+    /// <param name="batchNo">批次号模糊筛选（040，大小写不敏感；可空）</param>
+    /// <param name="expandBatch">是否按批次展开行（040，默认 false）</param>
     /// <param name="page">页码（从 1 起）</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -94,12 +127,15 @@ public interface IInventoryRepository
         string? keyword,
         Guid? categoryId,
         Guid? warehouseId,
+        Guid? batchId,
+        string? batchNo,
+        bool expandBatch,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 维护「商品 × 仓库」的仓级安全库存阈值（低库存判定的唯一来源）
+    /// 维护「商品 × 仓库」的仓级安全库存阈值（低库存判定的唯一来源；展开到该组合下所有批次行，040 后判定按组合汇总）
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
@@ -110,27 +146,31 @@ public interface IInventoryRepository
         Guid productId, Guid warehouseId, int safetyStock, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 读取商品在某仓的当前移动加权平均单价（erp-cost；无库存行返回 0）。
+    /// 读取商品在某仓某批次行的当前移动加权平均单价（erp-cost；无库存行返回 0）。
     /// 均价是 <c>CostAmount / Quantity</c> 的派生值，只作为读取与兜底用，不作为事实源。
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<decimal> GetAverageCostAsync(
-        Guid productId, Guid warehouseId, CancellationToken cancellationToken = default);
+        Guid productId, Guid warehouseId, Guid? batchId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 入库成本写入（erp-cost）：<c>CostAmount += Round(quantity × unitCost, 4)</c> 并按新数量重算 <c>AverageCost</c>；
     /// 调用方**必须先完成数量增加**（先加数量再加金额，否则均价基数错）。数量为 0 时保留最后均价。
+    /// 成本按库存行（商品 × 仓 × 批次）维护，组织级口径 = 各行合计（026 §0.1 不变）。
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
-    /// <param name="quantity">入库数量（正数，已计入该仓库存）</param>
+    /// <param name="batchId">批次 id（可空）</param>
+    /// <param name="quantity">入库数量（正数，已计入该行库存）</param>
     /// <param name="unitCost">本次入库成本单价</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task ApplyInboundCostAsync(
         Guid productId,
         Guid warehouseId,
+        Guid? batchId,
         int quantity,
         decimal unitCost,
         CancellationToken cancellationToken = default);
@@ -141,23 +181,26 @@ public interface IInventoryRepository
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空）</param>
     /// <param name="totalCost">本次出库成本金额（正数，按 变动前均价 × 数量 计算）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task ApplyOutboundCostAsync(
-        Guid productId, Guid warehouseId, decimal totalCost, CancellationToken cancellationToken = default);
+        Guid productId, Guid warehouseId, Guid? batchId, decimal totalCost, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 直接设定某仓库存成本两列（erp-cost）：**仅成本重算使用**——重算按流水时序推演出结存金额与均价后一次性写回，
+    /// 直接设定某库存行成本两列（erp-cost）：**仅成本重算使用**——重算按流水时序推演出结存金额与均价后一次性写回，
     /// 不参与日常写入路径（日常只允许 <c>ApplyInboundCostAsync</c> / <c>ApplyOutboundCostAsync</c> 增量更新）。
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id</param>
+    /// <param name="batchId">批次 id（可空）</param>
     /// <param name="costAmount">结存成本额</param>
     /// <param name="averageCost">移动加权平均单价（派生值）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task SetCostAsync(
         Guid productId,
         Guid warehouseId,
+        Guid? batchId,
         decimal costAmount,
         decimal averageCost,
         CancellationToken cancellationToken = default);

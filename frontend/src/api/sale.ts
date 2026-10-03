@@ -37,6 +37,10 @@ export interface SalesShipmentItem {
   productId: string
   productName: string
   unit: string
+  /** 批次 id（040：按批次商品有值，非批次 null） */
+  batchId: string | null
+  /** 批次号快照（040；非批次 null） */
+  batchNo: string | null
   quantity: number
   unitPrice: number
   subtotal: number
@@ -82,6 +86,17 @@ export interface SalesFormLine {
   quantity: number
   unitPrice: number
   subtotal: number
+  /**
+   * 批次选择值（040，v-model 绑定 BatchPickSelect；出库类仅可选已有批次，不支持就地新建）：
+   * 选中已有批次 → `batchId` / `batchNo` 有值；非按批次商品恒为 `{}`。
+   */
+  batch: {
+    batchId?: string
+    batchNo?: string
+    newBatchNo?: string
+    newProductionDate?: string
+    newExpiryDate?: string
+  }
   /** 关联订单明细行 id（关联模式下提交时必填） */
   orderItemId?: string
   /** 未发数量（关联模式下的数量上限；未关联订单时为空表示不限） */
@@ -100,7 +115,14 @@ export interface CreateSalesShipmentPayload {
   warehouseId?: string
   /** 关联销售订单 id（可选） */
   orderId?: string
-  items: { productId: string; quantity: number; unitPrice: number; orderItemId?: string }[]
+  items: {
+    productId: string
+    quantity: number
+    unitPrice: number
+    orderItemId?: string
+    /** 批次 id（040：按批次商品必填） */
+    batchId?: string
+  }[]
   remark?: string
 }
 

@@ -299,10 +299,12 @@ public class SalesReturnLifecycleTests
         var salesCreate = new CreateSalesShipmentRequestHandler(
             salesShipments, new FakeSalesOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
             new FakeWarehouseRepository(), inventory, movements, new FakeSettlementQueryRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user,
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(ReturnDate));
         var returnCreate = new CreateSalesReturnRequestHandler(
             returns, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
-            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user,
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(ReturnDate));
         var returnVoid = new VoidSalesReturnRequestHandler(returns, inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
 
         inventory.Seed(product.Id, 5); // 期初库存（无流水，模拟开账前已存在）

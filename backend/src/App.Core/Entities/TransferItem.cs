@@ -28,6 +28,9 @@ public sealed class TransferItem
     /// <summary>调拨数量（≥ 1）</summary>
     public int Quantity { get; set; }
 
-    /// <summary>批次 ID（040-erp-batch 落地时启用；040 前恒为空）</summary>
+    /// <summary>批次 ID（可空：按批次管理商品必填，040 启用；外键 → Batches(Id)）</summary>
     public Guid? BatchId { get; set; }
+
+    /// <summary>批次号快照（同编码 / 名称快照原则：列表 / 详情 / 导出免联查）</summary>
+    public string? BatchNo { get; set; }
 }

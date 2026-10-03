@@ -33,4 +33,10 @@ public sealed class SalesShipmentItem
 
     /// <summary>关联销售订单明细行 id（可空：关联订单时必填，用于回写订单明细的累计已发数量）</summary>
     public Guid? OrderItemId { get; set; }
+
+    /// <summary>批次 ID（可空：按批次管理商品必填；外键 → Batches(Id)）</summary>
+    public Guid? BatchId { get; set; }
+
+    /// <summary>批次号快照（同商品名 / 单位快照原则：列表 / 详情 / 导出免联查）</summary>
+    public string? BatchNo { get; set; }
 }

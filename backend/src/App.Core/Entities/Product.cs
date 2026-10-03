@@ -31,6 +31,9 @@ public sealed class Product
     /// <summary>安全库存阈值（低库存提醒；0 表示不提醒）</summary>
     public int SafetyStock { get; set; }
 
+    /// <summary>是否按批次管理（040；开启后库存与单据明细均按商品 × 仓库 × 批次维护；关闭时全链路 BatchId 为空）</summary>
+    public bool IsBatchManaged { get; set; }
+
     /// <summary>商品状态（启用 / 停用；停用不可被新单据选择）</summary>
     public ProductStatus Status { get; set; } = ProductStatus.Enabled;
 

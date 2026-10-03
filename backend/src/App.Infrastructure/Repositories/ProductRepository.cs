@@ -138,6 +138,7 @@ public sealed class ProductRepository : IProductRepository
                 PurchasePrice = x.Product.PurchasePrice,
                 SalePrice = x.Product.SalePrice,
                 SafetyStock = x.Product.SafetyStock,
+                IsBatchManaged = x.Product.IsBatchManaged,
                 // 左连接：库存行缺失时按 0 计，与列表查询行为一致
                 StockQuantity = x.StockQuantity,
                 Status = x.Product.Status,
@@ -180,26 +181,28 @@ public sealed class ProductRepository : IProductRepository
             .GroupBy(i => i.ProductId)
             .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) });
 
+        // 左连接：无该仓库存行时按 0 计（仓后建 / 按批次商品尚未带批次入库场景）。
+        // 用 GroupJoin 结果选择器内 Sum + 空值兜底（与 GetDetailAsync 同模式），EF 翻译为
+        // COALESCE 子查询；不能用 SelectMany + DefaultIfEmpty + 三元（子查询 LEFT JOIN 的
+        // null 物料化时抛 "Nullable object must have a value"，040 批次商品创建后无库存行时触发）。
         var items = await _dbContext.Products.AsNoTracking()
             .Where(p => p.Status == ProductStatus.Enabled)
-            // 左连接：无该仓库存行时按 0 计（仓后建场景）
             .GroupJoin(
                 inventoryByProduct,
                 p => p.Id,
                 i => i.ProductId,
-                (p, iGroup) => new { Product = p, Quantities = iGroup })
-            .SelectMany(
-                x => x.Quantities.DefaultIfEmpty(),
-                (x, i) => new ProductPickItem
-                {
-                    Id = x.Product.Id,
-                    Code = x.Product.Code,
-                    Name = x.Product.Name,
-                    Unit = x.Product.Unit,
-                    PurchasePrice = x.Product.PurchasePrice,
-                    SalePrice = x.Product.SalePrice,
-                    StockQuantity = i == null ? 0 : i.Quantity,
-                })
+                (p, iGroup) => new { Product = p, StockQuantity = iGroup.Sum(i => (int?)i.Quantity) ?? 0 })
+            .Select(x => new ProductPickItem
+            {
+                Id = x.Product.Id,
+                Code = x.Product.Code,
+                Name = x.Product.Name,
+                Unit = x.Product.Unit,
+                PurchasePrice = x.Product.PurchasePrice,
+                SalePrice = x.Product.SalePrice,
+                StockQuantity = x.StockQuantity,
+                IsBatchManaged = x.Product.IsBatchManaged,
+            })
             .OrderBy(x => x.Code)
             .ToListAsync(cancellationToken);
 
