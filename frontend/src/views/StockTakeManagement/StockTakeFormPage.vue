@@ -40,8 +40,10 @@ const typeOptions: { label: string; value: StockTakeType }[] = [
 const itemColumns = computed<TableColumnData[]>(() => {
   const cols: TableColumnData[] = [
     { title: '序号', slotName: 'seq', width: 64, align: 'center' },
-    { title: '商品', slotName: 'product' },
-    { title: '批次', slotName: 'batch', width: 200 },
+    // 批次列（040）宽度与五类开单页一致（240）；商品列给 min-width 保底——
+    // 期初建账模式共 9 列，弹性商品列在无保底时会被固定宽列挤到 0，行内下拉搜索框失效
+    { title: '商品', slotName: 'product', minWidth: 260 },
+    { title: '批次', slotName: 'batch', width: 240 },
     { title: '账面数量', slotName: 'book', width: 110, align: 'right' },
     { title: '实盘数量', slotName: 'actual', width: 160 },
   ]
