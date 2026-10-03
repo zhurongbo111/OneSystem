@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：期初建账与库存盘点（erp-stock-take）
@@ -11,6 +11,7 @@ updated: 2026-09-23
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `stockTakes.view` / `create` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-multi-warehouse，`038`）**：盘点单带「盘点仓」（必选、默认仓预选；入参可空兼容存量），商品下拉的账面与「已建账」（`hasMovements`）均取所选仓，差异只作用于该仓；列表加「盘点仓」列与筛选，详情 / 打印展示仓名。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.4。
 > **演进（erp-audit-log）**：本域库存盘点（期初建账 / 盘点，动作 `Adjust`）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
+> **演进（erp-batch-expiry，`040`）**：盘点明细按批次录入——按批次商品（`Product.IsBatchManaged`）每行必选批次，同一商品盘多个批次则添加多行（各选一个批次）；账面取「商品 × 仓 × 批次」粒度，差异按批次回写 `Inventory` 与流水。`StockTakePickProducts` 出参追加 `isBatchManaged` 与 `batches`（该仓批次行，含批次账面），开单页据此拆行。详见 `specs/040-erp-batch-expiry/design.md`。
 
 ## 1. 总体设计
 

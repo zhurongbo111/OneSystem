@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：列表导出 Excel 与单据打印（erp-export）
@@ -11,6 +11,7 @@ updated: 2026-09-23
 > **演进（erp-rbac）**：导出动作复用所属业务域的 `<域>.export` 权限点（本规格**不单设跨域权限点**）；打印为只读展示，复用 `<域>.view`。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-multi-warehouse，`038`）**：五类单据 / 库存 / 库存流水导出的列集追加「仓库」（快照列，位于往来单位与单据日期之间 / 单位之后）；进销存报表与库存余额表导出追加 `warehouseId` 筛选（报表行为分类聚合，不加仓列）。详见 `specs/038-erp-multi-warehouse/design.md` §3.3 / §4.3。
 > **演进（erp-audit-log）**：导出为读操作，不在操作日志范围内（`specs/029-erp-audit-log/design.md` §0.1「范围外动作」）。
+> **演进（erp-batch-expiry，`040`）**：库存查询导出（`ExportInventory`）请求体追加 `batchNo`（模糊）/ `expandBatch`，`expandBatch = true` 时列集追加「批次号 / 到期日」；库存流水导出（`ExportStockMovements`）列集追加「批次号」（非批次流水为空）。批次管理页**不提供导出**（无 `batches.export` 权限点，批次台账导出另议）。详见 `specs/040-erp-batch-expiry/design.md`。
 
 ## 0. 约定正文（唯一事实源）
 
