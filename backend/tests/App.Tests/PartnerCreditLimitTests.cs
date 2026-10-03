@@ -40,7 +40,7 @@ public class PartnerCreditLimitTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             uow,
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(OrderDate));
         return (context, orders, inventory, movements, settlement, uow, handler, calls);
     }
 

@@ -25,4 +25,7 @@ public sealed class ProductPickDto
 
     /// <summary>当前库存</summary>
     public int StockQuantity { get; init; }
+
+    /// <summary>是否按批次管理（040：开单明细批次列显隐用）</summary>
+    public bool IsBatchManaged { get; init; }
 }

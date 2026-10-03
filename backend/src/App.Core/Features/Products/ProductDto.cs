@@ -36,6 +36,9 @@ public sealed class ProductDto
     /// <summary>当前库存</summary>
     public int StockQuantity { get; init; }
 
+    /// <summary>是否按批次管理（040；关闭时全链路 BatchId 为空）</summary>
+    public bool IsBatchManaged { get; init; }
+
     /// <summary>是否低库存（当前库存 &lt; 安全库存阈值，且阈值 &gt; 0；由 Handler 计算）</summary>
     public bool IsBelowSafetyStock { get; init; }
 

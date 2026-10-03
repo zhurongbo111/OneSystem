@@ -31,6 +31,10 @@ export interface PurchaseReturnItem {
   productId: string
   productName: string
   unit: string
+  /** 批次 id（040：按批次商品有值，非批次 null） */
+  batchId: string | null
+  /** 批次号快照（040；非批次 null） */
+  batchNo: string | null
   quantity: number
   unitPrice: number
   subtotal: number
@@ -71,6 +75,17 @@ export interface PurchaseReturnFormLine {
   quantity: number
   unitPrice: number
   subtotal: number
+  /**
+   * 批次选择值（040，v-model 绑定 BatchPickSelect；出库类仅可选已有批次，不支持就地新建）：
+   * 选中已有批次 → `batchId` / `batchNo` 有值；非按批次商品恒为 `{}`。
+   */
+  batch: {
+    batchId?: string
+    batchNo?: string
+    newBatchNo?: string
+    newProductionDate?: string
+    newExpiryDate?: string
+  }
 }
 
 /** 新增采购退货单入参（对应后端 CreatePurchaseReturnRequest；不传小计 / 总额） */
@@ -79,7 +94,13 @@ export interface CreatePurchaseReturnPayload {
   returnDate: string
   /** 出库仓 id（038；不传 = 默认仓，前端一律显式传仓） */
   warehouseId?: string
-  items: { productId: string; quantity: number; unitPrice: number }[]
+  items: {
+    productId: string
+    quantity: number
+    unitPrice: number
+    /** 批次 id（040：按批次商品必填） */
+    batchId?: string
+  }[]
   remark?: string
 }
 

@@ -24,6 +24,10 @@ export interface StockTakeListItem {
 export interface StockTakeItem {
   id: string
   productId: string
+  /** 批次 id（040：按批次盘点行有值，非批次行 null） */
+  batchId: string | null
+  /** 批次号快照（040；非批次行 null） */
+  batchNo: string | null
   productCode: string
   productName: string
   unit: string
@@ -52,14 +56,31 @@ export interface StockTakeDetail {
   items: StockTakeItem[]
 }
 
+/** 盘点批次行（对应后端 StockTakeBatchPickDto，仅按批次商品） */
+export interface StockTakeBatchPick {
+  /** 批次 id */
+  id: string
+  batchNo: string
+  /** 该仓账面数量 */
+  stockQuantity: number
+  /** 该仓是否已发生库存变动（期初模式据此禁用） */
+  hasMovements: boolean
+}
+
 /** 盘点商品选择（对应后端 StockTakeProductPickDto） */
 export interface StockTakeProductPick {
   id: string
   code: string
   name: string
   unit: string
+  /** 是否按批次管理（040：true 时前端按 batches 逐批次拆行） */
+  isBatchManaged: boolean
+  /** 当前库存（账面，供录入参考；按批次商品为 0，批次行见 batches） */
   stockQuantity: number
+  /** 是否已发生库存变动（按批次商品为 false，批次行见 batches） */
   hasMovements: boolean
+  /** 该仓批次行（仅按批次商品非空） */
+  batches: StockTakeBatchPick[] | null
 }
 
 /** 盘点单列表查询参数（对应后端 GetStockTakesRequest；时间均为 UTC ISO 串） */
@@ -81,7 +102,13 @@ export interface CreateStockTakePayload {
   /** 盘点仓 id（038；必填：账面 / 差异与库存设定都作用于该仓） */
   warehouseId?: string
   /** unitCost 仅期初建账模式传（erp-cost：成本基线必填）；库存盘点模式不传 */
-  items: { productId: string; actualQuantity: number; unitCost?: number }[]
+  items: {
+    productId: string
+    /** 批次 id（040：按批次商品必填，逐批次拆行） */
+    batchId?: string
+    actualQuantity: number
+    unitCost?: number
+  }[]
   remark?: string
 }
 

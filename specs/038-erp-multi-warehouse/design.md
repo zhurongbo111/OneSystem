@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：多仓库（erp-multi-warehouse）
@@ -78,6 +78,8 @@ updated: 2026-09-23
 | 新增列 | `SafetyStock`（`integer`，NOT NULL，默认 0）——仓级阈值（原 `Products.SafetyStock` 的值迁移时复制） |
 | 唯一键 | `ProductId` 唯一索引 → **删除**，改建 `(ProductId, WarehouseId)` 唯一索引 |
 | 实体 | `Inventory` 追加 `WarehouseId` / `SafetyStock`；`Products.SafetyStock` 保留（语义改为「新建库存行初始值」，`012` 留演进注记） |
+
+> **演进（erp-batch-expiry，`040`）**：`Inventory` 追加 `BatchId`（`uuid`，可空，FK → `Batches(Id)`），唯一键升级为 `(ProductId, WarehouseId, BatchId)` 唯一索引 + 部分唯一索引 `(ProductId, WarehouseId) WHERE BatchId IS NULL`（非批次商品仍一行、批次商品一批次一行）；安全库存判定（`SafetyStock > 0 && Quantity < SafetyStock`）在批次商品下对每个批次行独立成立。详见 `specs/040-erp-batch-expiry/design.md` §2.3。
 
 ### 2.3 `StockMovements` 维度升级
 

@@ -13,6 +13,7 @@ import type { SalesFormLine, SalesOrderPick } from '@/api/sale'
 import { getSalesOrder } from '@/api/saleOrder'
 import { getWarehousePickList } from '@/api/warehouse'
 import type { WarehousePickItem } from '@/api/warehouse'
+import BatchPickSelect from '@/views/BatchManagement/BatchPickSelect.vue'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
 import { IconPlus } from '@tabler/icons-vue'
@@ -30,6 +31,7 @@ const QUANTITY_MAX = 999999
 const plainItemColumns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '商品', slotName: 'product' },
+  { title: '批次', slotName: 'batch', width: 240 },
   { title: '数量', slotName: 'quantity', width: 150 },
   { title: '单价', slotName: 'unitPrice', width: 170 },
   { title: '小计', slotName: 'subtotal', width: 120, align: 'right' },
@@ -40,6 +42,7 @@ const plainItemColumns: TableColumnData[] = [
 const linkedItemColumns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '商品', slotName: 'product' },
+  { title: '批次', slotName: 'batch', width: 240 },
   { title: '订购数量', slotName: 'orderedQuantity', width: 100, align: 'right' },
   { title: '已发', slotName: 'fulfilledQuantity', width: 90, align: 'right' },
   { title: '未发', slotName: 'remainingQuantity', width: 90, align: 'right' },
@@ -49,6 +52,12 @@ const linkedItemColumns: TableColumnData[] = [
   { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
 ]
 
+/** 明细行的商品是否按批次管理（决定批次列控件是否渲染 / 是否必填，040） */
+function isBatchManagedLine(line: SalesFormLine): boolean {
+  if (!line.productId) return false
+  return products.value.find((p) => p.id === line.productId)?.isBatchManaged ?? false
+}
+
 // —— helpers ——
 let itemSeq = 0
 function newKey(): string {
@@ -57,7 +66,7 @@ function newKey(): string {
 }
 
 function newLine(): SalesFormLine {
-  return { key: newKey(), productId: undefined, productName: '', unit: '', quantity: 1, unitPrice: 0, subtotal: 0 }
+  return { key: newKey(), productId: undefined, productName: '', unit: '', quantity: 1, unitPrice: 0, subtotal: 0, batch: {} }
 }
 
 /** 当天本地日期 YYYY-MM-DD（单据日期默认值） */
@@ -151,7 +160,9 @@ const itemsInvalid = computed(
         !l.productId ||
         l.quantity < QUANTITY_MIN ||
         l.quantity > QUANTITY_MAX ||
-        (isLinked.value && l.remainingQuantity !== undefined && l.quantity > l.remainingQuantity),
+        (isLinked.value && l.remainingQuantity !== undefined && l.quantity > l.remainingQuantity) ||
+        // 按批次商品必须指定批次（出库类仅可选已有批次，040；后端 40127 / 40128 双保险）
+        (isBatchManagedLine(l) && !l.batch.batchId),
     ),
 )
 
@@ -296,6 +307,7 @@ async function onOrderChange(value?: string): Promise<void> {
       remainingQuantity: item.remainingQuantity,
       orderedQuantity: item.quantity,
       fulfilledQuantity: item.fulfilledQuantity,
+      batch: {},
     }))
     itemsErrorShown.value = false
   } catch {
@@ -315,6 +327,8 @@ function onLineProductChange(line: SalesFormLine, value?: string): void {
   line.unitPrice = p?.salePrice ?? 0
   delete priceSources.value[line.key]
   delete manualPriceKeys.value[line.key]
+  // 换商品即清空已选批次（不同商品的批次不可混用；BatchPickSelect 亦会随 productId 变化重载）
+  line.batch = {}
   void refreshEffectivePrices()
 }
 
@@ -389,6 +403,8 @@ async function onSubmit(): Promise<void> {
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         orderItemId: l.orderItemId,
+        // 批次（040）：按批次商品必带；出库类仅可选已有批次
+        batchId: l.batch.batchId,
       })),
       remark: remark.value.trim() || undefined,
     })
@@ -525,6 +541,16 @@ async function onSubmit(): Promise<void> {
                 @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as SalesFormLine, v as string | undefined)"
               />
               <span v-else>{{ (record as SalesFormLine).productName }}</span>
+            </template>
+            <template #batch="{ record }">
+              <BatchPickSelect
+                v-if="isBatchManagedLine(record as SalesFormLine)"
+                v-model="(record as SalesFormLine).batch"
+                :product-id="(record as SalesFormLine).productId"
+                :warehouse-id="warehouseId ?? ''"
+                :allow-create="false"
+                :required="true"
+              />
             </template>
             <template #orderedQuantity="{ record }">
               {{ (record as SalesFormLine).orderedQuantity ?? 0 }}

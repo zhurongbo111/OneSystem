@@ -6,6 +6,7 @@ import {
   createStockTake,
   getStockTakePickProducts,
   toUtcMidnight,
+  type StockTakeBatchPick,
   type StockTakeProductPick,
   type StockTakeType,
 } from '@/api/stockTake'
@@ -40,6 +41,7 @@ const itemColumns = computed<TableColumnData[]>(() => {
   const cols: TableColumnData[] = [
     { title: '序号', slotName: 'seq', width: 64, align: 'center' },
     { title: '商品', slotName: 'product' },
+    { title: '批次', slotName: 'batch', width: 200 },
     { title: '账面数量', slotName: 'book', width: 110, align: 'right' },
     { title: '实盘数量', slotName: 'actual', width: 160 },
   ]
@@ -92,10 +94,16 @@ const warehouses = ref<WarehousePickItem[]>([])
 /** 商品下拉数据源（启用商品 + **所选仓**账面 + 该仓是否已发生库存变动） */
 const products = ref<StockTakeProductPick[]>([])
 
-/** 明细行（账面 / 差异为前端实时计算，仅展示；提交只传实盘数量，后端重算差异） */
+/**
+ * 明细行（账面 / 差异为前端实时计算，仅展示；提交只传实盘数量，后端重算差异）。
+ * 按批次商品（040）：`batchId` 必填，批次号 / 批次账面由 `rowBatches` 派生；
+ * 非批次商品 `batchId` 为空，行为与旧版一致。
+ */
 interface StockTakeFormLine {
   key: string
   productId?: string
+  /** 批次 id（按批次商品必填，040；非批次商品为 undefined） */
+  batchId?: string
   actualQuantity: number | undefined
   /** 期初成本单价（erp-cost）：仅期初建账模式必填；盘点模式不传 */
   unitCost: number | undefined
@@ -103,6 +111,21 @@ interface StockTakeFormLine {
 
 function newLine(): StockTakeFormLine {
   return { key: newKey(), productId: undefined, actualQuantity: undefined, unitCost: undefined }
+}
+
+/** 行的商品（未选 → undefined） */
+function rowProduct(line: StockTakeFormLine): StockTakeProductPick | undefined {
+  return products.value.find((p) => p.id === line.productId)
+}
+
+/** 行是否按批次商品（决定批次列是否渲染 / 批次选择器是否出现） */
+function isBatchManagedRow(line: StockTakeFormLine): boolean {
+  return rowProduct(line)?.isBatchManaged ?? false
+}
+
+/** 行可选批次（按批次商品返回该仓批次行；非批次返回空数组） */
+function rowBatches(line: StockTakeFormLine): StockTakeBatchPick[] {
+  return rowProduct(line)?.batches ?? []
 }
 
 const lines = ref<StockTakeFormLine[]>([newLine()])
@@ -125,9 +148,22 @@ const productOptions = computed(() =>
   })),
 )
 
-/** 行账面数量（按所选商品带出；提交时由后端在事务内重读，此处仅供录入参考） */
+/** 行账面数量（按所选商品带出；提交时由后端在事务内重读，此处仅供录入参考）
+ *  按批次商品（040）：取所选批次的 (仓, 商品, 批次) 账面，而非商品口径 */
 function rowBook(line: StockTakeFormLine): number {
-  return products.value.find((p) => p.id === line.productId)?.stockQuantity ?? 0
+  if (isBatchManagedRow(line)) {
+    return rowBatches(line).find((b) => b.id === line.batchId)?.stockQuantity ?? 0
+  }
+  return rowProduct(line)?.stockQuantity ?? 0
+}
+
+/** 行批次下拉选项（仅按批次商品使用；期初建账模式下已建账批次禁用） */
+function rowBatchOptions(line: StockTakeFormLine): { label: string; value: string; disabled: boolean }[] {
+  return rowBatches(line).map((b) => ({
+    label: `${b.batchNo}（账面 ${b.stockQuantity}）`,
+    value: b.id,
+    disabled: takeType.value === 0 && b.hasMovements,
+  }))
 }
 
 /** 行实盘数量（未填按 0） */
@@ -158,7 +194,15 @@ const itemsInvalid = computed(
   () =>
     lines.value.length === 0 ||
     lines.value.length > MAX_ITEMS ||
-    lines.value.some((l) => !l.productId || l.actualQuantity === undefined || l.actualQuantity < ACTUAL_MIN || l.actualQuantity > ACTUAL_MAX) ||
+    lines.value.some(
+      (l) =>
+        !l.productId ||
+        l.actualQuantity === undefined ||
+        l.actualQuantity < ACTUAL_MIN ||
+        l.actualQuantity > ACTUAL_MAX ||
+        // 按批次商品每行必选批次（040；后端 40127 双保险）
+        (isBatchManagedRow(l) && !l.batchId),
+    ) ||
     // 期初建账：每行成本单价必填（成本基线，缺价会让后续均价与毛利失真）
     (takeType.value === 0 && lines.value.some((l) => l.unitCost === undefined || l.unitCost < 0 || l.unitCost > COST_MAX)),
 )
@@ -210,6 +254,14 @@ function onLineProductChange(line: StockTakeFormLine, value?: string): void {
   line.productId = value
   // 切换商品后实盘需按新账面重新录入
   line.actualQuantity = undefined
+  // 按批次商品换商品后需重选批次（不同商品的批次不可混用，040）
+  line.batchId = undefined
+}
+
+function onLineBatchChange(line: StockTakeFormLine, value?: string): void {
+  line.batchId = value
+  // 换批次后账面口径变化，实盘需按新批次账面重新录入
+  line.actualQuantity = undefined
 }
 
 function onLineActualChange(line: StockTakeFormLine, value: number | undefined): void {
@@ -259,8 +311,10 @@ async function onSubmit(): Promise<void> {
       // 所选日期 → UTC 午夜 ISO 串（design §4.2；裸日期会被后端按服务器本地时区解析导致入库失败）
       takeDate: toUtcMidnight(takeDate.value),
       // 成本单价仅期初建账模式传（erp-cost）：盘点模式按当时均价处理，传成本会被后端拒绝
+      // 按批次商品（040）每行带 batchId：同一商品盘多个批次则添加多行（各选一个批次）
       items: lines.value.map((l) => ({
         productId: l.productId as string,
+        batchId: l.batchId,
         actualQuantity: l.actualQuantity as number,
         unitCost: takeType.value === 0 ? l.unitCost : undefined,
       })),
@@ -379,6 +433,21 @@ async function onSubmit(): Promise<void> {
               @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as StockTakeFormLine, v as string | undefined)"
             />
           </template>
+          <template #batch="{ record }">
+            <a-select
+              v-if="isBatchManagedRow(record as StockTakeFormLine)"
+              :model-value="(record as StockTakeFormLine).batchId"
+              :options="rowBatchOptions(record as StockTakeFormLine)"
+              placeholder="请选择批次"
+              allow-search
+              allow-clear
+              @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineBatchChange(record as StockTakeFormLine, v as string | undefined)"
+            />
+            <span
+              v-else
+              class="muted"
+            >-</span>
+          </template>
           <template #book="{ record }">
             <span class="num">
               {{ rowBook(record as StockTakeFormLine) }}
@@ -488,6 +557,11 @@ async function onSubmit(): Promise<void> {
 
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+/* 非批次商品批次列占位 */
+.muted {
+  color: var(--color-text-3);
 }
 
 /* 差异着色（design §4.4：正绿负红，0 中性） */

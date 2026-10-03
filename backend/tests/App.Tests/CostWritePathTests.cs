@@ -61,7 +61,8 @@ public class CostWritePathTests
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
             orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, new FakeWarehouseRepository(),
             inventory, movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger,
+            new FakeBatchRepository(), new TestClock(Date));
         await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
         {
             PartnerId = supplier.Id,
@@ -82,7 +83,8 @@ public class CostWritePathTests
             sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, new FakeWarehouseRepository(),
             inventory, movements,
             new FakeSettlementQueryRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger,
+            new FakeBatchRepository(), new TestClock(Date));
         await createSale.HandleAsync(new CreateSalesShipmentRequest
         {
             PartnerId = customer.Id,
@@ -166,7 +168,7 @@ public class CostWritePathTests
 
         var handler = new CreateStockTakeRequestHandler(
             new FakeStockTakeRepository(), new ProductRepository(context), new FakeWarehouseRepository(),
-            inventory, movements, uow, user, TestSupport.AuditLogger);
+            inventory, movements, new FakeBatchRepository(), new TestClock(Date), uow, user, TestSupport.AuditLogger);
         await handler.HandleAsync(new CreateStockTakeRequest
         {
             Type = StockTakeType.Initial,
@@ -196,7 +198,7 @@ public class CostWritePathTests
 
         var handler = new CreateStockTakeRequestHandler(
             new FakeStockTakeRepository(), new ProductRepository(context), new FakeWarehouseRepository(),
-            inventory, movements, uow, user, TestSupport.AuditLogger);
+            inventory, movements, new FakeBatchRepository(), new TestClock(Date), uow, user, TestSupport.AuditLogger);
 
         // 无差异（实盘 = 账面）→ 回归 020 既有语义：不改库存、不写流水、不动成本
         await handler.HandleAsync(new CreateStockTakeRequest

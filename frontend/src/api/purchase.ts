@@ -37,6 +37,10 @@ export interface PurchaseReceiptItem {
   productId: string
   productName: string
   unit: string
+  /** 批次 id（040：按批次商品有值，非批次 null） */
+  batchId: string | null
+  /** 批次号快照（040；非批次 null） */
+  batchNo: string | null
   quantity: number
   unitPrice: number
   subtotal: number
@@ -80,6 +84,18 @@ export interface PurchaseFormLine {
   quantity: number
   unitPrice: number
   subtotal: number
+  /**
+   * 批次选择值（040，v-model 绑定 BatchPickSelect）：
+   * 选中已有批次 → `batchId` / `batchNo` 有值；就地新建 → `newBatchNo` 等三字段有值。
+   * 非按批次商品恒为 `{}`；提交时展平为 `batchId` / `newBatchNo` / ... 字段。
+   */
+  batch: {
+    batchId?: string
+    batchNo?: string
+    newBatchNo?: string
+    newProductionDate?: string
+    newExpiryDate?: string
+  }
   /** 关联订单明细行 id（关联模式下提交时必填） */
   orderItemId?: string
   /** 未收数量（关联模式下的数量上限；未关联订单时为空表示不限） */
@@ -98,7 +114,20 @@ export interface CreatePurchaseReceiptPayload {
   warehouseId?: string
   /** 关联采购订单 id（可选） */
   orderId?: string
-  items: { productId: string; quantity: number; unitPrice: number; orderItemId?: string }[]
+  items: {
+    productId: string
+    quantity: number
+    unitPrice: number
+    orderItemId?: string
+    /** 批次 id（040：按批次商品必填；就地新建时省略） */
+    batchId?: string
+    /** 就地新建批次号（与 batchId 互斥） */
+    newBatchNo?: string
+    /** 就地新建批次生产日期（YYYY-MM-DD） */
+    newProductionDate?: string
+    /** 就地新建批次到期日（YYYY-MM-DD） */
+    newExpiryDate?: string
+  }[]
   remark?: string
 }
 

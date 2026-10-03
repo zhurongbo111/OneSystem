@@ -43,4 +43,7 @@ public sealed class CreateSalesShipmentItem
 
     /// <summary>关联销售订单明细行 id，可空（关联订单时必填，指向本次发货对应的订单行）</summary>
     public Guid? OrderItemId { get; init; }
+
+    /// <summary>批次 id，可空：按批次管理商品必填；出库类禁止过期批次（040）</summary>
+    public Guid? BatchId { get; init; }
 }

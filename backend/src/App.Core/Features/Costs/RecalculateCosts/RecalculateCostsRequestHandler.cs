@@ -60,19 +60,19 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
             // 取全部流水（按 CreatedAt, Id 升序）推演；期间参数只决定「写回哪些流水」，不切断开局结存
             var rows = await _stockMovementRepository.GetAllForCostAsync(request.ProductId, null, null, cancellationToken);
 
-            // 结存推演按「商品 × 仓」分账（038）：成本随库存行按仓维护，组织级口径 = 各仓合计
-            var states = new Dictionary<(Guid ProductId, Guid WarehouseId), CostState>();
+            // 结存推演按「商品 × 仓 × 批次」分账（038 起按仓、040 起按批次行）：成本随库存行维护，组织级口径 = 各库存行合计
+            var states = new Dictionary<(Guid ProductId, Guid WarehouseId, Guid? BatchId), CostState>();
 
-            // 本次重算已推演出的成本单价（来源单据 + 商品 + 仓 + 变动类型 → 单价）：
+            // 本次重算已推演出的成本单价（来源单据 + 商品 + 仓 + 批次 + 变动类型 → 单价）：
             // 冲销类优先复用「本次推演」的结果，而不是历史成本列 —— 重算与当前成本列无关才谈得上幂等
-            var resolvedCosts = new Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, StockMovementType Type), decimal>();
+            var resolvedCosts = new Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, Guid? BatchId, StockMovementType Type), decimal>();
 
             var updates = new List<(Guid Id, decimal UnitCost, decimal TotalCost)>();
             var missingCostCount = 0;
 
             foreach (var row in rows)
             {
-                var stateKey = (row.ProductId, row.WarehouseId);
+                var stateKey = (row.ProductId, row.WarehouseId, row.BatchId);
                 if (!states.TryGetValue(stateKey, out var state))
                 {
                     state = new CostState();
@@ -80,7 +80,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
                 }
 
                 var (unitCost, missing) = await ResolveUnitCostAsync(row, state, resolvedCosts, cancellationToken);
-                resolvedCosts[(row.SourceId ?? Guid.Empty, row.ProductId, row.WarehouseId, row.MovementType)] = unitCost;
+                resolvedCosts[(row.SourceId ?? Guid.Empty, row.ProductId, row.WarehouseId, row.BatchId, row.MovementType)] = unitCost;
 
                 if (missing)
                 {
@@ -132,6 +132,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
                     await _inventoryRepository.SetCostAsync(
                         pair.Key.ProductId,
                         pair.Key.WarehouseId,
+                        pair.Key.BatchId,
                         pair.Value.Amount,
                         pair.Value.AverageCost,
                         cancellationToken);
@@ -181,7 +182,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
     private async Task<(decimal UnitCost, bool Missing)> ResolveUnitCostAsync(
         StockMovementCostRow row,
         CostState state,
-        Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, StockMovementType Type), decimal> resolvedCosts,
+        Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, Guid? BatchId, StockMovementType Type), decimal> resolvedCosts,
         CancellationToken cancellationToken)
     {
         switch (row.MovementType)
@@ -212,7 +213,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
                 }
 
                 var salesCost = await _stockMovementRepository.GetMovementUnitCostAsync(
-                    row.SourceId.Value, row.ProductId, StockMovementType.SalesOutbound, cancellationToken);
+                    row.SourceId.Value, row.ProductId, row.BatchId, StockMovementType.SalesOutbound, cancellationToken);
                 return salesCost is not null ? (salesCost.Value, false) : (state.AverageCost, false);
 
             default:
@@ -228,7 +229,7 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
     private async Task<(decimal UnitCost, bool Missing)> ResolveReversalAsync(
         StockMovementCostRow row,
         StockMovementType originalType,
-        Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, StockMovementType Type), decimal> resolvedCosts,
+        Dictionary<(Guid SourceId, Guid ProductId, Guid WarehouseId, Guid? BatchId, StockMovementType Type), decimal> resolvedCosts,
         CancellationToken cancellationToken)
     {
         if (row.SourceId is null)
@@ -236,13 +237,13 @@ public sealed class RecalculateCostsRequestHandler : IRequestHandler<Recalculate
             return (0m, true);
         }
 
-        if (resolvedCosts.TryGetValue((row.SourceId.Value, row.ProductId, row.WarehouseId, originalType), out var resolved))
+        if (resolvedCosts.TryGetValue((row.SourceId.Value, row.ProductId, row.WarehouseId, row.BatchId, originalType), out var resolved))
         {
             return (resolved, false);
         }
 
         var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
-            row.SourceId.Value, row.ProductId, originalType, cancellationToken);
+            row.SourceId.Value, row.ProductId, row.BatchId, originalType, cancellationToken);
         return unitCost is not null ? (unitCost.Value, false) : (0m, true);
     }
 

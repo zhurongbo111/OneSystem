@@ -35,4 +35,16 @@ public sealed class CreateSalesReturnItem
 
     /// <summary>单价（≥ 0，默认带出商品销售价、开单时可改）</summary>
     public required decimal UnitPrice { get; init; }
+
+    /// <summary>批次 id，可空：按批次管理商品必填；与 newBatchNo 互斥（040）</summary>
+    public Guid? BatchId { get; init; }
+
+    /// <summary>就地新建批次号，可空：代替 batchId（040；与 batchId 互斥）</summary>
+    public string? NewBatchNo { get; init; }
+
+    /// <summary>就地新建批次的生产日期（UTC 午夜，可空；与 newBatchNo 配套）</summary>
+    public DateTimeOffset? NewProductionDate { get; init; }
+
+    /// <summary>就地新建批次的到期日（UTC 午夜，可空；与 newBatchNo 配套）</summary>
+    public DateTimeOffset? NewExpiryDate { get; init; }
 }

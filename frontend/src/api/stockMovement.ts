@@ -15,6 +15,10 @@ export interface StockMovementListItem {
   warehouseId: string
   /** 仓库名称（038） */
   warehouseName: string
+  /** 批次 ID（040；非批次流水为 null） */
+  batchId: string | null
+  /** 批次号（040；非批次流水为 null） */
+  batchNo: string | null
   movementType: StockMovementType
   quantity: number
   /** 本次变动成本单价（erp-cost；numeric(18,4)） */

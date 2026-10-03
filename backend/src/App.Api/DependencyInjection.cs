@@ -36,6 +36,7 @@ public static class DependencyInjection
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
         builder.Services.AddScoped<IClientInfo, ClientInfoAccessor>();
+        builder.Services.AddSingleton<ISystemClock, SystemClock>();
 
         // ========== Swagger：仅 dev 环境启用（UI /swagger，JSON /swagger/v1/swagger.json；prod 零注册零暴露），配置见 Swagger/SwaggerRegistration.cs ==========
         builder.Services.AddSwaggerIfDevelopment(builder.Environment);

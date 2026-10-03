@@ -7,6 +7,7 @@ import type { ProductPickItem } from '@/api/product'
 import { createTransfer, toUtcMidnight } from '@/api/transfer'
 import { getWarehousePickList } from '@/api/warehouse'
 import type { WarehousePickItem } from '@/api/warehouse'
+import BatchPickSelect from '@/views/BatchManagement/BatchPickSelect.vue'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
 import { IconPlus } from '@tabler/icons-vue'
@@ -21,6 +22,17 @@ interface TransferFormLine {
   /** 转出仓可用库存（取自 getProductPickList(fromWarehouseId) 的同口径快照，design §4.4） */
   stockQuantity: number
   quantity: number
+  /**
+   * 批次选择值（040，v-model 绑定 BatchPickSelect；调拨为「按行批次数量移动」，
+   * 取转出仓口径的可用批次；非批次商品恒为 `{}`）。
+   */
+  batch: {
+    batchId?: string
+    batchNo?: string
+    newBatchNo?: string
+    newProductionDate?: string
+    newExpiryDate?: string
+  }
 }
 
 // —— constants ——
@@ -35,11 +47,18 @@ let productFetchSeq = 0
 const itemColumns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '商品', slotName: 'product' },
+  { title: '批次', slotName: 'batch', width: 240 },
   { title: '单位', dataIndex: 'unit', width: 80, align: 'center' },
   { title: '可用库存', slotName: 'stock', width: 110, align: 'right' },
   { title: '数量', slotName: 'quantity', width: 170 },
   { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
 ]
+
+/** 明细行的商品是否按批次管理（决定批次列控件是否渲染 / 是否必填，040） */
+function isBatchManagedLine(line: TransferFormLine): boolean {
+  if (!line.productId) return false
+  return products.value.find((p) => p.id === line.productId)?.isBatchManaged ?? false
+}
 
 // —— helpers ——
 let itemSeq = 0
@@ -49,7 +68,7 @@ function newKey(): string {
 }
 
 function newLine(): TransferFormLine {
-  return { key: newKey(), productId: undefined, productName: '', unit: '', stockQuantity: 0, quantity: 1 }
+  return { key: newKey(), productId: undefined, productName: '', unit: '', stockQuantity: 0, quantity: 1, batch: {} }
 }
 
 /** 当天本地日期 YYYY-MM-DD（调拨日期默认值） */
@@ -121,7 +140,14 @@ const itemsInvalid = computed(
   () =>
     lines.value.length === 0 ||
     lines.value.length > MAX_ITEMS ||
-    lines.value.some((l) => !l.productId || l.quantity < QUANTITY_MIN || l.quantity > QUANTITY_MAX),
+    lines.value.some(
+      (l) =>
+        !l.productId ||
+        l.quantity < QUANTITY_MIN ||
+        l.quantity > QUANTITY_MAX ||
+        // 按批次商品必须指定批次（调拨按行批次数量移动，040；后端 40127 双保险）
+        (isBatchManagedLine(l) && !l.batch.batchId),
+    ),
 )
 
 /** 任一行「调拨数量 > 转出仓可用库存」：前端预警（最终以后端 40103 为准），提交前拦截 */
@@ -188,6 +214,8 @@ function onLineProductChange(line: TransferFormLine, value?: string): void {
   line.productName = p?.name ?? ''
   line.unit = p?.unit ?? ''
   line.stockQuantity = p?.stockQuantity ?? 0
+  // 换商品即清空已选批次（不同商品的批次不可混用；BatchPickSelect 亦会随 productId 变化重载）
+  line.batch = {}
 }
 
 function onLineQuantityChange(line: TransferFormLine, value: number | undefined): void {
@@ -235,7 +263,12 @@ async function onSubmit(): Promise<void> {
       toWarehouseId: toWarehouseId.value as string,
       // 所选日期 → UTC 午夜 ISO 串（design §4.2；裸日期会被后端按服务器本地时区解析导致入库失败）
       transferDate: toUtcMidnight(transferDate.value),
-      items: lines.value.map((l) => ({ productId: l.productId as string, quantity: l.quantity })),
+      items: lines.value.map((l) => ({
+        productId: l.productId as string,
+        quantity: l.quantity,
+        // 批次（040）：按批次商品必带；调拨按行批次数量移动（转出仓口径）
+        batchId: l.batch.batchId,
+      })),
       remark: remark.value.trim() || undefined,
     })
     Message.success('调拨单已创建')
@@ -344,6 +377,16 @@ async function onSubmit(): Promise<void> {
                 allow-search
                 allow-clear
                 @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as TransferFormLine, v as string | undefined)"
+              />
+            </template>
+            <template #batch="{ record }">
+              <BatchPickSelect
+                v-if="isBatchManagedLine(record as TransferFormLine)"
+                v-model="(record as TransferFormLine).batch"
+                :product-id="(record as TransferFormLine).productId"
+                :warehouse-id="fromWarehouseId ?? ''"
+                :allow-create="false"
+                :required="true"
               />
             </template>
             <template #stock="{ record }">

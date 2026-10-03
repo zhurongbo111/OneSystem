@@ -88,7 +88,8 @@ public class SalesShipmentOrderLinkTests
         var handler = new CreateSalesShipmentRequestHandler(
             shipments, orders, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
             inventory, movements, new FakeSettlementQueryRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger);
+            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user,
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(OrderDate));
 
         return new LinkedHarness
         {

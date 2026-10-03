@@ -1,21 +1,24 @@
 namespace App.Core.Entities;
 
 /// <summary>
-/// 库存台账实体（对应 PostgreSQL 表 Inventory），库存的**两个维度**为「商品 × 仓库」
-/// （唯一键 <c>(ProductId, WarehouseId)</c>，见 specs/038-erp-multi-warehouse/design.md §0）。
-/// 商品新建时为每个启用仓初始化 Quantity = 0；原子增减能力见 IInventoryRepository
-/// （IncrementAsync 的 delta 允许为负 —— 采购作废回冲；TryDecrementAsync 条件扣减防超卖）。
+/// 库存台账实体（对应 PostgreSQL 表 Inventory），库存的**维度**为「商品 × 仓库 × 批次」
+/// （唯一键 <c>(ProductId, WarehouseId, BatchId)</c>，见 specs/040-erp-batch-expiry/design.md §2.4）。
+/// <c>BatchId</c> 可空：未启用批次管理的商品为 NULL（同商品同仓仅一行）；启用批次管理的商品必带批次（每批次一行）。
+/// 原子增减能力见 IInventoryRepository（IncrementAsync 的 delta 允许为负 —— 采购作废回冲；TryDecrementAsync 条件扣减防超卖）。
 /// </summary>
 public sealed class Inventory
 {
     /// <summary>库存记录 ID</summary>
     public Guid Id { get; set; }
 
-    /// <summary>商品 ID（与 WarehouseId 组成唯一键，外键 → Products(Id)）</summary>
+    /// <summary>商品 ID（与 WarehouseId、BatchId 组成唯一键，外键 → Products(Id)）</summary>
     public Guid ProductId { get; set; }
 
-    /// <summary>仓库 ID（与 ProductId 组成唯一键，外键 → Warehouses(Id)）</summary>
+    /// <summary>仓库 ID（与 ProductId、BatchId 组成唯一键，外键 → Warehouses(Id)）</summary>
     public Guid WarehouseId { get; set; }
+
+    /// <summary>批次 ID（可空；NULL = 未启用批次管理的商品，外键 → Batches(Id)）</summary>
+    public Guid? BatchId { get; set; }
 
     /// <summary>当前库存（允许为负：仅采购作废回冲可产生，数据异常在库存查询页标红展示）</summary>
     public int Quantity { get; set; }

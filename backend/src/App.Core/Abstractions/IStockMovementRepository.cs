@@ -43,13 +43,15 @@ public interface IStockMovementRepository
 
     /// <summary>
     /// 流水变动量合计（对账 / 一致性校验用）：
-    /// 指定仓时满足「同一 (商品, 仓) Σ Quantity == 该仓库存」，不指定仓时为组织级合计（Σ 各仓）。
+    /// 指定仓时满足「同一 (商品, 仓, 批次) Σ Quantity == 该批次库存行」（批次可空 = 非批次行），
+    /// 不指定仓时为组织级合计（Σ 各仓）。
     /// </summary>
     /// <param name="productId">商品 id</param>
     /// <param name="warehouseId">仓库 id，可空（不传 = 全部仓合计）</param>
+    /// <param name="batchId">批次 id，可空（不传 = 全部批次合计，040 对账口径）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<int> SumQuantityAsync(
-        Guid productId, Guid? warehouseId = null, CancellationToken cancellationToken = default);
+        Guid productId, Guid? warehouseId = null, Guid? batchId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 批量查询「已发生过库存变动」的商品 id（期初建账限制用，erp-stock-take）：
@@ -64,17 +66,30 @@ public interface IStockMovementRepository
         IReadOnlyList<Guid> productIds, Guid? warehouseId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 取某来源单据 + 商品的指定类型流水的成本单价（erp-cost；冲销类还原成本用）。
+    /// 批量查询「某仓已发生过库存变动」的批次 id（期初建账限制用，040 按批次盘点）：
+    /// 在给定批次集合中，返回在指定仓存在任意流水记录的批次 id 集合（空集合表示全部未发生变动）。
+    /// </summary>
+    /// <param name="batchIds">批次 id 集合</param>
+    /// <param name="warehouseId">仓库 id</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>已有流水变动的批次 id 集合</returns>
+    Task<IReadOnlyCollection<Guid>> GetBatchIdsWithMovementsAsync(
+        IReadOnlyList<Guid> batchIds, Guid warehouseId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 取某来源单据 + 商品 + 批次的指定类型流水的成本单价（erp-cost；冲销类还原成本用，040 起带批次）。
     /// 作废 / 退货作废一律复用**原方向**流水的 <c>UnitCost</c>，保证「入 + 冲回 = 0」；
     /// 无匹配流水（如历史数据、被退销售单无原单关联）时返回 <c>null</c>，由调用方按 §0.2 兜底。
     /// </summary>
     /// <param name="sourceId">来源单据 id</param>
     /// <param name="productId">商品 id</param>
+    /// <param name="batchId">批次 id，可空（040；与流水行的 BatchId 匹配）</param>
     /// <param name="type">被还原的变动类型（如 <see cref="StockMovementType.PurchaseInbound"/>）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task<decimal?> GetMovementUnitCostAsync(
         Guid sourceId,
         Guid productId,
+        Guid? batchId,
         StockMovementType type,
         CancellationToken cancellationToken = default);
 

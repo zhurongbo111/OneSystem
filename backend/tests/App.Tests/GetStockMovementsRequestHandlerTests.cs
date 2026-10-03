@@ -61,15 +61,20 @@ public class GetStockMovementsRequestHandlerTests
                 }, 41));
         }
 
-        public Task<int> SumQuantityAsync(Guid productId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
+        public Task<int> SumQuantityAsync(
+            Guid productId, Guid? warehouseId = null, Guid? batchId = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
             IReadOnlyList<Guid> productIds, Guid? warehouseId = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
+        public Task<IReadOnlyCollection<Guid>> GetBatchIdsWithMovementsAsync(
+            IReadOnlyList<Guid> batchIds, Guid warehouseId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
         public Task<decimal?> GetMovementUnitCostAsync(
-            Guid sourceId, Guid productId, StockMovementType type, CancellationToken cancellationToken = default)
+            Guid sourceId, Guid productId, Guid? batchId, StockMovementType type, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<IReadOnlyList<StockMovementCostRow>> GetAllForCostAsync(

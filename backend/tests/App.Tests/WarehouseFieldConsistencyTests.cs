@@ -39,15 +39,27 @@ public class WarehouseFieldConsistencyTests
     }
 
     [Fact]
-    public void EF模型_库存唯一键_应为商品与仓库组合()
+    public void EF模型_库存唯一键_应为商品仓库批次组合且非批次行部分唯一()
     {
         using var dbContext = TestSupport.CreateDbContext();
 
         var entity = dbContext.Model.FindEntityType(typeof(Inventory))!;
-        var uniqueIndex = entity.GetIndexes().Single(i => i.IsUnique);
-        Assert.Equal(
-            [nameof(Inventory.ProductId), nameof(Inventory.WarehouseId)],
-            uniqueIndex.Properties.Select(p => p.Name).ToArray());
+        // 040：库存唯一键升为 (商品, 仓, 批次) 三列
+        var batchIndex = entity.GetIndexes().Single(i => i.IsUnique
+            && i.Properties.Count == 3
+            && i.Properties.Select(p => p.Name).SequenceEqual(
+                [nameof(Inventory.ProductId), nameof(Inventory.WarehouseId), nameof(Inventory.BatchId)]));
+        Assert.NotNull(batchIndex);
+
+        // 040：非批次行（BatchId IS NULL）在 (商品, 仓) 上保留部分唯一索引
+        var nonBatchIndex = entity.GetIndexes().Single(i => i.IsUnique
+            && i.Properties.Count == 2
+            && i.Properties.Select(p => p.Name).SequenceEqual(
+                [nameof(Inventory.ProductId), nameof(Inventory.WarehouseId)]));
+        Assert.NotNull(nonBatchIndex);
+
+        // 批次列可空（非批次商品全链路 null）
+        Assert.True(entity.FindProperty(nameof(Inventory.BatchId))!.IsNullable);
         Assert.True(entity.FindProperty(nameof(Inventory.WarehouseId))!.IsNullable == false);
         Assert.False(entity.FindProperty(nameof(Inventory.SafetyStock))!.IsNullable);
     }

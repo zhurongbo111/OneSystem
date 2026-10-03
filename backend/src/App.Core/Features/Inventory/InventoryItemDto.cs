@@ -32,6 +32,21 @@ public sealed record InventoryItemDto
     /// <summary>仓级安全库存阈值（038；判定唯一来源）</summary>
     public required int SafetyStock { get; init; }
 
+    /// <summary>批次 ID（040：展开批次视图有值，汇总视图为 null）</summary>
+    public string? BatchId { get; init; }
+
+    /// <summary>批次号（040；汇总视图为 null）</summary>
+    public string? BatchNo { get; init; }
+
+    /// <summary>到期日（040；null = 永不过期或汇总视图）</summary>
+    public DateTimeOffset? ExpiryDate { get; init; }
+
+    /// <summary>是否已过期（040：到期日 &lt; 今天；汇总视图为 false）</summary>
+    public bool IsExpired { get; init; }
+
+    /// <summary>是否近效期（040：到期日 ≤ 今天 + NearExpiryDays 且未过期）</summary>
+    public bool IsNearExpiry { get; init; }
+
     /// <summary>是否低于安全库存（SafetyStock &gt; 0 且 Stock &lt; SafetyStock）</summary>
     public required bool IsBelowSafetyStock { get; init; }
 

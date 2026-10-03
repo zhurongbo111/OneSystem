@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：库存流水（erp-stock-movement）
@@ -11,6 +11,7 @@ updated: 2026-09-23
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `stockMovements.view` / `export`（`export` 由 `027` 的导出动作标注）；本页只读，无写操作权限点。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-multi-warehouse，`038`）**：流水加 `WarehouseId`（NOT NULL、FK → `Warehouses`）并新增索引 `(WarehouseId, ProductId, CreatedAt)`；创建单据 / 盘点的每条流水带仓（数量实际变动的仓），流水页加「仓库」筛选与列、导出加仓库列，成本随流水按仓结转。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.2。
 > **演进（erp-audit-log）**：库存流水由各单据写用例在同一事务内追加（本域无独立写用例），本页为只读查询，不单独记录操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
+> **演进（erp-batch-expiry，`040`）**：流水加 `BatchId`（可空、FK → `Batches`）+ 批次号快照列；批次商品的每条流水带批次，流水页 / 导出加「批次号」列（非批次流水显示 `-`）。详见 `specs/040-erp-batch-expiry/design.md`。
 
 ## 0. 库存流水展示约定（唯一事实源）
 

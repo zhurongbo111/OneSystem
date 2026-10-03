@@ -23,4 +23,13 @@ public sealed class ExportInventoryRequest : IRequest<ExportResultDto>
 
     /// <summary>仓库 id，可空（038；不传 = 全部仓）</summary>
     public Guid? WarehouseId { get; init; }
+
+    /// <summary>批次 id，可空（040；精确匹配批次行）</summary>
+    public Guid? BatchId { get; init; }
+
+    /// <summary>批次号，可空（040；模糊筛选，与列表查询一致）</summary>
+    public string? BatchNo { get; init; }
+
+    /// <summary>是否按批次展开行（040；与列表查询一致，默认 false）</summary>
+    public bool ExpandBatch { get; init; }
 }

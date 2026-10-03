@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-10-02
 ---
 
 # 设计规格：批次与保质期管理（erp-batch-expiry）
@@ -121,7 +121,7 @@ updated: 2026-09-17
 |---|---|
 | `Task<Batch?> GetByIdAsync(Guid id, ...)` | 按 id |
 | `Task<bool> ExistsByBatchNoAsync(Guid productId, string batchNo, Guid? excludeId, ...)` | 同商品内批次号唯一（大小写不敏感） |
-| `Task<(IReadOnlyList<Batch> Items, int Total)> GetPagedAsync(string? keyword, Guid? productId, PartnerStatus? status, bool? onlyExpiring, int page, int pageSize, ...)` | 列表（`keyword` 匹配 `BatchNo`；`onlyExpiring` = 近效期或已过期；`AsNoTracking`） |
+| `Task<(IReadOnlyList<Batch> Items, int Total)> GetPagedAsync(string? keyword, Guid? productId, PartnerStatus? status, bool? onlyExpiring, int page, int pageSize, ...)` | 列表（`keyword` 匹配 `BatchNo` **或商品编码或商品名称**（大小写不敏感，与搜索框占位「批次号 / 商品编码 / 商品名称」一致；多字段 OR 模式同 `ProductRepository.GetPagedAsync`）；`onlyExpiring` = 近效期或已过期；`AsNoTracking`） |
 | `Task<IReadOnlyList<BatchPickItem>> GetPickListAsync(Guid productId, Guid warehouseId, ...)` | 批次下拉：该商品在该仓**有库存或未过期**的批次 + 该仓可用库存 + 到期日；**按 `ExpiryDate` 升序（无到期日最后）**；读模型含 `IsExpired` / `IsNearExpiry` |
 | `Task AddAsync(Batch, ...)` / `Task UpdateAsync(Batch, ...)` | 新增 / 更新（批次号不可改） |
 
@@ -139,7 +139,7 @@ updated: 2026-09-17
 | `GetBatchQuantitiesAsync(warehouseId, productId, ...)` | 新增：读某商品在某仓的 `(批次 → 数量)` 字典（按批次盘点 / 批次下拉用） |
 | `UpdateSafetyStockAsync(productId, warehouseId, safetyStock, ...)` | 不变（阈值按 `(商品, 仓)`） |
 
-- `GetPagedAsync`（库存查询）追加 `Guid? batchId` 与 `bool expandBatch`：`expandBatch = true` 时按 `(商品, 仓, 批次)` 展开行（批次号 / 到期日 / 近效期标记），否则维持 `038` 的按 `(商品, 仓)` 汇总（**汇总行的安全库存判定用 `SUM(Quantity)` 与 `MAX(SafetyStock)`**）。
+- `GetPagedAsync`（库存查询）追加 `Guid? batchId`、`string? batchNo`（模糊、大小写不敏感）与 `bool expandBatch`：`expandBatch = true` 时按 `(商品, 仓, 批次)` 展开行（批次号 / 到期日 / 近效期标记），否则维持 `038` 的按 `(商品, 仓)` 汇总（**汇总行的安全库存判定用 `SUM(Quantity)` 与 `MAX(SafetyStock)`**）；`batchNo` 筛选对汇总视图自然过滤掉无批次行。
 
 ### 3.2 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 
@@ -182,7 +182,7 @@ updated: 2026-09-17
 
 **CreateStockTake（改造）**：按批次商品的明细必填 `batchId`；账面数量按 `(仓, 商品, 批次)` 读取（`GetBatchQuantitiesAsync`）；`Difference != 0` 的行 `SetQuantityAsync(productId, warehouseId, batchId, actual)` + 流水带批次；期初建账的 `hasMovements` 判定按 `(商品, 仓, 批次)` 维度（批次首次建账允许）。
 
-**GetInventory（改造）**：`expandBatch` 为真时按批次展开（含 `batchNo` / `expiryDate` / `IsExpired` / `IsNearExpiry`）；安全库存列在展开视图不展示（判定口径见 §0）。
+**GetInventory（改造）**：`expandBatch` 为真时按批次展开（含 `batchNo` / `expiryDate` / `IsExpired` / `IsNearExpiry`）；支持 `batchNo` 模糊筛选；安全库存列在展开视图不展示（判定口径见 §0）。
 
 ### 3.5 校验规则（FluentValidation，仅格式层，引用 §2.6 常量）
 
@@ -194,7 +194,7 @@ updated: 2026-09-17
 | `GetBatchesRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 50；`productId` 可空；`status` 可空；`onlyExpiring` 可空 |
 | `GetBatchPickListRequest` | `productId` / `warehouseId` 必填 |
 | 各单据 `Create*Request`（改造） | 明细行追加 `batchId`（可空，Handler 按商品开关校验必填）与 `newBatchNo` / `newProductionDate` / `newExpiryDate`（可空；与 `batchId` **互斥**，同时提供 → `40000`） |
-| `GetInventoryRequest`（改造） | 追加 `batchId` 可空、`expandBatch` 可空（默认 `false`） |
+| `GetInventoryRequest`（改造） | 追加 `batchId` 可空、`batchNo` 可空（≤`BatchFieldConstraints.BatchNoMaxLength`，模糊、大小写不敏感）、`expandBatch` 可空（默认 `false`） |
 
 ### 3.6 Swagger
 
@@ -229,10 +229,11 @@ src/
 
 **批次列表 `BatchesView.vue`**（参照 `specs/006-list-showcase/design.md` §0）：筛选行（批次号关键词 + 商品下拉 + 状态 + 「仅看近效期 / 过期」`a-checkbox`）；操作行（新增 + 刷新 + 列设置）；列：序号、商品编码、商品名称、批次号、生产日期、**到期日**（近效期 `a-tag warning`「近效期」、过期 `a-tag danger`「已过期」，正常显示 `-`）、库存合计（跨仓汇总，批次维度视图见库存查询）、状态、创建时间、操作列（编辑 / 停用或启用）；服务端分页。
 
-**批次选择控件 `BatchPickSelect.vue`**（开单页明细行内使用）：
+**批次选择控件 `BatchPickSelect.vue`**（开单页明细行内使用，值经 `v-model` 绑定明细行 `batch` 字段）：
 
-- `a-select`（`allow-search`，可选「新建批次」入口按钮）：数据源 `getBatchPickList(productId, warehouseId)`，选项展示「批次号（到期 yyyy-MM-dd，可用 x）」；**过期批次 `disabled` 并标注「已过期」**（出库类单据）/ 入库类不禁用但标注；默认选中**最早到期且未过期且库存 > 0** 的批次（FEFO 辅助）；按到期日升序。
-- 「+ 新建批次」→ 就地 `a-modal`（批次号 / 生产日期 / 到期日）→ 创建成功后自动选中；`batchSubmitting` loading。
+- `a-select`（`allow-search`）：数据源 `getBatchPickList(productId, warehouseId)`，选项展示「批次号 · 可用 x · 到期 yyyy-MM-dd（已过期 / 近效期）」；**过期批次 `disabled` 并标注「已过期」**（出库类 `required` 单据）/ 入库类不禁用但标注；默认选中**最早到期且未过期且库存 > 0** 的批次（FEFO 辅助）；按到期日升序。
+- **就地新建批次**（采购入库 / 销售退货，`allowCreate`）：行内「新建」按钮展开内联输入区（批次号 / 生产日期 / 到期日），输入写入明细行 `batch.newBatchNo` 等字段（与 `batchId` 互斥）；**不单独调接口创建**，随单据提交由后端在同一事务内建批次并使用（§3.4）。展开新建时清空已选批次，选中已有批次时收起新建区。
+- 换商品 / 换仓清空已选批次；商品切换后控件随 `productId` 变化自动重载。
 
 **商品抽屉（改造）**：新增「按批次管理」`a-switch`（编辑时可按需开启；**已发生库存的商品关闭开关需谨慎**：本期允许关闭，仅影响后续单据，历史批次库存行保留（决策见 §5）。
 
@@ -249,8 +250,7 @@ src/
 | 批次列表查询 | `loading` | 搜索 / 翻页 + 表格 |
 | 批次抽屉提交 | `submitting` | 提交按钮 |
 | 批次启停 | `togglingId` | 行内按钮 / popconfirm |
-| 就地新建批次 Modal | `batchSubmitting` | Modal `ok-loading` |
-| 开单页批次下拉加载 | `batchLoading` | 明细行（下拉 loading） |
+| 开单页批次下拉加载 | `loading` | 明细行 `a-select` 自身 loading（`BatchPickSelect` 内部，无独立状态） |
 
 ## 5. 关键技术决策与取舍
 
@@ -270,6 +270,7 @@ src/
 | 序列号不做 | 范围外 | 逐件粒度与全链路追溯是另一套模型（一码一物、出入库逐码核对），塞进本规格会显著放大复杂度 |
 | 商品开关可关闭 | 允许（仅影响后续） | 误开的开关应能纠正；历史批次行与单据保留（数据不丢），只在后续单据不再要求批次 |
 | 盘点按批次 | 明细必填批次 | 账实核对必须落到批次（否则批次库存无法校正）；代价是盘点明细行数增加（按批次拆分） |
+| 报表到商品维度 | `025` 五类报表 / 库存余额表不改（批次明细看库存查询与流水） | 报表数据源是流水，`SUM` 到商品维度天然正确；把批次塞进取数会把聚合口径与毛利逻辑一起重设计，属独立能力（与「不做批次成本」同取舍）。批次粒度的查询与导出由库存查询（`expandBatch`）与库存流水（批次列）承接 |
 
 ## 6. 单元测试设计（`backend/tests/App.Tests/`）
 

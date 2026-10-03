@@ -40,18 +40,22 @@ public sealed class StockMovementRepository : IStockMovementRepository
         CancellationToken cancellationToken = default)
     {
         // 左连接 Products 带出编码 / 名称 / 单位（商品停用不影响历史流水展示）；
-        // 联查 Warehouses 带出仓名（038）；左连接 Users 带出操作人姓名（CreatedBy 为空或无匹配用户时为 null）
+        // 联查 Warehouses 带出仓名（038）；左连接 Users 带出操作人姓名（CreatedBy 为空或无匹配用户时为 null）；
+        // 左连接 Batches 带出批次号（040；非批次流水为 null）
         var query = from m in _dbContext.StockMovements.AsNoTracking()
                     join p in _dbContext.Products.AsNoTracking() on m.ProductId equals p.Id
                     join w in _dbContext.Warehouses.AsNoTracking() on m.WarehouseId equals w.Id
                     join u in _dbContext.Users.AsNoTracking() on m.CreatedBy equals u.Id into uGroup
                     from u in uGroup.DefaultIfEmpty()
+                    join b in _dbContext.Batches.AsNoTracking() on m.BatchId equals b.Id into bGroup
+                    from b in bGroup.DefaultIfEmpty()
                     select new
                     {
                         m,
                         p,
                         WarehouseName = w.Name,
                         CreatedByName = (string?)(u == null ? null : u.DisplayName),
+                        BatchNo = b!.BatchNo,
                     };
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -104,6 +108,8 @@ public sealed class StockMovementRepository : IStockMovementRepository
                 Unit = x.p.Unit,
                 WarehouseId = x.m.WarehouseId,
                 WarehouseName = x.WarehouseName,
+                BatchId = x.m.BatchId,
+                BatchNo = x.BatchNo,
                 MovementType = x.m.MovementType,
                 Quantity = x.m.Quantity,
                 UnitCost = x.m.UnitCost,
@@ -120,7 +126,7 @@ public sealed class StockMovementRepository : IStockMovementRepository
 
     /// <inheritdoc />
     public async Task<int> SumQuantityAsync(
-        Guid productId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
+        Guid productId, Guid? warehouseId = null, Guid? batchId = null, CancellationToken cancellationToken = default)
     {
         var query = _dbContext.StockMovements
             .AsNoTracking()
@@ -130,6 +136,14 @@ public sealed class StockMovementRepository : IStockMovementRepository
         {
             var value = warehouseId.Value;
             query = query.Where(m => m.WarehouseId == value);
+        }
+
+        // 批次维度（040）：传 batchId 时按批次行定位；不传 = 全部批次合计（038 语义不变）。
+        // 非批次行对账不受影响：同一商品的批次流水与非批次流水互斥（商品开关决定全链路是否带批次）
+        if (batchId is not null)
+        {
+            var batchValue = batchId.Value;
+            query = query.Where(m => m.BatchId == batchValue);
         }
 
         return await query.SumAsync(m => (int?)m.Quantity, cancellationToken) ?? 0;
@@ -161,16 +175,34 @@ public sealed class StockMovementRepository : IStockMovementRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyCollection<Guid>> GetBatchIdsWithMovementsAsync(
+        IReadOnlyList<Guid> batchIds, Guid warehouseId, CancellationToken cancellationToken = default)
+    {
+        if (batchIds.Count == 0)
+        {
+            return Array.Empty<Guid>();
+        }
+
+        return await _dbContext.StockMovements
+            .AsNoTracking()
+            .Where(m => m.WarehouseId == warehouseId && m.BatchId != null && batchIds.Contains(m.BatchId.Value))
+            .Select(m => m.BatchId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<decimal?> GetMovementUnitCostAsync(
         Guid sourceId,
         Guid productId,
+        Guid? batchId,
         StockMovementType type,
         CancellationToken cancellationToken = default)
     {
-        // 冲销类还原成本：取同一来源单据 + 商品 + 指定类型流水的成本单价（无匹配返回 null，由调用方兜底）
+        // 冲销类还原成本：取同一来源单据 + 商品 + 批次 + 指定类型流水的成本单价（无匹配返回 null，由调用方兜底）
         return await _dbContext.StockMovements
             .AsNoTracking()
-            .Where(m => m.SourceId == sourceId && m.ProductId == productId && m.MovementType == type)
+            .Where(m => m.SourceId == sourceId && m.ProductId == productId && m.BatchId == batchId && m.MovementType == type)
             .Select(m => (decimal?)m.UnitCost)
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -210,6 +242,7 @@ public sealed class StockMovementRepository : IStockMovementRepository
                 Id = m.Id,
                 ProductId = m.ProductId,
                 WarehouseId = m.WarehouseId,
+                BatchId = m.BatchId,
                 MovementType = m.MovementType,
                 Quantity = m.Quantity,
                 SourceId = m.SourceId,

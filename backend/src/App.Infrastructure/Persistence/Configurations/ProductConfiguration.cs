@@ -36,6 +36,10 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasPrecision(18, 2)
             .IsRequired();
         builder.Property(p => p.SafetyStock).IsRequired();
+
+        // 按批次管理开关（040）：默认关闭，关闭时全链路 BatchId 为空
+        builder.Property(p => p.IsBatchManaged).IsRequired().HasDefaultValue(false);
+
         builder.Property(p => p.Status).HasConversion<short>().IsRequired();
         builder.Property(p => p.Remark)
             .HasMaxLength(ProductFieldConstraints.RemarkMaxLength)

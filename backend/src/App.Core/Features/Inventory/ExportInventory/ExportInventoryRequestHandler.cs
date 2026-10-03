@@ -38,6 +38,9 @@ public sealed class ExportInventoryRequestHandler : IRequestHandler<ExportInvent
             request.Keyword,
             request.CategoryId,
             request.WarehouseId,
+            request.BatchId,
+            request.BatchNo,
+            request.ExpandBatch,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);
@@ -47,6 +50,8 @@ public sealed class ExportInventoryRequestHandler : IRequestHandler<ExportInvent
             items.Where(i => i.CreatedBy is not null).Select(i => i.CreatedBy!.Value).Distinct().ToList(),
             cancellationToken);
 
+        // 展开批次视图：追加「批次号 / 到期日」列、隐藏安全阈值列（040 §4.3）
+        var expandBatch = request.ExpandBatch;
         var rows = new List<IReadOnlyList<object?>>(items.Count);
         foreach (var item in items)
         {
@@ -57,30 +62,44 @@ public sealed class ExportInventoryRequestHandler : IRequestHandler<ExportInvent
                 item.CategoryName,
                 item.Unit,
                 item.WarehouseName,
+                expandBatch ? (object?)(item.BatchNo ?? string.Empty) : null,
+                expandBatch ? item.ExpiryDate?.ToString("yyyy-MM-dd") : null,
                 item.StockQuantity,
-                item.SafetyStock,
+                expandBatch ? null : item.SafetyStock,
                 item.UpdatedAt,
                 item.CreatedAt,
                 item.CreatedBy is not null && creatorNames.TryGetValue(item.CreatedBy.Value, out var creator) ? creator : string.Empty,
             });
         }
 
+        var columns = new List<ExcelColumnModel>
+        {
+            new() { Header = "编码", ValueType = ExcelValueType.Text, Width = 18 },
+            new() { Header = "名称", ValueType = ExcelValueType.Text, Width = 24 },
+            new() { Header = "分类", ValueType = ExcelValueType.Text, Width = 14 },
+            new() { Header = "单位", ValueType = ExcelValueType.Text, Width = 8 },
+            new() { Header = "仓库", ValueType = ExcelValueType.Text, Width = 16 },
+        };
+        if (expandBatch)
+        {
+            columns.Add(new ExcelColumnModel { Header = "批次号", ValueType = ExcelValueType.Text, Width = 18 });
+            columns.Add(new ExcelColumnModel { Header = "到期日", ValueType = ExcelValueType.Text, Width = 12 });
+        }
+
+        columns.Add(new ExcelColumnModel { Header = "当前库存", ValueType = ExcelValueType.Integer, Width = 12 });
+        if (!expandBatch)
+        {
+            columns.Add(new ExcelColumnModel { Header = "安全阈值", ValueType = ExcelValueType.Integer, Width = 12 });
+        }
+
+        columns.Add(new ExcelColumnModel { Header = "最近变动时间", ValueType = ExcelValueType.DateTime, Width = 18 });
+        columns.Add(new ExcelColumnModel { Header = "创建时间", ValueType = ExcelValueType.DateTime, Width = 18 });
+        columns.Add(new ExcelColumnModel { Header = "创建人", ValueType = ExcelValueType.Text, Width = 14 });
+
         var sheet = new ExcelSheetModel
         {
             Name = ExportDomainNames.Inventory,
-            Columns =
-            [
-                new ExcelColumnModel { Header = "编码", ValueType = ExcelValueType.Text, Width = 18 },
-                new ExcelColumnModel { Header = "名称", ValueType = ExcelValueType.Text, Width = 24 },
-                new ExcelColumnModel { Header = "分类", ValueType = ExcelValueType.Text, Width = 14 },
-                new ExcelColumnModel { Header = "单位", ValueType = ExcelValueType.Text, Width = 8 },
-                new ExcelColumnModel { Header = "仓库", ValueType = ExcelValueType.Text, Width = 16 },
-                new ExcelColumnModel { Header = "当前库存", ValueType = ExcelValueType.Integer, Width = 12 },
-                new ExcelColumnModel { Header = "安全阈值", ValueType = ExcelValueType.Integer, Width = 12 },
-                new ExcelColumnModel { Header = "最近变动时间", ValueType = ExcelValueType.DateTime, Width = 18 },
-                new ExcelColumnModel { Header = "创建时间", ValueType = ExcelValueType.DateTime, Width = 18 },
-                new ExcelColumnModel { Header = "创建人", ValueType = ExcelValueType.Text, Width = 14 },
-            ],
+            Columns = columns,
             Rows = rows,
         };
 

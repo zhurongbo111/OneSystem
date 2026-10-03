@@ -40,12 +40,21 @@ internal sealed class StockTakeItemConfiguration : IEntityTypeConfiguration<Stoc
             .IsRequired()
             .HasColumnType("numeric(18,4)");
 
+        // 批次维度（040）：BatchId 可空 + BatchNo 快照（列长取自 BatchFieldConstraints）
+        builder.Property(i => i.BatchNo)
+            .HasMaxLength(BatchFieldConstraints.BatchNoMaxLength)
+            .HasColumnType("varchar(50)");
+
         builder.HasIndex(i => i.StockTakeId);
 
         // 商品停用不影响历史盘点凭证 → 外键禁止级联删除
         builder.HasOne<Product>()
             .WithMany()
             .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Batch>()
+            .WithMany()
+            .HasForeignKey(i => i.BatchId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

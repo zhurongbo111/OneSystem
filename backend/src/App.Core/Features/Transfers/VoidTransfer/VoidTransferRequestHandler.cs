@@ -67,21 +67,22 @@ public sealed class VoidTransferRequestHandler : IRequestHandler<VoidTransferReq
         {
             foreach (var item in items)
             {
-                // 原转入流水单价（026 §3.1），取不到（异常数据）按转入仓当前均价兜底
+                // 原转入流水单价（026 §3.1，040 起带批次匹配原流水），取不到（异常数据）按转入仓当前批次行均价兜底
                 var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
-                    transfer.Id, item.ProductId, StockMovementType.TransferIn, cancellationToken)
-                    ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, transfer.ToWarehouseId, cancellationToken);
+                    transfer.Id, item.ProductId, item.BatchId, StockMovementType.TransferIn, cancellationToken)
+                    ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, transfer.ToWarehouseId, item.BatchId, cancellationToken);
                 var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
 
                 // 转入仓回冲：IncrementAsync(-q) + ApplyOutboundCost + AppendAsync(TransferInVoid, -q)
                 await _inventoryRepository.IncrementAsync(
-                    item.ProductId, transfer.ToWarehouseId, -item.Quantity, cancellationToken);
+                    item.ProductId, transfer.ToWarehouseId, item.BatchId, -item.Quantity, cancellationToken);
                 await _inventoryRepository.ApplyOutboundCostAsync(
-                    item.ProductId, transfer.ToWarehouseId, totalCost, cancellationToken);
+                    item.ProductId, transfer.ToWarehouseId, item.BatchId, totalCost, cancellationToken);
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
                     Id = Guid.NewGuid(),
                     ProductId = item.ProductId,
+                    BatchId = item.BatchId,
                     WarehouseId = transfer.ToWarehouseId,
                     MovementType = StockMovementType.TransferInVoid,
                     Quantity = -item.Quantity,
@@ -95,13 +96,14 @@ public sealed class VoidTransferRequestHandler : IRequestHandler<VoidTransferReq
 
                 // 转出仓回冲：IncrementAsync(+q) + ApplyInboundCost + AppendAsync(TransferOutVoid, +q)
                 await _inventoryRepository.IncrementAsync(
-                    item.ProductId, transfer.FromWarehouseId, item.Quantity, cancellationToken);
+                    item.ProductId, transfer.FromWarehouseId, item.BatchId, item.Quantity, cancellationToken);
                 await _inventoryRepository.ApplyInboundCostAsync(
-                    item.ProductId, transfer.FromWarehouseId, item.Quantity, unitCost, cancellationToken);
+                    item.ProductId, transfer.FromWarehouseId, item.BatchId, item.Quantity, unitCost, cancellationToken);
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
                     Id = Guid.NewGuid(),
                     ProductId = item.ProductId,
+                    BatchId = item.BatchId,
                     WarehouseId = transfer.FromWarehouseId,
                     MovementType = StockMovementType.TransferOutVoid,
                     Quantity = item.Quantity,

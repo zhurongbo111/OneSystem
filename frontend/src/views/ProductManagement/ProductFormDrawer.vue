@@ -17,6 +17,8 @@ interface ProductFormState {
   purchasePrice: number | undefined
   salePrice: number | undefined
   safetyStock: number
+  /** 是否按批次管理（040） */
+  isBatchManaged: boolean
   remark: string
 }
 
@@ -53,6 +55,7 @@ function emptyForm(): ProductFormState {
     purchasePrice: undefined,
     salePrice: undefined,
     safetyStock: 0,
+    isBatchManaged: false,
     remark: '',
   }
 }
@@ -147,6 +150,7 @@ async function loadProduct(id: string): Promise<void> {
     form.purchasePrice = detail.purchasePrice
     form.salePrice = detail.salePrice
     form.safetyStock = detail.safetyStock
+    form.isBatchManaged = detail.isBatchManaged
     form.remark = detail.remark ?? ''
     detailCreatedAt.value = detail.createdAt
     detailUpdatedAt.value = detail.updatedAt
@@ -201,6 +205,7 @@ async function onSubmit(): Promise<void> {
       purchasePrice: form.purchasePrice as number,
       salePrice: form.salePrice as number,
       safetyStock: form.safetyStock,
+      isBatchManaged: form.isBatchManaged,
       remark: form.remark.trim() || undefined,
     }
     if (props.mode === 'edit') {
@@ -387,6 +392,27 @@ async function onSubmit(): Promise<void> {
           </a-input-number>
         </a-form-item>
 
+        <!-- 按批次管理（040）：开启后单据明细必须指定批次 -->
+        <a-form-item
+          label="按批次管理"
+          field="isBatchManaged"
+        >
+          <a-switch
+            v-model="form.isBatchManaged"
+            :disabled="isView || detailLoading"
+          >
+            <template #checked>
+              开启
+            </template>
+            <template #unchecked>
+              关闭
+            </template>
+          </a-switch>
+          <div class="batch-tip">
+            开启后，入库 / 出库 / 退货 / 盘点等单据必须为明细指定批次；关闭后该商品按普通库存管理
+          </div>
+        </a-form-item>
+
         <a-form-item
           label="备注"
           field="remark"
@@ -465,6 +491,13 @@ async function onSubmit(): Promise<void> {
 
 .amount-input {
   width: 100%;
+}
+
+.batch-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-3);
 }
 
 .view-meta {

@@ -68,6 +68,31 @@ public class CreateProductRequestHandlerTests
     }
 
     [Fact]
+    public async Task 新增商品_按批次管理_不建非批次种子库存行()
+    {
+        // 040：按批次商品的库存行仅由带批次入库按 (商品, 仓, 批次) 创建，创建时**不**预建每仓
+        // null 批次 0 行（否则库存「展开批次」视图会多出每仓一条空批次行，行数随启用仓数漂移）。
+        var (context, handler, _) = CreateHandler();
+        var category = await SeedCategoryAsync(context);
+
+        var result = await handler.HandleAsync(new CreateProductRequest
+        {
+            Code = "sku-batch",
+            Name = "批次商品",
+            CategoryId = category.Id,
+            Unit = "个",
+            PurchasePrice = 1.5m,
+            SalePrice = 3.2m,
+            SafetyStock = 5,
+            IsBatchManaged = true,
+        });
+
+        var product = await context.Products.SingleAsync(p => p.Id.ToString() == result.Id);
+        // 无任何库存行（含非批次种子行）
+        Assert.False(await context.Inventory.AnyAsync(i => i.ProductId == product.Id));
+    }
+
+    [Fact]
     public async Task 新增商品_库存行缺失_详情库存按零计()
     {
         // 库存初始化已在上一用例覆盖；此用例验证读取侧对无库存行的商品按 0 处理

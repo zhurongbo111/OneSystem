@@ -30,4 +30,10 @@ public sealed class SalesReturnItem
 
     /// <summary>小计 = 数量 × 单价（后端重算）</summary>
     public decimal Subtotal { get; set; }
+
+    /// <summary>批次 ID（可空：按批次管理商品必填；外键 → Batches(Id)）</summary>
+    public Guid? BatchId { get; set; }
+
+    /// <summary>批次号快照（同商品名 / 单位快照原则：列表 / 详情 / 导出免联查）</summary>
+    public string? BatchNo { get; set; }
 }

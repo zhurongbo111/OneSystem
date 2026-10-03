@@ -37,11 +37,13 @@ internal sealed class FakeStockMovementRepository : IStockMovementRepository
             ? Task.FromResult<(IReadOnlyList<StockMovementItem>, int)>((Array.Empty<StockMovementItem>(), 0))
             : Task.FromException<(IReadOnlyList<StockMovementItem>, int)>(new NotSupportedException());
 
-    /// <summary>变动量合计：不传仓 = 组织级合计，传仓 = 该仓合计（038 对账口径）</summary>
-    public Task<int> SumQuantityAsync(Guid productId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
+    /// <summary>变动量合计：不传仓 = 组织级合计，传仓 = 该仓合计，传批次 = 该批次行合计（040 对账口径）</summary>
+    public Task<int> SumQuantityAsync(
+        Guid productId, Guid? warehouseId = null, Guid? batchId = null, CancellationToken cancellationToken = default)
         => Task.FromResult(Appended
             .Where(m => m.ProductId == productId)
             .Where(m => warehouseId is null || SameWarehouse(m.WarehouseId, warehouseId.Value))
+            .Where(m => batchId is null || m.BatchId == batchId)
             .Sum(m => m.Quantity));
 
     public Task<IReadOnlyCollection<Guid>> GetProductIdsWithMovementsAsync(
@@ -56,17 +58,30 @@ internal sealed class FakeStockMovementRepository : IStockMovementRepository
         return Task.FromResult<IReadOnlyCollection<Guid>>(ids);
     }
 
+    public Task<IReadOnlyCollection<Guid>> GetBatchIdsWithMovementsAsync(
+        IReadOnlyList<Guid> batchIds, Guid warehouseId, CancellationToken cancellationToken = default)
+    {
+        var ids = Appended
+            .Where(m => m.BatchId is not null && batchIds.Contains(m.BatchId.Value))
+            .Where(m => SameWarehouse(m.WarehouseId, warehouseId))
+            .Select(m => m.BatchId!.Value)
+            .Distinct()
+            .ToList();
+        return Task.FromResult<IReadOnlyCollection<Guid>>(ids);
+    }
+
     /// <summary>单仓用例兼容：流水未显式赋仓（<c>Guid.Empty</c>）时按默认仓匹配</summary>
     private static bool SameWarehouse(Guid movementWarehouseId, Guid queryWarehouseId)
         => movementWarehouseId == queryWarehouseId
             || (movementWarehouseId == Guid.Empty && queryWarehouseId == TestWarehouse.DefaultId);
 
     public Task<decimal?> GetMovementUnitCostAsync(
-        Guid sourceId, Guid productId, StockMovementType type, CancellationToken cancellationToken = default)
+        Guid sourceId, Guid productId, Guid? batchId, StockMovementType type, CancellationToken cancellationToken = default)
     {
         // 冲销还原成本：在已追加的流水中反查「原方向」单价（无匹配返回 null，由调用方兜底）
         var matched = Appended
             .Where(m => m.SourceId == sourceId && m.ProductId == productId && m.MovementType == type)
+            .Where(m => batchId is null || m.BatchId == batchId)
             .Select(m => (decimal?)m.UnitCost)
             .FirstOrDefault();
         return Task.FromResult(matched);
@@ -105,6 +120,7 @@ internal sealed class FakeStockMovementRepository : IStockMovementRepository
             {
                 Id = m.Id,
                 ProductId = m.ProductId,
+                BatchId = m.BatchId,
                 WarehouseId = m.WarehouseId,
                 MovementType = m.MovementType,
                 Quantity = m.Quantity,

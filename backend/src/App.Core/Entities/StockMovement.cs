@@ -20,6 +20,9 @@ public sealed class StockMovement
     /// </summary>
     public Guid WarehouseId { get; set; }
 
+    /// <summary>批次 ID（可空：按批次商品必填；外键 → Batches(Id)，040）</summary>
+    public Guid? BatchId { get; set; }
+
     /// <summary>变动类型</summary>
     public StockMovementType MovementType { get; set; }
 

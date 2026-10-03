@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-10-02
 ---
 
 # 需求规格：批次与保质期管理（erp-batch-expiry）

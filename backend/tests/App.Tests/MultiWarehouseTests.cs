@@ -108,7 +108,7 @@ public class MultiWarehouseTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
 
         var result = await handler.HandleAsync(new CreatePurchaseReceiptRequest
         {
@@ -145,7 +145,7 @@ public class MultiWarehouseTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreatePurchaseReceiptRequest
         {
@@ -175,7 +175,7 @@ public class MultiWarehouseTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreatePurchaseReceiptRequest
         {
@@ -209,7 +209,7 @@ public class MultiWarehouseTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public class MultiWarehouseTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
 
         var result = await handler.HandleAsync(new CreateSalesReturnRequest
         {
@@ -326,7 +326,7 @@ public class MultiWarehouseTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
 
         var result = await handler.HandleAsync(new CreatePurchaseReturnRequest
         {
@@ -361,6 +361,7 @@ public class MultiWarehouseTests
             warehouses,
             inventory,
             movements,
+            new FakeBatchRepository(), new TestClock(Date),
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
             TestSupport.AuditLogger);
@@ -405,6 +406,7 @@ public class MultiWarehouseTests
 
         var handler = new CreateStockTakeRequestHandler(
             new FakeStockTakeRepository(), products, warehouses, inventory, movements,
+            new FakeBatchRepository(), new TestClock(Date),
             new RecordingUnitOfWork(), new StubCurrentUser(Guid.NewGuid()), TestSupport.AuditLogger);
 
         // 默认仓：拒绝（该仓已有变动）
@@ -451,7 +453,8 @@ public class MultiWarehouseTests
             new FakePurchaseReceiptRepository(), new FakePurchaseOrderRepository(),
             new PartnerRepository(context), new ProductRepository(context), warehouses,
             inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
-            new RecordingUnitOfWork(), new StubCurrentUser(Guid.NewGuid()), TestSupport.AuditLogger);
+            new RecordingUnitOfWork(), new StubCurrentUser(Guid.NewGuid()),
+            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
         await receiptHandler.HandleAsync(new CreatePurchaseReceiptRequest
         {
             PartnerId = supplier.Id,
