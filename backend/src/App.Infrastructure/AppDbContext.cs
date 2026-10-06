@@ -154,6 +154,12 @@ public class AppDbContext : DbContext
     /// <summary>调拨单明细表（039-erp-transfer）</summary>
     public DbSet<TransferItem> TransferItems => Set<TransferItem>();
 
+    /// <summary>站内信表（041-erp-stock-alert，纯追加 + 只标记已读）</summary>
+    public DbSet<Notification> Notifications => Set<Notification>();
+
+    /// <summary>告警去重台账表（041-erp-stock-alert，当日去重唯一索引）</summary>
+    public DbSet<AlertRecord> AlertRecords => Set<AlertRecord>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

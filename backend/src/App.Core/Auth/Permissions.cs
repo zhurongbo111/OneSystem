@@ -435,6 +435,9 @@ public static class Permissions
     /// <summary>查看站内消息</summary>
     public const string NotificationsView = "notifications.view";
 
+    /// <summary>手动触发库存预警扫描（高风险、低频，建议仅管理员持有）</summary>
+    public const string NotificationsScan = "notifications.scan";
+
     // ===== 单据审批（042） =====
     /// <summary>查看单据审批</summary>
     public const string ApprovalsView = "approvals.view";
@@ -483,7 +486,7 @@ public static class Permissions
         BankAccountsView, BankAccountsCreate, BankAccountsUpdate, BankAccountsDelete, BankAccountsStatus,
         CashJournalsView,
         FinancialReportsView,
-        NotificationsView,
+        NotificationsView, NotificationsScan,
         ApprovalsView, ApprovalsApprove,
     ];
 
@@ -539,7 +542,7 @@ public static class Permissions
         new("资金账户", [new PermissionItem(BankAccountsView, "查看"), new PermissionItem(BankAccountsCreate, "新增"), new PermissionItem(BankAccountsUpdate, "编辑"), new PermissionItem(BankAccountsDelete, "删除"), new PermissionItem(BankAccountsStatus, "启用 / 停用")]),
         new("资金日记账", [new PermissionItem(CashJournalsView, "查看")]),
         new("财务报表", [new PermissionItem(FinancialReportsView, "查看")]),
-        new("站内消息", [new PermissionItem(NotificationsView, "查看")]),
+        new("站内消息", [new PermissionItem(NotificationsView, "查看"), new PermissionItem(NotificationsScan, "扫描")]),
         new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批")]),
     ];
 

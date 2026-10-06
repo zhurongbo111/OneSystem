@@ -1,4 +1,5 @@
 using App.Core.Abstractions;
+using App.Core.Alerts;
 using App.Core.Auth;
 using App.Core.Exports;
 using App.Core.Features.AccountingPeriods.ClosePeriod;
@@ -81,6 +82,12 @@ using App.Core.Features.Partners.GetPartnerById;
 using App.Core.Features.Partners.GetPartners;
 using App.Core.Features.Partners.UpdatePartner;
 using App.Core.Features.Partners.UpdatePartnerStatus;
+using App.Core.Features.Notifications;
+using App.Core.Features.Notifications.GetNotifications;
+using App.Core.Features.Notifications.GetNotificationSummary;
+using App.Core.Features.Notifications.MarkAllNotificationsRead;
+using App.Core.Features.Notifications.MarkNotificationRead;
+using App.Core.Features.Notifications.ScanStockAlerts;
 using App.Core.Features.PartnerPrices;
 using App.Core.Features.PartnerPrices.CreatePartnerPrice;
 using App.Core.Features.PartnerPrices.DeletePartnerPrice;
@@ -396,6 +403,16 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<UpdateBatchStatusRequest, BatchDetailDto>, UpdateBatchStatusRequestHandler>();
         services.AddScoped<IRequestHandler<GetBatchPickListRequest, IReadOnlyList<BatchPickDto>>, GetBatchPickListRequestHandler>();
 
+        // 站内消息与库存预警扫描（erp-stock-alert，041）
+        services.AddScoped<IRequestHandler<GetNotificationsRequest, PagedResult<NotificationListItemDto>>, GetNotificationsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetNotificationSummaryRequest, NotificationSummaryDto>, GetNotificationSummaryRequestHandler>();
+        services.AddScoped<IRequestHandler<MarkNotificationReadRequest, object?>, MarkNotificationReadRequestHandler>();
+        services.AddScoped<IRequestHandler<MarkAllNotificationsReadRequest, MarkAllNotificationsReadResponse>, MarkAllNotificationsReadRequestHandler>();
+        services.AddScoped<IRequestHandler<ScanStockAlertsRequest, StockAlertScanResultDto>, ScanStockAlertsRequestHandler>();
+
+        // 库存预警扫描器（erp-stock-alert，041）：手动扫描与定时宿主共用同一实现（时间由调用方注入）
+        services.AddScoped<IStockAlertScanner, StockAlertScanner>();
+
         // 库存查询用例（erp-inventory-query）
         services.AddScoped<IRequestHandler<GetInventoryRequest, PagedResult<InventoryItemDto>>, GetInventoryRequestHandler>();
 
@@ -632,6 +649,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetAccountBalanceRequest>, GetAccountBalanceRequestValidator>();
         services.AddScoped<IValidator<GetBalanceSheetRequest>, GetBalanceSheetRequestValidator>();
         services.AddScoped<IValidator<GetIncomeStatementRequest>, GetIncomeStatementRequestValidator>();
+        services.AddScoped<IValidator<GetNotificationsRequest>, GetNotificationsRequestValidator>();
 
         return services;
     }

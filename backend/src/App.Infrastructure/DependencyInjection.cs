@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Infrastructure.Audit;
 using App.Infrastructure.Auth;
 using App.Infrastructure.Exports;
+using App.Infrastructure.Notifications;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Repositories;
 
@@ -104,6 +105,13 @@ public static class DependencyInjection
         // 操作审计日志（erp-audit-log）：写入器（Scoped，随调用方事务落库）与只读仓储
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogger, AuditLogger>();
+
+        // 站内消息与库存预警（erp-stock-alert，041）：站内信 / 去重台账 / 只读信号查询 / 接收人反查 / 写入通道
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IAlertRecordRepository, AlertRecordRepository>();
+        services.AddScoped<IStockAlertQueryRepository, StockAlertQueryRepository>();
+        services.AddScoped<IPermissionedUserQuery, PermissionedUserQuery>();
+        services.AddScoped<INotificationWriter, NotificationWriter>();
 
         return services;
     }

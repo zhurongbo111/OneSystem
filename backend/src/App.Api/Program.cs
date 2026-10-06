@@ -1,4 +1,5 @@
 using App.Api;
+using App.Api.HostedServices;
 using App.Api.Middleware;
 using App.Core;
 using App.Infrastructure;
@@ -12,6 +13,8 @@ builder.Services.AddCore();
 builder.Services.AddInfrastructure(builder.Configuration);
 // ========== API服务注册 ==========
 builder.AddApi();
+// ========== 库存预警定时任务（041）：StockAlert:Enabled = false 时不注册 ==========
+builder.Services.AddStockAlertHostedService(builder.Configuration);
 
 var app = builder.Build();
 
