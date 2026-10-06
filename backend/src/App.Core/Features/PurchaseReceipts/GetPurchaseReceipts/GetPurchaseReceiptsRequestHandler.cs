@@ -27,7 +27,7 @@ public sealed class GetPurchaseReceiptsRequestHandler : IRequestHandler<GetPurch
     {
         var (items, total) = await _purchaseReceiptRepository.GetPagedAsync(
             request.Keyword, request.PartnerId, request.OrderId, request.Start, request.End, request.SettlementState,
-            request.WarehouseId, request.Page, request.PageSize, cancellationToken);
+            request.WarehouseId, request.ApprovalStatus, request.Page, request.PageSize, cancellationToken);
 
         return new PagedResult<PurchaseReceiptListItemDto>
         {

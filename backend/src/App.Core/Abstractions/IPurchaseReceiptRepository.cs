@@ -20,6 +20,7 @@ public interface IPurchaseReceiptRepository
     /// <param name="end">结束业务日期（含），可空</param>
     /// <param name="settlementState">结算状态（0 未结 / 1 部分 / 2 结清，按 SettledAmount 与 TotalAmount 推导），可空</param>
     /// <param name="warehouseId">入库仓 id，可空（038；不传 = 全部仓）</param>
+    /// <param name="approvalStatus">审批状态，可空（042；不传 = 全部）</param>
     /// <param name="page">页码，从 1 起</param>
     /// <param name="pageSize">每页条数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -31,6 +32,7 @@ public interface IPurchaseReceiptRepository
         DateTimeOffset? end,
         SettlementState? settlementState,
         Guid? warehouseId,
+        ApprovalStatus? approvalStatus,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
@@ -71,6 +73,15 @@ public interface IPurchaseReceiptRepository
     /// <param name="operatorId">操作人 id（由 Handler 取 ICurrentUser 传入，可空）</param>
     /// <param name="cancellationToken">取消令牌</param>
     Task UpdateStatusAsync(Guid id, OrderStatus status, Guid? operatorId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 更新单据审批状态并持久化（042；审批通过 / 驳回 / 撤回时由 Handler 调用，同时写入 UpdatedBy / UpdatedAt）
+    /// </summary>
+    /// <param name="id">采购单 id</param>
+    /// <param name="status">目标审批状态</param>
+    /// <param name="operatorId">操作人 id（由 Handler 取 ICurrentUser 传入，可空）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    Task UpdateApprovalStatusAsync(Guid id, ApprovalStatus status, Guid? operatorId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 生成单号：前缀 + yyyyMMdd + 4 位序号（当天同前缀已有单号数 + 1）；

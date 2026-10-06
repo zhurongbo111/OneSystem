@@ -41,6 +41,9 @@ public sealed class SalesReturnDetailDto
     /// <summary>单据状态（0 已作废 / 1 正常）</summary>
     public required int Status { get; init; }
 
+    /// <summary>审批状态（0 无需审批 / 1 待审批 / 2 已通过 / 3 已驳回 / 4 已撤回；042）</summary>
+    public required int ApprovalStatus { get; init; }
+
     /// <summary>备注</summary>
     public string? Remark { get; init; }
 
@@ -123,6 +126,9 @@ public sealed class SalesReturnListItemDto
 
     /// <summary>单据状态（0 已作废 / 1 正常）</summary>
     public required int Status { get; init; }
+
+    /// <summary>审批状态（0 无需审批 / 1 待审批 / 2 已通过 / 3 已驳回 / 4 已撤回；042）</summary>
+    public required int ApprovalStatus { get; init; }
 
     /// <summary>创建时间</summary>
     public required DateTimeOffset CreatedAt { get; init; }

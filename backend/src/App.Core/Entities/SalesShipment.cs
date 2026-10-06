@@ -37,6 +37,9 @@ public sealed class SalesShipment
     /// <summary>单据状态（1=正常 0=已作废；作废后禁止再操作）</summary>
     public OrderStatus Status { get; set; } = OrderStatus.Normal;
 
+    /// <summary>单据审批状态（042；默认无需审批，命中阈值规则时落库为待审批且不生效）</summary>
+    public ApprovalStatus ApprovalStatus { get; set; } = ApprovalStatus.None;
+
     /// <summary>关联销售订单 id（可空：不关联订单时为空，沿用「货到即入账」直通用法，specs/024-erp-order-flow design.md §2.3）</summary>
     public Guid? OrderId { get; set; }
 

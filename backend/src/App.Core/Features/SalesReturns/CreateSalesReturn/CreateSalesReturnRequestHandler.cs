@@ -2,20 +2,19 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Approvals;
 using App.Core.Features.Batches;
 using App.Core.Features.Warehouses;
-using App.Core.Finance;
 
 namespace App.Core.Features.SalesReturns.CreateSalesReturn;
 
 /// <summary>
-/// 新增销售退货单用例（一步式：保存即生效）：
-/// 客户校验（存在 / 启用 / 类型含客户）→ 商品逐行校验（存在 / 启用）
-/// → 后端重算小计 / 总额（不信任前端传值）
-/// → 同一事务：单号生成（SR + yyyyMMdd + 序号，唯一索引冲突重试最多 3 次）
-///   → 插单 + 明细 → 逐行库存回增（IncrementAsync(+quantity)，无上限校验）+ 逐行流水（IUnitOfWork 包裹，见 design.md §3.5）。
-/// 与采购退货的顺序差异：销售退货无库存约束，故「生成单号 → 插单 → 回增 + 流水」，
-/// 不采用「先扣减再插单」（任一环节失败整体回滚）。
+/// 新增销售退货单用例（一步式）。
+/// **未命中审批规则（042 §0.2）**：保存即生效 —— 客户校验（存在 / 启用 / 类型含客户）→ 商品逐行校验
+///   → 后端重算小计 / 总额 → 单号生成（SR + yyyyMMdd + 序号，唯一索引冲突重试最多 3 次）
+///   → 同一事务：<see cref="SalesReturnFulfillment"/> 生效（逐行库存回增 + 成本转回 + 流水 + 凭证）。
+/// **命中审批规则**：单据落库为「待审批」并生成审批记录 + 给审批人发站内信，**不产生任何库存 / 流水 / 成本变化**；
+///   生效动作延迟到审批通过时由同一 <see cref="SalesReturnFulfillment"/> 执行（specs/042-erp-approval）。
 /// </summary>
 public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSalesReturnRequest, SalesReturnDetailDto>
 {
@@ -29,16 +28,14 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IWarehouseRepository _warehouseRepository;
-    private readonly IInventoryRepository _inventoryRepository;
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly IVoucherRepository _voucherRepository;
-    private readonly IAccountMappingRepository _accountMappingRepository;
-    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
-    private readonly IAccountRepository _accountRepository;
+    private readonly IBatchRepository _batchRepository;
+    private readonly IApprovalRuleRepository _approvalRuleRepository;
+    private readonly IApprovalRepository _approvalRepository;
+    private readonly SalesReturnFulfillment _fulfillment;
+    private readonly ApprovalNotifier _approvalNotifier;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
-    private readonly IBatchRepository _batchRepository;
     private readonly ISystemClock _clock;
 
     /// <summary>
@@ -49,32 +46,28 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
         IWarehouseRepository warehouseRepository,
-        IInventoryRepository inventoryRepository,
-        IStockMovementRepository stockMovementRepository,
-        IVoucherRepository voucherRepository,
-        IAccountMappingRepository accountMappingRepository,
-        IAccountingPeriodRepository accountingPeriodRepository,
-        IAccountRepository accountRepository,
+        IBatchRepository batchRepository,
+        IApprovalRuleRepository approvalRuleRepository,
+        IApprovalRepository approvalRepository,
+        SalesReturnFulfillment fulfillment,
+        ApprovalNotifier approvalNotifier,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger,
-        IBatchRepository batchRepository,
         ISystemClock clock)
     {
         _salesReturnRepository = salesReturnRepository;
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
         _warehouseRepository = warehouseRepository;
-        _inventoryRepository = inventoryRepository;
-        _stockMovementRepository = stockMovementRepository;
-        _voucherRepository = voucherRepository;
-        _accountMappingRepository = accountMappingRepository;
-        _accountingPeriodRepository = accountingPeriodRepository;
-        _accountRepository = accountRepository;
+        _batchRepository = batchRepository;
+        _approvalRuleRepository = approvalRuleRepository;
+        _approvalRepository = approvalRepository;
+        _fulfillment = fulfillment;
+        _approvalNotifier = approvalNotifier;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
-        _batchRepository = batchRepository;
         _clock = clock;
     }
 
@@ -129,17 +122,23 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                 products[line.ProductId] = product;
             }
 
-            var subtotal = line.Quantity * line.UnitPrice;
-            totalAmount += subtotal;
+            totalAmount += line.Quantity * line.UnitPrice;
         }
 
         // 入库仓解析（038 §3.4 第 1 步）：入参可空 → 默认仓；指定仓不存在 40400、已停用 40123
         var warehouse = await WarehouseResolver.ResolveAsync(_warehouseRepository, request.WarehouseId, cancellationToken);
 
-        var now = DateTimeOffset.UtcNow;
-        var operatorId = _currentUser.UserId();
+        // 审批规则判定（042 §0.1）：规则启用 且 金额 ≥ 阈值 → 触发审批（保存时不生效）
+        var rule = await _approvalRuleRepository.GetAsync(SettlementOrderType.SalesReturn, cancellationToken);
+        var requiresApproval = rule is not null && rule.Enabled && totalAmount >= rule.ThresholdAmount;
 
-        // 事务：插单 + 明细 + 逐行库存回增 + 流水；单号冲突（唯一索引）时回滚后重新生成单号重试
+        var now = DateTimeOffset.UtcNow;
+        var operatorId = _currentUser.UserId()
+            ?? throw new BusinessException(ErrorCode.Unauthorized, "登录状态无效，请重新登录");
+        Approval? pendingApproval = null;
+
+        // 事务：插单 + 明细 +（未命中时）生效动作 /（命中时）审批记录；
+        // 单号冲突（唯一索引）时回滚后重新生成单号重试
         for (var attempt = 1; ; attempt++)
         {
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -158,6 +157,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                     TotalAmount = totalAmount,
                     SettledAmount = 0m,
                     Status = OrderStatus.Normal,
+                    ApprovalStatus = requiresApproval ? ApprovalStatus.Pending : ApprovalStatus.None,
                     Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
                     CreatedAt = now,
                     UpdatedAt = now,
@@ -209,58 +209,28 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
 
                 await _salesReturnRepository.AddAsync(salesReturn, items, cancellationToken);
 
-                // 库存回增 + 库存流水：销售退货入库无上限校验（design.md §5），与流水同事务逐行 1:1
-                // 成本转回金额 = Σ 本次退货入库成本（作为自动凭证的成本转回分录金额）
-                var costAmount = 0m;
-                foreach (var item in items)
+                if (requiresApproval)
                 {
-                    await _inventoryRepository.IncrementAsync(
-                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, cancellationToken);
-
-                    // 成本（erp-cost design §0.2）：按被退销售单原出库成本单价退回；
-                    // 销售退货不关联原单（specs/021 §5），查不到原流水时兜底按该仓该批次行当前移动加权均价（040 起按批次行）
-                    var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
-                        salesReturn.Id, item.ProductId, item.BatchId, StockMovementType.SalesOutbound, cancellationToken)
-                        ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, warehouse.Id, item.BatchId, cancellationToken);
-                    var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
-                    costAmount += totalCost;
-                    await _inventoryRepository.ApplyInboundCostAsync(
-                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, unitCost, cancellationToken);
-
-                    await _stockMovementRepository.AppendAsync(new StockMovement
+                    // 命中审批：仅落单 + 审批记录，**不产生任何库存 / 流水 / 成本变化**（042 §0.2）
+                    pendingApproval = new Approval
                     {
                         Id = Guid.NewGuid(),
-                        ProductId = item.ProductId,
-                        WarehouseId = warehouse.Id,
-                        BatchId = item.BatchId,
-                        MovementType = StockMovementType.SalesReturnIn,
-                        Quantity = item.Quantity,
-                        UnitCost = unitCost,
-                        TotalCost = totalCost,
-                        SourceId = salesReturn.Id,
-                        SourceNo = returnNo,
-                        CreatedAt = now,
-                        CreatedBy = operatorId,
-                    }, cancellationToken);
+                        OrderType = SettlementOrderType.SalesReturn,
+                        OrderId = salesReturn.Id,
+                        OrderNo = salesReturn.ReturnNo,
+                        PartnerName = salesReturn.PartnerName,
+                        Amount = salesReturn.TotalAmount,
+                        Status = ApprovalStatus.Pending,
+                        SubmittedBy = operatorId,
+                        SubmittedAt = now,
+                    };
+                    await _approvalRepository.AddAsync(pendingApproval, cancellationToken);
                 }
-
-                // 总账（erp-general-ledger）：同事务生成自动凭证（借主营业务收入 / 贷应收账款，
-                // 并附成本转回分录：借库存商品 / 贷主营业务成本）；
-                // 科目映射缺失（40158）或期间不可记账（40154 / 40159）会阻断整单，随事务回滚
-                await VoucherWriter.AppendAutoAsync(
-                    VoucherSourceType.SalesReturn,
-                    salesReturn.Id,
-                    salesReturn.ReturnNo,
-                    salesReturn.ReturnDate,
-                    salesReturn.TotalAmount,
-                    costAmount,
-                    null,
-                    _voucherRepository,
-                    _accountMappingRepository,
-                    _accountingPeriodRepository,
-                    _accountRepository,
-                    operatorId,
-                    cancellationToken);
+                else
+                {
+                    // 未命中审批：保存即生效（与改造前逐条一致，由共享生效组件执行）
+                    await _fulfillment.ApplyAsync(salesReturn, items, operatorId, now, cancellationToken);
+                }
 
                 // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
                 var createdSalesReturnChangeBuilder = new AuditChangeBuilder()
@@ -270,13 +240,14 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                     .Add("returnDate", "退货日期", null, AuditSummary.Date(salesReturn.ReturnDate))
                     .Add("totalAmount", "退货金额", null, AuditSummary.Money(salesReturn.TotalAmount))
                     .Add("remark", "备注", null, salesReturn.Remark);
+                var createdSummary = $"创建销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、入库仓：{salesReturn.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(salesReturn.TotalAmount)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}";
                 await _auditLogger.RecordAsync(new AuditEntry
                 {
                     Resource = AuditResource.SalesReturn,
                     Action = AuditAction.Create,
                     ResourceId = salesReturn.Id,
                     ResourceNo = salesReturn.ReturnNo,
-                    Summary = $"创建销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、入库仓：{salesReturn.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(salesReturn.TotalAmount)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}",
+                    Summary = requiresApproval ? $"{createdSummary}｜已提交审批（审批通过后才产生库存变动）" : createdSummary,
                     Changes = createdSalesReturnChangeBuilder.Build(),
                     ChangesTruncated = createdSalesReturnChangeBuilder.Truncated,
                     UtcNow = now,
@@ -288,6 +259,12 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                 if (createdReturn is null)
                 {
                     throw new BusinessException(ErrorCode.NotFound, "销售退货单创建后读取失败");
+                }
+
+                // 站内信在提交之后发送：发信失败只记日志，不影响已落库单据（042 §3.5）
+                if (pendingApproval is not null)
+                {
+                    await _approvalNotifier.NotifyPendingAsync(pendingApproval, cancellationToken);
                 }
 
                 return SalesReturnsDtoMapper.ToSalesReturnDetailDto(createdReturn, createdItems);

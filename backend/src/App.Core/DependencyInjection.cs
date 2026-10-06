@@ -14,6 +14,14 @@ using App.Core.Features.Accounts.GetAccountById;
 using App.Core.Features.Accounts.GetAccounts;
 using App.Core.Features.Accounts.UpdateAccount;
 using App.Core.Features.Accounts.UpdateAccountStatus;
+using App.Core.Features.Approvals;
+using App.Core.Features.Approvals.ApproveOrder;
+using App.Core.Features.Approvals.GetApprovalById;
+using App.Core.Features.Approvals.GetApprovals;
+using App.Core.Features.Approvals.GetApprovalRules;
+using App.Core.Features.Approvals.RejectApproval;
+using App.Core.Features.Approvals.UpdateApprovalRules;
+using App.Core.Features.Approvals.WithdrawApproval;
 using App.Core.Features.AuditLogs;
 using App.Core.Features.AuditLogs.GetAuditLogById;
 using App.Core.Features.AuditLogs.GetAuditLogs;
@@ -413,6 +421,26 @@ public static class DependencyInjection
         // 库存预警扫描器（erp-stock-alert，041）：手动扫描与定时宿主共用同一实现（时间由调用方注入）
         services.AddScoped<IStockAlertScanner, StockAlertScanner>();
 
+        // 单据审批用例（erp-approval，042）：列表 / 详情 / 通过 / 驳回 / 撤回 + 规则查询 / 保存
+        services.AddScoped<IRequestHandler<GetApprovalsRequest, PagedResult<ApprovalListItemDto>>, GetApprovalsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetApprovalByIdRequest, ApprovalDetailDto>, GetApprovalByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<ApproveOrderRequest, ApprovalDetailDto>, ApproveOrderRequestHandler>();
+        services.AddScoped<IRequestHandler<RejectApprovalRequest, ApprovalDetailDto>, RejectApprovalRequestHandler>();
+        services.AddScoped<IRequestHandler<WithdrawApprovalRequest, ApprovalDetailDto>, WithdrawApprovalRequestHandler>();
+        services.AddScoped<IRequestHandler<GetApprovalRulesRequest, IReadOnlyList<ApprovalRuleDto>>, GetApprovalRulesRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateApprovalRulesRequest, IReadOnlyList<ApprovalRuleDto>>, UpdateApprovalRulesRequestHandler>();
+
+        // 审批技术组件（erp-approval，042）：站内信通知器 / 详情组装 / 单据关闭（驳回与撤回共用）
+        services.AddScoped<ApprovalNotifier>();
+        services.AddScoped<ApprovalDetailBuilder>();
+        services.AddScoped<ApprovalOrderCloser>();
+
+        // 四类单据「生效」共享组件（erp-approval，042）：未命中审批的创建路径与审批通过路径共用同一份生效逻辑
+        services.AddScoped<PurchaseReceiptFulfillment>();
+        services.AddScoped<SalesShipmentFulfillment>();
+        services.AddScoped<PurchaseReturnFulfillment>();
+        services.AddScoped<SalesReturnFulfillment>();
+
         // 库存查询用例（erp-inventory-query）
         services.AddScoped<IRequestHandler<GetInventoryRequest, PagedResult<InventoryItemDto>>, GetInventoryRequestHandler>();
 
@@ -650,6 +678,10 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetBalanceSheetRequest>, GetBalanceSheetRequestValidator>();
         services.AddScoped<IValidator<GetIncomeStatementRequest>, GetIncomeStatementRequestValidator>();
         services.AddScoped<IValidator<GetNotificationsRequest>, GetNotificationsRequestValidator>();
+        services.AddScoped<IValidator<GetApprovalsRequest>, GetApprovalsRequestValidator>();
+        services.AddScoped<IValidator<ApproveOrderRequest>, ApproveOrderRequestValidator>();
+        services.AddScoped<IValidator<RejectApprovalRequest>, RejectApprovalRequestValidator>();
+        services.AddScoped<IValidator<UpdateApprovalRulesRequest>, UpdateApprovalRulesRequestValidator>();
 
         return services;
     }

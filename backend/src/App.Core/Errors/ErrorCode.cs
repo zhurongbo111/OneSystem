@@ -243,4 +243,11 @@ public static class ErrorCode
 
     /// <summary>内置角色不可编辑 / 不可删除</summary>
     public const int RoleBuiltinImmutable = 40175;
+
+    // ===== 单据审批（specs/042-erp-approval/design.md §3.3） =====
+    /// <summary>单据 / 审批记录当前状态不允许该操作（非待审批、待审批单据不可作废等）</summary>
+    public const int ApprovalStateInvalid = 40136;
+
+    /// <summary>不可审批自己提交的单据（提交人与审批人不得为同一人）</summary>
+    public const int ApprovalSelfForbidden = 40137;
 }

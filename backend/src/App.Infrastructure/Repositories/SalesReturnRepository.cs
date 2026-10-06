@@ -32,6 +32,7 @@ public sealed class SalesReturnRepository : ISalesReturnRepository
         DateTimeOffset? end,
         SettlementState? settlementState,
         Guid? warehouseId,
+        ApprovalStatus? approvalStatus,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -80,6 +81,13 @@ public sealed class SalesReturnRepository : ISalesReturnRepository
         {
             var value = warehouseId.Value;
             query = query.Where(r => r.WarehouseId == value);
+        }
+
+        // 审批状态筛选（042）
+        if (approvalStatus is not null)
+        {
+            var value = approvalStatus.Value;
+            query = query.Where(r => r.ApprovalStatus == value);
         }
 
         var total = await query.CountAsync(cancellationToken);
@@ -156,6 +164,19 @@ public sealed class SalesReturnRepository : ISalesReturnRepository
             .Where(r => r.Id == id)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.Status, status)
+                .SetProperty(r => r.UpdatedAt, now)
+                .SetProperty(r => r.UpdatedBy, operatorId),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task UpdateApprovalStatusAsync(Guid id, ApprovalStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return _dbContext.SalesReturns
+            .Where(r => r.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.ApprovalStatus, status)
                 .SetProperty(r => r.UpdatedAt, now)
                 .SetProperty(r => r.UpdatedBy, operatorId),
             cancellationToken);

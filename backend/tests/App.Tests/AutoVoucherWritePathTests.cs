@@ -52,23 +52,24 @@ public class AutoVoucherWritePathTests
     }
 
     private static CreatePurchaseReceiptRequestHandler CreatePurchaseHandler(Arrange a)
-        => new(
+    {
+        var orderRepo = new FakePurchaseOrderRepository();
+        return new(
             a.Receipts,
-            new FakePurchaseOrderRepository(),
+            orderRepo,
             new PartnerRepository(a.Context),
             new ProductRepository(a.Context),
             new FakeWarehouseRepository(),
-            a.Inventory,
-            a.Movements,
-            a.Gl.Vouchers,
-            a.Gl.Mappings,
-            a.Gl.Periods,
-            a.Gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(a.Inventory, a.Movements, orderRepo, a.Gl.Vouchers, a.Gl.Mappings, a.Gl.Periods, a.Gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(a.Calls),
             a.User,
             TestSupport.AuditLogger,
-            new FakeBatchRepository(),
             new TestClock(OrderDate));
+    }
 
     private static VoidPurchaseReceiptRequestHandler CreateVoidHandler(Arrange a)
         => new(
@@ -170,23 +171,22 @@ public class AutoVoucherWritePathTests
         a.Inventory.Seed(a.Product.Id, 10);
         a.Inventory.AverageCosts[a.Product.Id] = 15m;
 
+        var orderRepo = new FakeSalesOrderRepository();
         var handler = new CreateSalesShipmentRequestHandler(
             a.Shipments,
-            new FakeSalesOrderRepository(),
+            orderRepo,
             new PartnerRepository(a.Context),
             new ProductRepository(a.Context),
             new FakeWarehouseRepository(),
-            a.Inventory,
-            a.Movements,
             new FakeSettlementQueryRepository(),
-            a.Gl.Vouchers,
-            a.Gl.Mappings,
-            a.Gl.Periods,
-            a.Gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new SalesShipmentFulfillment(a.Inventory, a.Movements, orderRepo, a.Gl.Vouchers, a.Gl.Mappings, a.Gl.Periods, a.Gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(a.Calls),
             a.User,
             TestSupport.AuditLogger,
-            new FakeBatchRepository(),
             new TestClock(OrderDate));
 
         await handler.HandleAsync(new CreateSalesShipmentRequest

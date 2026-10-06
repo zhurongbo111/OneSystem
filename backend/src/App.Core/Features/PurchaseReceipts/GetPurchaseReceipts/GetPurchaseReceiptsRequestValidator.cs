@@ -24,6 +24,12 @@ public sealed class GetPurchaseReceiptsRequestValidator : AbstractValidator<GetP
             .Must(s => s is null or SettlementState.Unsettled or SettlementState.PartiallySettled or SettlementState.Settled)
             .WithMessage("结算状态取值非法");
 
+        RuleFor(x => x.ApprovalStatus)
+            .Must(s => s is null
+                or ApprovalStatus.None or ApprovalStatus.Pending or ApprovalStatus.Approved
+                or ApprovalStatus.Rejected or ApprovalStatus.Withdrawn)
+            .WithMessage("审批状态取值非法");
+
         // 日期范围闭区间：两者都传时 start <= end（跨字段校验用匿名类型组合）
         RuleFor(x => new { x.Start, x.End })
             .Must(v => v.Start is null || v.End is null || v.End >= v.Start)

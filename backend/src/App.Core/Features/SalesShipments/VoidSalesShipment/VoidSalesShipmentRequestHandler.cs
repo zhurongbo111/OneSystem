@@ -70,6 +70,14 @@ public sealed class VoidSalesShipmentRequestHandler : IRequestHandler<VoidSalesS
             throw new BusinessException(ErrorCode.OrderVoided, "单据已作废，禁止再操作");
         }
 
+        // 待审批禁止作废（042 §0.2）：待审批单据只能走审批 / 驳回 / 撤回，避免绕过审批闸门
+        if (order.ApprovalStatus == ApprovalStatus.Pending)
+        {
+            throw new BusinessException(
+                ErrorCode.ApprovalStateInvalid,
+                $"销售出库单 {order.ShipmentNo} 处于待审批，不能作废；请先完成审批或由提交人撤回");
+        }
+
         // 已核销禁止作废：作废与核销互斥（specs/023-erp-settlement design.md §0）——须先作废对应收付款单回退已结金额
         if (order.SettledAmount > 0)
         {

@@ -469,19 +469,22 @@ public class AuditLogWriteIntegrationTests
         inventory.Seed(product.Id, 5);
         var audit = new RecordingAuditLogger();
         var gl = GeneralLedgerStubs.Create();
+        var orderRepo = new FakeSalesOrderRepository(calls);
         var handler = new CreateSalesShipmentRequestHandler(
             new FakeSalesShipmentRepository(calls),
-            new FakeSalesOrderRepository(calls),
+            orderRepo,
             new PartnerRepository(context),
             new ProductRepository(context),
             new FakeWarehouseRepository(),
-            inventory,
-            new FakeStockMovementRepository(calls),
             new FakeSettlementQueryRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new SalesShipmentFulfillment(inventory, new FakeStockMovementRepository(calls), orderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),
-            audit, new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow));
+            audit, new TestClock(DateTimeOffset.UtcNow));
 
         var error = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreateSalesShipmentRequest
         {

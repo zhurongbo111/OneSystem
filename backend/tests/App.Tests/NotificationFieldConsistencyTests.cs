@@ -56,8 +56,11 @@ public class NotificationFieldConsistencyTests
         Assert.False(validator.Validate(new GetNotificationsRequest { PageSize = 101 }).IsValid);
 
         Assert.True(validator.Validate(new GetNotificationsRequest { Type = (int)NotificationType.LowStock }).IsValid);
+        // 042 续行：3 = 待审批、4 = 审批结果今为合法取值（原「逾期应收」预留值调整为 5）
+        Assert.True(validator.Validate(new GetNotificationsRequest { Type = (int)NotificationType.ApprovalPending }).IsValid);
+        Assert.True(validator.Validate(new GetNotificationsRequest { Type = (int)NotificationType.ApprovalDecided }).IsValid);
         Assert.True(validator.Validate(new GetNotificationsRequest { Type = 5 }).IsValid);
-        Assert.False(validator.Validate(new GetNotificationsRequest { Type = 3 }).IsValid);
+        Assert.False(validator.Validate(new GetNotificationsRequest { Type = 6 }).IsValid);
         Assert.False(validator.Validate(new GetNotificationsRequest { Type = 99 }).IsValid);
     }
 

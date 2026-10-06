@@ -41,11 +41,16 @@ internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
     /// <summary>分页查询返回的总数（由用例预置）</summary>
     public int PagedTotal { get; set; }
 
+    /// <summary>已执行的审批状态筛选入参（042；与 <see cref="PagedQueries"/> 分开记录，避免既有断言改形）</summary>
+    public List<ApprovalStatus?> ApprovalStatusFilters { get; } = [];
+
     public Task<(IReadOnlyList<(SalesShipment Order, int TotalQuantity)> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, Guid? orderId, DateTimeOffset? start, DateTimeOffset? end,
-        SettlementState? settlementState, Guid? warehouseId, int page, int pageSize, CancellationToken cancellationToken = default)
+        SettlementState? settlementState, Guid? warehouseId, ApprovalStatus? approvalStatus, int page, int pageSize,
+        CancellationToken cancellationToken = default)
     {
         PagedQueries.Add((keyword, partnerId, orderId, start, end, settlementState, warehouseId, page, pageSize));
+        ApprovalStatusFilters.Add(approvalStatus);
         return Task.FromResult((PagedItems, PagedTotal));
     }
 
@@ -109,6 +114,16 @@ internal sealed class FakeSalesShipmentRepository : ISalesShipmentRepository
         _calls?.Add("UpdateStatus");
         var order = _orders[id];
         order.Status = status;
+        order.UpdatedBy = operatorId;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateApprovalStatusAsync(Guid id, ApprovalStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("UpdateApprovalStatus");
+        var order = _orders[id];
+        order.ApprovalStatus = status;
         order.UpdatedBy = operatorId;
         order.UpdatedAt = DateTimeOffset.UtcNow;
         return Task.CompletedTask;

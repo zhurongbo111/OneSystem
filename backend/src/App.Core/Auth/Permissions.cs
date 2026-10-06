@@ -445,6 +445,9 @@ public static class Permissions
     /// <summary>审批单据</summary>
     public const string ApprovalsApprove = "approvals.approve";
 
+    /// <summary>维护审批规则（阈值与启用）</summary>
+    public const string ApprovalsRules = "approvals.rules";
+
     /// <summary>
     /// 全量权限点集合（超级管理员解析结果与权限点合法性校验基准）。
     /// 新增权限点必须在此登记，否则 Controller 上的 [RequirePermission] 会被清单守卫测试判为非法 key。
@@ -487,7 +490,7 @@ public static class Permissions
         CashJournalsView,
         FinancialReportsView,
         NotificationsView, NotificationsScan,
-        ApprovalsView, ApprovalsApprove,
+        ApprovalsView, ApprovalsApprove, ApprovalsRules,
     ];
 
     /// <summary>
@@ -543,7 +546,7 @@ public static class Permissions
         new("资金日记账", [new PermissionItem(CashJournalsView, "查看")]),
         new("财务报表", [new PermissionItem(FinancialReportsView, "查看")]),
         new("站内消息", [new PermissionItem(NotificationsView, "查看"), new PermissionItem(NotificationsScan, "扫描")]),
-        new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批")]),
+        new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批"), new PermissionItem(ApprovalsRules, "规则设置")]),
     ];
 
     /// <summary>

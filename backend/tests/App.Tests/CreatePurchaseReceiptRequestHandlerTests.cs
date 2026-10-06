@@ -1,5 +1,6 @@
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.PurchaseReceipts;
 using App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
@@ -29,17 +30,20 @@ public class CreatePurchaseReceiptRequestHandlerTests
         var movements = new FakeStockMovementRepository(calls);
         var uow = new RecordingUnitOfWork(calls);
         var gl = GeneralLedgerStubs.Create();
+        var orderRepo = new FakePurchaseOrderRepository(calls);
         var handler = new CreatePurchaseReceiptRequestHandler(
             orders,
-            new FakePurchaseOrderRepository(calls),
+            orderRepo,
             new PartnerRepository(context),
             new ProductRepository(context),
             new FakeWarehouseRepository(),
-            inventory,
-            movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(inventory, movements, orderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             uow,
-            user, TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow));
+            user, TestSupport.AuditLogger, new TestClock(DateTimeOffset.UtcNow));
         return (context, user, orders, inventory, movements, uow, handler, calls);
     }
 

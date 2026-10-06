@@ -97,18 +97,21 @@ public class MultiWarehouseTests
         var movements = new FakeStockMovementRepository();
         var gl = GeneralLedgerStubs.Create();
 
+        var orderRepo = new FakePurchaseOrderRepository();
         var handler = new CreatePurchaseReceiptRequestHandler(
             new FakePurchaseReceiptRepository(),
-            new FakePurchaseOrderRepository(),
+            orderRepo,
             new PartnerRepository(context),
             new ProductRepository(context),
             warehouses,
-            inventory,
-            movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(inventory, movements, orderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
+            TestSupport.AuditLogger, new TestClock(Date));
 
         var result = await handler.HandleAsync(new CreatePurchaseReceiptRequest
         {
@@ -140,12 +143,16 @@ public class MultiWarehouseTests
             new PartnerRepository(context),
             new ProductRepository(context),
             warehouses,
-            new FakeInventoryRepository(),
-            new FakeStockMovementRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(
+                new FakeInventoryRepository(), new FakeStockMovementRepository(), new FakePurchaseOrderRepository(),
+                gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
+            TestSupport.AuditLogger, new TestClock(Date));
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreatePurchaseReceiptRequest
         {
@@ -170,12 +177,16 @@ public class MultiWarehouseTests
             new PartnerRepository(context),
             new ProductRepository(context),
             NewWarehouses(),
-            new FakeInventoryRepository(),
-            new FakeStockMovementRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(
+                new FakeInventoryRepository(), new FakeStockMovementRepository(), new FakePurchaseOrderRepository(),
+                gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
+            TestSupport.AuditLogger, new TestClock(Date));
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreatePurchaseReceiptRequest
         {
@@ -197,19 +208,22 @@ public class MultiWarehouseTests
         FakeStockMovementRepository movements)
     {
         var gl = GeneralLedgerStubs.Create();
+        var orderRepo = new FakeSalesOrderRepository();
         return new CreateSalesShipmentRequestHandler(
             new FakeSalesShipmentRepository(),
-            new FakeSalesOrderRepository(),
+            orderRepo,
             new PartnerRepository(context),
             new ProductRepository(context),
             warehouses,
-            inventory,
-            movements,
             new FakeSettlementQueryRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new SalesShipmentFulfillment(inventory, movements, orderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
+            TestSupport.AuditLogger, new TestClock(Date));
     }
 
     [Fact]
@@ -284,12 +298,14 @@ public class MultiWarehouseTests
             new PartnerRepository(context),
             new ProductRepository(context),
             warehouses,
-            inventory,
-            movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new SalesReturnFulfillment(inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
+            TestSupport.AuditLogger, new TestClock(Date));
 
         var result = await handler.HandleAsync(new CreateSalesReturnRequest
         {
@@ -321,12 +337,14 @@ public class MultiWarehouseTests
             new PartnerRepository(context),
             new ProductRepository(context),
             warehouses,
-            inventory,
-            movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new PurchaseReturnFulfillment(inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(),
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
+            TestSupport.AuditLogger, new TestClock(Date));
 
         var result = await handler.HandleAsync(new CreatePurchaseReturnRequest
         {
@@ -449,12 +467,15 @@ public class MultiWarehouseTests
         var gl = GeneralLedgerStubs.Create();
 
         // 默认仓入库 10、上海仓入库 30、上海仓再出库 12
+        var orderRepo = new FakePurchaseOrderRepository();
         var receiptHandler = new CreatePurchaseReceiptRequestHandler(
-            new FakePurchaseReceiptRepository(), new FakePurchaseOrderRepository(),
+            new FakePurchaseReceiptRepository(), orderRepo,
             new PartnerRepository(context), new ProductRepository(context), warehouses,
-            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(), new FakeApprovalRuleRepository(), new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(inventory, movements, orderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             new RecordingUnitOfWork(), new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(Date));
+            TestSupport.AuditLogger, new TestClock(Date));
         await receiptHandler.HandleAsync(new CreatePurchaseReceiptRequest
         {
             PartnerId = supplier.Id,
