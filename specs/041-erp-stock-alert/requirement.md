@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-10-06
 ---
 
 # 需求规格：库存预警通知（erp-stock-alert）

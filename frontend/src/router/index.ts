@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { setUnauthorizedHandler } from '@/api/request'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -146,6 +147,13 @@ const routes: RouteRecordRaw[] = [
         path: 'batches',
         name: 'batches',
         component: () => import('@/views/BatchManagement/BatchesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        // 站内消息（041）：入口为顶栏铃铛，不进侧边菜单（specs/041-erp-stock-alert/design.md §4.3）
+        path: 'notifications',
+        name: 'notifications',
+        component: () => import('@/views/NotificationManagement/NotificationsView.vue'),
         meta: { requiresAuth: true },
       },
       {
@@ -529,6 +537,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   batches: 'batches.view',
   categories: 'categories.view',
   partners: 'partners.view',
+  notifications: 'notifications.view',
   inventory: 'inventory.view',
   stockMovements: 'stockMovements.view',
   stockTakes: 'stockTakes.view',
@@ -637,6 +646,13 @@ router.beforeEach(async (to) => {
     return { name: 'forbidden' }
   }
   return true
+})
+
+// 全局后置钩子（041）：登录态下每次路由切换刷新一次顶栏未读数（不做轮询，见 specs/041-erp-stock-alert/design.md §5）
+router.afterEach((to) => {
+  const auth = useAuthStore()
+  if (!auth.isLoggedIn || to.name === 'login') return
+  void useNotificationStore().fetchSummary()
 })
 
 export default router

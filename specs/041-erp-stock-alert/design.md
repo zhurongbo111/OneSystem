@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-17
+updated: 2026-10-06
 ---
 
 # 设计规格：库存预警通知（erp-stock-alert）
@@ -17,7 +17,7 @@ updated: 2026-09-17
 | `ExpiringBatch = 1` 近效期 | 批次未过期且 `ExpiryDate <= 今天 + 30`（`BatchFieldConstraints.NearExpiryDays`）且该 `(商品, 仓, 批次)` 库存 > 0（`040` §0 口径） | `/batches?productId=&keyword=<批次号>` |
 | `ExpiredBatch = 2` 过期 | 批次已过期（`ExpiryDate < 今天`）且该 `(商品, 仓, 批次)` 库存 > 0 | `/batches?productId=&keyword=<批次号>` |
 
-- **接收人**：具备 `inventory.view` 权限的**启用**用户（`028` 的权限点）；无匹配用户 → 记 warning 日志并跳过该信号。
+- **接收人**：具备 `inventory.view` 权限的**启用**用户（`028` 的权限点；超级管理员不逐点存储权限，按内置角色 `SuperAdmin` 视为具备全部权限点）；无匹配用户 → 记 warning 日志并跳过该信号。
 - **去重键**：`(AlertType, ResourceKey, AlertDate)`，其中 `ResourceKey` 形如 `product:<productId>:warehouse:<warehouseId>`（低库存）/ `batch:<batchId>:warehouse:<warehouseId>`（批次）；`AlertDate` 为扫描当日（UTC 日期）。**同键同日只告警一次**。
 - **内容模板**（固定中文，含业务标识便于人读）：
   - 低库存：标题「库存不足提醒」，内容「上海仓 商品 A（A001）当前库存 10，低于安全库存 100」；
@@ -103,7 +103,7 @@ updated: 2026-09-17
 | 接口 | 方法 | 说明 |
 |---|---|---|
 | `INotificationRepository` | `AddRangeAsync(IReadOnlyList<Notification>, ...)` | 批量写入站内信 |
-| | `GetPagedAsync(Guid userId, NotificationType? type, bool? isRead, int page, int pageSize, ...)` | 本人消息列表（`CreatedAt DESC`） |
+| | `GetPagedAsync(Guid userId, NotificationType? type, bool? isRead, string? keyword, int page, int pageSize, ...)` | 本人消息列表（`CreatedAt DESC`；`keyword` 模糊匹配 `Title`，列长同 `NotificationFieldConstraints.KeywordMaxLength`） |
 | | `CountUnreadAsync(Guid userId, ...)` | 未读数 |
 | | `MarkReadAsync(Guid id, Guid userId, DateTimeOffset readAt, ...)` | 单条已读（仅本人） |
 | | `MarkAllReadAsync(Guid userId, DateTimeOffset readAt, ...)` | 全部已读 |
@@ -112,7 +112,9 @@ updated: 2026-09-17
 | | `GetExpiringBatchSignalsAsync(DateOnly today, int nearDays, ...)` / `GetExpiredBatchSignalsAsync(DateOnly today, ...)` | 批次信号（联查 `Batches` / `Inventory` / `Products` / `Warehouses`） |
 | `IPermissionedUserQuery` | `GetEnabledUserIdsByPermissionAsync(string permissionKey, ...)` | 按权限点取启用用户 id（`028` 权限数据反向查询，放在该接口内以便单测替身） |
 
-- 单次扫描上限：`StockAlertFieldConstraints.MaxSignalsPerScan = 500`（防异常数据量把一次扫描撑爆；超出记 warning 并写入前 500 条）。
+- 单次扫描上限：`StockAlertFieldConstraints.MaxSignalsPerScan = 500`（防异常数据量把一次扫描撑爆；超出记 warning 并只处理前 500 条，下轮继续）。
+- 读模型 `StockAlertSignal`（`App.Core/Abstractions/`，三类信号共用）：`ProductId` / `ProductCode` / `ProductName` / `WarehouseId` / `WarehouseName` / `Quantity` / `SafetyStock` / `BatchId?` / `BatchNo?` / `ExpiryDate?`（低库存信号后三字段为空）。
+- 批次查询的 `today` 为 UTC 日期粒度（`DateOnly`，扫描器注入），仓储内部换算为 UTC 午夜做 `timestamptz` 比较（与 `040` 同口径，避免日期函数的可翻译性风险）。
 
 ### 3.2 扫描器（`App.Core/Alerts/StockAlertScanner.cs`）
 
@@ -171,11 +173,15 @@ ScanAsync(utcNow):
 ```
 src/
 ├── api/
-│   └── notification.ts                 # 站内信接口层 + 类型文案映射
+│   └── notification.ts                 # 站内信接口层 + 类型文案 / 颜色映射（NOTIFICATION_TYPE_META，唯一来源）
+├── stores/
+│   └── notification.ts                 # 未读数 / 最近消息共享状态（顶栏与列表页共用一个事实源）
 └── views/
     └── NotificationManagement/
         └── NotificationsView.vue       # 站内信列表
 ```
+
+- 未读数的事实源是 `stores/notification.ts`：顶栏铃铛与列表页都读同一份状态，列表页「标记已读 / 全部已读 / 立即扫描」后由该 store 刷新，避免两处各自维护导致不一致。
 
 - 顶栏铃铛为 `AppLayout.vue` 的改造（不新建组件；下拉内容简单，直接内联）。
 
@@ -193,7 +199,7 @@ src/
 
 ### 4.4 页面交互
 
-**顶栏铃铛（`AppLayout.vue` 改造）**：`IconBell`（Tabler）+ 未读 `a-badge`（`unreadCount > 0` 时显示，`99+` 封顶）；点击展开 `a-popover`：最近 `RecentCount` 条（标题 / 类型标签 / 相对时间；未读加粗）+ 「查看全部」跳 `/notifications`；**点击单条** → 标记已读 + 按 `linkRouteName` / `linkQuery` 跳转；切换路由时刷新未读数（`router.afterEach` 拉一次 summary；不做轮询，避免打扰请求）。
+**顶栏铃铛（`AppLayout.vue` 改造）**：`IconBell`（Tabler）+ 未读 `a-badge`（`unreadCount > 0` 时显示，`99+` 封顶）；点击展开 `a-popover`：最近 `RecentCount` 条（标题 / 类型标签 / 相对时间；未读加粗）+ 「查看全部」跳 `/notifications`；**点击单条** → 标记已读 + 按 `linkRouteName` / `linkQuery` 跳转；切换路由时刷新未读数（`router.afterEach` 拉一次 summary；不做轮询，避免打扰请求）；列表页操作（标记已读 / 全部已读 / 立即扫描）后由共享 store 即时刷新，无需等路由切换。
 
 **站内信列表 `NotificationsView.vue`**（参照 `specs/006-list-showcase/design.md` §0）：筛选行（类型下拉 + 已读状态下拉（全部 / 未读 / 已读）+ 搜索 / 重置）；操作行（「全部已读」`a-popconfirm` + 「立即扫描」（`notifications.scan` 权限，`scanning` loading）+ 刷新 + 列设置）；列：序号、类型（`a-tag`）、标题、内容（`ellipsis` + `tooltip`）、时间、状态（未读 `a-tag arcoblue` / 已读灰字）、操作列（1 个「查看」→ 标记已读并跳转链接；无链接时仅标记已读）；服务端分页。
 

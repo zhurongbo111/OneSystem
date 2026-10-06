@@ -151,6 +151,34 @@ namespace App.Infrastructure.Migrations
                     b.ToTable("AccountingPeriods", (string)null);
                 });
 
+            modelBuilder.Entity("App.Core.Entities.AlertRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("AlertDate")
+                        .HasColumnType("date");
+
+                    b.Property<short>("AlertType")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResourceKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlertType", "ResourceKey", "AlertDate")
+                        .IsUnique();
+
+                    b.ToTable("AlertRecords", (string)null);
+                });
+
             modelBuilder.Entity("App.Core.Entities.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -624,6 +652,58 @@ namespace App.Infrastructure.Migrations
                     b.HasIndex("OrderType", "OrderId");
 
                     b.ToTable("InvoiceItems", (string)null);
+                });
+
+            modelBuilder.Entity("App.Core.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LinkQuery")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("LinkRouteName")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResourceKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<short>("Type")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .IsDescending(false, true);
+
+                    b.HasIndex("UserId", "ReadAt");
+
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("App.Core.Entities.Partner", b =>
@@ -2482,6 +2562,15 @@ namespace App.Infrastructure.Migrations
                     b.HasOne("App.Core.Entities.Invoice", null)
                         .WithMany()
                         .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("App.Core.Entities.Notification", b =>
+                {
+                    b.HasOne("App.Core.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
