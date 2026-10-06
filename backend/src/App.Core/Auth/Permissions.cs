@@ -438,6 +438,34 @@ public static class Permissions
     /// <summary>手动触发库存预警扫描（高风险、低频，建议仅管理员持有）</summary>
     public const string NotificationsScan = "notifications.scan";
 
+    // ===== CRM 售前（043） =====
+    /// <summary>查看线索</summary>
+    public const string LeadsView = "leads.view";
+
+    /// <summary>新增线索</summary>
+    public const string LeadsCreate = "leads.create";
+
+    /// <summary>编辑线索（含状态流转与新增跟进活动）</summary>
+    public const string LeadsUpdate = "leads.update";
+
+    /// <summary>线索转商机</summary>
+    public const string LeadsConvert = "leads.convert";
+
+    /// <summary>线索状态流转</summary>
+    public const string LeadsStatus = "leads.status";
+
+    /// <summary>查看商机</summary>
+    public const string OpportunitiesView = "opportunities.view";
+
+    /// <summary>新增商机</summary>
+    public const string OpportunitiesCreate = "opportunities.create";
+
+    /// <summary>编辑商机（含新增跟进活动）</summary>
+    public const string OpportunitiesUpdate = "opportunities.update";
+
+    /// <summary>商机阶段推进</summary>
+    public const string OpportunitiesStage = "opportunities.stage";
+
     // ===== 单据审批（042） =====
     /// <summary>查看单据审批</summary>
     public const string ApprovalsView = "approvals.view";
@@ -491,6 +519,8 @@ public static class Permissions
         FinancialReportsView,
         NotificationsView, NotificationsScan,
         ApprovalsView, ApprovalsApprove, ApprovalsRules,
+        LeadsView, LeadsCreate, LeadsUpdate, LeadsConvert, LeadsStatus,
+        OpportunitiesView, OpportunitiesCreate, OpportunitiesUpdate, OpportunitiesStage,
     ];
 
     /// <summary>
@@ -547,6 +577,8 @@ public static class Permissions
         new("财务报表", [new PermissionItem(FinancialReportsView, "查看")]),
         new("站内消息", [new PermissionItem(NotificationsView, "查看"), new PermissionItem(NotificationsScan, "扫描")]),
         new("单据审批", [new PermissionItem(ApprovalsView, "查看"), new PermissionItem(ApprovalsApprove, "审批"), new PermissionItem(ApprovalsRules, "规则设置")]),
+        new("线索", [new PermissionItem(LeadsView, "查看"), new PermissionItem(LeadsCreate, "新增"), new PermissionItem(LeadsUpdate, "编辑"), new PermissionItem(LeadsStatus, "状态流转"), new PermissionItem(LeadsConvert, "转商机")]),
+        new("商机", [new PermissionItem(OpportunitiesView, "查看"), new PermissionItem(OpportunitiesCreate, "新增"), new PermissionItem(OpportunitiesUpdate, "编辑"), new PermissionItem(OpportunitiesStage, "阶段推进")]),
     ];
 
     /// <summary>

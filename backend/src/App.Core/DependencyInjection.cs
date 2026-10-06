@@ -14,6 +14,11 @@ using App.Core.Features.Accounts.GetAccountById;
 using App.Core.Features.Accounts.GetAccounts;
 using App.Core.Features.Accounts.UpdateAccount;
 using App.Core.Features.Accounts.UpdateAccountStatus;
+using App.Core.Features.Activities;
+using App.Core.Features.Activities.CreateLeadActivity;
+using App.Core.Features.Activities.CreateOpportunityActivity;
+using App.Core.Features.Activities.GetLeadActivities;
+using App.Core.Features.Activities.GetOpportunityActivities;
 using App.Core.Features.Approvals;
 using App.Core.Features.Approvals.ApproveOrder;
 using App.Core.Features.Approvals.GetApprovalById;
@@ -121,6 +126,19 @@ using App.Core.Features.Positions.GetPositionPicks;
 using App.Core.Features.Positions.GetPositions;
 using App.Core.Features.Positions.UpdatePosition;
 using App.Core.Features.Positions.UpdatePositionStatus;
+using App.Core.Features.Leads;
+using App.Core.Features.Leads.ConvertLead;
+using App.Core.Features.Leads.CreateLead;
+using App.Core.Features.Leads.GetLeadById;
+using App.Core.Features.Leads.GetLeads;
+using App.Core.Features.Leads.UpdateLead;
+using App.Core.Features.Leads.UpdateLeadStatus;
+using App.Core.Features.Opportunities;
+using App.Core.Features.Opportunities.CreateOpportunity;
+using App.Core.Features.Opportunities.GetOpportunities;
+using App.Core.Features.Opportunities.GetOpportunityById;
+using App.Core.Features.Opportunities.UpdateOpportunity;
+using App.Core.Features.Opportunities.UpdateOpportunityStage;
 using App.Core.Features.PurchaseOrders;
 using App.Core.Features.PurchaseOrders.ClosePurchaseOrder;
 using App.Core.Features.PurchaseOrders.CreatePurchaseOrder;
@@ -500,6 +518,27 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<VoidQuotationRequest, QuotationDetailDto>, VoidQuotationRequestHandler>();
         services.AddScoped<IRequestHandler<ConvertQuotationRequest, ConvertQuotationResultDto>, ConvertQuotationRequestHandler>();
 
+        // 线索用例（erp-crm-presale，043；售前意向，不触碰库存与资金）
+        services.AddScoped<IRequestHandler<GetLeadsRequest, PagedResult<LeadListItemDto>>, GetLeadsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetLeadByIdRequest, LeadDetailDto>, GetLeadByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateLeadRequest, LeadDetailDto>, CreateLeadRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateLeadRequest, LeadDetailDto>, UpdateLeadRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateLeadStatusRequest, LeadDetailDto>, UpdateLeadStatusRequestHandler>();
+        services.AddScoped<IRequestHandler<ConvertLeadRequest, ConvertLeadResultDto>, ConvertLeadRequestHandler>();
+
+        // 商机用例（erp-crm-presale，043；售前意向，不触碰库存与资金）
+        services.AddScoped<IRequestHandler<GetOpportunitiesRequest, PagedResult<OpportunityListItemDto>>, GetOpportunitiesRequestHandler>();
+        services.AddScoped<IRequestHandler<GetOpportunityByIdRequest, OpportunityDetailDto>, GetOpportunityByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateOpportunityRequest, OpportunityDetailDto>, CreateOpportunityRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateOpportunityRequest, OpportunityDetailDto>, UpdateOpportunityRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateOpportunityStageRequest, OpportunityDetailDto>, UpdateOpportunityStageRequestHandler>();
+
+        // 跟进活动用例（erp-crm-presale，043；纯追加，按归属域拆分端点）
+        services.AddScoped<IRequestHandler<GetLeadActivitiesRequest, IReadOnlyList<ActivityItemDto>>, GetLeadActivitiesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateLeadActivityRequest, ActivityItemDto>, CreateLeadActivityRequestHandler>();
+        services.AddScoped<IRequestHandler<GetOpportunityActivitiesRequest, IReadOnlyList<ActivityItemDto>>, GetOpportunityActivitiesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateOpportunityActivityRequest, ActivityItemDto>, CreateOpportunityActivityRequestHandler>();
+
         // 销售退货用例（erp-sale-return）
         services.AddScoped<IRequestHandler<GetSalesReturnsRequest, PagedResult<SalesReturnListItemDto>>, GetSalesReturnsRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesReturnByIdRequest, SalesReturnDetailDto>, GetSalesReturnByIdRequestHandler>();
@@ -597,6 +636,16 @@ public static class DependencyInjection
         services.AddScoped<IValidator<GetQuotationsRequest>, GetQuotationsRequestValidator>();
         services.AddScoped<IValidator<CreateQuotationRequest>, CreateQuotationRequestValidator>();
         services.AddScoped<IValidator<UpdateQuotationRequest>, UpdateQuotationRequestValidator>();
+        services.AddScoped<IValidator<GetLeadsRequest>, GetLeadsRequestValidator>();
+        services.AddScoped<IValidator<CreateLeadRequest>, CreateLeadRequestValidator>();
+        services.AddScoped<IValidator<UpdateLeadRequest>, UpdateLeadRequestValidator>();
+        services.AddScoped<IValidator<UpdateLeadStatusRequest>, UpdateLeadStatusRequestValidator>();
+        services.AddScoped<IValidator<GetOpportunitiesRequest>, GetOpportunitiesRequestValidator>();
+        services.AddScoped<IValidator<CreateOpportunityRequest>, CreateOpportunityRequestValidator>();
+        services.AddScoped<IValidator<UpdateOpportunityRequest>, UpdateOpportunityRequestValidator>();
+        services.AddScoped<IValidator<UpdateOpportunityStageRequest>, UpdateOpportunityStageRequestValidator>();
+        services.AddScoped<IValidator<CreateLeadActivityRequest>, CreateLeadActivityRequestValidator>();
+        services.AddScoped<IValidator<CreateOpportunityActivityRequest>, CreateOpportunityActivityRequestValidator>();
         services.AddScoped<IValidator<GetPurchaseReturnsRequest>, GetPurchaseReturnsRequestValidator>();
         services.AddScoped<IValidator<CreatePurchaseReturnRequest>, CreatePurchaseReturnRequestValidator>();
         services.AddScoped<IValidator<GetTransfersRequest>, GetTransfersRequestValidator>();

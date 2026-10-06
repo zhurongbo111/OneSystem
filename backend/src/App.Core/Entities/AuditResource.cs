@@ -98,4 +98,13 @@ public enum AuditResource
 
     /// <summary>批次（040）</summary>
     Batch = 30,
+
+    /// <summary>线索（043）</summary>
+    Lead = 31,
+
+    /// <summary>商机（043）</summary>
+    Opportunity = 32,
+
+    /// <summary>跟进活动（043，纯追加）</summary>
+    Activity = 33,
 }

@@ -166,6 +166,15 @@ public class AppDbContext : DbContext
     /// <summary>审批记录表（042-erp-approval，一张单据一条）</summary>
     public DbSet<Approval> Approvals => Set<Approval>();
 
+    /// <summary>线索表（043-erp-crm-presale）</summary>
+    public DbSet<Lead> Leads => Set<Lead>();
+
+    /// <summary>商机表（043-erp-crm-presale）</summary>
+    public DbSet<Opportunity> Opportunities => Set<Opportunity>();
+
+    /// <summary>跟进活动表（043-erp-crm-presale，纯追加）</summary>
+    public DbSet<Activity> Activities => Set<Activity>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

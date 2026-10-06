@@ -250,4 +250,11 @@ public static class ErrorCode
 
     /// <summary>不可审批自己提交的单据（提交人与审批人不得为同一人）</summary>
     public const int ApprovalSelfForbidden = 40137;
+
+    // ===== CRM 售前（specs/043-erp-crm-presale/design.md §3.2） =====
+    /// <summary>线索已转化 / 已废弃（终态），不可再转商机</summary>
+    public const int LeadNotConvertible = 40168;
+
+    /// <summary>商机已赢单 / 输单（终态），不可改阶段</summary>
+    public const int OpportunityClosed = 40169;
 }
