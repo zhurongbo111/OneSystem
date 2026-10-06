@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-10-06
 ---
 
 # 需求规格：CRM 售前（erp-crm-presale）
@@ -35,7 +35,7 @@ updated: 2026-09-20
 - **F1 线索**：`GET /api/leads`（关键词 / 来源 / 状态 / 负责人筛选 + 分页）；新增 / 编辑 / 状态流转（新线索 → 跟进中 → 已转化 / 已废弃）；单号 `LD + yyyyMMdd + 4`。
 - **F2 线索转商机**：`POST /api/leads/{id}/convert` → 生成商机、线索置「已转化」（已转化 / 已废弃不可再转，`40168`）。
 - **F3 商机**：`GET /api/opportunities`（关键词 / 阶段 / 客户 / 负责人筛选 + 分页）；新增 / 编辑 / 阶段推进；单号 `OP + yyyyMMdd + 4`；`Won` / `Lost` 为终态（终态后不可改阶段，`40169`）。
-- **F4 跟进活动**：`GET /api/activities?bizType=&bizId=`、`POST /api/activities`（线索 / 商机下新增跟进记录）；只增不改不删（留痕）。
+- **F4 跟进活动**：线索 / 商机下新增并查询跟进记录（`GET|POST /api/leads/{id}/activities`、`GET|POST /api/opportunities/{id}/activities`，按归属域拆分端点以复用各域权限点，见 `design.md` §3.3）；只增不改不删（留痕）。
 - **F5 权限与菜单**：§0 续行 `028` / `025`（新建「CRM」分组）。
 - **F6 e2e**：建线索 → 跟进 → 转商机 → 商机阶段推进至赢单 → 已转化线索再转 `40168` / 终态商机改阶段 `40169`。
 

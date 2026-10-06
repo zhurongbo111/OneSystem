@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-10-06
 ---
 
 # 设计规格：CRM 售前（erp-crm-presale）
@@ -79,7 +79,7 @@ CRM 售前（前端 /leads、/opportunities，域目录 CrmManagement/）
 | `Name` | `string` | `varchar(50)` | NOT NULL | 线索名称 / 公司 |
 | `Contact` | `string?` | `varchar(30)` | NULL | 联系人 |
 | `Phone` | `string?` | `varchar(20)` | NULL | 电话 |
-| `Source` | `LeadSource` | `smallint` | NOT NULL，默认 `Other` | 来源 |
+| `Source` | `LeadSource` | `smallint` | NOT NULL，默认 `Other`（**实体默认值**，不落库列默认值：`Other = 4` 与枚举 CLR 默认值 0 不同，落库默认值会让 `Website`(0) 的插入被数据库默认覆盖，见 EF 警告 20601） | 来源 |
 | `Status` | `LeadStatus` | `smallint` | NOT NULL，默认 `New` | |
 | `OwnerId` | `Guid?` | `uuid` | NULL，FK → `Employees(Id)`，索引 | 负责人 |
 | `OpportunityId` / `OpportunityNo` | `Guid?` / `string?` | `uuid` / `varchar(20)` | NULL | 转出的商机 |
@@ -119,9 +119,11 @@ CRM 售前（前端 /leads、/opportunities，域目录 CrmManagement/）
 
 | 常量类 | 常量 |
 |---|---|
-| `LeadFieldConstraints` | `NoMaxLength = 20` / `NameMaxLength = 50` / `ContactMaxLength = 30` / `PhoneMaxLength = 20` / `RemarkMaxLength = 200` |
-| `OpportunityFieldConstraints` | `NoMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` |
+| `LeadFieldConstraints` | `NoMaxLength = 20` / `NameMaxLength = 50` / `ContactMaxLength = 30` / `PhoneMaxLength = 20` / `RemarkMaxLength = 200` / `KeywordMaxLength = NameMaxLength`（= 列表模糊匹配列中的最大列长） |
+| `OpportunityFieldConstraints` | `NoMaxLength = 20` / `NameMaxLength = 50` / `RemarkMaxLength = 200` / `KeywordMaxLength = NameMaxLength` / `AmountMaxValue = 9999999999999999.99`（`numeric(18,2)` 上限，下界 0；前端输入上限另行取安全整数域值，仅作 UI 约束） |
 | `ActivityFieldConstraints` | `ContentMaxLength = 200` |
+
+- 商机客户名称快照列长引用 `PartnerFieldConstraints.NameMaxLength`，不重复登记；活动为纯追加表，无 `UpdatedAt` / `UpdatedBy`（只有 `CreatedAt` / `CreatedBy`，`CreatedBy` 即记录人）。
 
 ### 2.5 迁移
 
@@ -134,11 +136,12 @@ CRM 售前（前端 /leads、/opportunities，域目录 CrmManagement/）
 
 | 接口 / 方法 | 说明 |
 |---|---|
-| `ILeadRepository.GetPagedAsync(...)` / `GetByIdAsync` / `AddAsync` / `UpdateAsync` / `GenerateNoAsync(date, ...)` | |
-| `IOpportunityRepository.GetPagedAsync(...)` / `GetByIdAsync` / `AddAsync` / `UpdateAsync` / `GenerateNoAsync(date, ...)` | |
-| `IActivityRepository.GetByBizAsync(bizType, bizId, ...)` / `AddAsync(...)` | 只增 |
+| `ILeadRepository.GetPagedAsync(keyword, source, status, ownerId, page, pageSize, ...)` / `GetByIdAsync(id)` / `AddAsync(lead)` / `UpdateAsync(lead)` / `GenerateNoAsync(prefix, date, ...)` | `GetByIdAsync` 返回**详情读模型** `LeadDetail`（含负责人姓名），详情 / 编辑 / 状态流转 / 转商机共用；`UpdateAsync` 承载编辑、状态流转与转商机回写（单号与创建审计字段不变） |
+| `IOpportunityRepository.GetPagedAsync(keyword, stage, partnerId, ownerId, page, pageSize, ...)` / `GetByIdAsync(id)` / `AddAsync(opportunity)` / `UpdateAsync(opportunity)` / `GenerateNoAsync(prefix, date, ...)` | 同形；`GetByIdAsync` 返回 `OpportunityDetail`（含负责人姓名） |
+| `IActivityRepository.GetByBizAsync(bizType, bizId, ...)` / `AddAsync(activity)` | 只增（无更新 / 删除方法） |
 
-读模型：`LeadListItem`（含负责人名）、`LeadDetail`、`OpportunityListItem`（含客户 / 负责人名）、`OpportunityDetail`、`ActivityItem`。
+读模型：`LeadListItem`（含负责人名）、`LeadDetail`（含负责人名）、`OpportunityListItem`（含负责人名；客户名取自身快照列）、`OpportunityDetail`（含负责人名）、`ActivityItem`（含记录人显示名）。
+负责人姓名与记录人显示名按 id 批量取回（本页一次查询），不做逐行联查。
 
 ### 3.2 错误码（`ErrorCode.cs`，从 `40168` 起）
 
@@ -171,18 +174,27 @@ CRM 售前（前端 /leads、/opportunities，域目录 CrmManagement/）
 
 ### 3.4 关键用例流程（Handler）
 
-- **ConvertLead**：取线索（`40400`）→ `Status ∈ {New, Following}` 否则 `40168` → `IUnitOfWork`：建商机（名称同线索、`LeadId`、负责人同线索）+ 回写线索（`Status = Converted`、`OpportunityId` / `OpportunityNo`）→ `CommitAsync`。
+- **ConvertLead**：取线索（`40400`）→ `Status ∈ {New, Following}` 否则 `40168` → `IUnitOfWork`：建商机（名称同线索、`LeadId`、负责人同线索、客户空、金额 0、阶段初步接洽）+ 回写线索（`Status = Converted`、`OpportunityId` / `OpportunityNo`）→ `CommitAsync`。
 - **UpdateOpportunityStage**：取商机（`40400`）→ 当前 `Stage ∈ {Won, Lost}` → `40169` → 更新阶段。
-- **UpdateLeadStatus**：终态（`Converted` / `Abandoned`）→ 拒绝改状态（`40168` 语义）。
+- **UpdateLeadStatus**：终态（`Converted` / `Abandoned`）→ 拒绝改状态（`40168` 语义）；
+- **状态流转规则单点**：`UpdateLeadStatus` 与 `UpdateLead`（编辑请求含 `status`，前端编辑表单全量提交）共用 `LeadStatusRules`；商机的 `UpdateOpportunity` 与 `UpdateOpportunityStage` 共用 `OpportunityStageRules`——同一条判据不在两处各写一份。
+- **不可直接置「已转化」**：线索的 `Converted` 只能由 `ConvertLead` 产生（须同时回填商机 id / 单号），编辑或状态流转端点的目标状态为 `Converted` 一律 `40168`；「已废弃」可由编辑表单或状态流转产生。
 
 ### 3.5 校验规则（FluentValidation）
 
 | 请求 | 规则 |
 |---|---|
-| `CreateLeadRequest` / `UpdateLeadRequest` | `name` 必填 1–50；`contact` ≤ 30；`phone` ≤ 20；`source` / `status` 枚举合法；`ownerId` 可空 GUID；`remark` ≤ 200 |
+| `CreateLeadRequest` / `UpdateLeadRequest` | `name` 必填 1–50；`contact` ≤ 30；`phone` ≤ 20；`source` / `status` 枚举合法（新建 `status` 只允许新线索 / 跟进中）；`ownerId` 可空 GUID；`remark` ≤ 200 |
 | `CreateOpportunityRequest` / `UpdateOpportunityRequest` | `name` 必填 1–50；`partnerId` / `leadId` / `ownerId` 可空 GUID；`amount` ≥ 0；`stage` 枚举合法；`expectedCloseDate` 可空；`remark` ≤ 200 |
-| `CreateActivityRequest` | `bizType` / `type` 枚举合法；`bizId` 必填 GUID；`content` 必填 1–200；`activityTime` 必填 |
+| `CreateActivityRequest` | `type` 枚举合法；`content` 必填 1–200；`activityTime` 必填（归属业务 id 由路由给出，`bizType` 由端点决定，不进请求体） |
 | `GetLeadsRequest` / `GetOpportunitiesRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 50 |
+
+### 3.6 登记项（横向能力续行）
+
+- **权限点（`028` §0.2 续行）**：`leads.view/create/update/convert/status`、`opportunities.view/create/update/stage`；活动端点按归属域复用 `leads.*` / `opportunities.*`（见 §0.5、§3.3）。
+- **操作日志（`029` §0.1 续行）**：新增资源 `Lead` / `Opportunity` / `Activity`，写用例全部在「业务写之后、`CommitAsync` 之前」记日志（与业务同事务）；转商机在 `Lead` 资源上以动作 `Update` 记录，跟进活动只记 `Create`。
+- **菜单（`025` §0.2 续行）**：新增顶级分组「CRM（`crm`）」，置于「销售」之后（见 §0.4）。
+- **业务码**：`40168` / `40169` 占用，区间内下一个可用 `40170`（`ROADMAP` §6 同步）。
 
 ## 4. 前端设计
 
@@ -191,17 +203,19 @@ CRM 售前（前端 /leads、/opportunities，域目录 CrmManagement/）
 ```
 src/
 ├── api/
-│   ├── lead.ts                    # 线索 + 活动
-│   ├── opportunity.ts             # 商机 + 活动
+│   ├── lead.ts                    # 线索 CRUD / 状态流转 / 转商机 + 线索活动 + 活动共用类型与文案
+│   ├── opportunity.ts             # 商机 CRUD / 阶段推进 + 商机活动
 └── views/
     └── CrmManagement/
         ├── LeadsView.vue              # 线索列表
-        ├── LeadFormDrawer.vue         # 线索新增 / 编辑
+        ├── LeadFormDrawer.vue         # 线索新增 / 编辑（列表页内抽屉）
         ├── LeadDetailView.vue         # 线索详情（含跟进活动 + 转商机）
         ├── OpportunitiesView.vue      # 商机列表
-        ├── OpportunityFormPage.vue    # 商机新增 / 编辑
+        ├── OpportunityFormPage.vue    # 商机新增 / 编辑（独立页）
         └── OpportunityDetailView.vue  # 商机详情（含跟进活动 + 阶段推进）
 ```
+
+- **接口文件归属与理由（前端规则 §3）**：跟进活动是**从属资源**（归属线索或商机，无独立页面域），故并入两个主域文件——`api/lead.ts` 定义 `ActivityItem` / `SaveActivityPayload` / `ACTIVITY_TYPE_LABELS` 等**共用类型与文案**及线索活动接口，`api/opportunity.ts` 复用其类型、只放商机活动接口；`LEAD_STATUS_META` / `LEAD_SOURCE_LABELS` / `OPPORTUNITY_STAGE_META` 等展示映射随各自域文件（与 `api/approval.ts` / `api/notification.ts` 同惯例）。
 
 ### 4.2 路由与菜单
 
@@ -211,16 +225,19 @@ src/
 | `leads/detail/:id` | `leadDetail` | `LeadDetailView` |
 | `opportunities` | `opportunities` | `OpportunitiesView` |
 | `opportunities/new` | `opportunityCreate` | `OpportunityFormPage` |
+| `opportunities/edit/:id` | `opportunityEdit` | `OpportunityFormPage` |
 | `opportunities/detail/:id` | `opportunityDetail` | `OpportunityDetailView` |
 
-- 「CRM」分组新增「线索」「商机」；`meta.permission = 'leads.view'` / `'opportunities.view'`。
+- 「CRM」分组新增「线索」「商机」；`meta.permission = 'leads.view'` / `'opportunities.view'`（`ROUTE_PERMISSIONS` 登记：`leads` / `leadDetail` → `leads.view`，`opportunities` / `opportunityDetail` → `opportunities.view`，`opportunityCreate` → `opportunities.create`，`opportunityEdit` → `opportunities.update`）。
+- 线索表单为**抽屉**（`LeadFormDrawer`，列表页内新增 / 编辑，故无独立路由）；商机表单为**独立页面**（字段较多且含客户 / 阶段 / 日期，新增与编辑共用 `OpportunityFormPage`，以路由名区分 `mode`）。
 
 ### 4.3 页面交互
 
-- **`LeadsView.vue`**：筛选（关键词 / 来源 / 状态 / 负责人）；列：线索号、名称、联系人、电话、来源、状态、负责人、操作列（查看 / 编辑 / 转商机 / 废弃）。
-- **`LeadDetailView.vue`**：基本信息 + 跟进活动时间线（新增活动抽屉）+ 转商机按钮。
-- **`OpportunitiesView.vue`**：筛选（关键词 / 阶段 / 负责人）；列：商机号、名称、客户、金额、阶段（`a-tag`）、预计成交日期、负责人、操作列。
-- **`OpportunityDetailView.vue`**：基本信息 + 阶段推进（`a-steps` 或下拉）+ 活动时间线。
+- **`LeadsView.vue`**：筛选（关键词 / 来源 / 状态 / 负责人，输入态与已应用态分离）；列：序号、线索号、名称、联系人、电话、来源、状态（`a-tag`）、负责人、创建时间；操作列 4 项（查看 / 编辑 / 转商机 / 废弃）——超 3 项，末项「废弃」收纳进行内「更多」（`aria-label="更多操作"`，函数式二次确认）；终态线索（已转化 / 已废弃）只留「查看」；每项按权限点过滤（`leads.update` / `leads.convert` / `leads.status`）。
+- **`LeadFormDrawer.vue`**：列表页内的新增 / 编辑抽屉（新增 / 编辑共用），状态下拉新建只列「新线索 / 跟进中」、编辑列「新线索 / 跟进中 / 已废弃」（「已转化」只能由转商机产生）；负责人下拉取在职员工。
+- **`LeadDetailView.vue`**：基本信息 + 跟进活动时间线（`a-timeline`，跟进时间倒序）+ 新增活动抽屉（跟进方式 / 时间 / 内容）+ 转商机 / 废弃按钮（仅非终态显示，二次确认）。
+- **`OpportunitiesView.vue`**：筛选（关键词 / 阶段 / 负责人）；列：序号、商机号、名称、客户、预计金额、阶段（`a-tag`）、预计成交日期、负责人、创建时间；操作列（查看 / 编辑，`opportunities.update`）。
+- **`OpportunityDetailView.vue`**：基本信息 + 阶段推进（下拉选目标阶段 + 「推进阶段」按钮，终态时下拉禁用并提示）+ 跟进活动时间线（同线索，活动抽屉内联）+ 编辑入口（跳 `opportunities/edit/:id`）。
 
 ## 5. 关键技术决策与取舍
 
@@ -234,8 +251,8 @@ src/
 
 ## 6. 单元测试设计
 
-- **线索**：`CreateLead` / `UpdateLead` 校验；状态流转（终态限制）；`ConvertLead` 成功（商机 + 线索回写同事务）/ 已转化 `40168`。
-- **商机**：`UpdateOpportunityStage` 正常 / 终态 `40169`；客户 / 负责人存在性。
-- **活动**：按 `bizType` 归属查询与新增；不可改删（无对应端点）。
-- **字段约束一致性**：三个常量类与 EF 列长一致。
-- **清单守卫**：全部端点纳入 `028` 既有守卫（含拆分的活动端点）。
+- **线索**（`LeadRequestHandlerTests`）：`CreateLead` / `UpdateLead` 校验与全量覆盖语义；状态流转（终态限制 / 目标「已转化」拒绝）；`ConvertLead` 成功（商机字段 + 线索回写同一事务、调用顺序 `Begin → Generate → Add → Update → Commit`）/ 终态 `40168`；列表筛选透传与详情 `40400`。
+- **商机**（`OpportunityRequestHandlerTests`）：`CreateOpportunity` / `UpdateOpportunity` 校验与客户名称快照；`UpdateOpportunityStage` 正常 / 终态 `40169`（编辑同判据）；来源线索 / 客户 / 负责人存在性。
+- **活动**（`ActivityRequestHandlerTests`）：按归属（线索 / 商机）查询与新增互不串数据、记录人带出；归属业务缺失 `40400`；无改删端点。
+- **字段约束一致性**（`CrmPresaleFieldConsistencyTests`）：三个常量类与 EF 列长一致；创建 / 编辑两处边界同源（名称 / 联系人 / 电话 / 备注 / 金额 / 活动内容）；查询关键词上限 = 匹配列最大列长；枚举筛选取值合法 / 非法。
+- **横向守卫**：全部端点纳入 `028` 的 `ApiPermissionMatrixTests`（含拆分的活动端点）；写用例纳入 `029` 的 `AuditLogScopeGuardTests`（范围表续行 + 反向扫描）。
