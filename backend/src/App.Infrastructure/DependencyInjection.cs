@@ -117,6 +117,11 @@ public static class DependencyInjection
         services.AddScoped<IApprovalRuleRepository, ApprovalRuleRepository>();
         services.AddScoped<IApprovalRepository, ApprovalRepository>();
 
+        // CRM 售前（erp-crm-presale，043）：线索 / 商机 / 跟进活动（活动纯追加，只增不改不删）
+        services.AddScoped<ILeadRepository, LeadRepository>();
+        services.AddScoped<IOpportunityRepository, OpportunityRepository>();
+        services.AddScoped<IActivityRepository, ActivityRepository>();
+
         return services;
     }
 }

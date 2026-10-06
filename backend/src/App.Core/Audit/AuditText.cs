@@ -61,6 +61,53 @@ public static class AuditText
         _ => AuditSummary.Empty,
     };
 
+    /// <summary>线索状态文案（`043`：新线索 / 跟进中 / 已转化 / 已废弃）</summary>
+    /// <param name="status">线索状态</param>
+    public static string LeadStatus(LeadStatus status) => status switch
+    {
+        Entities.LeadStatus.New => "新线索",
+        Entities.LeadStatus.Following => "跟进中",
+        Entities.LeadStatus.Converted => "已转化",
+        Entities.LeadStatus.Abandoned => "已废弃",
+        _ => AuditSummary.Empty,
+    };
+
+    /// <summary>线索来源文案（`043`）</summary>
+    /// <param name="source">线索来源</param>
+    public static string LeadSource(LeadSource source) => source switch
+    {
+        Entities.LeadSource.Website => "网站",
+        Entities.LeadSource.Phone => "电话",
+        Entities.LeadSource.Referral => "推荐",
+        Entities.LeadSource.Exhibition => "展会",
+        Entities.LeadSource.Other => "其他",
+        _ => AuditSummary.Empty,
+    };
+
+    /// <summary>商机阶段文案（`043`：初步接洽 / 需求确认 / 方案报价 / 谈判 / 赢单 / 输单）</summary>
+    /// <param name="stage">商机阶段</param>
+    public static string OpportunityStage(OpportunityStage stage) => stage switch
+    {
+        Entities.OpportunityStage.Initial => "初步接洽",
+        Entities.OpportunityStage.Requirement => "需求确认",
+        Entities.OpportunityStage.Proposal => "方案报价",
+        Entities.OpportunityStage.Negotiation => "谈判",
+        Entities.OpportunityStage.Won => "赢单",
+        Entities.OpportunityStage.Lost => "输单",
+        _ => AuditSummary.Empty,
+    };
+
+    /// <summary>跟进活动方式文案（`043`：电话 / 拜访 / 邮件 / 其他）</summary>
+    /// <param name="type">跟进方式</param>
+    public static string ActivityType(ActivityType type) => type switch
+    {
+        Entities.ActivityType.Call => "电话",
+        Entities.ActivityType.Visit => "拜访",
+        Entities.ActivityType.Email => "邮件",
+        Entities.ActivityType.Other => "其他",
+        _ => AuditSummary.Empty,
+    };
+
     /// <summary>收付款方式文案</summary>
     /// <param name="method">结算方式</param>
     public static string SettlementMethod(SettlementMethod method) => method switch

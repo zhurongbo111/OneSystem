@@ -39,6 +39,20 @@ export function formatRelativeTime(iso: string | null | undefined): string {
 }
 
 /**
+ * 当前本地时间 `YYYY-MM-DDTHH:mm:ss`（日期时间选择器带时分秒的默认值，如跟进时间）。
+ */
+export function nowInput(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+}
+
+/**
+ * 将选择器给出的本地 `YYYY-MM-DDTHH:mm:ss` 转为 UTC ISO 串（后端 `DateTimeOffset` 入参）。
+ */
+export function toUtcIso(localDateTime: string): string {
+  return new Date(localDateTime).toISOString()
+}
+
+/**
  * 格式化为本地 `YYYY-MM-DD`（仅日期，如批次到期日）；空值或非法值返回 `-`。
  * 裸日期 `YYYY-MM-DD` 原样返回（它已是日历日，避免 `new Date` 时区漂移）。
  */

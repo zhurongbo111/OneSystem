@@ -9,6 +9,8 @@ using App.Core.Features.Accounts.CreateAccount;
 using App.Core.Features.Accounts.DeleteAccount;
 using App.Core.Features.Accounts.UpdateAccount;
 using App.Core.Features.Accounts.UpdateAccountStatus;
+using App.Core.Features.Activities.CreateLeadActivity;
+using App.Core.Features.Activities.CreateOpportunityActivity;
 using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Inventory.UpdateInventorySafetyStock;
 using App.Core.Features.Invoices.CreateInvoice;
@@ -23,6 +25,13 @@ using App.Core.Features.Departments.UpdateDepartmentStatus;
 using App.Core.Features.Employees.CreateEmployee;
 using App.Core.Features.Employees.UpdateEmployee;
 using App.Core.Features.Employees.UpdateEmployeeStatus;
+using App.Core.Features.Leads.ConvertLead;
+using App.Core.Features.Leads.CreateLead;
+using App.Core.Features.Leads.UpdateLead;
+using App.Core.Features.Leads.UpdateLeadStatus;
+using App.Core.Features.Opportunities.CreateOpportunity;
+using App.Core.Features.Opportunities.UpdateOpportunity;
+using App.Core.Features.Opportunities.UpdateOpportunityStage;
 using App.Core.Features.Partners.CreatePartner;
 using App.Core.Features.Partners.UpdatePartner;
 using App.Core.Features.Partners.UpdatePartnerStatus;
@@ -146,6 +155,15 @@ public class AuditLogScopeGuardTests
             { typeof(UpdateQuotationRequestHandler), AuditResource.Quotation, AuditAction.Update },
             { typeof(VoidQuotationRequestHandler), AuditResource.Quotation, AuditAction.Void },
             { typeof(ConvertQuotationRequestHandler), AuditResource.Quotation, AuditAction.Update },
+            { typeof(CreateLeadRequestHandler), AuditResource.Lead, AuditAction.Create },
+            { typeof(UpdateLeadRequestHandler), AuditResource.Lead, AuditAction.Update },
+            { typeof(UpdateLeadStatusRequestHandler), AuditResource.Lead, AuditAction.StatusChange },
+            { typeof(ConvertLeadRequestHandler), AuditResource.Lead, AuditAction.Update },
+            { typeof(CreateOpportunityRequestHandler), AuditResource.Opportunity, AuditAction.Create },
+            { typeof(UpdateOpportunityRequestHandler), AuditResource.Opportunity, AuditAction.Update },
+            { typeof(UpdateOpportunityStageRequestHandler), AuditResource.Opportunity, AuditAction.StatusChange },
+            { typeof(CreateLeadActivityRequestHandler), AuditResource.Activity, AuditAction.Create },
+            { typeof(CreateOpportunityActivityRequestHandler), AuditResource.Activity, AuditAction.Create },
             { typeof(CreateWarehouseRequestHandler), AuditResource.Warehouse, AuditAction.Create },
             { typeof(UpdateWarehouseRequestHandler), AuditResource.Warehouse, AuditAction.Update },
             { typeof(UpdateWarehouseStatusRequestHandler), AuditResource.Warehouse, AuditAction.StatusChange },

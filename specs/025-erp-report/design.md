@@ -62,6 +62,7 @@ updated: 2026-09-30
 | 基础档案（`basedata`） | 商品管理（`products`）/ 分类管理（`categories`）/ 往来单位（`partners`）/ 仓库管理（`warehouses`） | `012` / `017` / `013` / `038` |
 | 采购（`purchase`） | 采购订单（`purchaseOrders`，`024`）/ 采购入库（`purchases`）/ 采购退货（`purchaseReturns`） | `015` / `021` / `024` |
 | 销售（`sale`） | 报价单（`quotations`，`037`）/ 销售订单（`salesOrders`，`024`）/ 销售出库（`sales`）/ 销售退货（`salesReturns`） | `016` / `022` / `024` / `037` |
+| CRM（`crm`） | 线索（`leads`，`043`）/ 商机（`opportunities`，`043`）/ 服务工单（`serviceTickets`，`045` 预留） | `043` / `045` |
 | 库存（`stock`） | 库存查询（`inventory`）/ 库存流水（`stockMovements`）/ 库存盘点（`stockTakes`）/ 调拨单（`transfers`）/ 批次管理（`batches`） | `014` / `019` / `020` / `039` / `040` |
 | 资金（`fund`） | 收付款（`settlements`）/ 往来对账（`reconciliation`）/ 发票登记（`invoices`）/ 客户价格（`partnerPrices`） | `023` / `032` / `036` |
 | 财务（`finance`） | 会计科目（`accounts`）/ 税率（`taxRates`）/ 凭证（`vouchers`）/ 财务报表（`financialReports`）/ 银行账户（`bankAccounts`）/ 资金日记账（`cashJournals`） | `031` / `033` / `034` |
