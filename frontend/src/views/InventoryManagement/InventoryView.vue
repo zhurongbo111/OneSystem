@@ -157,6 +157,17 @@ onMounted(() => {
     categoryIdInput.value = categoryId
     appliedCategoryId.value = categoryId
   }
+  // 站内消息「低库存」跳转预置仓 + 商品编码（specs/041-erp-stock-alert/design.md §4.4）
+  const warehouseId = typeof route.query.warehouseId === 'string' ? route.query.warehouseId : undefined
+  if (warehouseId) {
+    warehouseIdInput.value = warehouseId
+    appliedWarehouseId.value = warehouseId
+  }
+  const keyword = typeof route.query.keyword === 'string' ? route.query.keyword : undefined
+  if (keyword) {
+    keywordInput.value = keyword
+    appliedKeyword.value = keyword
+  }
   void fetchCategories()
   void fetchWarehouses()
   void fetchList()

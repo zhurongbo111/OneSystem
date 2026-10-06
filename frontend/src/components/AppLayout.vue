@@ -2,10 +2,15 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterView } from 'vue-router'
 
+import { NOTIFICATION_TYPE_META } from '@/api/notification'
+import type { NotificationItem } from '@/api/notification'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationStore } from '@/stores/notification'
+import { formatRelativeTime } from '@/utils/datetime'
 import {
   IconApps,
   IconArrowsExchange,
+  IconBell,
   IconBook2,
   IconBriefcase,
   IconBuildingStore,
@@ -55,6 +60,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const notification = useNotificationStore()
 
 /** 侧边栏折叠状态（内存态，不持久化） */
 const collapsed = ref<boolean>(false)
@@ -197,8 +203,34 @@ function onMenuItemClick(key: string): void {
   void router.push({ name: key })
 }
 
+/** 点击顶栏消息：标记已读（未读时）并按消息携带的路由名 + query 跳转；无链接 / 路由不存在时仅标记已读 */
+async function onNotificationClick(item: NotificationItem): Promise<void> {
+  try {
+    if (!item.isRead) {
+      await notification.markRead(item.id)
+    }
+
+    if (!item.linkRouteName) return
+    const routeExists = router.getRoutes().some((record) => record.name === item.linkRouteName)
+    if (!routeExists) return
+
+    const query: Record<string, string> = item.linkQuery
+      ? (JSON.parse(item.linkQuery) as Record<string, string>)
+      : {}
+    await router.push({ name: item.linkRouteName, query })
+  } catch {
+    // 错误提示已由请求层统一处理
+  }
+}
+
+/** 查看全部：跳站内消息列表 */
+function onViewAllNotifications(): void {
+  void router.push({ name: 'notifications' })
+}
+
 function onLogout(): void {
   auth.logout()
+  notification.clear()
   void router.replace({ name: 'login' })
 }
 </script>
@@ -708,6 +740,74 @@ function onLogout(): void {
           <span class="app-title">{{ collapsed ? '' : '应用管理' }}</span>
         </div>
         <div class="app-header-right">
+          <a-popover
+            trigger="click"
+            position="br"
+            :content-style="{ padding: '0' }"
+          >
+            <div
+              class="notification-trigger"
+              role="button"
+              aria-label="消息通知"
+            >
+              <a-badge
+                :count="notification.unreadCount"
+                :max-count="99"
+              >
+                <IconBell class="notification-icon" />
+              </a-badge>
+            </div>
+            <template #content>
+              <div class="notification-panel">
+                <div class="notification-panel__header">
+                  <span class="notification-panel__title">最近消息</span>
+                  <a-link @click="onViewAllNotifications">
+                    查看全部
+                  </a-link>
+                </div>
+                <a-spin
+                  class="notification-panel__body"
+                  :loading="notification.summaryLoading"
+                >
+                  <div
+                    v-if="notification.recent.length === 0"
+                    class="notification-panel__empty"
+                  >
+                    暂无消息
+                  </div>
+                  <div
+                    v-else
+                    class="notification-list"
+                  >
+                    <div
+                      v-for="item in notification.recent"
+                      :key="item.id"
+                      class="notification-item"
+                      :class="{ 'notification-item--unread': !item.isRead }"
+                      role="button"
+                      @click="onNotificationClick(item)"
+                    >
+                      <div class="notification-item__head">
+                        <a-tag
+                          size="small"
+                          :color="NOTIFICATION_TYPE_META[item.type].color"
+                        >
+                          {{ NOTIFICATION_TYPE_META[item.type].label }}
+                        </a-tag>
+                        <span class="notification-item__time">{{ formatRelativeTime(item.createdAt) }}</span>
+                      </div>
+                      <div class="notification-item__title">
+                        {{ item.title }}
+                      </div>
+                      <div class="notification-item__content">
+                        {{ item.content }}
+                      </div>
+                    </div>
+                  </div>
+                </a-spin>
+              </div>
+            </template>
+          </a-popover>
           <a-dropdown
             trigger="click"
             position="br"
@@ -783,6 +883,102 @@ function onLogout(): void {
   align-items: center;
 }
 
+.notification-trigger {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-small);
+  cursor: pointer;
+  color: var(--color-text-3);
+  transition: background var(--action-duration);
+}
+
+.notification-trigger:hover {
+  background: var(--color-fill-2);
+}
+
+.notification-panel {
+  width: 320px;
+}
+
+.notification-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.notification-panel__title {
+  font-weight: 600;
+  color: var(--color-text-1);
+}
+
+.notification-panel__body {
+  display: block;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.notification-panel__empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--color-text-3);
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-2);
+  cursor: pointer;
+  transition: background var(--action-duration);
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item:hover {
+  background: var(--color-fill-2);
+}
+
+.notification-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notification-item__time {
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.notification-item__title {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-1);
+}
+
+.notification-item--unread .notification-item__title {
+  font-weight: 600;
+}
+
+.notification-item__content {
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-text-3);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .user-trigger {
   display: flex;
   align-items: center;
@@ -807,6 +1003,7 @@ function onLogout(): void {
    线宽 2 在 18px 下偏淡，提到 2.5（仍在 Tabler 的 2~3 视觉区间，不与 Arco 的 4 混淆） */
 .app-sider :deep(svg),
 .collapse-trigger :deep(svg),
+.notification-icon,
 .user-icon {
   width: 18px;
   height: 18px;

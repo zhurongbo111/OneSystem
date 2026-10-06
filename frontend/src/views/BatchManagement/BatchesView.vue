@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { getBatches, updateBatchStatus } from '@/api/batch'
 import type { BatchListItem, BatchStatus } from '@/api/batch'
@@ -20,6 +21,7 @@ import {
 import BatchFormDrawer from './BatchFormDrawer.vue'
 
 const auth = useAuthStore()
+const route = useRoute()
 
 // —— constants ——
 const statusOptions = [
@@ -48,6 +50,8 @@ const onlyExpiringInput = ref(false)
 const appliedKeyword = ref('')
 const appliedStatus = ref<BatchStatus | undefined>(undefined)
 const appliedOnlyExpiring = ref(false)
+/** 商品筛选：仅由站内消息「批次」跳转预置（页面无对应输入控件，041 §4.4） */
+const appliedProductId = ref<string | undefined>(undefined)
 
 /** 新增 / 编辑抽屉 */
 const drawerVisible = ref(false)
@@ -86,6 +90,16 @@ const tableScrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.wi
 
 // —— lifecycle ——
 onMounted(() => {
+  // 站内消息「近效期 / 已过期」跳转预置商品 + 批次号（specs/041-erp-stock-alert/design.md §4.4）
+  const productId = typeof route.query.productId === 'string' ? route.query.productId : undefined
+  if (productId) {
+    appliedProductId.value = productId
+  }
+  const keyword = typeof route.query.keyword === 'string' ? route.query.keyword : undefined
+  if (keyword) {
+    keywordInput.value = keyword
+    appliedKeyword.value = keyword
+  }
   void fetchList()
 })
 
@@ -96,6 +110,7 @@ async function fetchList(): Promise<void> {
   try {
     const result = await getBatches({
       keyword: appliedKeyword.value.trim() || undefined,
+      productId: appliedProductId.value,
       status: appliedStatus.value,
       onlyExpiring: appliedOnlyExpiring.value || undefined,
       page: page.value,
@@ -126,6 +141,7 @@ function onReset(): void {
   appliedKeyword.value = ''
   appliedStatus.value = undefined
   appliedOnlyExpiring.value = false
+  appliedProductId.value = undefined
   page.value = 1
   void fetchList()
 }
