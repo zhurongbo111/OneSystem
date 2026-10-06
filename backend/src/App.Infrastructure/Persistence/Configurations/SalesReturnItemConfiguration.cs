@@ -29,6 +29,16 @@ internal sealed class SalesReturnItemConfiguration : IEntityTypeConfiguration<Sa
         builder.Property(i => i.UnitPrice).IsRequired().HasColumnType("numeric(18,2)");
         builder.Property(i => i.Subtotal).IsRequired().HasColumnType("numeric(18,2)");
 
+        // 批次维度（040）：BatchId 可空 + BatchNo 快照（列长取自 BatchFieldConstraints）
+        builder.Property(i => i.BatchNo)
+            .HasMaxLength(BatchFieldConstraints.BatchNoMaxLength)
+            .HasColumnType("varchar(50)");
+
         builder.HasIndex(i => i.ReturnId);
+
+        builder.HasOne<Batch>()
+            .WithMany()
+            .HasForeignKey(i => i.BatchId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

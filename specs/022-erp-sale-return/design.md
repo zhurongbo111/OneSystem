@@ -1,6 +1,6 @@
 ---
 created: 2026-09-16
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：销售退货（erp-sale-return）
@@ -13,6 +13,7 @@ updated: 2026-09-23
 > **演进（erp-multi-warehouse，`038`）**：退货单带「入库仓」（仅启用仓、默认仓预选、提交必带 `warehouseId`），回增到指定仓并落仓名快照；列表加「入库仓」列与筛选，详情 / 打印展示仓名。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.4。
 > **演进（erp-audit-log）**：本域销售退货（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-general-ledger）**：本域销售退货单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（冲减收入借「主营业务收入」、贷「应收账款」，成本转回借「库存商品」、贷「主营业务成本」，同凭证呈现）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
+> **演进（erp-batch-expiry，`040`）**：退货明细带批次（`BatchId` + `BatchNo` 快照），按批次商品必填；销售退货支持**就地新建批次**（随单提交由后端同事务建批次并使用，结构同 `021` 模板，详见 `specs/040-erp-batch-expiry/design.md`）。
 
 ## 1. 相对 erp-purchase-return 的替换规则
 

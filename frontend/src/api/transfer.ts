@@ -23,13 +23,17 @@ export interface TransferListItem {
   createdAt: string
 }
 
-/** 调拨单明细行（对应后端 TransferItemDto；040 前无 batchId，调拨无价格 → 无金额列） */
+/** 调拨单明细行（对应后端 TransferItemDto；调拨无价格 → 无金额列） */
 export interface TransferItem {
   id: string
   productId: string
   productCode: string
   productName: string
   unit: string
+  /** 批次 id（040：按批次商品有值，非批次 null） */
+  batchId: string | null
+  /** 批次号快照（040；非批次 null） */
+  batchNo: string | null
   quantity: number
 }
 
@@ -57,7 +61,12 @@ export interface CreateTransferPayload {
   fromWarehouseId: string
   toWarehouseId: string
   transferDate: string
-  items: { productId: string; quantity: number }[]
+  items: {
+    productId: string
+    quantity: number
+    /** 批次 id（040：按批次商品必填） */
+    batchId?: string
+  }[]
   remark?: string
 }
 

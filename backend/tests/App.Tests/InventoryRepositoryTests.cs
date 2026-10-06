@@ -50,7 +50,7 @@ public class InventoryRepositoryTests
         var repo = new InventoryRepository(context);
         var (productId, warehouseId) = await SeedProductWithStockAsync(context, 42);
 
-        var quantity = await repo.GetQuantityAsync(productId, warehouseId);
+        var quantity = await repo.GetQuantityAsync(productId, warehouseId, null);
 
         Assert.Equal(42, quantity);
     }
@@ -77,7 +77,7 @@ public class InventoryRepositoryTests
         context.Products.Add(product);
         await context.SaveChangesAsync();
 
-        var quantity = await repo.GetQuantityAsync(product.Id, warehouse.Id);
+        var quantity = await repo.GetQuantityAsync(product.Id, warehouse.Id, null);
 
         Assert.Equal(0, quantity);
     }
@@ -102,11 +102,53 @@ public class InventoryRepositoryTests
         });
         await context.SaveChangesAsync();
 
-        Assert.Equal(10, await repo.GetQuantityAsync(productId, defaultWarehouseId));
-        Assert.Equal(30, await repo.GetQuantityAsync(productId, second.Id));
+        Assert.Equal(10, await repo.GetQuantityAsync(productId, defaultWarehouseId, null));
+        Assert.Equal(30, await repo.GetQuantityAsync(productId, second.Id, null));
         Assert.Equal(40, await repo.GetTotalQuantityAsync(productId));
 
         var quantities = await repo.GetQuantitiesAsync(second.Id, new[] { productId });
         Assert.Equal(30, quantities[productId]);
+    }
+
+    // ---------- 批次维度（040） ----------
+
+    [Fact]
+    public async Task 同仓同商品不同批次_库存应相互独立()
+    {
+        var context = TestSupport.CreateDbContext();
+        var repo = new InventoryRepository(context);
+        var (productId, warehouseId) = await SeedProductWithStockAsync(context, 0);
+        var b1 = Guid.NewGuid();
+        var b2 = Guid.NewGuid();
+        context.Inventory.Add(new Inventory { Id = Guid.NewGuid(), ProductId = productId, WarehouseId = warehouseId, BatchId = b1, Quantity = 10, UpdatedAt = DateTimeOffset.UtcNow });
+        context.Inventory.Add(new Inventory { Id = Guid.NewGuid(), ProductId = productId, WarehouseId = warehouseId, BatchId = b2, Quantity = 20, UpdatedAt = DateTimeOffset.UtcNow });
+        await context.SaveChangesAsync();
+
+        Assert.Equal(10, await repo.GetQuantityAsync(productId, warehouseId, b1));
+        Assert.Equal(20, await repo.GetQuantityAsync(productId, warehouseId, b2));
+        // 不带批次行（BatchId=null）与批次行互不干扰，此处应为 0
+        Assert.Equal(0, await repo.GetQuantityAsync(productId, warehouseId, null));
+        // 仓级合计 = Σ 批次行
+        Assert.Equal(30, await repo.GetWarehouseQuantityAsync(productId, warehouseId));
+    }
+
+    [Fact]
+    public async Task 批次数量映射_应仅返回批次行()
+    {
+        var context = TestSupport.CreateDbContext();
+        var repo = new InventoryRepository(context);
+        var (productId, warehouseId) = await SeedProductWithStockAsync(context, 0);
+        var b1 = Guid.NewGuid();
+        var b2 = Guid.NewGuid();
+        context.Inventory.Add(new Inventory { Id = Guid.NewGuid(), ProductId = productId, WarehouseId = warehouseId, BatchId = b1, Quantity = 12, UpdatedAt = DateTimeOffset.UtcNow });
+        context.Inventory.Add(new Inventory { Id = Guid.NewGuid(), ProductId = productId, WarehouseId = warehouseId, BatchId = b2, Quantity = 8, UpdatedAt = DateTimeOffset.UtcNow });
+        await context.SaveChangesAsync();
+
+        var batches = await repo.GetBatchQuantitiesAsync(warehouseId, productId);
+
+        // 仅返回 BatchId != null 的行；不带批次的 5 不入映射
+        Assert.Equal(2, batches.Count);
+        Assert.Equal(12, batches[b1]);
+        Assert.Equal(8, batches[b2]);
     }
 }

@@ -31,6 +31,8 @@ internal static class StockTakeDtoMapper
                 ProductCode = i.ProductCode,
                 ProductName = i.ProductName,
                 Unit = i.Unit,
+                BatchId = i.BatchId?.ToString(),
+                BatchNo = i.BatchNo,
                 BookQuantity = i.BookQuantity,
                 ActualQuantity = i.ActualQuantity,
                 Difference = i.Difference,

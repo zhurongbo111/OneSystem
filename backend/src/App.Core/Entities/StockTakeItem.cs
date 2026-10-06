@@ -39,4 +39,10 @@ public sealed class StockTakeItem
     /// 库存盘点模式下为 0（盘点按当时移动加权均价处理，不传成本）。
     /// </summary>
     public decimal UnitCost { get; set; }
+
+    /// <summary>批次 ID（可空：按批次管理商品必填，按批次盘点；外键 → Batches(Id)）</summary>
+    public Guid? BatchId { get; set; }
+
+    /// <summary>批次号快照（同商品编码 / 名称快照原则）</summary>
+    public string? BatchNo { get; set; }
 }

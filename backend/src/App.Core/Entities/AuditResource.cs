@@ -95,4 +95,7 @@ public enum AuditResource
 
     /// <summary>库存台账（038：维护仓级安全库存）</summary>
     Inventory = 29,
+
+    /// <summary>批次（040）</summary>
+    Batch = 30,
 }

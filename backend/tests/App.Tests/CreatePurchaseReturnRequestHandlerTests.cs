@@ -39,7 +39,7 @@ public class CreatePurchaseReturnRequestHandlerTests
             movements,
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             uow,
-            user, TestSupport.AuditLogger);
+            user, TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow));
         return (context, user, returns, inventory, movements, uow, handler, calls);
     }
 

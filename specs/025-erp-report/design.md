@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：进销存报表（erp-report）
@@ -252,3 +252,7 @@ src/
 - 库存余额表追加**库存金额 / 均价 / 成本异常**列与合计：`StockBalanceItem` 由 `026` 扩展 `TotalCostAmount` / `AverageCost` / `HasCostAnomaly`，页面 `StockBalanceReportView.vue` 追加对应列（成本异常以 `a-tag` 标注）。
 - 成本毛利报表（`CostProfitReportView`，路由 `reports/cost-profit`）由 `026` 独立交付；毛利 = 收入 − 成本、毛利率口径以 `specs/026-erp-cost/design.md` §0.3 为准。
 - 本规格 §5 已预告「库存金额列延后，由 `026` 追加」，本演进即落实该注记。
+
+## 8. 演进（erp-batch-expiry，`040`）
+
+- **报表保持商品维度**（进销存五类报表 / 库存余额表均不改）：报表数据源是流水，`SUM` 到商品维度天然正确；批次维度下钻由**库存查询（`expandBatch`）与库存流水（批次列）**承接，不在报表取数里塞批次（否则聚合口径与毛利逻辑需整体重设计，与 `040`「不做批次成本」同取舍）。决策与判据见 `specs/040-erp-batch-expiry/design.md` §5。

@@ -35,4 +35,7 @@ public sealed class CreatePurchaseReturnItem
 
     /// <summary>单价（≥ 0，默认带出商品采购价、开单时可改）</summary>
     public required decimal UnitPrice { get; init; }
+
+    /// <summary>批次 id，可空：按批次管理商品必填；出库类禁止过期批次（040）</summary>
+    public Guid? BatchId { get; init; }
 }

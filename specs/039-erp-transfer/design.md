@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：仓库调拨（erp-transfer）
@@ -8,6 +8,7 @@ updated: 2026-09-23
 > 遵循 `AGENTS.md`（统一响应 §4、错误码 §4.2、分页 §4.3、认证 §4.6、测试 §6）与后端 / 前端专项规则。
 > 按后端规则 §4「分层架构（每 API 一个用例）」组织，以 `erp-purchase-return`（双向库存操作 + 流水）为结构参照；字段约束单一来源（后端规则 §5.3）同样适用。
 > 维度与成本口径不重复定义：仓库维度见 `specs/038-erp-multi-warehouse/design.md` §0；成本见 `specs/026-erp-cost/design.md` §0.1；流水类型文案见 `specs/019-erp-stock-movement/design.md` §0。
+> **演进（erp-batch-expiry，`040`）**：`TransferItem` 启用 `BatchId` + `BatchNo` 快照——按批次管理商品必填（`40127`，事务内 `BatchLineResolver` 解析）、停用批次 `40000`、批次不属于该商品 `40400`；调拨为仓间位移（无出入库侧）**不拦过期批次**（`outbound = false`，`040` §0 过期只拦出库类）。转出仓按「商品 × 仓 × 批次」逐行 `TryDecrementAsync`，转入仓按行批次 `IncrementAsync`（`040` §0 同口径）。明细列 `BatchId` 可空，按批次商品由后端强制必填。详见 `specs/040-erp-batch-expiry/design.md` §3.4。
 
 ## 0. 调拨口径约定（唯一事实源）
 
@@ -77,7 +78,8 @@ updated: 2026-09-23
 | `ProductCode` / `ProductName` | `string` | `varchar(32)` / `varchar(50)` | NOT NULL | 编码 / 名称**快照** |
 | `Unit` | `string` | `varchar(10)` | NOT NULL | 单位**快照** |
 | `Quantity` | `int` | `integer` | NOT NULL，≥ 1 | 调拨数量 |
-| `BatchId` | `Guid?` | `uuid` | NULL | 批次（`040` 落地时启用；`040` 前恒为空） |
+| `BatchId` | `Guid?` | `uuid` | NULL，FK → `Batches(Id)` | 批次（`040` 起按批次管理商品必填，见演进） |
+| `BatchNo` | `string?` | `varchar(32)` | NULL | 批次号**快照**（同编码 / 名称快照原则） |
 
 - 明细不软删除（作废保留）；同一单据内**不允许重复「商品 + 批次」组合**（Validator 拦重复）。
 

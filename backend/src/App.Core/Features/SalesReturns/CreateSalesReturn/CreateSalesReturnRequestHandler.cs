@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Batches;
 using App.Core.Features.Warehouses;
 using App.Core.Finance;
 
@@ -37,6 +38,8 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
+    private readonly IBatchRepository _batchRepository;
+    private readonly ISystemClock _clock;
 
     /// <summary>
     /// 初始化新增销售退货单用例处理器
@@ -54,7 +57,9 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
         IAccountRepository accountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAuditLogger auditLogger)
+        IAuditLogger auditLogger,
+        IBatchRepository batchRepository,
+        ISystemClock clock)
     {
         _salesReturnRepository = salesReturnRepository;
         _partnerRepository = partnerRepository;
@@ -69,6 +74,8 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
+        _batchRepository = batchRepository;
+        _clock = clock;
     }
 
     /// <summary>
@@ -158,12 +165,33 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                     UpdatedBy = operatorId,
                 };
 
+                // 批次解析（040，事务内执行）：销售退货为入库类（outbound = false，过期批次不拦截），支持就地新建批次
+                var resolvedBatches = new List<ResolvedBatch?>(request.Items.Count);
+                foreach (var line in request.Items)
+                {
+                    var p0 = products[line.ProductId];
+                    resolvedBatches.Add(await BatchLineResolver.ResolveAsync(
+                        p0.IsBatchManaged,
+                        p0.Id,
+                        line.BatchId,
+                        line.NewBatchNo,
+                        line.NewProductionDate,
+                        line.NewExpiryDate,
+                        _batchRepository,
+                        outbound: false,
+                        _clock.Today,
+                        operatorId,
+                        cancellationToken));
+                }
+
                 // 明细行按请求顺序生成顺序 Guid（SequentialGuidGenerator），
                 // 保证持久化顺序与请求顺序一致（仓储按 Id 排序还原明细顺序）
                 var items = new List<SalesReturnItem>(request.Items.Count);
-                foreach (var line in request.Items)
+                for (var index = 0; index < request.Items.Count; index++)
                 {
+                    var line = request.Items[index];
                     var p = products[line.ProductId];
+                    var batch = resolvedBatches[index];
                     items.Add(new SalesReturnItem
                     {
                         Id = SequentialGuidGenerator.NewSequential(),
@@ -174,6 +202,8 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                         Quantity = line.Quantity,
                         UnitPrice = line.UnitPrice,
                         Subtotal = line.UnitPrice * line.Quantity,
+                        BatchId = batch?.BatchId,
+                        BatchNo = batch?.BatchNo,
                     });
                 }
 
@@ -185,23 +215,24 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                 foreach (var item in items)
                 {
                     await _inventoryRepository.IncrementAsync(
-                        item.ProductId, warehouse.Id, item.Quantity, cancellationToken);
+                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, cancellationToken);
 
                     // 成本（erp-cost design §0.2）：按被退销售单原出库成本单价退回；
-                    // 销售退货不关联原单（specs/021 §5），查不到原流水时兜底按该仓当前移动加权均价
+                    // 销售退货不关联原单（specs/021 §5），查不到原流水时兜底按该仓该批次行当前移动加权均价（040 起按批次行）
                     var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
-                        salesReturn.Id, item.ProductId, StockMovementType.SalesOutbound, cancellationToken)
-                        ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, warehouse.Id, cancellationToken);
+                        salesReturn.Id, item.ProductId, item.BatchId, StockMovementType.SalesOutbound, cancellationToken)
+                        ?? await _inventoryRepository.GetAverageCostAsync(item.ProductId, warehouse.Id, item.BatchId, cancellationToken);
                     var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
                     costAmount += totalCost;
                     await _inventoryRepository.ApplyInboundCostAsync(
-                        item.ProductId, warehouse.Id, item.Quantity, unitCost, cancellationToken);
+                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, unitCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
                         WarehouseId = warehouse.Id,
+                        BatchId = item.BatchId,
                         MovementType = StockMovementType.SalesReturnIn,
                         Quantity = item.Quantity,
                         UnitCost = unitCost,
@@ -245,7 +276,7 @@ public sealed class CreateSalesReturnRequestHandler : IRequestHandler<CreateSale
                     Action = AuditAction.Create,
                     ResourceId = salesReturn.Id,
                     ResourceNo = salesReturn.ReturnNo,
-                    Summary = $"创建销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、入库仓：{salesReturn.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(salesReturn.TotalAmount)}）",
+                    Summary = $"创建销售退货单 {salesReturn.ReturnNo}（客户：{salesReturn.PartnerName}、入库仓：{salesReturn.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(salesReturn.TotalAmount)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}",
                     Changes = createdSalesReturnChangeBuilder.Build(),
                     ChangesTruncated = createdSalesReturnChangeBuilder.Truncated,
                     UtcNow = now,

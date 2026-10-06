@@ -38,6 +38,9 @@ internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<Stoc
         builder.HasIndex(m => m.CreatedAt).IsDescending();
         builder.HasIndex(m => m.SourceNo);
 
+        // 批次维度（040）：批次号列索引
+        builder.HasIndex(m => m.BatchId);
+
         // 商品 / 仓库停用不影响历史流水 → 外键禁止级联删除
         builder.HasOne<Product>()
             .WithMany()
@@ -46,6 +49,10 @@ internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<Stoc
         builder.HasOne<Warehouse>()
             .WithMany()
             .HasForeignKey(m => m.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Batch>()
+            .WithMany()
+            .HasForeignKey(m => m.BatchId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

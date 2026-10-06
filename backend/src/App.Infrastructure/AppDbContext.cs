@@ -29,8 +29,11 @@ public class AppDbContext : DbContext
     /// <summary>商品表</summary>
     public DbSet<Product> Products => Set<Product>();
 
-    /// <summary>库存台账表（商品 × 仓库，038-erp-multi-warehouse）</summary>
+    /// <summary>库存台账表（商品 × 仓库 × 批次，040 起含批次维度）</summary>
     public DbSet<Inventory> Inventory => Set<Inventory>();
+
+    /// <summary>批次档案表（040-erp-batch-expiry；批次属于商品、跨仓共享）</summary>
+    public DbSet<Batch> Batches => Set<Batch>();
 
     /// <summary>仓库表（038-erp-multi-warehouse）</summary>
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();

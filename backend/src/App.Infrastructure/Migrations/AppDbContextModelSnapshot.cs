@@ -264,6 +264,55 @@ namespace App.Infrastructure.Migrations
                     b.ToTable("BankAccounts", (string)null);
                 });
 
+            modelBuilder.Entity("App.Core.Entities.Batch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ProductionDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Remark")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiryDate");
+
+                    b.HasIndex("ProductId", "BatchNo")
+                        .IsUnique();
+
+                    b.ToTable("Batches", (string)null);
+                });
+
             modelBuilder.Entity("App.Core.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -433,6 +482,9 @@ namespace App.Infrastructure.Migrations
                     b.Property<decimal>("AverageCost")
                         .HasColumnType("numeric(18,4)");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("CostAmount")
                         .HasColumnType("numeric(18,4)");
 
@@ -455,9 +507,15 @@ namespace App.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BatchId");
+
                     b.HasIndex("WarehouseId");
 
                     b.HasIndex("ProductId", "WarehouseId")
+                        .IsUnique()
+                        .HasFilter("\"BatchId\" IS NULL");
+
+                    b.HasIndex("ProductId", "WarehouseId", "BatchId")
                         .IsUnique();
 
                     b.ToTable("Inventory", (string)null);
@@ -740,6 +798,11 @@ namespace App.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsBatchManaged")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -962,6 +1025,13 @@ namespace App.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<Guid?>("OrderItemId")
                         .HasColumnType("uuid");
 
@@ -991,6 +1061,8 @@ namespace App.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("ReceiptId");
 
@@ -1068,6 +1140,13 @@ namespace App.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
@@ -1094,6 +1173,8 @@ namespace App.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("ReturnId");
 
@@ -1427,6 +1508,13 @@ namespace App.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
@@ -1453,6 +1541,8 @@ namespace App.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("ReturnId");
 
@@ -1539,6 +1629,13 @@ namespace App.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<Guid?>("OrderItemId")
                         .HasColumnType("uuid");
 
@@ -1568,6 +1665,8 @@ namespace App.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("ShipmentId");
 
@@ -1683,6 +1782,9 @@ namespace App.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1719,6 +1821,8 @@ namespace App.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("CreatedAt")
                         .IsDescending();
@@ -1796,6 +1900,13 @@ namespace App.Infrastructure.Migrations
                     b.Property<int>("ActualQuantity")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<int>("BookQuantity")
                         .HasColumnType("integer");
 
@@ -1827,6 +1938,8 @@ namespace App.Infrastructure.Migrations
                         .HasColumnType("numeric(18,4)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("ProductId");
 
@@ -1957,6 +2070,10 @@ namespace App.Infrastructure.Migrations
                     b.Property<Guid?>("BatchId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BatchNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<string>("ProductCode")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -1982,6 +2099,8 @@ namespace App.Infrastructure.Migrations
                         .HasColumnType("varchar(10)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("TransferId");
 
@@ -2294,6 +2413,15 @@ namespace App.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("App.Core.Entities.Batch", b =>
+                {
+                    b.HasOne("App.Core.Entities.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("App.Core.Entities.Department", b =>
                 {
                     b.HasOne("App.Core.Entities.Department", null)
@@ -2322,6 +2450,11 @@ namespace App.Infrastructure.Migrations
 
             modelBuilder.Entity("App.Core.Entities.Inventory", b =>
                 {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("App.Core.Entities.Product", null)
                         .WithMany()
                         .HasForeignKey("ProductId")
@@ -2377,6 +2510,22 @@ namespace App.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("App.Core.Entities.PurchaseReceiptItem", b =>
+                {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("App.Core.Entities.PurchaseReturnItem", b =>
+                {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("App.Core.Entities.Quotation", b =>
                 {
                     b.HasOne("App.Core.Entities.Partner", null)
@@ -2410,6 +2559,22 @@ namespace App.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("App.Core.Entities.SalesReturnItem", b =>
+                {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("App.Core.Entities.SalesShipmentItem", b =>
+                {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("App.Core.Entities.Settlement", b =>
                 {
                     b.HasOne("App.Core.Entities.BankAccount", null)
@@ -2435,6 +2600,11 @@ namespace App.Infrastructure.Migrations
 
             modelBuilder.Entity("App.Core.Entities.StockMovement", b =>
                 {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("App.Core.Entities.Product", null)
                         .WithMany()
                         .HasForeignKey("ProductId")
@@ -2450,11 +2620,24 @@ namespace App.Infrastructure.Migrations
 
             modelBuilder.Entity("App.Core.Entities.StockTakeItem", b =>
                 {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("App.Core.Entities.Product", null)
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("App.Core.Entities.TransferItem", b =>
+                {
+                    b.HasOne("App.Core.Entities.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("App.Core.Entities.UserLoginLog", b =>

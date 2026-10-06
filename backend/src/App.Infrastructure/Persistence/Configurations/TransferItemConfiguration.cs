@@ -31,6 +31,16 @@ internal sealed class TransferItemConfiguration : IEntityTypeConfiguration<Trans
             .HasColumnType("varchar(10)");
         builder.Property(i => i.Quantity).IsRequired();
 
+        // 批次维度（040 启用 039 预留列）：BatchNo 快照（列长取自 BatchFieldConstraints）
+        builder.Property(i => i.BatchNo)
+            .HasMaxLength(BatchFieldConstraints.BatchNoMaxLength)
+            .HasColumnType("varchar(50)");
+
         builder.HasIndex(i => i.TransferId);
+
+        builder.HasOne<Batch>()
+            .WithMany()
+            .HasForeignKey(i => i.BatchId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -93,7 +93,7 @@ const selectedKeys = computed<string[]>(() => {
  */
 const MENU_GROUPS: Record<string, string[]> = {
   showcase: ['components', 'list', 'form'],
-  basedata: ['products', 'categories', 'partners', 'warehouses'],
+  basedata: ['products', 'categories', 'partners', 'warehouses', 'batches'],
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
   sale: ['quotations', 'quotationCreate', 'quotationEdit', 'quotationDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'transfers', 'transferNew', 'transferDetail'],
@@ -112,6 +112,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   categories: 'categories.view',
   partners: 'partners.view',
   warehouses: 'warehouses.view',
+  batches: 'batches.view',
   purchaseOrders: 'purchaseOrders.view',
   purchases: 'purchases.view',
   purchaseReturns: 'purchaseReturns.view',
@@ -304,6 +305,15 @@ function onLogout(): void {
               <IconBuildingStore />
             </template>
             <span>仓库管理</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('batches')"
+            key="batches"
+          >
+            <template #icon>
+              <IconTag />
+            </template>
+            <span>批次管理</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu

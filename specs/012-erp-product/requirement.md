@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 需求规格：商品管理（erp-product）

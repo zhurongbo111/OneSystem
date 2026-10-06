@@ -143,6 +143,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'batches',
+        name: 'batches',
+        component: () => import('@/views/BatchManagement/BatchesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'categories',
         name: 'categories',
         component: () => import('@/views/CategoryManagement/CategoriesView.vue'),
@@ -520,6 +526,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   cashJournals: 'cashJournals.view',
   products: 'products.view',
   warehouses: 'warehouses.view',
+  batches: 'batches.view',
   categories: 'categories.view',
   partners: 'partners.view',
   inventory: 'inventory.view',

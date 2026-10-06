@@ -39,4 +39,7 @@ public sealed class CreateStockTakeItem
     /// 库存盘点必须为空（按当时移动加权均价处理，传入即 <c>40000</c>，避免误传成本）。
     /// </summary>
     public decimal? UnitCost { get; init; }
+
+    /// <summary>批次 id，可空：按批次管理商品必填（按批次盘点）（040）</summary>
+    public Guid? BatchId { get; init; }
 }

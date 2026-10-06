@@ -17,7 +17,7 @@ public class CreateStockTakeRequestHandlerTests
 
     private static (FakeProductRepository Products, FakeStockTakeRepository Takes, FakeInventoryRepository Inventory,
         FakeStockMovementRepository Movements, RecordingUnitOfWork Uow, CreateStockTakeRequestHandler Handler,
-        List<string> Calls) CreateHandler()
+        List<string> Calls) CreateHandler(FakeBatchRepository? batchRepo = null)
     {
         var products = new FakeProductRepository();
         var calls = new List<string>();
@@ -31,6 +31,8 @@ public class CreateStockTakeRequestHandlerTests
             new FakeWarehouseRepository(),
             inventory,
             movements,
+            batchRepo ?? new FakeBatchRepository(),
+            new TestClock(TakeDate),
             uow,
             new StubCurrentUser(Guid.NewGuid()), TestSupport.AuditLogger);
         return (products, takes, inventory, movements, uow, handler, calls);
@@ -161,6 +163,83 @@ public class CreateStockTakeRequestHandlerTests
         Assert.Equal(StockMovementType.InitialStock, movement.MovementType);
         Assert.Equal((a.Id, 5), (movement.ProductId, movement.Quantity));
         Assert.Equal(5, inventory.GetQuantity(a.Id));
+    }
+
+    // ============================== 按批次盘点（040）==============================
+
+    [Fact]
+    public async Task 新增盘点_按批次_应分别读账面重算差异且库存流水带批次()
+    {
+        var b1 = Guid.NewGuid();
+        var b2 = Guid.NewGuid();
+        var batchRepo = new FakeBatchRepository();
+        var (products, _, inventory, movements, _, handler, _) = CreateHandler(batchRepo);
+        // 按批次管理商品
+        var a = SeedProduct(products, "st-batch", "箱");
+        a.IsBatchManaged = true;
+        batchRepo.Seed(a.Id, "B1", id: b1);
+        batchRepo.Seed(a.Id, "B2", id: b2);
+        // 批次台账：B1 账面 5，B2 账面 10
+        inventory.SeedBatch(a.Id, TestWarehouse.DefaultId, b1, 5);
+        inventory.SeedBatch(a.Id, TestWarehouse.DefaultId, b2, 10);
+
+        // 实盘：B1 实盘 7（差异 +2）；B2 实盘 10（差异 0）
+        var request = new CreateStockTakeRequest
+        {
+            Type = StockTakeType.Take,
+            TakeDate = TakeDate,
+            Items = new List<CreateStockTakeItem>
+            {
+                new() { ProductId = a.Id, BatchId = batchRepo.IdOf(a.Id, "B1")!.Value, ActualQuantity = 7 },
+                new() { ProductId = a.Id, BatchId = batchRepo.IdOf(a.Id, "B2")!.Value, ActualQuantity = 10 },
+            },
+        };
+
+        var result = await handler.HandleAsync(request);
+
+        // 两行明细：批次快照 / 账面 / 差异
+        var row1 = result.Items.Single(i => i.BatchId == b1.ToString());
+        var row2 = result.Items.Single(i => i.BatchId == b2.ToString());
+        Assert.Equal("B1", row1.BatchNo);
+        Assert.Equal(5, row1.BookQuantity);
+        Assert.Equal(7, row1.ActualQuantity);
+        Assert.Equal(2, row1.Difference);
+        Assert.Equal(10, row2.BookQuantity);
+        Assert.Equal(0, row2.Difference);
+        Assert.Equal(1, result.DiffItemCount);
+
+        // 仅差异行（B1）设定库存：按批次行定位
+        Assert.Equal(new[] { (a.Id, 7) }, inventory.Sets);
+        Assert.Equal(7, await inventory.GetQuantityAsync(a.Id, TestWarehouse.DefaultId, b1));
+        Assert.Equal(10, await inventory.GetQuantityAsync(a.Id, TestWarehouse.DefaultId, b2)); // B2 无差异不动
+
+        // 仅差异行写流水：带批次号
+        var movement = Assert.Single(movements.Appended);
+        Assert.Equal(StockMovementType.StockTakeAdjust, movement.MovementType);
+        Assert.Equal(b1, movement.BatchId);
+        Assert.Equal(2, movement.Quantity);
+
+        // 对账：按「商品 × 仓 × 批次」Σ 流水 == 该批次行净变动
+        Assert.Equal(2, await movements.SumQuantityAsync(a.Id, null, b1));
+    }
+
+    [Fact]
+    public async Task 新增盘点_非批次商品传批次_应报Validation()
+    {
+        var (products, _, _, _, _, handler, _) = CreateHandler();
+        var a = SeedProduct(products, "st-nb"); // IsBatchManaged 默认 false
+        var request = new CreateStockTakeRequest
+        {
+            Type = StockTakeType.Take,
+            TakeDate = TakeDate,
+            Items = new List<CreateStockTakeItem>
+            {
+                new() { ProductId = a.Id, BatchId = Guid.NewGuid(), ActualQuantity = 1 },
+            },
+        };
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(request));
+        Assert.Equal(ErrorCode.Validation, ex.Code);
     }
 
     // ============================== 校验 / 限制 ==============================

@@ -59,7 +59,8 @@ public sealed class UpdateInventorySafetyStockRequestHandler
             throw new BusinessException(ErrorCode.NotFound, $"商品 {product.Code} 在该仓库没有库存记录");
         }
 
-        var quantity = await _inventoryRepository.GetQuantityAsync(
+        // 安全库存按「商品 × 仓」汇总判定（040 §0），跨批次求和
+        var quantity = await _inventoryRepository.GetWarehouseQuantityAsync(
             request.ProductId, request.WarehouseId, cancellationToken);
 
         var now = DateTimeOffset.UtcNow;

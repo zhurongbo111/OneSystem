@@ -10,6 +10,7 @@ import { createPurchaseReturn, toUtcMidnight } from '@/api/purchaseReturn'
 import type { PurchaseReturnFormLine } from '@/api/purchaseReturn'
 import { getWarehousePickList } from '@/api/warehouse'
 import type { WarehousePickItem } from '@/api/warehouse'
+import BatchPickSelect from '@/views/BatchManagement/BatchPickSelect.vue'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
 import { IconPlus } from '@tabler/icons-vue'
@@ -26,11 +27,18 @@ const QUANTITY_MAX = 999999
 const itemColumns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '商品', slotName: 'product' },
+  { title: '批次', slotName: 'batch', width: 240 },
   { title: '数量', slotName: 'quantity', width: 170 },
   { title: '单价', slotName: 'unitPrice', width: 170 },
   { title: '小计', slotName: 'subtotal', width: 120, align: 'right' },
   { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
 ]
+
+/** 明细行的商品是否按批次管理（决定批次列控件是否渲染 / 是否必填，040） */
+function isBatchManagedLine(line: PurchaseReturnFormLine): boolean {
+  if (!line.productId) return false
+  return products.value.find((p) => p.id === line.productId)?.isBatchManaged ?? false
+}
 
 // —— helpers ——
 let itemSeq = 0
@@ -40,7 +48,7 @@ function newKey(): string {
 }
 
 function newLine(): PurchaseReturnFormLine {
-  return { key: newKey(), productId: undefined, productName: '', unit: '', stockQuantity: 0, quantity: 1, unitPrice: 0, subtotal: 0 }
+  return { key: newKey(), productId: undefined, productName: '', unit: '', stockQuantity: 0, quantity: 1, unitPrice: 0, subtotal: 0, batch: {} }
 }
 
 /** 当天本地日期 YYYY-MM-DD（退货日期默认值） */
@@ -100,7 +108,14 @@ const itemsInvalid = computed(
   () =>
     lines.value.length === 0 ||
     lines.value.length > MAX_ITEMS ||
-    lines.value.some((l) => !l.productId || l.quantity < QUANTITY_MIN || l.quantity > QUANTITY_MAX),
+    lines.value.some(
+      (l) =>
+        !l.productId ||
+        l.quantity < QUANTITY_MIN ||
+        l.quantity > QUANTITY_MAX ||
+        // 按批次商品必须指定批次（出库类仅可选已有批次，040；后端 40127 / 40128 双保险）
+        (isBatchManagedLine(l) && !l.batch.batchId),
+    ),
 )
 
 /** 任一行「退货数量 > 当前库存」：前端预警（最终以后端 40103 为准），提交前拦截 */
@@ -162,6 +177,8 @@ function onLineProductChange(line: PurchaseReturnFormLine, value?: string): void
   line.unit = p?.unit ?? ''
   line.stockQuantity = p?.stockQuantity ?? 0
   line.unitPrice = p?.purchasePrice ?? 0
+  // 换商品即清空已选批次（不同商品的批次不可混用；BatchPickSelect 亦会随 productId 变化重载）
+  line.batch = {}
 }
 
 function onLineQuantityChange(line: PurchaseReturnFormLine, value: number | undefined): void {
@@ -214,7 +231,13 @@ async function onSubmit(): Promise<void> {
       warehouseId: warehouseId.value,
       // 所选日期 → UTC 午夜 ISO 串（design §4.2；裸日期会被后端按服务器本地时区解析导致入库失败）
       returnDate: toUtcMidnight(returnDate.value),
-      items: lines.value.map((l) => ({ productId: l.productId as string, quantity: l.quantity, unitPrice: l.unitPrice })),
+      items: lines.value.map((l) => ({
+        productId: l.productId as string,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        // 批次（040）：按批次商品必带；出库类仅可选已有批次
+        batchId: l.batch.batchId,
+      })),
       remark: remark.value.trim() || undefined,
     })
     Message.success('采购退货单已创建')
@@ -324,6 +347,16 @@ async function onSubmit(): Promise<void> {
               allow-search
               allow-clear
               @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as PurchaseReturnFormLine, v as string | undefined)"
+            />
+          </template>
+          <template #batch="{ record }">
+            <BatchPickSelect
+              v-if="isBatchManagedLine(record as PurchaseReturnFormLine)"
+              v-model="(record as PurchaseReturnFormLine).batch"
+              :product-id="(record as PurchaseReturnFormLine).productId"
+              :warehouse-id="warehouseId ?? ''"
+              :allow-create="false"
+              :required="true"
             />
           </template>
           <template #quantity="{ record }">

@@ -17,7 +17,7 @@ public class GetStockTakePickProductsRequestHandlerTests
         var movements = new FakeStockMovementRepository();
         var inventory = new FakeInventoryRepository();
         var handler = new GetStockTakePickProductsRequestHandler(
-            products, new FakeWarehouseRepository(), inventory, movements);
+            products, new FakeWarehouseRepository(), inventory, movements, new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow));
         return (products, movements, inventory, handler);
     }
 
@@ -36,6 +36,7 @@ public class GetStockTakePickProductsRequestHandlerTests
             PurchasePrice = 1m,
             SalePrice = 2m,
             StockQuantity = 4,
+            IsBatchManaged = false,
         });
         products.Picks.Add(new ProductPickItem
         {
@@ -46,6 +47,7 @@ public class GetStockTakePickProductsRequestHandlerTests
             PurchasePrice = 1m,
             SalePrice = 2m,
             StockQuantity = 0,
+            IsBatchManaged = false,
         });
         movements.Appended.Add(new StockMovement
         {
@@ -82,6 +84,7 @@ public class GetStockTakePickProductsRequestHandlerTests
             PurchasePrice = 3m,
             SalePrice = 5m,
             StockQuantity = 12,
+            IsBatchManaged = false,
         });
         // 038：账面数量按「所选仓」读取（不取商品下拉自带的组织级库存）
         inventory.Seed(only, 12);

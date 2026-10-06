@@ -84,20 +84,21 @@ public sealed class VoidPurchaseReturnRequestHandler : IRequestHandler<VoidPurch
             foreach (var item in items)
             {
                 await _inventoryRepository.IncrementAsync(
-                    item.ProductId, purchaseReturn.WarehouseId, item.Quantity, cancellationToken);
+                    item.ProductId, purchaseReturn.WarehouseId, item.BatchId, item.Quantity, cancellationToken);
 
                 // 成本：冲销还原 —— 复用该退货单原出库流水的成本单价（erp-cost design §0.2）
                 var unitCost = await _stockMovementRepository.GetMovementUnitCostAsync(
-                    purchaseReturn.Id, item.ProductId, StockMovementType.PurchaseReturnOut, cancellationToken) ?? 0m;
+                    purchaseReturn.Id, item.ProductId, item.BatchId, StockMovementType.PurchaseReturnOut, cancellationToken) ?? 0m;
                 var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
                 await _inventoryRepository.ApplyInboundCostAsync(
-                    item.ProductId, purchaseReturn.WarehouseId, item.Quantity, unitCost, cancellationToken);
+                    item.ProductId, purchaseReturn.WarehouseId, item.BatchId, item.Quantity, unitCost, cancellationToken);
 
                 // 库存流水：采购退货作废回冲（正方向），与库存增减同事务并带变动仓（design.md §3.6）
                 await _stockMovementRepository.AppendAsync(new StockMovement
                 {
                     Id = Guid.NewGuid(),
                     ProductId = item.ProductId,
+                    BatchId = item.BatchId,
                     WarehouseId = purchaseReturn.WarehouseId,
                     MovementType = StockMovementType.PurchaseReturnVoid,
                     Quantity = item.Quantity,

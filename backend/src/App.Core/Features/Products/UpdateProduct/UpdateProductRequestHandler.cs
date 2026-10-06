@@ -65,6 +65,7 @@ public sealed class UpdateProductRequestHandler : IRequestHandler<UpdateProductR
         var beforePurchasePrice = product.PurchasePrice;
         var beforeSalePrice = product.SalePrice;
         var beforeSafetyStock = product.SafetyStock;
+        var beforeIsBatchManaged = product.IsBatchManaged;
         var beforeRemark = product.Remark;
         var now = DateTimeOffset.UtcNow;
 
@@ -78,6 +79,7 @@ public sealed class UpdateProductRequestHandler : IRequestHandler<UpdateProductR
         product.PurchasePrice = request.PurchasePrice;
         product.SalePrice = request.SalePrice;
         product.SafetyStock = request.SafetyStock;
+        product.IsBatchManaged = request.IsBatchManaged;
         product.Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
         product.UpdatedAt = now;
         product.UpdatedBy = _currentUser.UserId();
@@ -91,6 +93,7 @@ public sealed class UpdateProductRequestHandler : IRequestHandler<UpdateProductR
             .Add("purchasePrice", "采购价", AuditSummary.Money(beforePurchasePrice), AuditSummary.Money(product.PurchasePrice))
             .Add("salePrice", "销售价", AuditSummary.Money(beforeSalePrice), AuditSummary.Money(product.SalePrice))
             .Add("safetyStock", "安全库存", AuditSummary.Quantity(beforeSafetyStock), AuditSummary.Quantity(product.SafetyStock))
+            .Add("isBatchManaged", "按批次管理", beforeIsBatchManaged ? "开启" : "关闭", product.IsBatchManaged ? "开启" : "关闭")
             .Add("remark", "备注", beforeRemark, product.Remark);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);

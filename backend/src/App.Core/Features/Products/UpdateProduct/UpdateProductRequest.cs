@@ -28,6 +28,9 @@ public sealed class UpdateProductRequest : IRequest<ProductDto>
     /// <summary>安全库存阈值（0–999999；0 表示不提醒）</summary>
     public int SafetyStock { get; init; }
 
+    /// <summary>是否按批次管理（040；仅影响后续单据，历史批次库存行保留）</summary>
+    public bool IsBatchManaged { get; init; }
+
     /// <summary>备注，可空（≤ 200 字符）</summary>
     public string? Remark { get; init; }
 }

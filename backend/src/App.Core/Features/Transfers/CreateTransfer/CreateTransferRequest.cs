@@ -32,4 +32,7 @@ public sealed class CreateTransferItem
 
     /// <summary>调拨数量（≥ 1）</summary>
     public required int Quantity { get; init; }
+
+    /// <summary>批次 id，可空：按批次管理商品必填（039 预留、040 启用）</summary>
+    public Guid? BatchId { get; init; }
 }

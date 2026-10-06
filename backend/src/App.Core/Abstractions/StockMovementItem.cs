@@ -29,6 +29,12 @@ public sealed record StockMovementItem
     /// <summary>仓库名称（联查 Warehouses 带出；仓改名后历史流水显示当时名称由名称列决定，本项目按当前名称展示）</summary>
     public required string WarehouseName { get; init; }
 
+    /// <summary>批次 ID（040；非批次流水为 null）</summary>
+    public Guid? BatchId { get; init; }
+
+    /// <summary>批次号（联查 Batches 带出；非批次流水为 null）</summary>
+    public string? BatchNo { get; init; }
+
     /// <summary>变动类型</summary>
     public required StockMovementType MovementType { get; init; }
 

@@ -19,5 +19,8 @@ public sealed class GetInventoryRequestValidator : AbstractValidator<GetInventor
 
         // 长度统一取自 ProductFieldConstraints（禁止硬编码；与 Code / Name 列长一致）
         RuleFor(x => x.Keyword).MaximumLength(ProductFieldConstraints.KeywordMaxLength).When(x => x.Keyword is not null);
+
+        // 批次号筛选长度取 BatchFieldConstraints（与 Batches.BatchNo 列长一致）
+        RuleFor(x => x.BatchNo).MaximumLength(BatchFieldConstraints.BatchNoMaxLength).When(x => x.BatchNo is not null);
     }
 }

@@ -340,6 +340,7 @@ public class AuditLogWriteIntegrationTests
             new FakeWarehouseRepository(),
             new FakeInventoryRepository(calls),
             new FakeStockMovementRepository(calls),
+            new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow),
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),
             audit).HandleAsync(new CreateStockTakeRequest
@@ -480,7 +481,7 @@ public class AuditLogWriteIntegrationTests
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             new RecordingUnitOfWork(calls),
             new StubCurrentUser(_operatorId),
-            audit);
+            audit, new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow));
 
         var error = await Assert.ThrowsAsync<BusinessException>(() => handler.HandleAsync(new CreateSalesShipmentRequest
         {

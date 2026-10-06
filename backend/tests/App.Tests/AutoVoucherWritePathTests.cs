@@ -66,7 +66,9 @@ public class AutoVoucherWritePathTests
             a.Gl.Accounts,
             new RecordingUnitOfWork(a.Calls),
             a.User,
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger,
+            new FakeBatchRepository(),
+            new TestClock(OrderDate));
 
     private static VoidPurchaseReceiptRequestHandler CreateVoidHandler(Arrange a)
         => new(
@@ -183,7 +185,9 @@ public class AutoVoucherWritePathTests
             a.Gl.Accounts,
             new RecordingUnitOfWork(a.Calls),
             a.User,
-            TestSupport.AuditLogger);
+            TestSupport.AuditLogger,
+            new FakeBatchRepository(),
+            new TestClock(OrderDate));
 
         await handler.HandleAsync(new CreateSalesShipmentRequest
         {

@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Batches;
 using App.Core.Features.Warehouses;
 using App.Core.Finance;
 
@@ -39,6 +40,8 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
+    private readonly IBatchRepository _batchRepository;
+    private readonly ISystemClock _clock;
 
     /// <summary>
     /// 初始化新增销售出库单用例处理器
@@ -58,7 +61,9 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         IAccountRepository accountRepository,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
-        IAuditLogger auditLogger)
+        IAuditLogger auditLogger,
+        IBatchRepository batchRepository,
+        ISystemClock clock)
     {
         _salesShipmentRepository = salesShipmentRepository;
         _salesOrderRepository = salesOrderRepository;
@@ -75,6 +80,8 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
+        _batchRepository = batchRepository;
+        _clock = clock;
     }
 
     /// <summary>
@@ -204,26 +211,52 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
             await _unitOfWork.BeginTransactionAsync(cancellationToken);
             try
             {
-                // 成本：出库按「变动前」该仓移动加权均价结转（erp-cost design §0.2）—— 必须在扣减前读取
-                var outboundUnitCosts = new Dictionary<Guid, decimal>(request.Items.Count);
+                // 批次解析（040，事务内执行）：出库类拦截过期批次（outbound = true → 40128）；
+                // 按批次商品缺批次 → 40127；停用批次 → 40000
+                var resolvedBatches = new List<ResolvedBatch?>(request.Items.Count);
                 foreach (var line in request.Items)
                 {
-                    outboundUnitCosts[line.ProductId] =
-                        await _inventoryRepository.GetAverageCostAsync(line.ProductId, warehouse.Id, cancellationToken);
+                    var p0 = products[line.ProductId];
+                    resolvedBatches.Add(await BatchLineResolver.ResolveAsync(
+                        p0.IsBatchManaged,
+                        p0.Id,
+                        line.BatchId,
+                        null,
+                        null,
+                        null,
+                        _batchRepository,
+                        outbound: true,
+                        _clock.Today,
+                        operatorId,
+                        cancellationToken));
                 }
 
-                // 逐行按仓扣减：任一行该仓库存不足 → 回滚整单（报首个不足商品，message 含仓名）
-                foreach (var line in request.Items)
+                // 成本：出库按「变动前」该仓该批次行移动加权均价结转（erp-cost design §0.2；040 起按批次行）—— 必须在扣减前读取
+                // 040 起同商品可拆多批次多行，均价按「行」存（原按商品 key 会串批次）
+                var outboundUnitCosts = new List<decimal>(request.Items.Count);
+                for (var index = 0; index < request.Items.Count; index++)
                 {
+                    var line = request.Items[index];
+                    outboundUnitCosts.Add(
+                        await _inventoryRepository.GetAverageCostAsync(line.ProductId, warehouse.Id, resolvedBatches[index]?.BatchId, cancellationToken));
+                }
+
+                // 逐行按仓按批次扣减：任一行该批次行库存不足 → 回滚整单（报首个不足商品，message 含仓名 / 批次号）
+                for (var index = 0; index < request.Items.Count; index++)
+                {
+                    var line = request.Items[index];
+                    var batch = resolvedBatches[index];
                     var ok = await _inventoryRepository.TryDecrementAsync(
-                        line.ProductId, warehouse.Id, line.Quantity, cancellationToken);
+                        line.ProductId, warehouse.Id, batch?.BatchId, line.Quantity, cancellationToken);
                     if (!ok)
                     {
                         var current = await _inventoryRepository.GetQuantityAsync(
-                            line.ProductId, warehouse.Id, cancellationToken);
+                            line.ProductId, warehouse.Id, batch?.BatchId, cancellationToken);
                         throw new BusinessException(
                             ErrorCode.InsufficientStock,
-                            $"库存不足：{warehouse.Name} 商品 {products[line.ProductId].Name}（当前 {current}，需要 {line.Quantity}）");
+                            $"库存不足：{warehouse.Name} 商品 {products[line.ProductId].Name}"
+                            + (batch is not null ? $" 批次 {batch.BatchNo}" : string.Empty)
+                            + $"（当前 {current}，需要 {line.Quantity}）");
                     }
                 }
 
@@ -251,9 +284,11 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
 
                 // 明细行按请求顺序生成顺序 Guid（SequentialGuidGenerator，见 design.md §3.1）
                 var items = new List<SalesShipmentItem>(request.Items.Count);
-                foreach (var line in request.Items)
+                for (var index = 0; index < request.Items.Count; index++)
                 {
+                    var line = request.Items[index];
                     var p = products[line.ProductId];
+                    var batch = resolvedBatches[index];
                     items.Add(new SalesShipmentItem
                     {
                         Id = SequentialGuidGenerator.NewSequential(),
@@ -265,6 +300,8 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                         UnitPrice = line.UnitPrice,
                         Subtotal = line.UnitPrice * line.Quantity,
                         OrderItemId = line.OrderItemId,
+                        BatchId = batch?.BatchId,
+                        BatchNo = batch?.BatchNo,
                     });
                 }
 
@@ -273,20 +310,23 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                 // 库存流水：销售出库，与库存扣减同事务（逐行 TryDecrementAsync 已全部成功后才走到这里）
                 // 成本结转金额 = Σ 本次出库流水成本（作为自动凭证的成本结转分录金额）
                 var costAmount = 0m;
-                foreach (var item in items)
+                for (var index = 0; index < items.Count; index++)
                 {
-                    // 成本：按变动前均价结转（均价不变 —— 按均价出库不改变均值）
-                    var unitCost = outboundUnitCosts[item.ProductId];
+                    var item = items[index];
+
+                    // 成本：按变动前批次行均价结转（均价不变 —— 按均价出库不改变均值；040 起按批次行）
+                    var unitCost = outboundUnitCosts[index];
                     var totalCost = CostCalculator.TotalCost(item.Quantity, unitCost);
                     costAmount += totalCost;
                     await _inventoryRepository.ApplyOutboundCostAsync(
-                        item.ProductId, warehouse.Id, totalCost, cancellationToken);
+                        item.ProductId, warehouse.Id, item.BatchId, totalCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
                         ProductId = item.ProductId,
                         WarehouseId = warehouse.Id,
+                        BatchId = item.BatchId,
                         MovementType = StockMovementType.SalesOutbound,
                         Quantity = -item.Quantity,
                         UnitCost = unitCost,
@@ -343,7 +383,7 @@ public sealed class CreateSalesShipmentRequestHandler : IRequestHandler<CreateSa
                     Action = AuditAction.Create,
                     ResourceId = order.Id,
                     ResourceNo = order.ShipmentNo,
-                    Summary = $"创建销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、出库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）",
+                    Summary = $"创建销售出库单 {order.ShipmentNo}（客户：{order.PartnerName}、出库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}",
                     Changes = createdShipmentChangeBuilder.Build(),
                     ChangesTruncated = createdShipmentChangeBuilder.Truncated,
                     UtcNow = now,

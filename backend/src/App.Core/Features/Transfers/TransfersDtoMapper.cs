@@ -4,7 +4,7 @@ namespace App.Core.Features.Transfers;
 
 /// <summary>
 /// 调拨单实体 → 出参映射（实体字段直接映射为 DTO，禁止把实体暴露到 API）。
-/// 调拨无金额 / 无结算状态推导，映射比采购退货更简单；明细不含 BatchId（040 前恒为空）。
+/// 调拨无金额 / 无结算状态推导，映射比采购退货更简单。
 /// </summary>
 internal static class TransfersDtoMapper
 {
@@ -34,6 +34,8 @@ internal static class TransfersDtoMapper
                 ProductCode = i.ProductCode,
                 ProductName = i.ProductName,
                 Unit = i.Unit,
+                BatchId = i.BatchId?.ToString(),
+                BatchNo = i.BatchNo,
                 Quantity = i.Quantity,
             }).ToList(),
         };

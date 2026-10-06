@@ -28,11 +28,20 @@ public sealed record InventoryItem
     /// <summary>仓库名称（联查 Warehouses 带出）</summary>
     public required string WarehouseName { get; init; }
 
-    /// <summary>该仓当前库存（联查 Inventory 带出）</summary>
+    /// <summary>该仓当前库存（联查 Inventory 带出；展开批次视图 = 该批次行数量，汇总视图 = 批次合计）</summary>
     public required int StockQuantity { get; init; }
 
-    /// <summary>仓级安全库存阈值（038）</summary>
+    /// <summary>仓级安全库存阈值（038；汇总视图 = 组合下 MAX，展开批次视图不使用，前端隐藏该列）</summary>
     public required int SafetyStock { get; init; }
+
+    /// <summary>批次 ID（040；展开批次视图有值，汇总视图与历史行为为 null）</summary>
+    public Guid? BatchId { get; init; }
+
+    /// <summary>批次号（展开批次视图联查 Batches 带出；汇总视图为 null）</summary>
+    public string? BatchNo { get; init; }
+
+    /// <summary>到期日（展开批次视图联查 Batches 带出；null = 永不过期或汇总视图）</summary>
+    public DateTimeOffset? ExpiryDate { get; init; }
 
     /// <summary>最近库存变动时间</summary>
     public DateTimeOffset? UpdatedAt { get; init; }

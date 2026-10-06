@@ -34,6 +34,9 @@ public sealed record ProductDetail
     /// <summary>安全库存阈值</summary>
     public required int SafetyStock { get; init; }
 
+    /// <summary>是否按批次管理（040）</summary>
+    public required bool IsBatchManaged { get; init; }
+
     /// <summary>当前库存（联查 Inventory 带出）</summary>
     public required int StockQuantity { get; init; }
 

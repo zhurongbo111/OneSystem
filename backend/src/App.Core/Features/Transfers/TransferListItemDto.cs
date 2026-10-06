@@ -41,7 +41,7 @@ public sealed class TransferListItemDto
 }
 
 /// <summary>
-/// 调拨单明细出参模型（快照字段原样返回；不含 BatchId —— 040-erp-batch 落地前恒为空，不进 DTO）。
+/// 调拨单明细出参模型（快照字段原样返回）。
 /// </summary>
 public sealed class TransferItemDto
 {
@@ -59,6 +59,12 @@ public sealed class TransferItemDto
 
     /// <summary>计量单位快照</summary>
     public required string Unit { get; init; }
+
+    /// <summary>批次 id（040：按批次商品有值，非批次 null）</summary>
+    public string? BatchId { get; init; }
+
+    /// <summary>批次号快照（040；非批次为 null）</summary>
+    public string? BatchNo { get; init; }
 
     /// <summary>调拨数量</summary>
     public required int Quantity { get; init; }

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：商品管理（erp-product）
@@ -11,6 +11,7 @@ updated: 2026-09-23
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `products.view` / `create` / `update` / `status` / `export`（`export` 由 `027` 的导出动作标注）；菜单可见性与列表页操作按钮由前端按权限过滤。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-audit-log）**：本域商品（创建 / 更新 / 启停）与分类（创建 / 更新 / 删除）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-multi-warehouse，`038`）**：`Inventory` 唯一键升级为 `(ProductId, WarehouseId)` 并加仓级 `SafetyStock`（新建商品为**每个启用仓**建 0 行、阈值取商品档案值）；`Products.SafetyStock` 语义收敛为「组织级提醒线 + 新建库存行的初始值」，低库存判定唯一来源是**仓级阈值**（库存查询页 / 库存余额表）。商品档案的 `stockQuantity` / `isBelowSafetyStock` 为**组织级视图**（Σ 各仓 vs 档案阈值）；开单选品接口 `GET /api/products/pick?warehouseId=` 的库存为所选仓口径。详见 `specs/038-erp-multi-warehouse/design.md` §0。
+> **演进（erp-batch-expiry，`040`）**：`Products` 追加 `IsBatchManaged`（是否按批次管理开关，默认 `false`）；开启后五类单据 / 调拨 / 盘点明细**必须指定批次**（开单页批次列必填、后端 `40127` 双保险），批次台账在「批次 × 仓」粒度落 `Inventory`。开单选品接口 `GET /api/products/pick` 出参追加 `isBatchManaged`（供前端决定是否渲染批次列）。商品表单（`ProductFormDrawer`）追加「按批次管理」开关。详见 `specs/040-erp-batch-expiry/design.md`。
 
 ## 1. 总体设计
 

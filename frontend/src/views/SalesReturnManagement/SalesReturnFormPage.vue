@@ -10,6 +10,7 @@ import { createSalesReturn, toUtcMidnight } from '@/api/saleReturn'
 import type { SalesReturnFormLine } from '@/api/saleReturn'
 import { getWarehousePickList } from '@/api/warehouse'
 import type { WarehousePickItem } from '@/api/warehouse'
+import BatchPickSelect from '@/views/BatchManagement/BatchPickSelect.vue'
 import { Message } from '@arco-design/web-vue'
 import type { FormInstance, TableColumnData } from '@arco-design/web-vue'
 import { IconPlus } from '@tabler/icons-vue'
@@ -26,11 +27,18 @@ const QUANTITY_MAX = 999999
 const itemColumns: TableColumnData[] = [
   { title: '序号', slotName: 'seq', width: 64, align: 'center' },
   { title: '商品', slotName: 'product' },
+  { title: '批次', slotName: 'batch', width: 240 },
   { title: '数量', slotName: 'quantity', width: 150 },
   { title: '单价', slotName: 'unitPrice', width: 170 },
   { title: '小计', slotName: 'subtotal', width: 120, align: 'right' },
   { title: '操作', slotName: 'itemAction', width: 90, align: 'center' },
 ]
+
+/** 明细行的商品是否按批次管理（决定批次列控件是否渲染 / 是否必填，040） */
+function isBatchManagedLine(line: SalesReturnFormLine): boolean {
+  if (!line.productId) return false
+  return products.value.find((p) => p.id === line.productId)?.isBatchManaged ?? false
+}
 
 // —— helpers ——
 let itemSeq = 0
@@ -40,7 +48,7 @@ function newKey(): string {
 }
 
 function newLine(): SalesReturnFormLine {
-  return { key: newKey(), productId: undefined, productName: '', unit: '', quantity: 1, unitPrice: 0, subtotal: 0 }
+  return { key: newKey(), productId: undefined, productName: '', unit: '', quantity: 1, unitPrice: 0, subtotal: 0, batch: {} }
 }
 
 /** 当天本地日期 YYYY-MM-DD（退货日期默认值） */
@@ -100,7 +108,14 @@ const itemsInvalid = computed(
   () =>
     lines.value.length === 0 ||
     lines.value.length > MAX_ITEMS ||
-    lines.value.some((l) => !l.productId || l.quantity < QUANTITY_MIN || l.quantity > QUANTITY_MAX),
+    lines.value.some(
+      (l) =>
+        !l.productId ||
+        l.quantity < QUANTITY_MIN ||
+        l.quantity > QUANTITY_MAX ||
+        // 按批次商品必须指定批次（选已有或就地新建，040；后端 40127 双保险）
+        (isBatchManagedLine(l) && !l.batch.batchId && !l.batch.newBatchNo),
+    ),
 )
 
 // —— watch ——
@@ -150,6 +165,8 @@ function onLineProductChange(line: SalesReturnFormLine, value?: string): void {
   line.unit = p?.unit ?? ''
   // 销售退货：单价默认带出商品销售价（design.md §4.4）
   line.unitPrice = p?.salePrice ?? 0
+  // 换商品即清空已选批次（不同商品的批次不可混用；BatchPickSelect 亦会随 productId 变化重载）
+  line.batch = {}
 }
 
 function onLineQuantityChange(line: SalesReturnFormLine, value: number | undefined): void {
@@ -198,7 +215,16 @@ async function onSubmit(): Promise<void> {
       warehouseId: warehouseId.value,
       // 所选日期 → UTC 午夜 ISO 串（裸日期会被后端按服务器本地时区解析导致入库失败）
       returnDate: toUtcMidnight(returnDate.value),
-      items: lines.value.map((l) => ({ productId: l.productId as string, quantity: l.quantity, unitPrice: l.unitPrice })),
+      items: lines.value.map((l) => ({
+        productId: l.productId as string,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        // 批次（040）：按批次商品必带；就地新建（销售退货）时 batchId 为空、携带 newBatchNo 等
+        batchId: l.batch.batchId,
+        newBatchNo: l.batch.newBatchNo,
+        newProductionDate: l.batch.newProductionDate ? toUtcMidnight(l.batch.newProductionDate) : undefined,
+        newExpiryDate: l.batch.newExpiryDate ? toUtcMidnight(l.batch.newExpiryDate) : undefined,
+      })),
       remark: remark.value.trim() || undefined,
     })
     Message.success('销售退货单已创建')
@@ -308,6 +334,16 @@ async function onSubmit(): Promise<void> {
               allow-search
               allow-clear
               @change="(v: string | number | boolean | Record<string, unknown> | (string | number | boolean | Record<string, unknown>)[]) => onLineProductChange(record as SalesReturnFormLine, v as string | undefined)"
+            />
+          </template>
+          <template #batch="{ record }">
+            <BatchPickSelect
+              v-if="isBatchManagedLine(record as SalesReturnFormLine)"
+              v-model="(record as SalesReturnFormLine).batch"
+              :product-id="(record as SalesReturnFormLine).productId"
+              :warehouse-id="warehouseId ?? ''"
+              :allow-create="true"
+              :required="true"
             />
           </template>
           <template #quantity="{ record }">

@@ -28,6 +28,10 @@ public sealed class CreateStockTakeRequestValidator : AbstractValidator<CreateSt
             .WithMessage($"明细行数不能超过 {StockTakeFieldConstraints.ItemsMaxCount} 行");
         RuleFor(x => x.Items).Must(items => items is null || items.Select(i => i.ProductId).Distinct().Count() == items.Count)
             .WithMessage("同一单据内商品不可重复");
+        // 040 按批次盘点：同一商品不可重复盘点同一批次（非批次商品批次为空，仍按商品唯一）
+        RuleFor(x => x.Items).Must(items => items is null
+                || items.Select(i => (i.ProductId, i.BatchId)).Distinct().Count() == items.Count)
+            .WithMessage("同一单据内同一商品不可重复盘点同一批次");
 
         // 每行：商品必填、实盘数量 0–上界（实盘可为 0，引用 StockTakeFieldConstraints）。
         // 直接取 x.Items（required 非空集合），勿套 ?? 复合表达式——会使 FluentValidation InferPropertyName 抛异常

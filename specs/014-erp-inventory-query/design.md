@@ -1,6 +1,6 @@
 ---
 created: 2026-09-13
-updated: 2026-09-23
+updated: 2026-09-30
 ---
 
 # 设计规格：库存查询（erp-inventory-query）
@@ -12,6 +12,7 @@ updated: 2026-09-23
 > **演进（erp-rbac）**：本域动作接入权限校验，权限点 `inventory.view` / `export`（`export` 由 `027` 的导出动作标注）；本页只读，无写操作权限点。清单唯一来源见 `specs/028-erp-rbac/design.md` §0.2。
 > **演进（erp-multi-warehouse，`038`）**：库存行升级为「商品 × 仓」，本域加「仓库」筛选与仓库列，安全阈值改为**仓级** `Inventory.SafetyStock`（判定唯一来源）并新增行内「安全库存」维护（`PUT /api/inventory/safety-stock`，权限 `inventory.update`）；不传 `warehouseId` 时为全部仓各一行。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.4。
 > **演进（erp-audit-log）**：本域为只读查询（无写路径），不在操作日志范围内（`specs/029-erp-audit-log/design.md` §0.1「范围外动作」）。
+> **演进（erp-batch-expiry，`040`）**：`GetInventoryRequest` 追加 `batchId` / `batchNo`（模糊、大小写不敏感）/ `expandBatch`（默认 `false`）；`expandBatch = true` 时按 `(商品, 仓, 批次)` 展开行（追加批次号 / 到期日 / 近效期 / 过期标记，安全库存列不展示，汇总口径改为 `SUM(Quantity)` 对 `MAX(SafetyStock)`）。详见 `specs/040-erp-batch-expiry/design.md` §3.1 / §3.5。
 
 ## 1. 总体设计
 

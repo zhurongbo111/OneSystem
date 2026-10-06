@@ -15,7 +15,7 @@ public class GetInventoryRequestHandlerTests
         var context = TestSupport.CreateDbContext();
         // 038：库存查询联查仓库（inner join），先落默认仓
         TestSupport.SeedDefaultWarehouse(context);
-        var handler = new GetInventoryRequestHandler(new InventoryRepository(context));
+        var handler = new GetInventoryRequestHandler(new InventoryRepository(context), new TestClock(DateTimeOffset.UtcNow));
         return (context, handler);
     }
 

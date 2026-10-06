@@ -41,7 +41,7 @@ public class CreateSalesShipmentRequestHandlerTests
             new FakeSettlementQueryRepository(),
             gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
             uow,
-            user, TestSupport.AuditLogger);
+            user, TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(OrderDate));
         return (context, user, orders, inventory, movements, uow, handler, calls);
     }
 

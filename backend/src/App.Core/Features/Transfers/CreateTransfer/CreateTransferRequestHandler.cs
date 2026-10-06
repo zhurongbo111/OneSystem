@@ -2,6 +2,7 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Batches;
 using App.Core.Features.Warehouses;
 
 namespace App.Core.Features.Transfers.CreateTransfer;
@@ -24,6 +25,8 @@ public sealed class CreateTransferRequestHandler : IRequestHandler<CreateTransfe
     private readonly IProductRepository _productRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IBatchRepository _batchRepository;
+    private readonly ISystemClock _clock;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
@@ -37,6 +40,8 @@ public sealed class CreateTransferRequestHandler : IRequestHandler<CreateTransfe
         IProductRepository productRepository,
         IInventoryRepository inventoryRepository,
         IStockMovementRepository stockMovementRepository,
+        IBatchRepository batchRepository,
+        ISystemClock clock,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger)
@@ -46,6 +51,8 @@ public sealed class CreateTransferRequestHandler : IRequestHandler<CreateTransfe
         _productRepository = productRepository;
         _inventoryRepository = inventoryRepository;
         _stockMovementRepository = stockMovementRepository;
+        _batchRepository = batchRepository;
+        _clock = clock;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
@@ -129,11 +136,33 @@ public sealed class CreateTransferRequestHandler : IRequestHandler<CreateTransfe
                     UpdatedBy = operatorId,
                 };
 
-                // 明细行按请求顺序生成顺序 Guid（SequentialGuidGenerator），保证持久化顺序与请求顺序一致
-                var items = new List<TransferItem>(request.Items.Count);
+                // 批次解析（040 §3.4，事务内执行）：按批次商品必填、停用 40000、批次不属于该商品 40400；
+                // 调拨为仓间位移（无出库/入库侧），不拦截过期批次（outbound = false，040 §0 过期只拦出库类）
+                var resolvedBatches = new List<ResolvedBatch?>(request.Items.Count);
                 foreach (var line in request.Items)
                 {
+                    var p0 = products[line.ProductId];
+                    resolvedBatches.Add(await BatchLineResolver.ResolveAsync(
+                        p0.IsBatchManaged,
+                        p0.Id,
+                        line.BatchId,
+                        null,
+                        null,
+                        null,
+                        _batchRepository,
+                        outbound: false,
+                        _clock.Today,
+                        operatorId,
+                        cancellationToken));
+                }
+
+                // 明细行按请求顺序生成顺序 Guid（SequentialGuidGenerator），保证持久化顺序与请求顺序一致
+                var items = new List<TransferItem>(request.Items.Count);
+                for (var index = 0; index < request.Items.Count; index++)
+                {
+                    var line = request.Items[index];
                     var p = products[line.ProductId];
+                    var batch = resolvedBatches[index];
                     items.Add(new TransferItem
                     {
                         Id = SequentialGuidGenerator.NewSequential(),
@@ -143,41 +172,46 @@ public sealed class CreateTransferRequestHandler : IRequestHandler<CreateTransfe
                         ProductName = p.Name,
                         Unit = p.Unit,
                         Quantity = line.Quantity,
+                        BatchId = batch?.BatchId,
+                        BatchNo = batch?.BatchNo,
                     });
                 }
 
-                // 成本：转出时的组织级均价（026 §0.1），转入用同一单价保证净额为 0
-                var transferOutUnitCosts = new Dictionary<Guid, decimal>(request.Items.Count);
+                // 成本：转出时按行批次行的均价（026 §0.1 的批次行版本；040 §0 调拨单价仍取商品均价口径，按行隔离防同商品多批次串价），
+                // 转入用同一单价保证组织级成本净变化为 0
+                var transferOutUnitCosts = new List<decimal>(request.Items.Count);
 
                 // 逐行全部转出：avgCost → TryDecrement → ApplyOutboundCost → AppendAsync(TransferOut)
-                foreach (var line in request.Items)
+                foreach (var item in items)
                 {
                     var avgCost = await _inventoryRepository.GetAverageCostAsync(
-                        line.ProductId, fromWarehouse.Id, cancellationToken);
-                    transferOutUnitCosts[line.ProductId] = avgCost;
+                        item.ProductId, fromWarehouse.Id, item.BatchId, cancellationToken);
+                    transferOutUnitCosts.Add(avgCost);
 
                     var ok = await _inventoryRepository.TryDecrementAsync(
-                        line.ProductId, fromWarehouse.Id, line.Quantity, cancellationToken);
+                        item.ProductId, fromWarehouse.Id, item.BatchId, item.Quantity, cancellationToken);
                     if (!ok)
                     {
                         var current = await _inventoryRepository.GetQuantityAsync(
-                            line.ProductId, fromWarehouse.Id, cancellationToken);
+                            item.ProductId, fromWarehouse.Id, item.BatchId, cancellationToken);
+                        var batchNoText = item.BatchNo is null ? string.Empty : $"/批次 {item.BatchNo}";
                         throw new BusinessException(
                             ErrorCode.InsufficientStock,
-                            $"库存不足：{fromWarehouse.Name} 商品 {products[line.ProductId].Name}（当前 {current}，需要 {line.Quantity}）");
+                            $"库存不足：{fromWarehouse.Name} 商品 {item.ProductName}{batchNoText}（当前 {current}，需要 {item.Quantity}）");
                     }
 
-                    var totalCost = CostCalculator.TotalCost(line.Quantity, avgCost);
+                    var totalCost = CostCalculator.TotalCost(item.Quantity, avgCost);
                     await _inventoryRepository.ApplyOutboundCostAsync(
-                        line.ProductId, fromWarehouse.Id, totalCost, cancellationToken);
+                        item.ProductId, fromWarehouse.Id, item.BatchId, totalCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
-                        ProductId = line.ProductId,
+                        ProductId = item.ProductId,
+                        BatchId = item.BatchId,
                         WarehouseId = fromWarehouse.Id,
                         MovementType = StockMovementType.TransferOut,
-                        Quantity = -line.Quantity,
+                        Quantity = -item.Quantity,
                         UnitCost = avgCost,
                         TotalCost = -totalCost,
                         SourceId = transfer.Id,
@@ -188,24 +222,26 @@ public sealed class CreateTransferRequestHandler : IRequestHandler<CreateTransfe
                 }
 
                 // 逐行全部转入：Increment → ApplyInboundCost(同一 avgCost) → AppendAsync(TransferIn)
-                foreach (var line in request.Items)
+                for (var index = 0; index < items.Count; index++)
                 {
-                    var avgCost = transferOutUnitCosts[line.ProductId];
-                    var totalCost = CostCalculator.TotalCost(line.Quantity, avgCost);
+                    var item = items[index];
+                    var avgCost = transferOutUnitCosts[index];
+                    var totalCost = CostCalculator.TotalCost(item.Quantity, avgCost);
 
                     await _inventoryRepository.IncrementAsync(
-                        line.ProductId, toWarehouse.Id, line.Quantity, cancellationToken);
+                        item.ProductId, toWarehouse.Id, item.BatchId, item.Quantity, cancellationToken);
 
                     await _inventoryRepository.ApplyInboundCostAsync(
-                        line.ProductId, toWarehouse.Id, line.Quantity, avgCost, cancellationToken);
+                        item.ProductId, toWarehouse.Id, item.BatchId, item.Quantity, avgCost, cancellationToken);
 
                     await _stockMovementRepository.AppendAsync(new StockMovement
                     {
                         Id = Guid.NewGuid(),
-                        ProductId = line.ProductId,
+                        ProductId = item.ProductId,
+                        BatchId = item.BatchId,
                         WarehouseId = toWarehouse.Id,
                         MovementType = StockMovementType.TransferIn,
-                        Quantity = line.Quantity,
+                        Quantity = item.Quantity,
                         UnitCost = avgCost,
                         TotalCost = totalCost,
                         SourceId = transfer.Id,
@@ -230,7 +266,7 @@ public sealed class CreateTransferRequestHandler : IRequestHandler<CreateTransfe
                     Action = AuditAction.Create,
                     ResourceId = transfer.Id,
                     ResourceNo = transfer.TransferNo,
-                    Summary = $"创建调拨单 {transfer.TransferNo}（转出仓：{transfer.FromWarehouseName}、转入仓：{transfer.ToWarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Quantity(totalQuantity)}）",
+                    Summary = $"创建调拨单 {transfer.TransferNo}（转出仓：{transfer.FromWarehouseName}、转入仓：{transfer.ToWarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Quantity(totalQuantity)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}",
                     Changes = createdTransferChangeBuilder.Build(),
                     ChangesTruncated = createdTransferChangeBuilder.Truncated,
                     UtcNow = now,

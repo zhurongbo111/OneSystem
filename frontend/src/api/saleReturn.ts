@@ -31,6 +31,10 @@ export interface SalesReturnItem {
   productId: string
   productName: string
   unit: string
+  /** 批次 id（040：按批次商品有值，非批次 null） */
+  batchId: string | null
+  /** 批次号快照（040；非批次 null） */
+  batchNo: string | null
   quantity: number
   unitPrice: number
   subtotal: number
@@ -70,6 +74,17 @@ export interface SalesReturnFormLine {
   quantity: number
   unitPrice: number
   subtotal: number
+  /**
+   * 批次选择值（040，v-model 绑定 BatchPickSelect；销售退货支持就地新建）：
+   * 选中已有批次 → `batchId` / `batchNo` 有值；就地新建 → `newBatchNo` 等三字段有值（与 batchId 互斥）。
+   */
+  batch: {
+    batchId?: string
+    batchNo?: string
+    newBatchNo?: string
+    newProductionDate?: string
+    newExpiryDate?: string
+  }
 }
 
 /** 新增销售退货单入参（对应后端 CreateSalesReturnRequest；不传小计 / 总额） */
@@ -78,7 +93,19 @@ export interface CreateSalesReturnPayload {
   returnDate: string
   /** 入库仓 id（038；不传 = 默认仓，前端一律显式传仓） */
   warehouseId?: string
-  items: { productId: string; quantity: number; unitPrice: number }[]
+  items: {
+    productId: string
+    quantity: number
+    unitPrice: number
+    /** 批次 id（040：按批次商品必填；就地新建时省略） */
+    batchId?: string
+    /** 就地新建批次号（与 batchId 互斥） */
+    newBatchNo?: string
+    /** 就地新建批次生产日期（YYYY-MM-DD） */
+    newProductionDate?: string
+    /** 就地新建批次到期日（YYYY-MM-DD） */
+    newExpiryDate?: string
+  }[]
   remark?: string
 }
 
