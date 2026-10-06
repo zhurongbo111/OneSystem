@@ -26,6 +26,8 @@ updated: 2026-10-06
 - **扫描结果语义**：每条信号 × 每个接收人 = 一条站内信；统计返回「信号数 / 生成消息数 / 跳过（去重）数 / 接收人数」。
 - **无外部推送**：站内信即在系统内的唯一通道（范围外）。
 
+> **演进（erp-approval，`042`）**：本规格的 `Notifications` 表与写入通道 `INotificationWriter` 被单据审批复用——`042` 续行 `NotificationType`（`ApprovalPending = 3` 待审批 / `ApprovalDecided = 4` 审批结果，原「逾期应收」预留值调整为 `5`，见 §2.1），提交审批时向具备 `approvals.approve` 权限的启用用户发「待审批」消息（`LinkRouteName = approvals` + `LinkQuery = {"id":"<审批记录id>"}`），审批完成时向提交人发结果消息；**审批消息不走去重台账**（`AlertRecords` 只关心前 3 类库存信号）。发送失败只记日志，不影响单据与审批状态。详见 `specs/042-erp-approval/design.md` §0.3 / §3.5。
+
 ## 1. 总体设计
 
 ```

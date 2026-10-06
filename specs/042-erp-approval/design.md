@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-22
+updated: 2026-10-06
 ---
 
 # 设计规格：大额单据审批（erp-approval）
@@ -129,13 +129,14 @@ updated: 2026-09-22
 
 | 组件 | 位置 | 说明 |
 |---|---|---|
-| `PurchaseReceiptFulfillment` | `App.Core/Features/Purchases/` | 采购入库生效：逐行 `IncrementAsync`（按仓 / 批次）+ 流水 + 成本 + 状态；入参为「单据 + 明细 + 操作人 + 时间 + 事务上下文」 |
-| `SalesShipmentFulfillment` | `App.Core/Features/Sales/` | 销售出库生效：`TryDecrementAsync`（不足 → `40103`）+ 流水 + 成本 |
-| `PurchaseReturnFulfillment` / `SalesReturnFulfillment` | `App.Core/Features/PurchaseReturns|SalesReturns/` | 退货生效（方向不同） |
+| `PurchaseReceiptFulfillment` | `App.Core/Features/PurchaseReceipts/` | 采购入库生效：逐行 `IncrementAsync`（按仓 / 批次）+ 流水 + 成本 + 关联采购订单累计回写与状态推导 + 自动凭证 |
+| `SalesShipmentFulfillment` | `App.Core/Features/SalesShipments/` | 销售出库生效：`TryDecrementAsync`（不足 → `40103`）+ 流水 + 成本结转 + 关联销售订单累计回写与状态推导 + 自动凭证（含成本结转分录） |
+| `PurchaseReturnFulfillment` / `SalesReturnFulfillment` | `App.Core/Features/PurchaseReturns/` / `App.Core/Features/SalesReturns/` | 退货生效（方向不同）：库存扣减 / 回增 + 流水 + 成本结转 / 转回 + 自动凭证 |
 
 - **命名说明**：组件按**职责**命名（`*Fulfillment`），不含 `Service` 后缀；不参与业务流程编排（只做「把这张单生效」这一件事），符合后端规则 §4.1 对 `*Service` 的限制。
-- 每个组件的方法签名统一为 `Task ApplyAsync(<单据> order, IReadOnlyList<<明细>> items, Guid? operatorId, DateTimeOffset utcNow, CancellationToken ct)`，**不自行 `Commit`**（事务由调用方 `IUnitOfWork` 控制）。
-- 改造既有创建用例：`Create*` 的生效段替换为调用该组件（**行为逐条不变**，为纯重构，由既有单测与 e2e 守护）。
+- 每个组件的方法签名统一为 `Task ApplyAsync(<单据> order, IReadOnlyList<<明细>> items, Guid? operatorId, DateTimeOffset utcNow, CancellationToken ct)`，**不自行 `Commit`**（事务由调用方 `IUnitOfWork` 控制）；组件由 `AddCore` 注册为 Scoped，依赖仓储经构造注入。
+- **生效内容 = 既有创建用例事务内的全部副作用**（库存 + 流水 + 成本 + 关联订单回写 + 自动凭证）：遗漏任一项都会让「审批通过」比「未命中直接生效」少做一步，故以「与创建逐条等价」为验收判据。
+- 改造既有创建用例：`Create*` 的生效段替换为调用该组件（**行为逐条等价**，为纯重构，由既有单测与 e2e 守护）。**顺序差异**：改造后为「单据主表 + 明细先落库 → 同事务执行生效动作」（原为出库类先扣库存再落单）；两者在同一事务内语义等价（失败整体回滚），既有单测中针对**内部调用序列**的断言已按新顺序同步（见 `CreateSalesShipmentRequestHandlerTests` / `CreatePurchaseReturnRequestHandlerTests`）。
 
 ### 3.2 仓储接口（新增）
 
@@ -158,6 +159,9 @@ updated: 2026-09-22
 | `Task UpdateDecisionAsync(Guid id, ApprovalStatus status, Guid decidedBy, DateTimeOffset decidedAt, string? remark, ...)` | 通过 / 驳回 / 撤回 |
 
 - 四类单据仓储追加 `Task UpdateApprovalStatusAsync(Guid id, ApprovalStatus status, ...)`（原子更新）。
+- 四类单据仓储的 `GetPagedAsync` 追加 `ApprovalStatus? approvalStatus` 参数（位置在 `warehouseId` 之后，列表筛选；导出用例传 `null`，不开放该筛选）。
+
+> **列表出参的显示名**：审批列表 / 详情需要「提交人 / 审批人」姓名，由 Handler 经 `IUserRepository.GetDisplayNamesByIdsAsync` **一次批量**解析为 `submittedByName` / `decidedByName`（不新增读模型：单表查询 + 名称解析，未引入联查字段）。
 
 ### 3.3 错误码（追加到 `App.Core/Errors/ErrorCode.cs`）
 
@@ -172,7 +176,7 @@ updated: 2026-09-22
 
 | 接口 | 方法 | 用例目录 | `data` 响应 | 权限点 / 错误码 |
 |---|---|---|---|---|
-| `/api/approvals` | GET | `Approvals/GetApprovals` | `PagedResult<ApprovalListItemDto>` | `approvals.view` / 40000 |
+| `/api/approvals` | GET | `Approvals/GetApprovals` | `PagedResult<ApprovalListItemDto>`（含 `submittedByName` / `decidedByName`） | `approvals.view` / 40000 |
 | `/api/approvals/{id:guid}` | GET | `Approvals/GetApprovalById` | `ApprovalDetailDto`（含被审批单据摘要与明细） | `approvals.view` / 40400 |
 | `/api/approvals/{id:guid}/approve` | PUT | `Approvals/ApproveOrder` | `ApprovalDetailDto` | `approvals.approve` / 40103 / 40104 / 40136 / 40137 / 40400 |
 | `/api/approvals/{id:guid}/reject` | PUT | `Approvals/RejectApproval` | `ApprovalDetailDto` | `approvals.approve` / 40136 / 40137 / 40400 |
@@ -181,6 +185,7 @@ updated: 2026-09-22
 | `/api/approval-rules` | PUT | `Approvals/UpdateApprovalRules` | `IReadOnlyList<ApprovalRuleDto>` | `approvals.rules` / 40000 |
 
 - 单据侧改造（无新端点）：四类单据列表 / 详情出参追加 `approvalStatus`；列表请求追加 `approvalStatus` 筛选；`void` 端点对待审批单据返回 `40136`。
+- **路由实现说明**：`ApprovalsController` 类级 `[Route("api/approvals")]` 承载 5 个端点；两个规则端点用**绝对路由** `[HttpGet("/api/approval-rules")]` / `[HttpPut("/api/approval-rules")]`（以 `/` 开头不参与类级前缀拼接），避免出现 `/api/approvals/approval-rules`。
 
 ### 3.5 关键用例流程（Handler）
 

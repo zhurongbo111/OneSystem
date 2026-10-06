@@ -13,6 +13,7 @@ updated: 2026-09-23
 > **演进（erp-multi-warehouse，`038`）**：开单页表头新增「入库仓」下拉（仅启用仓、默认仓预选、提交必带 `warehouseId`），单据落 `WarehouseId` + 仓名快照、库存与流水按该仓；列表加「入库仓」列与筛选，详情 / 打印展示仓名；停用仓 `40123`、不存在 `40400`、该仓库存不足 `40103`（message 含仓名）。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.4。
 > **演进（erp-audit-log）**：本域采购入库（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-general-ledger）**：本域采购入库单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（借「库存商品」、贷「应付账款」，金额为单据总额）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
+> **演进（erp-approval，`042`）**：命中审批阈值（`ApprovalRules` 启用且单据总额 ≥ 阈值）时本单**保存时不生效**——不写库存 / 流水 / 成本 / 自动凭证，落库为 `ApprovalStatus = Pending` 并生成审批记录 + 给审批人发站内信；审批通过时才由共享生效组件 `PurchaseReceiptFulfillment`（与「未命中」路径**同一份实现**）执行生效，失败（如库存不足）整体回滚且保持待审批。单据表追加 `ApprovalStatus`，列表 / 详情出参追加 `approvalStatus` 并支持列表筛选；待审批单据禁止作废（`40136`），只能审批 / 驳回 / 撤回。规则默认不启用，未命中时本规格行为逐条不变。详见 `specs/042-erp-approval/design.md` §0。
 
 ## 0. 单据域共用约定（erp-sale 继承）
 
