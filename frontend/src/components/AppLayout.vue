@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import { formatRelativeTime } from '@/utils/datetime'
 import {
+  IconAddressBook,
   IconApps,
   IconArrowsExchange,
   IconBell,
@@ -51,10 +52,12 @@ import {
   IconStack2,
   IconTag,
   IconTags,
+  IconTargetArrow,
   IconTruckDelivery,
   IconTruckReturn,
   IconUser,
   IconUsers,
+  IconUserSearch,
   IconWallet,
 } from '@tabler/icons-vue'
 
@@ -78,6 +81,10 @@ const MENU_ROUTE_MAP: Record<string, string> = {
   purchaseReturnDetail: 'purchaseReturns',
   quotationEdit: 'quotations',
   quotationDetail: 'quotations',
+  leadDetail: 'leads',
+  opportunityCreate: 'opportunities',
+  opportunityEdit: 'opportunities',
+  opportunityDetail: 'opportunities',
   salesOrderEdit: 'salesOrders',
   salesOrderDetail: 'salesOrders',
   salesDetail: 'sales',
@@ -103,6 +110,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   basedata: ['products', 'categories', 'partners', 'warehouses', 'batches'],
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
   sale: ['quotations', 'quotationCreate', 'quotationEdit', 'quotationDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
+  crm: ['leads', 'leadDetail', 'opportunities', 'opportunityCreate', 'opportunityEdit', 'opportunityDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'transfers', 'transferNew', 'transferDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'partnerPrices', 'invoices', 'invoiceNew', 'invoiceDetail'],
   finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
@@ -124,6 +132,8 @@ const MENU_PERMISSIONS: Record<string, string> = {
   purchases: 'purchases.view',
   purchaseReturns: 'purchaseReturns.view',
   quotations: 'quotations.view',
+  leads: 'leads.view',
+  opportunities: 'opportunities.view',
   salesOrders: 'salesOrders.view',
   sales: 'sales.view',
   salesReturns: 'salesReturns.view',
@@ -433,6 +443,35 @@ function onLogout(): void {
               <IconTruckReturn />
             </template>
             <span>销售退货</span>
+          </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu
+          v-if="isGroupVisible('crm')"
+          key="crm"
+        >
+          <template #icon>
+            <IconAddressBook />
+          </template>
+          <template #title>
+            <span>CRM</span>
+          </template>
+          <a-menu-item
+            v-if="isMenuVisible('leads')"
+            key="leads"
+          >
+            <template #icon>
+              <IconUserSearch />
+            </template>
+            <span>线索</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('opportunities')"
+            key="opportunities"
+          >
+            <template #icon>
+              <IconTargetArrow />
+            </template>
+            <span>商机</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu
