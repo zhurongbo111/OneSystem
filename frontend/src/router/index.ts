@@ -163,6 +163,13 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        // 单据审批（042）：待我审批 / 全部 tab + 审批抽屉 + 规则抽屉
+        path: 'approvals',
+        name: 'approvals',
+        component: () => import('@/views/ApprovalManagement/ApprovalsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'partners',
         name: 'partners',
         component: () => import('@/views/PartnerManagement/PartnersView.vue'),
@@ -538,6 +545,7 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   categories: 'categories.view',
   partners: 'partners.view',
   notifications: 'notifications.view',
+  approvals: 'approvals.view',
   inventory: 'inventory.view',
   stockMovements: 'stockMovements.view',
   stockTakes: 'stockTakes.view',

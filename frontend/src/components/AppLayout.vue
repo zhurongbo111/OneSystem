@@ -24,6 +24,7 @@ import {
   IconCoin,
   IconComponents,
   IconDatabase,
+  IconFileCheck,
   IconFileDollar,
   IconFileInvoice,
   IconFileText,
@@ -106,7 +107,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'partnerPrices', 'invoices', 'invoiceNew', 'invoiceDetail'],
   finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
-  system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees'],
+  system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees', 'approvals'],
 }
 
 /**
@@ -152,6 +153,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   departments: 'departments.view',
   positions: 'positions.view',
   employees: 'employees.view',
+  approvals: 'approvals.view',
 }
 
 // —— reactive state ——
@@ -721,6 +723,15 @@ function onLogout(): void {
               <IconIdBadge2 />
             </template>
             <span>员工档案</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('approvals')"
+            key="approvals"
+          >
+            <template #icon>
+              <IconFileCheck />
+            </template>
+            <span>单据审批</span>
           </a-menu-item>
         </a-sub-menu>
       </a-menu>

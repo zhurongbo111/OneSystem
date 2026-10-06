@@ -1,8 +1,11 @@
 import type { PagedResult } from './product'
 import { get, post, put } from './request'
 
-/** 站内信类型（0 低库存 / 1 近效期 / 2 过期 / 5 逾期应收预留，对应后端 NotificationType） */
-export type NotificationType = 0 | 1 | 2 | 5
+/**
+ * 站内信类型（对应后端 NotificationType）：
+ * 0 低库存 / 1 近效期 / 2 过期 / 3 待审批（042）/ 4 审批结果（042）/ 5 逾期应收预留
+ */
+export type NotificationType = 0 | 1 | 2 | 3 | 4 | 5
 
 /** 站内信出参（对应后端 NotificationListItemDto） */
 export interface NotificationItem {
@@ -62,6 +65,9 @@ export const NOTIFICATION_TYPE_META: Record<NotificationType, { label: string; c
   0: { label: '低库存', color: 'red' },
   1: { label: '近效期', color: 'orange' },
   2: { label: '已过期', color: 'gray' },
+  // 042 单据审批：3 待审批（提醒审批人）/ 4 审批结果（通知提交人）
+  3: { label: '待审批', color: 'orange' },
+  4: { label: '审批结果', color: 'arcoblue' },
   5: { label: '逾期应收', color: 'arcoblue' },
 }
 

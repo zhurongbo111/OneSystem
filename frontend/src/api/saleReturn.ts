@@ -1,5 +1,6 @@
 import type { SettlementState } from '@/utils/settlement'
 
+import type { ApprovalStatus } from './approval'
 import type { PagedResult } from './product'
 import { get, post, put } from './request'
 
@@ -22,6 +23,8 @@ export interface SalesReturnListItem {
   unsettledAmount: number
   settlementState: SettlementState
   status: OrderStatus
+  /** 审批状态（042：0 无需审批 / 1 待审批 / 2 已通过 / 3 已驳回 / 4 已撤回；待审批单据未生效） */
+  approvalStatus: ApprovalStatus
   createdAt: string
 }
 
@@ -59,6 +62,8 @@ export interface SalesReturnQuery {
   start?: string
   end?: string
   settlementState?: SettlementState
+  /** 审批状态筛选（042，可空；不传 = 全部） */
+  approvalStatus?: ApprovalStatus
 }
 
 /**
