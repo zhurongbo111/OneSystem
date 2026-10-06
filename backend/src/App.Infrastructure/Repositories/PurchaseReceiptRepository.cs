@@ -33,6 +33,7 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
         DateTimeOffset? end,
         SettlementState? settlementState,
         Guid? warehouseId,
+        ApprovalStatus? approvalStatus,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -88,6 +89,13 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
         {
             var value = warehouseId.Value;
             query = query.Where(o => o.WarehouseId == value);
+        }
+
+        // 审批状态筛选（042）
+        if (approvalStatus is not null)
+        {
+            var value = approvalStatus.Value;
+            query = query.Where(o => o.ApprovalStatus == value);
         }
 
         var total = await query.CountAsync(cancellationToken);
@@ -177,6 +185,19 @@ public sealed class PurchaseReceiptRepository : IPurchaseReceiptRepository
             .Where(o => o.Id == id)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(o => o.Status, status)
+                .SetProperty(o => o.UpdatedAt, now)
+                .SetProperty(o => o.UpdatedBy, operatorId),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task UpdateApprovalStatusAsync(Guid id, ApprovalStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return _dbContext.PurchaseReceipts
+            .Where(o => o.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(o => o.ApprovalStatus, status)
                 .SetProperty(o => o.UpdatedAt, now)
                 .SetProperty(o => o.UpdatedBy, operatorId),
             cancellationToken);

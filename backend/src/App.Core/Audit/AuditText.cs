@@ -92,6 +92,18 @@ public static class AuditText
     public static string StockTakeType(StockTakeType type)
         => type == Entities.StockTakeType.Initial ? "期初建账" : "库存盘点";
 
+    /// <summary>单据审批状态文案（042）</summary>
+    /// <param name="status">审批状态</param>
+    public static string ApprovalStatus(Entities.ApprovalStatus status) => status switch
+    {
+        Entities.ApprovalStatus.None => "无需审批",
+        Entities.ApprovalStatus.Pending => "待审批",
+        Entities.ApprovalStatus.Approved => "已通过",
+        Entities.ApprovalStatus.Rejected => "已驳回",
+        Entities.ApprovalStatus.Withdrawn => "已撤回",
+        _ => AuditSummary.Empty,
+    };
+
     /// <summary>单据结算状态文案</summary>
     /// <param name="state">结算状态</param>
     public static string SettlementState(SettlementState state) => state switch

@@ -159,6 +159,7 @@ internal sealed class RecordingPurchaseReceiptRepository : IPurchaseReceiptRepos
         DateTimeOffset? end,
         SettlementState? settlementState,
         Guid? warehouseId,
+        ApprovalStatus? approvalStatus,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -198,6 +199,10 @@ internal sealed class RecordingPurchaseReceiptRepository : IPurchaseReceiptRepos
 
     /// <inheritdoc />
     public Task UpdateStatusAsync(Guid id, OrderStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public Task UpdateApprovalStatusAsync(Guid id, ApprovalStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 
     /// <inheritdoc />

@@ -14,6 +14,7 @@ updated: 2026-09-30
 > **演进（erp-audit-log）**：本域采购退货（创建 / 作废）的写操作已接入操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-general-ledger）**：本域采购退货单的创建 / 作废自 `033` 起同事务生成 / 作废自动凭证（借「应付账款」、贷「库存商品」，为采购入库的反向分录）；期间已结账或科目映射缺失则整单失败回滚。分录科目与勾稽口径见 `specs/033-erp-general-ledger/design.md` §2.3 / §2.4。
 > **演进（erp-batch-expiry，`040`）**：退货明细带批次（`BatchId` + `BatchNo` 快照），按批次商品必填、仅可选已有批次（出库类不支持就地新建），出库类过期批次拦截（`40128`）；按批次回增库存与流水。销售退货（`022`）支持就地新建。详见 `specs/040-erp-batch-expiry/design.md`。
+> **演进（erp-approval，`042`）**：命中审批阈值（`ApprovalRules` 启用且单据总额 ≥ 阈值）时本单**保存时不生效**——不扣库存 / 不写流水 / 不结转成本 / 不生成凭证，落库为 `ApprovalStatus = Pending` 并生成审批记录 + 给审批人发站内信；审批通过时才由共享生效组件 `PurchaseReturnFulfillment`（与「未命中」路径**同一份实现**）执行生效，库存不足（`40103`）整体回滚且保持待审批。单据表追加 `ApprovalStatus`，列表 / 详情出参追加 `approvalStatus` 并支持列表筛选；待审批单据禁止作废（`40136`），只能审批 / 驳回 / 撤回。规则默认不启用，未命中时本规格行为逐条不变。详见 `specs/042-erp-approval/design.md` §0。
 
 ## 0. 退货单域共用约定（erp-sale-return 继承）
 

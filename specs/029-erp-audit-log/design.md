@@ -39,10 +39,11 @@ updated: 2026-09-23
 | 成本重算 `Cost` | 重算（`Recalculate`，无明确业务对象 → `ResourceId` 为空） | `Costs/RecalculateCosts` | 「成本重算 2026-09-01 ~ 2026-09-30：流水 320 条、12 个商品、缺价 2 条」 |
 | 部门 / 岗位 / 员工（`030`） `Department` / `Position` / `Employee` | 创建 / 更新 / 删除 / 启停 | `Departments/*`、`Positions/*`、`Employees/*` | 「新增部门 财务部（FIN）」/「新增岗位 出纳（P010）」/「新增员工 张三（E0001）」 |
 | 会计科目 / 税率（`031`） `Account` / `TaxRate` | 创建 / 更新 / 删除 / 启停 | `Accounts/*`、`TaxRates/*` | 「新增科目 库存现金（1001）」/「新增税率 增值税 13%（VAT13）」 |
-| 单据审批（`042`） `Approval` | 通过 / 驳回 | `Approvals/*` | 「审批通过 采购入库单 GR…（金额 12000.00）」 |
+| 单据审批（`042`） `Approval` | 通过 / 驳回 / 撤回（动作 `Approve`）/ 规则维护（动作 `Update`，`ResourceNo = approval-rules`、`ResourceId` 为空） | `Approvals/ApproveOrder` / `RejectApproval` / `WithdrawApproval` / `UpdateApprovalRules` | 「审批通过采购入库单 GR…（往来：甲、12000.00）」/「驳回销售出库单 GI…（往来：乙、5000.00、单据一并作废）｜意见：金额有误」/「撤回采购退货单 PR…」/「更新审批规则（采购入库单：≥ 1000.00 需审批；销售出库单：保存即生效）」 |
 | 记账凭证 / 会计期间（`033`） `Voucher` / `AccountingPeriod` | 创建（录入手工凭证）/ 作废 / 结账 / 反结账 / 映射维护（`Update`） | `Vouchers/CreateVoucher` / `VoidVoucher`、`AccountingPeriods/ClosePeriod` / `ReversePeriod`、`UpdateAccountMappings` | 「记账凭证 记-202609-0001（摘要，借贷合计 20.00）」/「作废记账凭证 记-…」/「结账期间 2026-09」/「反结账期间 2026-09」/「维护科目映射 8 项」 |
 
 - **范围外动作**：登录（`009` 已有）、查询 / 打印 / 导出（读操作）、密码哈希值本身、任何系统内部任务（如预警扫描生成站内信——属系统动作，`041` 自记）。
+- **`042`（erp-approval）续行**：上表「单据审批」资源登记通过 / 驳回 / 撤回 / 规则维护四处写入；**「提交审批」不另立资源**——命中审批阈值时四类单据的创建日志本就在同一事务内写入，摘要尾部追加「｜已提交审批（审批通过后才产生库存变动）」（动作仍为 `Create`）。
 - **`038`（erp-multi-warehouse）续行**：五类单据（采购入库 / 销售出库 / 采购退货 / 销售退货 / 库存盘点）的摘要模板追加**仓库名**（如「创建采购入库单 GR…（供应商：甲、入库仓：默认仓、2 行、金额 35.00）」），并新增上表的 `Inventory` 资源（仓级安全库存维护）。
 
 ### 0.2 摘要与字段规则

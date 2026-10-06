@@ -85,8 +85,10 @@ public class PurchaseReceiptOrderLinkTests
         var gl = GeneralLedgerStubs.Create();
         var handler = new CreatePurchaseReceiptRequestHandler(
             receipts, orders, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
-            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger,
-            new FakeBatchRepository(), new TestClock(OrderDate));
+            new FakeBatchRepository(), new FakeApprovalRuleRepository(), new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(inventory, movements, orders, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(), uow, user, TestSupport.AuditLogger,
+            new TestClock(OrderDate));
 
         return new LinkedHarness
         {

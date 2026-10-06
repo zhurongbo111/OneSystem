@@ -28,19 +28,22 @@ public class PartnerCreditLimitTests
         var settlement = new FakeSettlementQueryRepository();
         var uow = new RecordingUnitOfWork(calls);
         var gl = GeneralLedgerStubs.Create();
+        var orderRepo = new FakeSalesOrderRepository(calls);
         var handler = new CreateSalesShipmentRequestHandler(
             orders,
-            new FakeSalesOrderRepository(calls),
+            orderRepo,
             new PartnerRepository(context),
             new ProductRepository(context),
             new FakeWarehouseRepository(),
-            inventory,
-            movements,
             settlement,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new SalesShipmentFulfillment(inventory, movements, orderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             uow,
             new StubCurrentUser(Guid.NewGuid()),
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(OrderDate));
+            TestSupport.AuditLogger, new TestClock(OrderDate));
         return (context, orders, inventory, movements, settlement, uow, handler, calls);
     }
 

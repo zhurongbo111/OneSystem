@@ -160,6 +160,12 @@ public class AppDbContext : DbContext
     /// <summary>告警去重台账表（041-erp-stock-alert，当日去重唯一索引）</summary>
     public DbSet<AlertRecord> AlertRecords => Set<AlertRecord>();
 
+    /// <summary>审批规则表（042-erp-approval，按单据类型一条）</summary>
+    public DbSet<ApprovalRule> ApprovalRules => Set<ApprovalRule>();
+
+    /// <summary>审批记录表（042-erp-approval，一张单据一条）</summary>
+    public DbSet<Approval> Approvals => Set<Approval>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -44,6 +44,8 @@ public sealed class ExportPurchaseReceiptsRequestHandler : IRequestHandler<Expor
             request.End,
             request.SettlementState,
             request.WarehouseId,
+            // 导出不做审批状态筛选（042 仅在列表页开放该筛选）
+            null,
             1,
             ExportFieldConstraints.MaxRows + 1,
             cancellationToken);

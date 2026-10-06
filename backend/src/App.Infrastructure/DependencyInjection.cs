@@ -113,6 +113,10 @@ public static class DependencyInjection
         services.AddScoped<IPermissionedUserQuery, PermissionedUserQuery>();
         services.AddScoped<INotificationWriter, NotificationWriter>();
 
+        // 单据审批（erp-approval，042）：审批规则（按单据类型唯一）+ 审批记录（一单一记录）
+        services.AddScoped<IApprovalRuleRepository, ApprovalRuleRepository>();
+        services.AddScoped<IApprovalRepository, ApprovalRepository>();
+
         return services;
     }
 }

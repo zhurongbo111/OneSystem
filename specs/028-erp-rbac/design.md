@@ -59,7 +59,7 @@ updated: 2026-09-23
 | 资金账户（`034`） | `bankAccounts` | `view` / `create` / `update` / `delete` / `status` | `/api/bank-accounts*`、`/bank-accounts` |
 | 资金日记账（`034`） | `cashJournals` | `view` | `/api/cash-journals*`、`/cash-journals` |
 | 站内消息（`041`） | `notifications` | `view` / `scan` | `/api/notifications*`、顶栏铃铛、站内消息页「立即扫描」 |
-| 单据审批（`042`） | `approvals` | `view` / `approve` | `/api/approvals*`、审批页 |
+| 单据审批（`042`） | `approvals` | `view` / `approve` / `rules` | `/api/approvals*`、`/api/approval-rules`、审批页「审批规则」抽屉 |
 
 - 新增功能一律在本表续行；**未登记权限点的动作不得合并**（`tasks.md` 有集成测试遍历守卫）。
 - 权限点名称（中文，用于权限树展示）由后端清单接口返回（`design.md` §3.3），前端不硬编码。

@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { APPROVAL_STATUS_META, APPROVAL_STATUS_OPTIONS } from '@/api/approval'
+import type { ApprovalStatus } from '@/api/approval'
 import { exportSalesReturns } from '@/api/export'
 import { getPartners } from '@/api/partner'
 import type { Partner } from '@/api/partner'
@@ -59,17 +61,19 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-/** 关键词 / 客户 / 入库仓 / 日期范围 / 结算：输入态与已应用态分离（点搜索才生效） */
+/** 关键词 / 客户 / 入库仓 / 日期范围 / 结算 / 审批状态：输入态与已应用态分离（点搜索才生效） */
 const keywordInput = ref('')
 const partnerInput = ref<string | undefined>(undefined)
 const warehouseInput = ref<string | undefined>(undefined)
 const dateRangeInput = ref<string[] | undefined>(undefined)
 const settlementInput = ref<SettlementState | undefined>(undefined)
+const approvalInput = ref<ApprovalStatus | undefined>(undefined)
 const appliedKeyword = ref('')
 const appliedPartner = ref<string | undefined>(undefined)
 const appliedWarehouse = ref<string | undefined>(undefined)
 const appliedRange = ref<[string, string] | null>(null)
 const appliedSettlement = ref<SettlementState | undefined>(undefined)
+const appliedApproval = ref<ApprovalStatus | undefined>(undefined)
 
 /** 仓库下拉数据源（仅启用仓，038） */
 const warehouses = ref<WarehousePickItem[]>([])
@@ -85,7 +89,7 @@ const customerOptions = computed(() =>
 // —— computed ——
 /** 表格重挂载 key：已应用条件变化时回到第 1 页 */
 const tableKey = computed(
-  () => `${appliedKeyword.value}|${appliedPartner.value ?? ''}|${appliedWarehouse.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}|${appliedSettlement.value ?? ''}`,
+  () => `${appliedKeyword.value}|${appliedPartner.value ?? ''}|${appliedWarehouse.value ?? ''}|${appliedRange.value?.[0] ?? ''}|${appliedRange.value?.[1] ?? ''}|${appliedSettlement.value ?? ''}|${appliedApproval.value ?? ''}`,
 )
 
 /** 服务端分页配置 */
@@ -107,6 +111,7 @@ const columnOptions = [
   { label: '总金额', value: 'totalAmount' },
   { label: '结算状态', value: 'settlement' },
   { label: '单据状态', value: 'status' },
+  { label: '审批状态', value: 'approvalStatus' },
   { label: '创建时间', value: 'createdAt' },
 ]
 
@@ -119,6 +124,7 @@ const visibleColumns = ref<string[]>([
   'totalAmount',
   'settlement',
   'status',
+  'approvalStatus',
   'createdAt',
 ])
 
@@ -152,6 +158,10 @@ const columns = computed<TableColumnData[]>(() => {
   }
   if (visibleColumns.value.includes('status')) {
     cols.push({ title: '单据状态', slotName: 'status', width: 100, align: 'center' })
+  }
+  if (visibleColumns.value.includes('approvalStatus')) {
+    // 审批状态（042）：待审批单据未生效，列表可见但不产生库存变动
+    cols.push({ title: '审批状态', slotName: 'approvalStatus', width: 100, align: 'center' })
   }
   if (visibleColumns.value.includes('createdAt')) {
     cols.push({ title: '创建时间', slotName: 'createdAt', width: 172 })
@@ -196,6 +206,7 @@ async function fetchList(): Promise<void> {
       start,
       end,
       settlementState: appliedSettlement.value,
+      approvalStatus: appliedApproval.value,
       page: page.value,
       pageSize: pageSize.value,
     })
@@ -216,6 +227,7 @@ function onSearch(): void {
   appliedWarehouse.value = warehouseInput.value
   appliedRange.value = dateRangeInput.value ? (dateRangeInput.value as [string, string]) : null
   appliedSettlement.value = settlementInput.value
+  appliedApproval.value = approvalInput.value
   page.value = 1
   void fetchList()
 }
@@ -227,11 +239,13 @@ function onReset(): void {
   warehouseInput.value = undefined
   dateRangeInput.value = undefined
   settlementInput.value = undefined
+  approvalInput.value = undefined
   appliedKeyword.value = ''
   appliedPartner.value = undefined
   appliedWarehouse.value = undefined
   appliedRange.value = null
   appliedSettlement.value = undefined
+  appliedApproval.value = undefined
   page.value = 1
   void fetchList()
 }
@@ -345,7 +359,7 @@ function onGoSettlement(row: SalesReturnListItem): void {
               @press-enter="onSearch"
             />
           </a-col>
-          <a-col :span="4">
+          <a-col :span="3">
             <a-select
               v-model="partnerInput"
               :options="customerOptions"
@@ -354,7 +368,7 @@ function onGoSettlement(row: SalesReturnListItem): void {
               :loading="partners.length === 0"
             />
           </a-col>
-          <a-col :span="4">
+          <a-col :span="3">
             <a-select
               v-model="warehouseInput"
               :options="warehouses.map((w) => ({ label: w.name, value: w.id }))"
@@ -362,7 +376,7 @@ function onGoSettlement(row: SalesReturnListItem): void {
               allow-clear
             />
           </a-col>
-          <a-col :span="5">
+          <a-col :span="4">
             <a-range-picker
               v-model="dateRangeInput"
               value-format="YYYY-MM-DD"
@@ -375,6 +389,14 @@ function onGoSettlement(row: SalesReturnListItem): void {
               v-model="settlementInput"
               :options="SETTLEMENT_STATE_OPTIONS"
               placeholder="结算状态"
+              allow-clear
+            />
+          </a-col>
+          <a-col :span="3">
+            <a-select
+              v-model="approvalInput"
+              :options="APPROVAL_STATUS_OPTIONS"
+              placeholder="审批状态"
               allow-clear
             />
           </a-col>
@@ -505,6 +527,15 @@ function onGoSettlement(row: SalesReturnListItem): void {
         <template #status="{ record }">
           <a-tag :color="(record as SalesReturnListItem).status === 1 ? 'green' : 'red'">
             {{ (record as SalesReturnListItem).status === 1 ? '正常' : '已作废' }}
+          </a-tag>
+        </template>
+        <template #approvalStatus="{ record }">
+          <span v-if="(record as SalesReturnListItem).approvalStatus === 0">-</span>
+          <a-tag
+            v-else
+            :color="APPROVAL_STATUS_META[(record as SalesReturnListItem).approvalStatus].color"
+          >
+            {{ APPROVAL_STATUS_META[(record as SalesReturnListItem).approvalStatus].label }}
           </a-tag>
         </template>
         <template #createdAt="{ record }">

@@ -1,5 +1,6 @@
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.SalesReturns;
 using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
@@ -35,11 +36,13 @@ public class CreateSalesReturnRequestHandlerTests
             new PartnerRepository(context),
             new ProductRepository(context),
             new FakeWarehouseRepository(),
-            inventory,
-            movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new SalesReturnFulfillment(inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             uow,
-            user, TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow));
+            user, TestSupport.AuditLogger, new TestClock(DateTimeOffset.UtcNow));
         return (context, user, returns, inventory, movements, uow, handler, calls);
     }
 

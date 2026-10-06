@@ -2,19 +2,20 @@ using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.Approvals;
 using App.Core.Features.Batches;
 using App.Core.Features.Warehouses;
-using App.Core.Finance;
 
 namespace App.Core.Features.PurchaseReceipts.CreatePurchaseReceipt;
 
 /// <summary>
-/// 新增采购入库单用例（一步式：保存即生效）：
-/// 供应商校验（存在 / 启用 / 类型含供应商）→ 商品逐行校验（存在 / 启用）
-/// → 后端重算小计 / 总额（不信任前端传值）→ 单号生成（GR + yyyyMMdd + 序号，唯一索引冲突重试最多 3 次）
-/// → 同一事务：插单 + 明细 + 逐行库存 += + 追加流水（IUnitOfWork 包裹）。
-/// **可选关联采购订单**（specs/024-erp-order-flow design.md §3.4）：校验订单状态与未收数量，
-/// 回写订单明细累计已收并推导订单流转状态，全部在同一事务内完成。
+/// 新增采购入库单用例（一步式）。
+/// **未命中审批规则（042 §0.2）**：保存即生效 —— 供应商校验（存在 / 启用 / 类型含供应商）→ 商品逐行校验
+///   → 后端重算小计 / 总额（不信任前端传值）→ 单号生成（GR + yyyyMMdd + 序号，唯一索引冲突重试最多 3 次）
+///   → 同一事务：插单 + 明细 + <see cref="PurchaseReceiptFulfillment"/> 生效（库存 + 流水 + 成本 + 订单回写 + 凭证）。
+/// **命中审批规则**：单据落库为「待审批」并生成审批记录 + 给审批人发站内信，**不产生任何库存 / 流水 / 成本变化**；
+///   生效动作延迟到审批通过时由同一 <see cref="PurchaseReceiptFulfillment"/> 执行（specs/042-erp-approval）。
+/// **可选关联采购订单**（specs/024-erp-order-flow design.md §3.4）：校验订单状态与未收数量保持不变。
 /// </summary>
 public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<CreatePurchaseReceiptRequest, PurchaseReceiptDetailDto>
 {
@@ -29,16 +30,14 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
     private readonly IPartnerRepository _partnerRepository;
     private readonly IProductRepository _productRepository;
     private readonly IWarehouseRepository _warehouseRepository;
-    private readonly IInventoryRepository _inventoryRepository;
-    private readonly IStockMovementRepository _stockMovementRepository;
-    private readonly IVoucherRepository _voucherRepository;
-    private readonly IAccountMappingRepository _accountMappingRepository;
-    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
-    private readonly IAccountRepository _accountRepository;
+    private readonly IBatchRepository _batchRepository;
+    private readonly IApprovalRuleRepository _approvalRuleRepository;
+    private readonly IApprovalRepository _approvalRepository;
+    private readonly PurchaseReceiptFulfillment _fulfillment;
+    private readonly ApprovalNotifier _approvalNotifier;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogger _auditLogger;
-    private readonly IBatchRepository _batchRepository;
     private readonly ISystemClock _clock;
 
     /// <summary>
@@ -50,16 +49,14 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         IPartnerRepository partnerRepository,
         IProductRepository productRepository,
         IWarehouseRepository warehouseRepository,
-        IInventoryRepository inventoryRepository,
-        IStockMovementRepository stockMovementRepository,
-        IVoucherRepository voucherRepository,
-        IAccountMappingRepository accountMappingRepository,
-        IAccountingPeriodRepository accountingPeriodRepository,
-        IAccountRepository accountRepository,
+        IBatchRepository batchRepository,
+        IApprovalRuleRepository approvalRuleRepository,
+        IApprovalRepository approvalRepository,
+        PurchaseReceiptFulfillment fulfillment,
+        ApprovalNotifier approvalNotifier,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
         IAuditLogger auditLogger,
-        IBatchRepository batchRepository,
         ISystemClock clock)
     {
         _purchaseReceiptRepository = purchaseReceiptRepository;
@@ -67,16 +64,14 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         _partnerRepository = partnerRepository;
         _productRepository = productRepository;
         _warehouseRepository = warehouseRepository;
-        _inventoryRepository = inventoryRepository;
-        _stockMovementRepository = stockMovementRepository;
-        _voucherRepository = voucherRepository;
-        _accountMappingRepository = accountMappingRepository;
-        _accountingPeriodRepository = accountingPeriodRepository;
-        _accountRepository = accountRepository;
+        _batchRepository = batchRepository;
+        _approvalRuleRepository = approvalRuleRepository;
+        _approvalRepository = approvalRepository;
+        _fulfillment = fulfillment;
+        _approvalNotifier = approvalNotifier;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
-        _batchRepository = batchRepository;
         _clock = clock;
     }
 
@@ -140,7 +135,6 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
         // 关联订单校验（Handler 业务约束，design.md §3.4）：
         // 订单存在 → 已作废 → 已完成 / 已关闭 → 供应商一致 → 逐行明细归属与未收数量
         PurchaseOrder? linkedOrder = null;
-        IReadOnlyDictionary<Guid, PurchaseOrderItem>? orderItems = null;
         if (request.OrderId is not null)
         {
             var (found, items) = await _purchaseOrderRepository.GetDetailAsync(request.OrderId.Value, cancellationToken);
@@ -164,7 +158,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                 throw new BusinessException(ErrorCode.OrderPartnerMismatch, "入库单的供应商与所关联订单不一致");
             }
 
-            orderItems = items.ToDictionary(i => i.Id);
+            var orderItems = items.ToDictionary(i => i.Id);
             foreach (var line in request.Items)
             {
                 if (line.OrderItemId is null || !orderItems.TryGetValue(line.OrderItemId.Value, out var orderItem))
@@ -184,10 +178,16 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
             linkedOrder = found;
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var operatorId = _currentUser.UserId();
+        // 审批规则判定（042 §0.1）：规则启用 且 金额 ≥ 阈值 → 触发审批（保存时不生效）
+        var rule = await _approvalRuleRepository.GetAsync(SettlementOrderType.PurchaseInbound, cancellationToken);
+        var requiresApproval = rule is not null && rule.Enabled && totalAmount >= rule.ThresholdAmount;
 
-        // 事务：插单 + 明细 + 逐行库存 += + 流水 + 订单累计量回写与状态推导；
+        var now = DateTimeOffset.UtcNow;
+        var operatorId = _currentUser.UserId()
+            ?? throw new BusinessException(ErrorCode.Unauthorized, "登录状态无效，请重新登录");
+        Approval? pendingApproval = null;
+
+        // 事务：插单 + 明细 +（未命中时）生效动作 /（命中时）审批记录；
         // 单号冲突（唯一索引）时回滚后重新生成单号重试
         for (var attempt = 1; ; attempt++)
         {
@@ -209,6 +209,7 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     TotalAmount = totalAmount,
                     SettledAmount = 0m,
                     Status = OrderStatus.Normal,
+                    ApprovalStatus = requiresApproval ? ApprovalStatus.Pending : ApprovalStatus.None,
                     Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
                     CreatedAt = now,
                     UpdatedAt = now,
@@ -261,62 +262,29 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                 }
 
                 await _purchaseReceiptRepository.AddAsync(order, items, cancellationToken);
-                foreach (var item in items)
+
+                if (requiresApproval)
                 {
-                    // 采购入库：入库仓库存 += 数量（040 起按批次行；同事务，回冲在作废用例执行）
-                    await _inventoryRepository.IncrementAsync(
-                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, cancellationToken);
-
-                    // 成本：入库按采购单明细单价加权（erp-cost design §0.2；040 起按批次行记账）—— 先加数量再加金额
-                    await _inventoryRepository.ApplyInboundCostAsync(
-                        item.ProductId, warehouse.Id, item.BatchId, item.Quantity, item.UnitPrice, cancellationToken);
-
-                    // 库存流水：与库存增减同事务，1:1 追加并带变动仓（erp-stock-movement design §3.7；040 带批次）
-                    await _stockMovementRepository.AppendAsync(new StockMovement
+                    // 命中审批：仅落单 + 审批记录，**不产生任何库存 / 流水 / 成本变化**（042 §0.2）
+                    pendingApproval = new Approval
                     {
                         Id = Guid.NewGuid(),
-                        ProductId = item.ProductId,
-                        WarehouseId = warehouse.Id,
-                        BatchId = item.BatchId,
-                        MovementType = StockMovementType.PurchaseInbound,
-                        Quantity = item.Quantity,
-                        UnitCost = item.UnitPrice,
-                        TotalCost = CostCalculator.TotalCost(item.Quantity, item.UnitPrice),
-                        SourceId = order.Id,
-                        SourceNo = receiptNo,
-                        CreatedAt = now,
-                        CreatedBy = operatorId,
-                    }, cancellationToken);
+                        OrderType = SettlementOrderType.PurchaseInbound,
+                        OrderId = order.Id,
+                        OrderNo = order.ReceiptNo,
+                        PartnerName = order.PartnerName,
+                        Amount = order.TotalAmount,
+                        Status = ApprovalStatus.Pending,
+                        SubmittedBy = operatorId,
+                        SubmittedAt = now,
+                    };
+                    await _approvalRepository.AddAsync(pendingApproval, cancellationToken);
                 }
-
-                if (linkedOrder is not null && orderItems is not null)
+                else
                 {
-                    // 回写订单明细累计已收（原子累加），再按「本次累计后的未执行量」推导订单状态
-                    foreach (var line in request.Items)
-                    {
-                        await _purchaseOrderRepository.AddFulfilledQuantityAsync(line.OrderItemId!.Value, line.Quantity, cancellationToken);
-                    }
-
-                    var flowStatus = DeriveFlowStatus(orderItems, request.Items);
-                    await _purchaseOrderRepository.UpdateFlowStatusAsync(linkedOrder.Id, flowStatus, operatorId, cancellationToken);
+                    // 未命中审批：保存即生效（与改造前逐条一致，由共享生效组件执行）
+                    await _fulfillment.ApplyAsync(order, items, operatorId, now, cancellationToken);
                 }
-
-                // 总账（erp-general-ledger）：同事务生成自动凭证（借存货 / 贷应付账款）；
-                // 科目映射缺失（40158）或期间不可记账（40154 / 40159）会阻断整单，随事务回滚
-                await VoucherWriter.AppendAutoAsync(
-                    VoucherSourceType.PurchaseInbound,
-                    order.Id,
-                    order.ReceiptNo,
-                    order.OrderDate,
-                    order.TotalAmount,
-                    0m,
-                    null,
-                    _voucherRepository,
-                    _accountMappingRepository,
-                    _accountingPeriodRepository,
-                    _accountRepository,
-                    operatorId,
-                    cancellationToken);
 
                 // 业务写成功后、提交前追加操作日志：与业务同事务，异常回滚则不产生日志
                 var createdReceiptChangeBuilder = new AuditChangeBuilder()
@@ -327,13 +295,14 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                     .Add("orderNo", "关联订单号", null, order.OrderNo)
                     .Add("totalAmount", "入库金额", null, AuditSummary.Money(order.TotalAmount))
                     .Add("remark", "备注", null, order.Remark);
+                var createdSummary = $"创建采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、入库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}";
                 await _auditLogger.RecordAsync(new AuditEntry
                 {
                     Resource = AuditResource.PurchaseReceipt,
                     Action = AuditAction.Create,
                     ResourceId = order.Id,
                     ResourceNo = order.ReceiptNo,
-                    Summary = $"创建采购入库单 {order.ReceiptNo}（供应商：{order.PartnerName}、入库仓：{order.WarehouseName}、{AuditSummary.Count(items.Count)} 行、{AuditSummary.Money(order.TotalAmount)}）{AuditSummary.BatchItems(items, i => i.ProductName, i => i.BatchNo)}",
+                    Summary = requiresApproval ? $"{createdSummary}｜已提交审批（审批通过后才产生库存变动）" : createdSummary,
                     Changes = createdReceiptChangeBuilder.Build(),
                     ChangesTruncated = createdReceiptChangeBuilder.Truncated,
                     UtcNow = now,
@@ -345,6 +314,12 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                 if (createdOrder is null)
                 {
                     throw new BusinessException(ErrorCode.NotFound, "采购入库单创建后读取失败");
+                }
+
+                // 站内信在提交之后发送：发信失败只记日志，不影响已落库单据（042 §3.5）
+                if (pendingApproval is not null)
+                {
+                    await _approvalNotifier.NotifyPendingAsync(pendingApproval, cancellationToken);
                 }
 
                 return PurchaseReceiptsDtoMapper.ToPurchaseReceiptDetailDto(createdOrder, createdItems);
@@ -360,32 +335,5 @@ public sealed class CreatePurchaseReceiptRequestHandler : IRequestHandler<Create
                 throw;
             }
         }
-    }
-
-    /// <summary>
-    /// 按「本次收货后的累计已收量」推导订单流转状态（design.md §3.4）：
-    /// 全部执行完 → 已完成；部分执行 → 部分收货；否则保持待收货。
-    /// </summary>
-    private static OrderFlowStatus DeriveFlowStatus(
-        IReadOnlyDictionary<Guid, PurchaseOrderItem> orderItems,
-        IReadOnlyList<CreatePurchaseReceiptItem> receivedLines)
-    {
-        var received = new Dictionary<Guid, int>(receivedLines.Count);
-        foreach (var line in receivedLines)
-        {
-            var key = line.OrderItemId!.Value;
-            received[key] = received.TryGetValue(key, out var accumulated) ? accumulated + line.Quantity : line.Quantity;
-        }
-
-        var allFulfilled = orderItems.Values.All(i =>
-            i.FulfilledQuantity + (received.TryGetValue(i.Id, out var quantity) ? quantity : 0) >= i.Quantity);
-        if (allFulfilled)
-        {
-            return OrderFlowStatus.Completed;
-        }
-
-        var anyFulfilled = orderItems.Values.Any(i =>
-            i.FulfilledQuantity + (received.TryGetValue(i.Id, out var quantity) ? quantity : 0) > 0);
-        return anyFulfilled ? OrderFlowStatus.Partial : OrderFlowStatus.Pending;
     }
 }

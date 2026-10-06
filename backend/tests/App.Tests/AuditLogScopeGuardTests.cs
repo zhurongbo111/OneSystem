@@ -1,6 +1,10 @@
 using App.Core.Abstractions;
 using App.Core.Audit;
 using App.Core.Entities;
+using App.Core.Features.Approvals.ApproveOrder;
+using App.Core.Features.Approvals.RejectApproval;
+using App.Core.Features.Approvals.UpdateApprovalRules;
+using App.Core.Features.Approvals.WithdrawApproval;
 using App.Core.Features.Accounts.CreateAccount;
 using App.Core.Features.Accounts.DeleteAccount;
 using App.Core.Features.Accounts.UpdateAccount;
@@ -147,6 +151,10 @@ public class AuditLogScopeGuardTests
             { typeof(UpdateWarehouseStatusRequestHandler), AuditResource.Warehouse, AuditAction.StatusChange },
             { typeof(SetDefaultWarehouseRequestHandler), AuditResource.Warehouse, AuditAction.Update },
             { typeof(UpdateInventorySafetyStockRequestHandler), AuditResource.Inventory, AuditAction.Update },
+            { typeof(ApproveOrderRequestHandler), AuditResource.Approval, AuditAction.Approve },
+            { typeof(RejectApprovalRequestHandler), AuditResource.Approval, AuditAction.Approve },
+            { typeof(WithdrawApprovalRequestHandler), AuditResource.Approval, AuditAction.Approve },
+            { typeof(UpdateApprovalRulesRequestHandler), AuditResource.Approval, AuditAction.Update },
         };
 
     [Theory]

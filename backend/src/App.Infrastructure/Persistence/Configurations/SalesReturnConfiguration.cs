@@ -34,6 +34,9 @@ internal sealed class SalesReturnConfiguration : IEntityTypeConfiguration<SalesR
         builder.Property(r => r.TotalAmount).IsRequired().HasColumnType("numeric(18,2)");
         builder.Property(r => r.SettledAmount).IsRequired().HasColumnType("numeric(18,2)").HasDefaultValue(0m);
         builder.Property(r => r.Status).HasConversion<short>().IsRequired();
+        // 单据审批状态（042；默认无需审批，命中阈值规则时落库为待审批）
+        builder.Property(r => r.ApprovalStatus).HasConversion<short>().IsRequired().HasDefaultValue(ApprovalStatus.None);
+        builder.HasIndex(r => r.ApprovalStatus);
         builder.Property(r => r.Remark)
             .HasMaxLength(OrderFieldConstraints.RemarkMaxLength)
             .HasColumnType("varchar(200)");

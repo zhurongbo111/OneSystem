@@ -34,6 +34,9 @@ internal sealed class SalesShipmentConfiguration : IEntityTypeConfiguration<Sale
         builder.Property(p => p.TotalAmount).IsRequired().HasColumnType("numeric(18,2)");
         builder.Property(p => p.SettledAmount).IsRequired().HasColumnType("numeric(18,2)").HasDefaultValue(0m);
         builder.Property(p => p.Status).HasConversion<short>().IsRequired();
+        // 单据审批状态（042；默认无需审批，命中阈值规则时落库为待审批）
+        builder.Property(p => p.ApprovalStatus).HasConversion<short>().IsRequired().HasDefaultValue(ApprovalStatus.None);
+        builder.HasIndex(p => p.ApprovalStatus);
         // 关联订单号快照（可空；长度与订单号同源，specs/024-erp-order-flow design.md §2.3）
         builder.Property(p => p.OrderNo)
             .HasMaxLength(OrderFieldConstraints.OrderNoMaxLength)

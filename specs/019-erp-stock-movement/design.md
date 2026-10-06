@@ -12,6 +12,7 @@ updated: 2026-09-30
 > **演进（erp-multi-warehouse，`038`）**：流水加 `WarehouseId`（NOT NULL、FK → `Warehouses`）并新增索引 `(WarehouseId, ProductId, CreatedAt)`；创建单据 / 盘点的每条流水带仓（数量实际变动的仓），流水页加「仓库」筛选与列、导出加仓库列，成本随流水按仓结转。详见 `specs/038-erp-multi-warehouse/design.md` §0 / §3.2。
 > **演进（erp-audit-log）**：库存流水由各单据写用例在同一事务内追加（本域无独立写用例），本页为只读查询，不单独记录操作日志（`specs/029-erp-audit-log/design.md` §0.1）。
 > **演进（erp-batch-expiry，`040`）**：流水加 `BatchId`（可空、FK → `Batches`）+ 批次号快照列；批次商品的每条流水带批次，流水页 / 导出加「批次号」列（非批次流水显示 `-`）。详见 `specs/040-erp-batch-expiry/design.md`。
+> **演进（erp-approval，`042`）**：**待审批单据不写任何库存流水**——命中审批阈值的单据保存时不生效，流水在审批通过时才由共享生效组件（`*Fulfillment`）按与创建一致的口径补写；驳回 / 撤回的单据从未生效，故不产生流水（也无回冲流水）。详见 `specs/042-erp-approval/design.md` §0.2。
 
 ## 0. 库存流水展示约定（唯一事实源）
 

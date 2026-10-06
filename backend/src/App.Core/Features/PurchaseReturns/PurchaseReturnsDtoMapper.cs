@@ -25,6 +25,7 @@ internal static class PurchaseReturnsDtoMapper
             UnsettledAmount = SettlementStateCalculator.UnsettledAmount(purchaseReturn.TotalAmount, purchaseReturn.SettledAmount),
             SettlementState = (int)SettlementStateCalculator.Derive(purchaseReturn.TotalAmount, purchaseReturn.SettledAmount),
             Status = (int)purchaseReturn.Status,
+            ApprovalStatus = (int)purchaseReturn.ApprovalStatus,
             Remark = purchaseReturn.Remark,
             CreatedBy = purchaseReturn.CreatedBy?.ToString(),
             CreatedAt = purchaseReturn.CreatedAt,
@@ -60,6 +61,7 @@ internal static class PurchaseReturnsDtoMapper
             UnsettledAmount = SettlementStateCalculator.UnsettledAmount(purchaseReturn.TotalAmount, purchaseReturn.SettledAmount),
             SettlementState = (int)SettlementStateCalculator.Derive(purchaseReturn.TotalAmount, purchaseReturn.SettledAmount),
             Status = (int)purchaseReturn.Status,
+            ApprovalStatus = (int)purchaseReturn.ApprovalStatus,
             CreatedAt = purchaseReturn.CreatedAt,
         };
 }

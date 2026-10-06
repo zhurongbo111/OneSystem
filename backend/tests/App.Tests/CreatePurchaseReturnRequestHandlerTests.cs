@@ -1,5 +1,6 @@
 using App.Core.Entities;
 using App.Core.Errors;
+using App.Core.Features.PurchaseReturns;
 using App.Core.Features.PurchaseReturns.CreatePurchaseReturn;
 using App.Infrastructure;
 using App.Infrastructure.Repositories;
@@ -35,11 +36,13 @@ public class CreatePurchaseReturnRequestHandlerTests
             new PartnerRepository(context),
             new ProductRepository(context),
             new FakeWarehouseRepository(),
-            inventory,
-            movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts,
+            new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new PurchaseReturnFulfillment(inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(),
             uow,
-            user, TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(DateTimeOffset.UtcNow));
+            user, TestSupport.AuditLogger, new TestClock(DateTimeOffset.UtcNow));
         return (context, user, returns, inventory, movements, uow, handler, calls);
     }
 
@@ -147,9 +150,9 @@ public class CreatePurchaseReturnRequestHandlerTests
 
         await handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m)));
 
-        // 退货先扣库存、成功后再插单、写流水（design.md §3.4）
-        // 成本：退货出库按「变动前」均价结转 → 扣减前先 GetAverageCost，写流水前 ApplyOutboundCost
-        Assert.Equal(new[] { "Begin", "GetAverageCost", "TryDecrement", "Generate", "Add", "ApplyOutboundCost", "Append", "Commit" }, calls.ToArray());
+        // 042 起「生效」抽为共享组件（PurchaseReturnFulfillment）：单据行先落库，随后同一事务内执行生效
+        // （成本按「变动前」均价结转 → 扣减前先 GetAverageCost，写流水前 ApplyOutboundCost）
+        Assert.Equal(new[] { "Begin", "Generate", "Add", "GetAverageCost", "TryDecrement", "ApplyOutboundCost", "Append", "Commit" }, calls.ToArray());
     }
 
     [Fact]
@@ -185,9 +188,9 @@ public class CreatePurchaseReturnRequestHandlerTests
         Assert.Contains("5", ex.Message);
         Assert.Contains("10", ex.Message);
 
-        // 回滚整单：Rollback 被调用、Add 未被调用（单据未插入）、不写流水、库存未变动
+        // 回滚整单：Rollback 被调用、不提交、不写流水、库存未变动
+        // （042 起单据行先落库、生效随后同事务执行，库存不足时整体回滚；假实现无真实事务，故不复位内存单据）
         Assert.Contains("Rollback", calls);
-        Assert.DoesNotContain("Add", calls);
         Assert.DoesNotContain("Commit", calls);
         Assert.Empty(inventory.Decrements);
         Assert.Empty(movements.Appended);
@@ -206,8 +209,7 @@ public class CreatePurchaseReturnRequestHandlerTests
         Assert.Equal(ErrorCode.InsufficientStock, ex.Code);
         Assert.Contains("商品二", ex.Message);
 
-        // 假实现无真实事务：断言未提交且未插单、不写流水（真实 PostgreSQL 事务内首行扣减随 Rollback 恢复）
-        Assert.DoesNotContain("Add", calls);
+        // 假实现无真实事务：断言未提交、不写流水（真实 PostgreSQL 事务内首行扣减与单据行随 Rollback 恢复）
         Assert.DoesNotContain("Commit", calls);
         Assert.Contains("Rollback", calls);
         Assert.Empty(movements.Appended);
@@ -331,10 +333,11 @@ public class CreatePurchaseReturnRequestHandlerTests
             () => handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m))));
         Assert.Contains("模拟数据库写入失败", ex.Message);
 
-        // Begin → TryDecrement → Generate → Add → Rollback，且从未 Commit；Add 失败不写流水
-        Assert.Equal(new[] { "Begin", "GetAverageCost", "TryDecrement", "Generate", "Add", "Rollback" }, calls.ToArray());
+        // Begin → Generate → Add → Rollback，且从未 Commit；Add 失败未进入生效阶段（不动库存、不写流水）
+        Assert.Equal(new[] { "Begin", "Generate", "Add", "Rollback" }, calls.ToArray());
         Assert.DoesNotContain("Commit", calls);
         Assert.Empty(movements.Appended);
+        Assert.Empty(inventory.Decrements);
     }
 
     [Fact]
@@ -348,7 +351,7 @@ public class CreatePurchaseReturnRequestHandlerTests
             () => handler.HandleAsync(RequestWith(partner.Id, (p1.Id, 1, 1m))));
         Assert.Contains("模拟提交失败", ex.Message);
 
-        // Begin → TryDecrement → Generate → Add → Append → Commit(抛) → Rollback，异常上抛
-        Assert.Equal(new[] { "Begin", "GetAverageCost", "TryDecrement", "Generate", "Add", "ApplyOutboundCost", "Append", "Commit", "Rollback" }, calls.ToArray());
+        // Begin → Generate → Add → 生效（均价 / 扣减 / 成本 / 流水）→ Commit(抛) → Rollback，异常上抛
+        Assert.Equal(new[] { "Begin", "Generate", "Add", "GetAverageCost", "TryDecrement", "ApplyOutboundCost", "Append", "Commit", "Rollback" }, calls.ToArray());
     }
 }

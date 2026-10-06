@@ -58,11 +58,13 @@ public class CostWritePathTests
         var gl = GeneralLedgerStubs.Create();
 
         // ① 采购入库 10 件 × 20 元 → 数量 20、金额 300、均价 15
+        var orderRepo = new FakePurchaseOrderRepository();
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
-            orders, new FakePurchaseOrderRepository(), partnerRepository, productRepository, new FakeWarehouseRepository(),
-            inventory, movements,
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger,
-            new FakeBatchRepository(), new TestClock(Date));
+            orders, orderRepo, partnerRepository, productRepository, new FakeWarehouseRepository(),
+            new FakeBatchRepository(), new FakeApprovalRuleRepository(), new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(inventory, movements, orderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(), uow, user, TestSupport.AuditLogger,
+            new TestClock(Date));
         await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
         {
             PartnerId = supplier.Id,
@@ -79,12 +81,14 @@ public class CostWritePathTests
         Assert.Equal(200m, inbound.TotalCost);
 
         // ② 销售出库 5 件 → 按变动前均价 15 结转，成本 75、金额 225、均价仍 15
+        var salesOrderRepo = new FakeSalesOrderRepository();
         var createSale = new CreateSalesShipmentRequestHandler(
-            sales, new FakeSalesOrderRepository(), partnerRepository, productRepository, new FakeWarehouseRepository(),
-            inventory, movements,
-            new FakeSettlementQueryRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user, TestSupport.AuditLogger,
-            new FakeBatchRepository(), new TestClock(Date));
+            sales, salesOrderRepo, partnerRepository, productRepository, new FakeWarehouseRepository(),
+            new FakeSettlementQueryRepository(), new FakeBatchRepository(), new FakeApprovalRuleRepository(),
+            new FakeApprovalRepository(),
+            new SalesShipmentFulfillment(inventory, movements, salesOrderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(), uow, user, TestSupport.AuditLogger,
+            new TestClock(Date));
         await createSale.HandleAsync(new CreateSalesShipmentRequest
         {
             PartnerId = customer.Id,

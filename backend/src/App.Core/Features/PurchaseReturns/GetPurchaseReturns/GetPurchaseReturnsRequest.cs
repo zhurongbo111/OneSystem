@@ -32,4 +32,7 @@ public sealed class GetPurchaseReturnsRequest : IRequest<PagedResult<PurchaseRet
 
     /// <summary>出库仓 id，可空（038；不传 = 全部仓）</summary>
     public Guid? WarehouseId { get; init; }
+
+    /// <summary>审批状态（042；可空 = 全部）</summary>
+    public ApprovalStatus? ApprovalStatus { get; init; }
 }

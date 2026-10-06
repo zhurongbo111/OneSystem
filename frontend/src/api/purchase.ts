@@ -1,5 +1,6 @@
 import type { SettlementState } from '@/utils/settlement'
 
+import type { ApprovalStatus } from './approval'
 import type { PagedResult } from './product'
 import { get, post, put } from './request'
 
@@ -28,6 +29,8 @@ export interface PurchaseReceiptListItem {
   /** 数量合计（= Σ 明细数量；订单详情「关联入库单」跟单展示） */
   totalQuantity: number
   status: OrderStatus
+  /** 审批状态（042：0 无需审批 / 1 待审批 / 2 已通过 / 3 已驳回 / 4 已撤回；待审批单据未生效） */
+  approvalStatus: ApprovalStatus
   createdAt: string
 }
 
@@ -69,6 +72,8 @@ export interface PurchaseReceiptQuery {
   start?: string
   end?: string
   settlementState?: SettlementState
+  /** 审批状态筛选（042，可空；不传 = 全部） */
+  approvalStatus?: ApprovalStatus
 }
 
 /**

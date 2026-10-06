@@ -35,11 +35,16 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
         _items[salesReturn.Id] = items.ToList();
     }
 
+    /// <summary>已执行的审批状态筛选入参（042；与 <see cref="PagedQueries"/> 分开记录，避免既有断言改形）</summary>
+    public List<ApprovalStatus?> ApprovalStatusFilters { get; } = [];
+
     public Task<(IReadOnlyList<SalesReturn> Items, int Total)> GetPagedAsync(
         string? keyword, Guid? partnerId, DateTimeOffset? start, DateTimeOffset? end,
-        SettlementState? settlementState, Guid? warehouseId, int page, int pageSize, CancellationToken cancellationToken = default)
+        SettlementState? settlementState, Guid? warehouseId, ApprovalStatus? approvalStatus, int page, int pageSize,
+        CancellationToken cancellationToken = default)
     {
         PagedQueries.Add((keyword, partnerId, start, end, settlementState, warehouseId, page, pageSize));
+        ApprovalStatusFilters.Add(approvalStatus);
         return Task.FromResult((PagedItems, PagedTotal));
     }
 
@@ -103,6 +108,16 @@ internal sealed class FakeSalesReturnRepository : ISalesReturnRepository
         _calls?.Add("UpdateStatus");
         var salesReturn = _returns[id];
         salesReturn.Status = status;
+        salesReturn.UpdatedBy = operatorId;
+        salesReturn.UpdatedAt = DateTimeOffset.UtcNow;
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateApprovalStatusAsync(Guid id, ApprovalStatus status, Guid? operatorId, CancellationToken cancellationToken = default)
+    {
+        _calls?.Add("UpdateApprovalStatus");
+        var salesReturn = _returns[id];
+        salesReturn.ApprovalStatus = status;
         salesReturn.UpdatedBy = operatorId;
         salesReturn.UpdatedAt = DateTimeOffset.UtcNow;
         return Task.CompletedTask;

@@ -296,15 +296,20 @@ public class SalesReturnLifecycleTests
 
         // 先入库 5（期初），再销售出库 2、退货 2、退货作废 2
         var gl = GeneralLedgerStubs.Create();
+        var salesOrderRepo = new FakeSalesOrderRepository(calls);
         var salesCreate = new CreateSalesShipmentRequestHandler(
-            salesShipments, new FakeSalesOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
-            new FakeWarehouseRepository(), inventory, movements, new FakeSettlementQueryRepository(),
-            gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user,
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(ReturnDate));
+            salesShipments, salesOrderRepo, new PartnerRepository(context), new ProductRepository(context),
+            new FakeWarehouseRepository(), new FakeSettlementQueryRepository(), new FakeBatchRepository(),
+            new FakeApprovalRuleRepository(), new FakeApprovalRepository(),
+            new SalesShipmentFulfillment(inventory, movements, salesOrderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(), uow, user,
+            TestSupport.AuditLogger, new TestClock(ReturnDate));
         var returnCreate = new CreateSalesReturnRequestHandler(
             returns, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
-            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user,
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(ReturnDate));
+            new FakeBatchRepository(), new FakeApprovalRuleRepository(), new FakeApprovalRepository(),
+            new SalesReturnFulfillment(inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(), uow, user,
+            TestSupport.AuditLogger, new TestClock(ReturnDate));
         var returnVoid = new VoidSalesReturnRequestHandler(returns, inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
 
         inventory.Seed(product.Id, 5); // 期初库存（无流水，模拟开账前已存在）

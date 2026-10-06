@@ -32,6 +32,7 @@ internal static class SalesShipmentsDtoMapper
             UnsettledAmount = SettlementStateCalculator.UnsettledAmount(order.TotalAmount, order.SettledAmount),
             SettlementState = (int)SettlementStateCalculator.Derive(order.TotalAmount, order.SettledAmount),
             Status = (int)order.Status,
+            ApprovalStatus = (int)order.ApprovalStatus,
             Remark = order.Remark,
             CreatedBy = order.CreatedBy?.ToString(),
             CreatedAt = order.CreatedAt,
@@ -73,6 +74,7 @@ internal static class SalesShipmentsDtoMapper
             UnsettledAmount = SettlementStateCalculator.UnsettledAmount(order.TotalAmount, order.SettledAmount),
             SettlementState = (int)SettlementStateCalculator.Derive(order.TotalAmount, order.SettledAmount),
             Status = (int)order.Status,
+            ApprovalStatus = (int)order.ApprovalStatus,
             CreatedAt = order.CreatedAt,
             TotalQuantity = totalQuantity,
         };

@@ -25,6 +25,7 @@ internal static class SalesReturnsDtoMapper
             UnsettledAmount = SettlementStateCalculator.UnsettledAmount(salesReturn.TotalAmount, salesReturn.SettledAmount),
             SettlementState = (int)SettlementStateCalculator.Derive(salesReturn.TotalAmount, salesReturn.SettledAmount),
             Status = (int)salesReturn.Status,
+            ApprovalStatus = (int)salesReturn.ApprovalStatus,
             Remark = salesReturn.Remark,
             CreatedBy = salesReturn.CreatedBy?.ToString(),
             CreatedAt = salesReturn.CreatedAt,
@@ -60,6 +61,7 @@ internal static class SalesReturnsDtoMapper
             UnsettledAmount = SettlementStateCalculator.UnsettledAmount(salesReturn.TotalAmount, salesReturn.SettledAmount),
             SettlementState = (int)SettlementStateCalculator.Derive(salesReturn.TotalAmount, salesReturn.SettledAmount),
             Status = (int)salesReturn.Status,
+            ApprovalStatus = (int)salesReturn.ApprovalStatus,
             CreatedAt = salesReturn.CreatedAt,
         };
 }

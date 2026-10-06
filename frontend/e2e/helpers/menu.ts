@@ -43,6 +43,7 @@ const MENU_GROUP_MAP: Record<string, string> = {
   部门管理: '系统',
   岗位管理: '系统',
   员工档案: '系统',
+  单据审批: '系统',
 }
 
 /** 侧边菜单叶子项 */

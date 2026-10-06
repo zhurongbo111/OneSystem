@@ -38,6 +38,9 @@ public sealed class SalesReturn
     /// <summary>单据状态（1=正常 0=已作废；作废后禁止再操作）</summary>
     public OrderStatus Status { get; set; } = OrderStatus.Normal;
 
+    /// <summary>单据审批状态（042；默认无需审批，命中阈值规则时落库为待审批且不生效）</summary>
+    public ApprovalStatus ApprovalStatus { get; set; } = ApprovalStatus.None;
+
     /// <summary>备注（可写原销售单号 / 退货原因）</summary>
     public string? Remark { get; set; }
 

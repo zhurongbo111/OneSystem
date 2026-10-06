@@ -279,14 +279,19 @@ public class PurchaseReturnLifecycleTests
         var returns = new FakePurchaseReturnRepository(calls);
 
         var gl = GeneralLedgerStubs.Create();
+        var purchaseOrderRepo = new FakePurchaseOrderRepository(calls);
         var createPurchase = new CreatePurchaseReceiptRequestHandler(
-            purchaseReceipts, new FakePurchaseOrderRepository(calls), new PartnerRepository(context), new ProductRepository(context),
-            new FakeWarehouseRepository(), inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user,
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(ReturnDate));
+            purchaseReceipts, purchaseOrderRepo, new PartnerRepository(context), new ProductRepository(context),
+            new FakeWarehouseRepository(), new FakeBatchRepository(), new FakeApprovalRuleRepository(), new FakeApprovalRepository(),
+            new PurchaseReceiptFulfillment(inventory, movements, purchaseOrderRepo, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(), uow, user,
+            TestSupport.AuditLogger, new TestClock(ReturnDate));
         var createReturn = new CreatePurchaseReturnRequestHandler(
             returns, new PartnerRepository(context), new ProductRepository(context), new FakeWarehouseRepository(),
-            inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts, uow, user,
-            TestSupport.AuditLogger, new FakeBatchRepository(), new TestClock(ReturnDate));
+            new FakeBatchRepository(), new FakeApprovalRuleRepository(), new FakeApprovalRepository(),
+            new PurchaseReturnFulfillment(inventory, movements, gl.Vouchers, gl.Mappings, gl.Periods, gl.Accounts),
+            ApprovalTestStubs.Notifier(), uow, user,
+            TestSupport.AuditLogger, new TestClock(ReturnDate));
         var voidReturn = new VoidPurchaseReturnRequestHandler(returns, inventory, movements, gl.Vouchers, gl.Periods, uow, user, TestSupport.AuditLogger);
 
         var inbound = await createPurchase.HandleAsync(new CreatePurchaseReceiptRequest
