@@ -64,6 +64,7 @@ updated: 2026-10-07
 | 商机（`043`） | `opportunities` | `view` / `create` / `update` / `stage` | `/api/opportunities*`、`/api/opportunities/{id}/activities*`、`/opportunities`、`/opportunities/new`、`/opportunities/edit/:id`、`/opportunities/detail/:id` |
 | 考勤登记（`044`） | `attendance` | `view` / `create` / `update` / `delete` | `/api/attendances*`、`/attendance` |
 | 薪酬（`044`） | `payroll` | `view` / `create` / `update` / `delete` / `status` | `/api/payrolls*`、`/payrolls` |
+| 服务工单（`045`） | `serviceTickets` | `view` / `create` / `update` / `status` / `assign` | `/api/service-tickets*`、`/service-tickets`、`/service-tickets/new`、`/service-tickets/detail/:id` |
 
 - 新增功能一律在本表续行；**未登记权限点的动作不得合并**（`tasks.md` 有集成测试遍历守卫）。
 - 权限点名称（中文，用于权限树展示）由后端清单接口返回（`design.md` §3.3），前端不硬编码。
