@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-22
+updated: 2026-10-07
 ---
 
 # 设计规格：组织架构与员工档案（erp-org-employee）
@@ -24,11 +24,13 @@ updated: 2026-09-22
 
 ### 0.2 菜单归属（在 `025` §0.2 表续行）
 
-`025` §0.2 的「系统（`system`）」分组续行三子项（顺序即行内顺序）：
+`025` §0.2 的「系统（`system`）」分组续行三子项（顺序即行内顺序；`employees` 后经 `044` 迁出，见下方修订）：
 
 | 顶级分组 | 子项（key） | 引入规格 |
 |---|---|---|
-| 系统（`system`） | 部门管理（`departments`）/ 岗位管理（`positions`）/ 员工档案（`employees`） | `030` |
+| 系统（`system`） | 部门管理（`departments`）/ 岗位管理（`positions`） | `030` |
+
+- **`044` 修订**：「员工档案（`employees`）」已自本分组**迁入「人事（`hrm`）」分组**（部门 / 岗位留在「系统」）；菜单归属以 `specs/025-erp-report/design.md` §0.2 与 `specs/044-erp-hcm-payroll/design.md` §0.2 为准。
 
 - `MENU_ROUTE_MAP` 与 `e2e/helpers/menu.ts` 的「菜单项 → 分组」映射随之更新。
 

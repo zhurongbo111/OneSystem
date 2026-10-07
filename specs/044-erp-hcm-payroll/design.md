@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-10-07
 ---
 
 # 设计规格：考勤与薪酬（erp-hcm-payroll）
@@ -28,9 +28,9 @@ updated: 2026-09-20
 
 | 顶级分组 | 子项（key） | 引入规格 |
 |---|---|---|
-| 人事（`hrm`） | 员工档案（`employees`）/ 考勤登记（`attendance`）/ 薪酬（`payroll`） | `030` / `044` |
+| 人事（`hrm`） | 员工档案（`employees`）/ 考勤登记（`attendance`）/ 薪酬（`payrolls`，key 与路由名同名） | `030` / `044` |
 
-- **修订 `030` §0.2**：`030` 原把「组织 / 岗位 / 员工」归入「系统」分组；本规格落地时**将「员工档案」迁入「人事」分组**（组织 / 岗位仍留「系统」，或一并迁入，实现时以本条为准取「员工档案迁入人事」）。同步刷新 `030` 的 `updated`。
+- **修订 `030` §0.2**：`030` 原把「部门 / 岗位 / 员工」归入「系统」分组；本规格落地时**仅将「员工档案」迁入「人事」分组**，部门 / 岗位留在「系统」分组（已按此实现，`030` §0.2 只补指针）。同步刷新 `030` 的 `updated`。
 
 ### 0.3 权限点（在 `028` §0.2 表续行）
 
@@ -107,10 +107,10 @@ updated: 2026-09-20
 
 | 接口 / 方法 | 说明 |
 |---|---|
-| `IAttendanceRepository.GetPagedAsync(...)` / `GetByIdAsync` / `AddAsync` / `UpdateAsync` / `DeleteAsync` / `HasOverlapAsync(employeeId, type, start, end, excludeId)` | |
-| `IPayrollRepository.GetPagedAsync(...)` / `GetByIdAsync` / `AddAsync` / `UpdateAsync` / `DeleteAsync` / `ExistsAsync(employeeId, year, month)` / `AddRangeAsync(...)` / `GetEmployeesForPeriodAsync(year, month)` | 批量生成用 |
+| `IAttendanceRepository.GetPagedAsync(...)` / `GetByIdAsync` / `AddAsync` / `UpdateAsync` / `DeleteAsync` / `FindOverlapAsync(employeeId, type, start, end, excludeId)` | `FindOverlapAsync` 返回**冲突记录**（无冲突为 `null`），供 Handler 在 `40000` 的 message 中给出冲突区间 |
+| `IPayrollRepository.GetPagedAsync(...)` / `GetByIdAsync` / `AddAsync` / `UpdateAsync` / `DeleteAsync` / `ExistsAsync(employeeId, year, month)` / `AddRangeAsync(...)` / `GetEmployeesForPeriodAsync(year, month)` | `GetEmployeesForPeriodAsync` 为批量生成取**在职且入职不晚于期间末**的员工（返回 `Employee`） |
 
-读模型：`AttendanceListItem`、`PayrollListItem`（含员工名 / 部门名可选）。
+读模型：**无**——两个域的列表 / 详情均为单表查询、字段与实体 1:1（员工姓名已是实体上的快照列，无联查字段），故仓储直接返回实体（后端规则 §4.3「创建判据」）；`天数` / `实发文案` 等派生字段在 `<Feature>DtoMapper` 内计算。
 
 ### 3.2 错误码（`ErrorCode.cs`，从 `40170` 起）
 
@@ -138,10 +138,11 @@ updated: 2026-09-20
 
 ### 3.4 关键用例流程（Handler）
 
-- **CreateAttendance**：员工存在且**在职**（否则 `40400` / 业务拒绝）；`endDate ≥ startDate`；`HasOverlapAsync` → 重叠则 `40000`（message 含冲突区间）。
-- **CreatePayroll**：员工存在；`ExistsAsync(employeeId, year, month)` → `40170`；计算 `NetPay`；落库。
-- **UpdatePayroll**：非 `Draft` → `40171`；重算 `NetPay`。
-- **GeneratePayrolls**：取该期间**在职员工**（`IEmployeeRepository`），对每条跳过已存在（`ExistsAsync`），批量新增草稿（`BaseSalary` 取员工档案默认值或 0）；返回 `{ created, skipped }`。
+- **CreateAttendance**：员工不存在 `40400`，已离职 `40000`；`endDate ≥ startDate`；`FindOverlapAsync` → 重叠则 `40000`（message 含**冲突记录区间**）。
+- **UpdateAttendance**：记录不存在 `40400`；同 Create 的员工在职与重叠校验（重叠校验**排除自身**），并按新员工刷新姓名快照。
+- **CreatePayroll**：员工存在（不存在 `40400`）；`ExistsAsync(employeeId, year, month)` → `40170`；计算 `NetPay`；落库 `Draft`。
+- **UpdatePayroll**：非 `Draft` → `40171`；重算 `NetPay`；**员工与期间不可改**（请求体不含，取原值）。
+- **GeneratePayrolls**：取该期间**在职员工**（`GetEmployeesForPeriodAsync`），对每条跳过已存在（`ExistsAsync`），批量新增草稿（本期无薪资结构，`BaseSalary = 0` 由人工填写）；返回 `{ created, skipped }`。
 - **UpdatePayrollStatus**：`Draft → Paid`（或 `Paid → Draft` 反发放，仅 `payroll.status` 权限）；已发放编辑受限。
 
 ### 3.5 校验规则（FluentValidation）
@@ -149,9 +150,10 @@ updated: 2026-09-20
 | 请求 | 规则 |
 |---|---|
 | `CreateAttendanceRequest` / `UpdateAttendanceRequest` | `employeeId` 必填 GUID；`type` 枚举合法；`startDate` / `endDate` 必填且 `endDate ≥ startDate`；`remark` ≤ 200 |
-| `CreatePayrollRequest` / `UpdatePayrollRequest` | `employeeId` 必填 GUID；`year` 2000–2100；`month` 1–12；`baseSalary` / `allowance` / `deduction` 0–9999999.99；`remark` ≤ 200 |
+| `CreatePayrollRequest` | `employeeId` 必填 GUID；`year` 2000–2100；`month` 1–12；`baseSalary` / `allowance` / `deduction` 0–9999999.99；`remark` ≤ 200 |
+| `UpdatePayrollRequest` | `baseSalary` / `allowance` / `deduction` 0–9999999.99；`remark` ≤ 200（**员工与期间不可改**，请求体不含该三字段，故不承接 `40170`） |
 | `GeneratePayrollsRequest` | `year` 2000–2100；`month` 1–12 |
-| `GetAttendancesRequest` / `GetPayrollsRequest` | `page ≥ 1`；`pageSize` 1–100 |
+| `GetAttendancesRequest` / `GetPayrollsRequest` | `page ≥ 1`；`pageSize` 1–100；考勤的 `endDate ≥ startDate`（筛选区间）；枚举筛选值合法 |
 
 ## 4. 前端设计
 
@@ -183,7 +185,8 @@ src/
 
 - **`AttendancesView.vue`**：筛选（员工 `a-select`、类型、日期范围）；列：员工、类型、起止日期、天数、事由、操作列（编辑 / 删除）。
 - **`PayrollsView.vue`**：筛选（期间年月、员工、状态）；工具条「批量生成」（选年月）「新增」+ 刷新；列：员工、期间、基本工资、津贴、扣款、实发、状态、操作列（编辑 / 发放 / 删除）；已发放行操作置灰。
-- **`PayrollFormDrawer.vue`**：员工（新增时可选）/ 年月 / 基本工资 / 津贴 / 扣款 / 实发（只读实时预览）/ 备注。
+- **`PayrollFormDrawer.vue`**：员工（新增时可选）/ 年月 / 基本工资 / 津贴 / 扣款 / 实发（只读实时预览，口径与后端一致）/ 备注；**编辑态员工与年月只读**（后端不可改，见 §3.5）。
+- 两个抽屉均**以列表行回填**（列表出参已含全部字段，无 `GET {id}` 接口）；考勤的员工下拉取 `GET /api/employees?status=1`（在职员工，复用 `030` 既有接口，不新增 pick 端点）。
 
 ## 5. 关键技术决策与取舍
 

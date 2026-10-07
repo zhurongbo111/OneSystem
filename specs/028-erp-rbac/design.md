@@ -1,6 +1,6 @@
 ---
 created: 2026-09-17
-updated: 2026-09-23
+updated: 2026-10-07
 ---
 
 # 设计规格：角色与权限体系（erp-rbac）
@@ -62,6 +62,8 @@ updated: 2026-09-23
 | 单据审批（`042`） | `approvals` | `view` / `approve` / `rules` | `/api/approvals*`、`/api/approval-rules`、审批页「审批规则」抽屉 |
 | 线索（`043`） | `leads` | `view` / `create` / `update` / `convert` / `status` | `/api/leads*`、`/api/leads/{id}/activities*`、`/leads`、`/leads/detail/:id` |
 | 商机（`043`） | `opportunities` | `view` / `create` / `update` / `stage` | `/api/opportunities*`、`/api/opportunities/{id}/activities*`、`/opportunities`、`/opportunities/new`、`/opportunities/edit/:id`、`/opportunities/detail/:id` |
+| 考勤登记（`044`） | `attendance` | `view` / `create` / `update` / `delete` | `/api/attendances*`、`/attendance` |
+| 薪酬（`044`） | `payroll` | `view` / `create` / `update` / `delete` / `status` | `/api/payrolls*`、`/payrolls` |
 
 - 新增功能一律在本表续行；**未登记权限点的动作不得合并**（`tasks.md` 有集成测试遍历守卫）。
 - 权限点名称（中文，用于权限树展示）由后端清单接口返回（`design.md` §3.3），前端不硬编码。

@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-22
+updated: 2026-10-07
 ---
 
 # 任务清单：组织架构与员工档案（erp-org-employee）
