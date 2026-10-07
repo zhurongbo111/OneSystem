@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-10-07
 ---
 
 # 需求规格：考勤与薪酬（erp-hcm-payroll）

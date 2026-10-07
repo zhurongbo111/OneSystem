@@ -25,6 +25,20 @@ export type AuditResource =
   | 19
   | 20
   | 21
+  | 22
+  | 23
+  | 24
+  | 25
+  | 26
+  | 27
+  | 28
+  | 29
+  | 30
+  | 31
+  | 32
+  | 33
+  | 34
+  | 35
 
 /** 动作枚举值（对应后端 AuditAction） */
 export type AuditAction = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
@@ -92,6 +106,20 @@ export const AUDIT_RESOURCE_LABELS: Record<number, string> = {
   19: '部门',
   20: '岗位',
   21: '员工',
+  22: '会计科目',
+  23: '税率',
+  24: '会计期间',
+  25: '记账凭证',
+  26: '科目映射',
+  27: '资金账户',
+  28: '报价单',
+  29: '库存台账',
+  30: '批次',
+  31: '线索',
+  32: '商机',
+  33: '跟进活动',
+  34: '考勤登记',
+  35: '工资单',
 }
 
 /** 资源类型标签颜色（specs/006-list-showcase §0：枚举字段用 a-tag 着色展示） */
@@ -118,6 +146,20 @@ export const AUDIT_RESOURCE_COLORS: Record<number, string> = {
   19: 'arcoblue',
   20: 'cyan',
   21: 'purple',
+  22: 'arcoblue',
+  23: 'lime',
+  24: 'cyan',
+  25: 'purple',
+  26: 'blue',
+  27: 'gold',
+  28: 'orange',
+  29: 'green',
+  30: 'cyan',
+  31: 'magenta',
+  32: 'purple',
+  33: 'blue',
+  34: 'orangered',
+  35: 'gold',
 }
 
 /** 动作中文文案（与后端 AuditAction 一一对应） */

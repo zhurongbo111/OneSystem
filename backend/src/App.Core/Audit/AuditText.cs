@@ -222,6 +222,24 @@ public static class AuditText
     public static string BankAccountStatus(BankAccountStatus status)
         => status == Entities.BankAccountStatus.Enabled ? "启用" : "停用";
 
+    /// <summary>考勤类型文案（044：请假 / 加班）</summary>
+    /// <param name="type">考勤类型</param>
+    public static string AttendanceType(AttendanceType type) => type switch
+    {
+        Entities.AttendanceType.Leave => "请假",
+        Entities.AttendanceType.Overtime => "加班",
+        _ => AuditSummary.Empty,
+    };
+
+    /// <summary>工资单状态文案（044：草稿 / 已发放）</summary>
+    /// <param name="status">工资单状态</param>
+    public static string PayrollStatus(PayrollStatus status) => status switch
+    {
+        Entities.PayrollStatus.Draft => "草稿",
+        Entities.PayrollStatus.Paid => "已发放",
+        _ => AuditSummary.Empty,
+    };
+
     /// <summary>性别文案（未填输出空值占位）</summary>
     /// <param name="gender">性别，可空</param>
     public static string Gender(Gender? gender) => gender switch

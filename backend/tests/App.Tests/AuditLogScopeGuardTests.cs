@@ -11,6 +11,9 @@ using App.Core.Features.Accounts.UpdateAccount;
 using App.Core.Features.Accounts.UpdateAccountStatus;
 using App.Core.Features.Activities.CreateLeadActivity;
 using App.Core.Features.Activities.CreateOpportunityActivity;
+using App.Core.Features.Attendances.CreateAttendance;
+using App.Core.Features.Attendances.DeleteAttendance;
+using App.Core.Features.Attendances.UpdateAttendance;
 using App.Core.Features.Categories.CreateCategory;
 using App.Core.Features.Inventory.UpdateInventorySafetyStock;
 using App.Core.Features.Invoices.CreateInvoice;
@@ -35,6 +38,11 @@ using App.Core.Features.Opportunities.UpdateOpportunityStage;
 using App.Core.Features.Partners.CreatePartner;
 using App.Core.Features.Partners.UpdatePartner;
 using App.Core.Features.Partners.UpdatePartnerStatus;
+using App.Core.Features.Payrolls.CreatePayroll;
+using App.Core.Features.Payrolls.DeletePayroll;
+using App.Core.Features.Payrolls.GeneratePayrolls;
+using App.Core.Features.Payrolls.UpdatePayroll;
+using App.Core.Features.Payrolls.UpdatePayrollStatus;
 using App.Core.Features.Products.CreateProduct;
 using App.Core.Features.Products.UpdateProduct;
 using App.Core.Features.Products.UpdateProductStatus;
@@ -173,6 +181,14 @@ public class AuditLogScopeGuardTests
             { typeof(RejectApprovalRequestHandler), AuditResource.Approval, AuditAction.Approve },
             { typeof(WithdrawApprovalRequestHandler), AuditResource.Approval, AuditAction.Approve },
             { typeof(UpdateApprovalRulesRequestHandler), AuditResource.Approval, AuditAction.Update },
+            { typeof(CreateAttendanceRequestHandler), AuditResource.Attendance, AuditAction.Create },
+            { typeof(UpdateAttendanceRequestHandler), AuditResource.Attendance, AuditAction.Update },
+            { typeof(DeleteAttendanceRequestHandler), AuditResource.Attendance, AuditAction.Delete },
+            { typeof(CreatePayrollRequestHandler), AuditResource.Payroll, AuditAction.Create },
+            { typeof(UpdatePayrollRequestHandler), AuditResource.Payroll, AuditAction.Update },
+            { typeof(UpdatePayrollStatusRequestHandler), AuditResource.Payroll, AuditAction.StatusChange },
+            { typeof(DeletePayrollRequestHandler), AuditResource.Payroll, AuditAction.Delete },
+            { typeof(GeneratePayrollsRequestHandler), AuditResource.Payroll, AuditAction.Create },
         };
 
     [Theory]

@@ -107,4 +107,10 @@ public enum AuditResource
 
     /// <summary>跟进活动（043，纯追加）</summary>
     Activity = 33,
+
+    /// <summary>考勤登记（044）</summary>
+    Attendance = 34,
+
+    /// <summary>工资单（044）</summary>
+    Payroll = 35,
 }
