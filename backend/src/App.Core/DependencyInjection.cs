@@ -27,6 +27,11 @@ using App.Core.Features.Approvals.GetApprovalRules;
 using App.Core.Features.Approvals.RejectApproval;
 using App.Core.Features.Approvals.UpdateApprovalRules;
 using App.Core.Features.Approvals.WithdrawApproval;
+using App.Core.Features.Attendances;
+using App.Core.Features.Attendances.CreateAttendance;
+using App.Core.Features.Attendances.DeleteAttendance;
+using App.Core.Features.Attendances.GetAttendances;
+using App.Core.Features.Attendances.UpdateAttendance;
 using App.Core.Features.AuditLogs;
 using App.Core.Features.AuditLogs.GetAuditLogById;
 using App.Core.Features.AuditLogs.GetAuditLogs;
@@ -108,6 +113,13 @@ using App.Core.Features.PartnerPrices.GetEffectivePrices;
 using App.Core.Features.PartnerPrices.GetPartnerPriceById;
 using App.Core.Features.PartnerPrices.GetPartnerPrices;
 using App.Core.Features.PartnerPrices.UpdatePartnerPrice;
+using App.Core.Features.Payrolls;
+using App.Core.Features.Payrolls.CreatePayroll;
+using App.Core.Features.Payrolls.DeletePayroll;
+using App.Core.Features.Payrolls.GeneratePayrolls;
+using App.Core.Features.Payrolls.GetPayrolls;
+using App.Core.Features.Payrolls.UpdatePayroll;
+using App.Core.Features.Payrolls.UpdatePayrollStatus;
 using App.Core.Features.Products;
 using App.Core.Features.Products.CreateProduct;
 using App.Core.Features.Products.ExportProducts;
@@ -539,6 +551,20 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<GetOpportunityActivitiesRequest, IReadOnlyList<ActivityItemDto>>, GetOpportunityActivitiesRequestHandler>();
         services.AddScoped<IRequestHandler<CreateOpportunityActivityRequest, ActivityItemDto>, CreateOpportunityActivityRequestHandler>();
 
+        // 考勤登记用例（erp-hcm-payroll，044：请假 / 加班登记）
+        services.AddScoped<IRequestHandler<GetAttendancesRequest, PagedResult<AttendanceListItemDto>>, GetAttendancesRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateAttendanceRequest, AttendanceDetailDto>, CreateAttendanceRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateAttendanceRequest, AttendanceDetailDto>, UpdateAttendanceRequestHandler>();
+        services.AddScoped<IRequestHandler<DeleteAttendanceRequest, object?>, DeleteAttendanceRequestHandler>();
+
+        // 月度工资单用例（erp-hcm-payroll，044：维护 + 批量生成 + 发放锁定）
+        services.AddScoped<IRequestHandler<GetPayrollsRequest, PagedResult<PayrollListItemDto>>, GetPayrollsRequestHandler>();
+        services.AddScoped<IRequestHandler<CreatePayrollRequest, PayrollDetailDto>, CreatePayrollRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdatePayrollRequest, PayrollDetailDto>, UpdatePayrollRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdatePayrollStatusRequest, PayrollDetailDto>, UpdatePayrollStatusRequestHandler>();
+        services.AddScoped<IRequestHandler<DeletePayrollRequest, object?>, DeletePayrollRequestHandler>();
+        services.AddScoped<IRequestHandler<GeneratePayrollsRequest, GeneratePayrollsResponse>, GeneratePayrollsRequestHandler>();
+
         // 销售退货用例（erp-sale-return）
         services.AddScoped<IRequestHandler<GetSalesReturnsRequest, PagedResult<SalesReturnListItemDto>>, GetSalesReturnsRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesReturnByIdRequest, SalesReturnDetailDto>, GetSalesReturnByIdRequestHandler>();
@@ -731,6 +757,14 @@ public static class DependencyInjection
         services.AddScoped<IValidator<ApproveOrderRequest>, ApproveOrderRequestValidator>();
         services.AddScoped<IValidator<RejectApprovalRequest>, RejectApprovalRequestValidator>();
         services.AddScoped<IValidator<UpdateApprovalRulesRequest>, UpdateApprovalRulesRequestValidator>();
+        services.AddScoped<IValidator<GetAttendancesRequest>, GetAttendancesRequestValidator>();
+        services.AddScoped<IValidator<CreateAttendanceRequest>, CreateAttendanceRequestValidator>();
+        services.AddScoped<IValidator<UpdateAttendanceRequest>, UpdateAttendanceRequestValidator>();
+        services.AddScoped<IValidator<GetPayrollsRequest>, GetPayrollsRequestValidator>();
+        services.AddScoped<IValidator<CreatePayrollRequest>, CreatePayrollRequestValidator>();
+        services.AddScoped<IValidator<UpdatePayrollRequest>, UpdatePayrollRequestValidator>();
+        services.AddScoped<IValidator<UpdatePayrollStatusRequest>, UpdatePayrollStatusRequestValidator>();
+        services.AddScoped<IValidator<GeneratePayrollsRequest>, GeneratePayrollsRequestValidator>();
 
         return services;
     }

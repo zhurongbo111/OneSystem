@@ -122,6 +122,10 @@ public static class DependencyInjection
         services.AddScoped<IOpportunityRepository, OpportunityRepository>();
         services.AddScoped<IActivityRepository, ActivityRepository>();
 
+        // 考勤与薪酬（erp-hcm-payroll，044）：考勤登记 + 月度工资单
+        services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+        services.AddScoped<IPayrollRepository, PayrollRepository>();
+
         return services;
     }
 }

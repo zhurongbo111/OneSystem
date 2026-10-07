@@ -257,4 +257,11 @@ public static class ErrorCode
 
     /// <summary>商机已赢单 / 输单（终态），不可改阶段</summary>
     public const int OpportunityClosed = 40169;
+
+    // ===== 考勤与薪酬（specs/044-erp-hcm-payroll/design.md §3.2） =====
+    /// <summary>该员工该期间的工资单已存在（一个员工一个月一条）</summary>
+    public const int PayrollExists = 40170;
+
+    /// <summary>工资单已发放，禁止修改 / 删除</summary>
+    public const int PayrollLocked = 40171;
 }

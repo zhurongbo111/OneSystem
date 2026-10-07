@@ -175,6 +175,12 @@ public class AppDbContext : DbContext
     /// <summary>跟进活动表（043-erp-crm-presale，纯追加）</summary>
     public DbSet<Activity> Activities => Set<Activity>();
 
+    /// <summary>考勤登记表（044-erp-hcm-payroll：请假 / 加班登记）</summary>
+    public DbSet<Attendance> Attendances => Set<Attendance>();
+
+    /// <summary>月度工资单表（044-erp-hcm-payroll，员工 + 年月唯一）</summary>
+    public DbSet<Payroll> Payrolls => Set<Payroll>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
