@@ -108,6 +108,20 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        // 人事（044-erp-hcm-payroll）：考勤登记（请假 / 加班）
+        path: 'attendance',
+        name: 'attendance',
+        component: () => import('@/views/HrmManagement/AttendancesView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        // 人事（044-erp-hcm-payroll）：薪酬（月度工资单 + 批量生成 + 发放）
+        path: 'payrolls',
+        name: 'payrolls',
+        component: () => import('@/views/HrmManagement/PayrollsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'accounts',
         name: 'accounts',
         component: () => import('@/views/FinanceManagement/AccountsView.vue'),
@@ -571,6 +585,8 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   departments: 'departments.view',
   positions: 'positions.view',
   employees: 'employees.view',
+  attendance: 'attendance.view',
+  payrolls: 'payroll.view',
   accounts: 'accounts.view',
   taxRates: 'taxRates.view',
   bankAccounts: 'bankAccounts.view',

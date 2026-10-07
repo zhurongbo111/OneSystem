@@ -17,6 +17,7 @@ import {
   IconBuildingStore,
   IconBuildingWarehouse,
   IconCalculator,
+  IconCalendarTime,
   IconCash,
   IconChartBar,
   IconClipboardCheck,
@@ -36,6 +37,7 @@ import {
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconList,
+  IconMoneybag,
   IconNotebook,
   IconPackage,
   IconPackages,
@@ -57,6 +59,7 @@ import {
   IconTruckReturn,
   IconUser,
   IconUsers,
+  IconUsersGroup,
   IconUserSearch,
   IconWallet,
 } from '@tabler/icons-vue'
@@ -115,7 +118,8 @@ const MENU_GROUPS: Record<string, string[]> = {
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'partnerPrices', 'invoices', 'invoiceNew', 'invoiceDetail'],
   finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
   report: ['inventoryFlowReport', 'stockBalanceReport', 'purchaseSummaryReport', 'salesSummaryReport', 'costProfitReport'],
-  system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'employees', 'approvals'],
+  hrm: ['employees', 'attendance', 'payrolls'],
+  system: ['users', 'userDetail', 'loginLogs', 'auditLogs', 'roles', 'departments', 'positions', 'approvals'],
 }
 
 /**
@@ -163,6 +167,8 @@ const MENU_PERMISSIONS: Record<string, string> = {
   departments: 'departments.view',
   positions: 'positions.view',
   employees: 'employees.view',
+  attendance: 'attendance.view',
+  payrolls: 'payroll.view',
   approvals: 'approvals.view',
 }
 
@@ -691,6 +697,44 @@ function onLogout(): void {
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu
+          v-if="isGroupVisible('hrm')"
+          key="hrm"
+        >
+          <template #icon>
+            <IconUsersGroup />
+          </template>
+          <template #title>
+            <span>人事</span>
+          </template>
+          <a-menu-item
+            v-if="isMenuVisible('employees')"
+            key="employees"
+          >
+            <template #icon>
+              <IconIdBadge2 />
+            </template>
+            <span>员工档案</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('attendance')"
+            key="attendance"
+          >
+            <template #icon>
+              <IconCalendarTime />
+            </template>
+            <span>考勤登记</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('payrolls')"
+            key="payrolls"
+          >
+            <template #icon>
+              <IconMoneybag />
+            </template>
+            <span>薪酬</span>
+          </a-menu-item>
+        </a-sub-menu>
+        <a-sub-menu
           v-if="isGroupVisible('system')"
           key="system"
         >
@@ -753,15 +797,6 @@ function onLogout(): void {
               <IconBriefcase />
             </template>
             <span>岗位管理</span>
-          </a-menu-item>
-          <a-menu-item
-            v-if="isMenuVisible('employees')"
-            key="employees"
-          >
-            <template #icon>
-              <IconIdBadge2 />
-            </template>
-            <span>员工档案</span>
           </a-menu-item>
           <a-menu-item
             v-if="isMenuVisible('approvals')"
