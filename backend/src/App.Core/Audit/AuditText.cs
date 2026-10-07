@@ -240,6 +240,27 @@ public static class AuditText
         _ => AuditSummary.Empty,
     };
 
+    /// <summary>服务工单状态文案（045：待处理 / 处理中 / 已解决 / 已关闭）</summary>
+    /// <param name="status">工单状态</param>
+    public static string TicketStatus(TicketStatus status) => status switch
+    {
+        Entities.TicketStatus.Pending => "待处理",
+        Entities.TicketStatus.Processing => "处理中",
+        Entities.TicketStatus.Resolved => "已解决",
+        Entities.TicketStatus.Closed => "已关闭",
+        _ => AuditSummary.Empty,
+    };
+
+    /// <summary>服务工单优先级文案（045：低 / 中 / 高）</summary>
+    /// <param name="priority">优先级</param>
+    public static string TicketPriority(TicketPriority priority) => priority switch
+    {
+        Entities.TicketPriority.Low => "低",
+        Entities.TicketPriority.Medium => "中",
+        Entities.TicketPriority.High => "高",
+        _ => AuditSummary.Empty,
+    };
+
     /// <summary>性别文案（未填输出空值占位）</summary>
     /// <param name="gender">性别，可空</param>
     public static string Gender(Gender? gender) => gender switch

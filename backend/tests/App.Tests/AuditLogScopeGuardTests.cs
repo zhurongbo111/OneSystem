@@ -73,6 +73,10 @@ using App.Core.Features.SalesReturns.CreateSalesReturn;
 using App.Core.Features.SalesReturns.VoidSalesReturn;
 using App.Core.Features.SalesShipments.CreateSalesShipment;
 using App.Core.Features.SalesShipments.VoidSalesShipment;
+using App.Core.Features.ServiceTickets.AssignServiceTicket;
+using App.Core.Features.ServiceTickets.CreateServiceTicket;
+using App.Core.Features.ServiceTickets.UpdateServiceTicket;
+using App.Core.Features.ServiceTickets.UpdateServiceTicketStatus;
 using App.Core.Features.Settlements.CreateSettlement;
 using App.Core.Features.Settlements.VoidSettlement;
 using App.Core.Features.StockTakes.CreateStockTake;
@@ -189,6 +193,10 @@ public class AuditLogScopeGuardTests
             { typeof(UpdatePayrollStatusRequestHandler), AuditResource.Payroll, AuditAction.StatusChange },
             { typeof(DeletePayrollRequestHandler), AuditResource.Payroll, AuditAction.Delete },
             { typeof(GeneratePayrollsRequestHandler), AuditResource.Payroll, AuditAction.Create },
+            { typeof(CreateServiceTicketRequestHandler), AuditResource.ServiceTicket, AuditAction.Create },
+            { typeof(UpdateServiceTicketRequestHandler), AuditResource.ServiceTicket, AuditAction.Update },
+            { typeof(UpdateServiceTicketStatusRequestHandler), AuditResource.ServiceTicket, AuditAction.StatusChange },
+            { typeof(AssignServiceTicketRequestHandler), AuditResource.ServiceTicket, AuditAction.Update },
         };
 
     [Theory]
