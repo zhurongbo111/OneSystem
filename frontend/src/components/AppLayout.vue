@@ -36,6 +36,7 @@ import {
   IconInvoice,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
+  IconLifebuoy,
   IconList,
   IconMoneybag,
   IconNotebook,
@@ -88,6 +89,8 @@ const MENU_ROUTE_MAP: Record<string, string> = {
   opportunityCreate: 'opportunities',
   opportunityEdit: 'opportunities',
   opportunityDetail: 'opportunities',
+  serviceTicketCreate: 'serviceTickets',
+  serviceTicketDetail: 'serviceTickets',
   salesOrderEdit: 'salesOrders',
   salesOrderDetail: 'salesOrders',
   salesDetail: 'sales',
@@ -113,7 +116,7 @@ const MENU_GROUPS: Record<string, string[]> = {
   basedata: ['products', 'categories', 'partners', 'warehouses', 'batches'],
   purchase: ['purchaseOrders', 'purchaseOrderNew', 'purchaseOrderEdit', 'purchaseOrderDetail', 'purchases', 'purchaseNew', 'purchaseReturns', 'purchaseReturnNew', 'purchaseReturnDetail'],
   sale: ['quotations', 'quotationCreate', 'quotationEdit', 'quotationDetail', 'salesOrders', 'salesOrderNew', 'salesOrderEdit', 'salesOrderDetail', 'sales', 'salesNew', 'salesReturns', 'saleReturnNew', 'saleReturnDetail'],
-  crm: ['leads', 'leadDetail', 'opportunities', 'opportunityCreate', 'opportunityEdit', 'opportunityDetail'],
+  crm: ['leads', 'leadDetail', 'opportunities', 'opportunityCreate', 'opportunityEdit', 'opportunityDetail', 'serviceTickets', 'serviceTicketCreate', 'serviceTicketDetail'],
   stock: ['inventory', 'stockMovements', 'stockTakes', 'stockTakeNew', 'stockTakeDetail', 'transfers', 'transferNew', 'transferDetail'],
   fund: ['settlements', 'settlementNew', 'settlementDetail', 'reconciliation', 'partnerPrices', 'invoices', 'invoiceNew', 'invoiceDetail'],
   finance: ['accounts', 'taxRates', 'bankAccounts', 'cashJournals', 'vouchers', 'voucherNew', 'voucherDetail', 'financialReports'],
@@ -138,6 +141,7 @@ const MENU_PERMISSIONS: Record<string, string> = {
   quotations: 'quotations.view',
   leads: 'leads.view',
   opportunities: 'opportunities.view',
+  serviceTickets: 'serviceTickets.view',
   salesOrders: 'salesOrders.view',
   sales: 'sales.view',
   salesReturns: 'salesReturns.view',
@@ -478,6 +482,15 @@ function onLogout(): void {
               <IconTargetArrow />
             </template>
             <span>商机</span>
+          </a-menu-item>
+          <a-menu-item
+            v-if="isMenuVisible('serviceTickets')"
+            key="serviceTickets"
+          >
+            <template #icon>
+              <IconLifebuoy />
+            </template>
+            <span>服务工单</span>
           </a-menu-item>
         </a-sub-menu>
         <a-sub-menu
