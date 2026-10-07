@@ -181,6 +181,9 @@ public class AppDbContext : DbContext
     /// <summary>月度工资单表（044-erp-hcm-payroll，员工 + 年月唯一）</summary>
     public DbSet<Payroll> Payrolls => Set<Payroll>();
 
+    /// <summary>服务工单表（045-erp-crm-service，售后留痕，不做删除）</summary>
+    public DbSet<ServiceTicket> ServiceTickets => Set<ServiceTicket>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

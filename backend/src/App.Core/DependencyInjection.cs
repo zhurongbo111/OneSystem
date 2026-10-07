@@ -128,6 +128,13 @@ using App.Core.Features.Products.GetProductPickList;
 using App.Core.Features.Products.GetProducts;
 using App.Core.Features.Products.UpdateProduct;
 using App.Core.Features.Products.UpdateProductStatus;
+using App.Core.Features.ServiceTickets;
+using App.Core.Features.ServiceTickets.AssignServiceTicket;
+using App.Core.Features.ServiceTickets.CreateServiceTicket;
+using App.Core.Features.ServiceTickets.GetServiceTicketById;
+using App.Core.Features.ServiceTickets.GetServiceTickets;
+using App.Core.Features.ServiceTickets.UpdateServiceTicket;
+using App.Core.Features.ServiceTickets.UpdateServiceTicketStatus;
 using App.Core.Features.Permissions;
 using App.Core.Features.Permissions.GetPermissions;
 using App.Core.Features.Positions;
@@ -565,6 +572,14 @@ public static class DependencyInjection
         services.AddScoped<IRequestHandler<DeletePayrollRequest, object?>, DeletePayrollRequestHandler>();
         services.AddScoped<IRequestHandler<GeneratePayrollsRequest, GeneratePayrollsResponse>, GeneratePayrollsRequestHandler>();
 
+        // 服务工单用例（erp-crm-service，045；售后留痕：不做删除、不触碰库存与资金）
+        services.AddScoped<IRequestHandler<GetServiceTicketsRequest, PagedResult<ServiceTicketListItemDto>>, GetServiceTicketsRequestHandler>();
+        services.AddScoped<IRequestHandler<GetServiceTicketByIdRequest, ServiceTicketDetailDto>, GetServiceTicketByIdRequestHandler>();
+        services.AddScoped<IRequestHandler<CreateServiceTicketRequest, ServiceTicketDetailDto>, CreateServiceTicketRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateServiceTicketRequest, ServiceTicketDetailDto>, UpdateServiceTicketRequestHandler>();
+        services.AddScoped<IRequestHandler<UpdateServiceTicketStatusRequest, ServiceTicketDetailDto>, UpdateServiceTicketStatusRequestHandler>();
+        services.AddScoped<IRequestHandler<AssignServiceTicketRequest, ServiceTicketDetailDto>, AssignServiceTicketRequestHandler>();
+
         // 销售退货用例（erp-sale-return）
         services.AddScoped<IRequestHandler<GetSalesReturnsRequest, PagedResult<SalesReturnListItemDto>>, GetSalesReturnsRequestHandler>();
         services.AddScoped<IRequestHandler<GetSalesReturnByIdRequest, SalesReturnDetailDto>, GetSalesReturnByIdRequestHandler>();
@@ -765,6 +780,11 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdatePayrollRequest>, UpdatePayrollRequestValidator>();
         services.AddScoped<IValidator<UpdatePayrollStatusRequest>, UpdatePayrollStatusRequestValidator>();
         services.AddScoped<IValidator<GeneratePayrollsRequest>, GeneratePayrollsRequestValidator>();
+        services.AddScoped<IValidator<GetServiceTicketsRequest>, GetServiceTicketsRequestValidator>();
+        services.AddScoped<IValidator<CreateServiceTicketRequest>, CreateServiceTicketRequestValidator>();
+        services.AddScoped<IValidator<UpdateServiceTicketRequest>, UpdateServiceTicketRequestValidator>();
+        services.AddScoped<IValidator<UpdateServiceTicketStatusRequest>, UpdateServiceTicketStatusRequestValidator>();
+        services.AddScoped<IValidator<AssignServiceTicketRequest>, AssignServiceTicketRequestValidator>();
 
         return services;
     }

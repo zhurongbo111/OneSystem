@@ -19,6 +19,7 @@ const MENU_GROUP_MAP: Record<string, string> = {
   销售退货: '销售',
   线索: 'CRM',
   商机: 'CRM',
+  服务工单: 'CRM',
   库存查询: '库存',
   库存流水: '库存',
   库存盘点: '库存',

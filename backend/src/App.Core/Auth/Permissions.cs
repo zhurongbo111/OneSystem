@@ -505,6 +505,22 @@ public static class Permissions
     /// <summary>发放 / 反发放工资单</summary>
     public const string PayrollStatus = "payroll.status";
 
+    // ===== CRM 服务工单（045） =====
+    /// <summary>查看服务工单</summary>
+    public const string ServiceTicketsView = "serviceTickets.view";
+
+    /// <summary>登记服务工单</summary>
+    public const string ServiceTicketsCreate = "serviceTickets.create";
+
+    /// <summary>编辑服务工单</summary>
+    public const string ServiceTicketsUpdate = "serviceTickets.update";
+
+    /// <summary>服务工单状态流转</summary>
+    public const string ServiceTicketsStatus = "serviceTickets.status";
+
+    /// <summary>指派服务工单负责人</summary>
+    public const string ServiceTicketsAssign = "serviceTickets.assign";
+
     /// <summary>
     /// 全量权限点集合（超级管理员解析结果与权限点合法性校验基准）。
     /// 新增权限点必须在此登记，否则 Controller 上的 [RequirePermission] 会被清单守卫测试判为非法 key。
@@ -552,6 +568,7 @@ public static class Permissions
         OpportunitiesView, OpportunitiesCreate, OpportunitiesUpdate, OpportunitiesStage,
         AttendanceView, AttendanceCreate, AttendanceUpdate, AttendanceDelete,
         PayrollView, PayrollCreate, PayrollUpdate, PayrollDelete, PayrollStatus,
+        ServiceTicketsView, ServiceTicketsCreate, ServiceTicketsUpdate, ServiceTicketsStatus, ServiceTicketsAssign,
     ];
 
     /// <summary>
@@ -612,6 +629,7 @@ public static class Permissions
         new("商机", [new PermissionItem(OpportunitiesView, "查看"), new PermissionItem(OpportunitiesCreate, "新增"), new PermissionItem(OpportunitiesUpdate, "编辑"), new PermissionItem(OpportunitiesStage, "阶段推进")]),
         new("考勤登记", [new PermissionItem(AttendanceView, "查看"), new PermissionItem(AttendanceCreate, "新增"), new PermissionItem(AttendanceUpdate, "编辑"), new PermissionItem(AttendanceDelete, "删除")]),
         new("薪酬", [new PermissionItem(PayrollView, "查看"), new PermissionItem(PayrollCreate, "新增"), new PermissionItem(PayrollUpdate, "编辑"), new PermissionItem(PayrollDelete, "删除"), new PermissionItem(PayrollStatus, "发放 / 反发放")]),
+        new("服务工单", [new PermissionItem(ServiceTicketsView, "查看"), new PermissionItem(ServiceTicketsCreate, "登记"), new PermissionItem(ServiceTicketsUpdate, "编辑"), new PermissionItem(ServiceTicketsStatus, "状态流转"), new PermissionItem(ServiceTicketsAssign, "指派负责人")]),
     ];
 
     /// <summary>

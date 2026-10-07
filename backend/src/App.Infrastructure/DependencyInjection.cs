@@ -126,6 +126,9 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<IPayrollRepository, PayrollRepository>();
 
+        // CRM 服务工单（erp-crm-service，045）：售后留痕，不做删除
+        services.AddScoped<IServiceTicketRepository, ServiceTicketRepository>();
+
         return services;
     }
 }

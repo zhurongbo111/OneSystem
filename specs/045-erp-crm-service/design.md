@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-10-07
 ---
 
 # 设计规格：CRM 服务工单（erp-crm-service）
@@ -103,7 +103,7 @@ CRM 服务（前端 /service-tickets，域目录 CrmManagement/，与 043 同域
 
 | 接口 / 方法 | 说明 |
 |---|---|
-| `IServiceTicketRepository.GetPagedAsync(...)` | 列表（`keyword` 匹配单号 / 客户名 / 标题；状态 / 优先级 / 负责人 / 日期闭区间） |
+| `IServiceTicketRepository.GetPagedAsync(...)` | 列表（`keyword` 匹配单号 / 客户名 / 标题；状态 / 优先级 / 负责人筛选，创建时间倒序） |
 | `IServiceTicketRepository.GetByIdAsync` / `AddAsync` / `UpdateAsync` | |
 | `IServiceTicketRepository.GenerateNoAsync(date, ...)` | 单号 `SV` |
 
@@ -141,6 +141,7 @@ CRM 服务（前端 /service-tickets，域目录 CrmManagement/，与 043 同域
 |---|---|
 | `CreateServiceTicketRequest` / `UpdateServiceTicketRequest` | `partnerId` 必填 GUID；`title` 必填 1–50；`description` ≤ 500；`contact` ≤ 30；`phone` ≤ 20；`priority` 枚举合法；`ownerId` 可空 GUID；`remark` ≤ 200 |
 | `UpdateServiceTicketStatusRequest` | `status` 枚举合法 |
+| `AssignServiceTicketRequest` | `ownerId` 必填 GUID（缺省 / 空值 → 40000；已关闭指派 → 40172） |
 | `GetServiceTicketsRequest` | `page ≥ 1`；`pageSize` 1–100；`keyword` ≤ 50 |
 
 ## 4. 前端设计
@@ -171,7 +172,7 @@ src/
 ### 4.3 页面交互
 
 - **`ServiceTicketsView.vue`**：筛选（关键词 / 状态 / 优先级 / 负责人）；列：工单号、客户、标题、优先级（`a-tag`）、状态（`a-tag`）、负责人、创建时间、操作列（查看 / 编辑 / 受理 / 解决 / 关闭，按状态显示可用动作）。
-- **`ServiceTicketFormPage.vue`**：客户 / 联系人 / 电话 / 标题 / 描述 / 优先级 / 负责人 / 备注。
+- **`ServiceTicketFormPage.vue`**：客户 / 联系人 / 电话 / 标题 / 描述 / 优先级 / 负责人 / 备注；登记与编辑**共用本页**，编辑态由查询参数 `?id=` 表达（§4.2 路由表保持 3 条，编辑不另立路由）。
 - **`ServiceTicketDetailView.vue`**：基本信息 + 状态推进按钮（按允许流转）+ 指派负责人；已关闭只读。
 
 ## 5. 关键技术决策与取舍

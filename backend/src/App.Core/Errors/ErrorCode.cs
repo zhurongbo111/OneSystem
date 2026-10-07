@@ -264,4 +264,8 @@ public static class ErrorCode
 
     /// <summary>工资单已发放，禁止修改 / 删除</summary>
     public const int PayrollLocked = 40171;
+
+    // ===== CRM 服务工单（specs/045-erp-crm-service/design.md §3.2） =====
+    /// <summary>工单状态不允许该操作（非法流转 / 已关闭编辑或指派）</summary>
+    public const int TicketStateInvalid = 40172;
 }

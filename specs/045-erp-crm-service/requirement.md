@@ -1,6 +1,6 @@
 ---
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-10-07
 ---
 
 # 需求规格：CRM 服务工单（erp-crm-service）

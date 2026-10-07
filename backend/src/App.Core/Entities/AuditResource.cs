@@ -113,4 +113,7 @@ public enum AuditResource
 
     /// <summary>工资单（044）</summary>
     Payroll = 35,
+
+    /// <summary>服务工单（045）</summary>
+    ServiceTicket = 36,
 }
