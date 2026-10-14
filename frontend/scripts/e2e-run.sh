@@ -19,6 +19,9 @@
 #
 # 约定与失败处理见 specs/002-frontend-e2e/design.md §6；CI 运行方式见其 §6.4。
 
+# 关掉调用方可能带来的 errexit（CI 步骤以 `bash -e` 执行，errexit 会经 SHELLOPTS 传到本脚本：
+# 那样首个非致命失败就会让脚本中途退出、连 finally 清理都跑不完），失败一律由本脚本显式判定。
+set +e
 set -uo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # frontend/scripts
@@ -145,7 +148,9 @@ process_cmdline() {
 }
 
 wait_port_released() {
-    local port="$1" timeout="$2" deadline=$((SECONDS + timeout))
+    local port="$1" timeout="$2"
+    # 注意：同一 local 语句里的展开先于赋值（set -u 下引用同句的局部变量会报 unbound），故分两句写
+    local deadline=$((SECONDS + timeout))
     while [ "$SECONDS" -lt "$deadline" ]; do
         port_in_use "$port" || return 0
         sleep 1
@@ -266,7 +271,8 @@ http_ok() {
 # launcher-exited 必须单独识别——端口被别的服务占用时 dotnet run 会立刻退出，
 # 若只看健康检查会命中"别人的后端"（连的是别的库），用例会静默跑在错误数据集上。
 wait_backend_ready() {
-    local timeout="$1" deadline=$((SECONDS + timeout))
+    local timeout="$1"
+    local deadline=$((SECONDS + timeout))
     while [ "$SECONDS" -lt "$deadline" ]; do
         kill -0 "$backend_pid" 2>/dev/null || return 1
         sleep 2
