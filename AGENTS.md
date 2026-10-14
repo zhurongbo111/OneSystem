@@ -61,7 +61,7 @@
 
 ## 3. 目录结构
 
-- 顶层：`AGENTS.md`（本文件）、`.codebuddy/`（`CONTEXT.md` + `rules/`）、`specs/`（功能规格）、`frontend/`、`backend/`。
+- 顶层：`AGENTS.md`（本文件）、`RUNBOOK.md`（快速试跑指南：Docker Compose 一键启动 / 验证 / 停止 / 排错，不含开发流程）、`.codebuddy/`（`CONTEXT.md` + `rules/`）、`specs/`（功能规格）、`frontend/`、`backend/`。
 - `frontend/`、`backend/` 内部结构与关键文件位置见 `.codebuddy/CONTEXT.md` §2 / §3（本文件不重复，避免两处维护漂移）。
 
 ## 4. API 契约（前后端共同遵守）
