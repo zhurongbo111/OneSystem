@@ -12,7 +12,19 @@
 
 ## 快速开始
 
-前置：.NET 8 SDK、Node.js、PostgreSQL（本机 5432）。先建库 `app`——迁移只建表不建库；dev 连接串在 `backend/src/App.Api/appsettings.Development.json`（仅本地开发库，按本机账号密码修改）。
+### 方式一：Docker 一键试跑（只跑起来看看）
+
+前置：Docker 已安装且运行中，宿主 5080 空闲；**不需要** .NET SDK、Node.js 或本机 PostgreSQL。
+
+```bash
+docker compose up -d          # 仓库根执行：自动拉起 PostgreSQL + 应用（首次需拉镜像）
+```
+
+浏览器打开 <http://localhost:5080>，用 `admin` / `admin123` 登录。前置条件、验证方式、停止与排错见 [`RUNBOOK.md`](RUNBOOK.md)。
+
+### 方式二：本地开发（源码）
+
+前置：.NET 8 SDK、Node.js、PostgreSQL（本机 5432）。dev 连接串在 `backend/src/App.Api/appsettings.Development.json`（库 `app`，仅本地开发库，按本机账号密码修改）；库不存在时 dev 启动会尝试自动建库（需连接账号有建库权限），否则先手工建库 `app`。
 
 ```powershell
 # 1. 后端（端口 5080；首次启动自动执行迁移，并在用户表为空时建内置管理员 admin / admin123）
@@ -33,6 +45,7 @@ npm run dev
 
 ```
 ├── AGENTS.md            工程约定总则（分支 / 提交 / API 契约 / 测试策略）
+├── RUNBOOK.md           快速试跑指南（Docker Compose 一键启动 / 验证 / 停止 / 排错）
 ├── .codebuddy/          CONTEXT.md（项目结构摘要）+ rules/（前后端专项规则）
 ├── specs/               功能规格：每个功能一个 <序号>-<功能名>/（requirement / design / tasks）
 ├── backend/             src/App.Api、src/App.Core、src/App.Infrastructure、tests/App.Tests
@@ -53,6 +66,7 @@ npm run dev
 |---|---|
 | 工程约定（分层 / API 契约 / 错误码 / 分支与提交 / 测试策略） | `AGENTS.md` |
 | 项目结构、关键文件位置、命令与端口 | `.codebuddy/CONTEXT.md` |
+| 不用装 SDK 快速试跑（Docker Compose 启动 / 验证 / 停止 / 排错） | `RUNBOOK.md` |
 | 后端实现细则 | `.codebuddy/rules/backend/RULE.mdc` |
 | 前端实现细则 | `.codebuddy/rules/frontend/RULE.mdc` |
 | 单个功能的需求与设计 | `specs/<序号>-<功能名>/` |
