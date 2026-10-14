@@ -1,6 +1,6 @@
 ---
 created: 2026-09-09
-updated: 2026-09-22
+updated: 2026-10-14
 ---
 
 # 设计规格：frontend-e2e（前端集成测试自动化）
@@ -46,7 +46,7 @@ Playwright（`@playwright/test`，已在 `frontend` devDependencies）。
 ## 6. 运行编排与数据隔离（`npm run e2e:run`）
 
 > 目标：每轮 e2e 使用全新数据库，跑完自动清理。用例本身自带数据且唯一命名，数据累积不影响正确性，但会让后续运行明显变慢、失败现场被历史数据污染。
-> 实现：`frontend/scripts/e2e-run.ps1`（Windows PowerShell），由 `frontend/package.json` 的 `e2e:run` 调用。
+> 实现：`frontend/scripts/e2e-run.mjs` 为入口（`frontend/package.json` 的 `e2e:run` 调用），按平台转发到等价实现并透传参数与退出码：Windows → `e2e-run.ps1`（Windows PowerShell），Linux / macOS → `e2e-run.sh`（bash）。两端参数同名（`-Spec` / `-Grep` / `-KeepDatabase` / `-SkipResidualCleanup` / `-ReuseFrontend` / `-BackendTimeoutSeconds` / `-DbPrefix`）、行为对齐 §6.3。
 > **过滤运行**：`npm run e2e:run -- -Spec e2e/<功能>.spec.ts`（按文件，可重复给多个）/ `-Grep <关键字>`（按标题），两者可组合；**过滤不改变数据隔离策略**，仍用本轮独立库、跑完自动删库，脚本不支持指向开发库。
 > **禁止**为图快手工起后端 / 前端连开发库跑用例：用例数据（供应商、商品、单据、凭证、流水等）会落进开发库，清理只能重建开发库。
 
@@ -66,16 +66,23 @@ Playwright（`@playwright/test`，已在 `frontend` devDependencies）。
 
 | # | 行为 | 失败处理 |
 |---|---|---|
-| 1 | 清理遗留进程：双通道检测 5080 / 5173，命令行匹配本项目（`App.Api` / `vite`）即强停并等端口释放 | 占用者是别的程序则**不动它**，报出 PID 后以退出码 2 结束（避免误杀无关服务）；`-ReuseFrontend` 可保留已运行的前端 dev |
+| 1 | 清理遗留进程：检测 5080 / 5173（Windows：`Get-NetTCPConnection` + `netstat`；Linux：`ss` + `lsof`），命令行匹配本项目（`App.Api` / `vite`）即强停并等端口释放 | 占用者是别的程序则**不动它**，报出 PID 后以退出码 2 结束（避免误杀无关服务）；`-ReuseFrontend` 可保留已运行的前端 dev |
 | 2 | 清理历史残留库 | 删除失败的库保留在清单中，下次运行继续尝试 |
 | 3 | 以本轮库启动后端，轮询 `/health` 就绪 | 同时监视启动进程是否提前退出：端口被占时 `dotnet run` 会立刻退出，只看健康检查会命中"别人的后端"；超时或提前退出均以退出码 2 结束 |
 | 4 | 检查 5173：未监听则以脚本启动前端 dev | 脚本启动的前端在结束时一并停止；已在运行的沿用 |
 | 5 | 运行 `npx playwright test --output=test-results/e2e-run` | 原样返回退出码 |
-| 6 | `taskkill /T` 停止后端进程树并等待端口释放 → 停脚本启动的前端 → 删除本轮库（`--no-build`，避免与其它仍在运行的后端抢构建输出） | 清理放在 `finally`，异常路径同样执行；删库失败则把库名写入历史清单，避免无声残留 |
+| 6 | 停止后端进程树（Windows `taskkill /T`；Linux 整组 SIGKILL）并等待端口释放 → 停脚本启动的前端 → 删除本轮库（`--no-build`，避免与其它仍在运行的后端抢构建输出） | 清理放在 `finally` / `trap EXIT`，异常路径同样执行；删库失败则把库名写入历史清单，避免无声残留 |
 
 **退出码约定**：`0` 用例全通过、`1` 有失败用例、`2` 脚本级错误（端口被占用 / 后端未就绪 / 启动进程提前退出）。
 
 - **每轮从干净起点开始**：脚本自身负责拉起前后端，故开始时会强停本项目的遗留后端（它连的是开发库）与前端 dev（陈旧 dev server 会让用例跑在旧代码上、产生假失败）；只停命令行能识别为本项目的进程，占用同一端口的其它程序一律不碰。
 - **连接串来源**：解析 `backend/src/App.Api/appsettings.Development.json` 的 `ConnectionStrings:Default`，仅替换 `Database` 段——不在脚本内重复维护账号密码（`AGENTS.md` §7）。
 - **产物目录**：固定 `test-results/e2e-run`（已被 `.gitignore` 忽略），运行前清空，避免与手工运行互相覆盖。
-- **待办**：脚本为 Windows PowerShell 实现；若后续接入 Linux CI 需提供等价脚本（届时再评估）。
+- **Linux 差异（`e2e-run.sh`）**：Linux 下 `IDE0005` 等代码风格规则在生成文件上报错（同 `Dockerfile`），故先以 `-p:EnforceCodeStyleInBuild=false` 构建后端、再以 `dotnet run --no-build` 启动；前后端进程输出落 `test-results/e2e-run-logs/`（已被 `.gitignore` 忽略），脚本级失败时打印 `backend.log` 末尾 40 行便于排查。
+
+### 6.4 CI 运行（GitHub Actions）
+
+- 位置：`.github/workflows/ci.yml` 的 `e2e` job（`ubuntu-latest`）——CI 上跑的就是本地那条命令 `npm run e2e:run`，不另写一套 YAML 编排。
+- 数据库：**PostgreSQL 服务容器**（`postgres:16`，`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` 对齐 `appsettings.Development.json` 的 `admin` / `admin123` / `app`，端口映射 5432 + `pg_isready` 健康检查），每轮 `app_e2e_<时间戳>` 临时库仍由脚本在容器内创建与删除。
+- 步骤：checkout → `setup-node`(20，npm 缓存) → `setup-dotnet`(8.0.x) → 等待 5432 可连 → `npm ci` → `npx playwright install --with-deps chromium` → 安装 `dotnet-ef` 全局工具（跑完删临时库用）→ `npm run e2e:run` → 失败时上传 `frontend/test-results` 产物。
+- 触发：`pull_request`（含手动触发）；job 超时上限 120 分钟。镜像构建拆到 `.github/workflows/docker-image.yml`（`main` push / 手动触发，仅构建不推仓库）；分支保护仍待办（`AGENTS.md` §8.1）。
