@@ -194,24 +194,35 @@ public sealed class ReportQueryRepository : IReportQueryRepository
                 HasAnomaly = g.Any(i => i.Quantity < 0 || i.CostAmount < 0),
             });
 
-        // 基准：启用商品左连接上述聚合（无库存行按 0 计），联查分类带出分类名
-        var query = from p in _dbContext.Products.AsNoTracking()
-                    where p.Status == ProductStatus.Enabled
-                    join c in _dbContext.Categories.AsNoTracking() on p.CategoryId equals c.Id
-                    join i in inventoryByProduct on p.Id equals i.ProductId into iGroup
-                    from i in iGroup.DefaultIfEmpty()
-                    select new
-                    {
-                        p.CategoryId,
-                        CategoryName = c.Name,
-                        p.Code,
-                        p.Name,
-                        Quantity = i == null ? 0 : i.Quantity,
-                        // 成本列（erp-cost）：结存成本额，用于库存金额与均价聚合
-                        CostAmount = i == null ? 0 : i.CostAmount,
-                        BelowSafety = i != null && i.BelowSafety,
-                        HasAnomaly = i != null && i.HasAnomaly,
-                    };
+        // 基准：启用商品左连接上述聚合（无库存行按 0 计），联查分类带出分类名。
+        // 与商品列表同形状：GroupJoin 结果选择器内 Sum / Any + 空值兜底（EF 翻译为 COALESCE / EXISTS）；
+        // 不能用 SelectMany + DefaultIfEmpty + 三元（子查询 LEFT JOIN 的 null 物料化时抛
+        // "Nullable object must have a value" —— 040 起按批次商品在首次带批次入库前无任何库存行，
+        // 库存余额表只要含这类商品即整页 50000）。
+        var query = _dbContext.Products.AsNoTracking()
+            .Where(p => p.Status == ProductStatus.Enabled)
+            .Join(
+                _dbContext.Categories.AsNoTracking(),
+                p => p.CategoryId,
+                c => c.Id,
+                (p, c) => new { ProductId = p.Id, p.CategoryId, CategoryName = c.Name, p.Code, p.Name })
+            .GroupJoin(
+                inventoryByProduct,
+                x => x.ProductId,
+                i => i.ProductId,
+                (x, iGroup) => new
+                {
+                    x.CategoryId,
+                    x.CategoryName,
+                    x.Code,
+                    x.Name,
+                    Quantity = iGroup.Sum(i => (int?)i.Quantity) ?? 0,
+                    // 成本列（erp-cost）：结存成本额，用于库存金额与均价聚合
+                    CostAmount = iGroup.Sum(i => (decimal?)i.CostAmount) ?? 0m,
+                    // 低库存 / 成本异常标记取自上述按商品聚合行的对应列（无库存行 → 无行 → false）
+                    BelowSafety = iGroup.Any(i => i.BelowSafety),
+                    HasAnomaly = iGroup.Any(i => i.HasAnomaly),
+                });
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
