@@ -190,7 +190,7 @@ frontend/
 | 前端 lint | `cd frontend; npm run lint` |
 | 前端构建 | `cd frontend; npm run build` |
 | 构建生产一体化镜像 | `docker build -t onsystem-app .`（仓库根；三阶段构建，`Dockerfile` 头部注释含运行示例） |
-| CI（GitHub Actions） | `.github/workflows/ci.yml`：`e2e`（PostgreSQL 服务容器 + `npm run e2e:run`，PR 触发 / 手动，见 `specs/002-frontend-e2e/design.md` §6.4）；`.github/workflows/docker-image.yml`：一体化镜像构建并推送 Docker Hub（`390992476/onesystem`，`latest` + `sha-<短 sha>`，`main` push / 手动；需 secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`，见 `AGENTS.md` §7） |
+| CI（GitHub Actions） | `.github/workflows/ci.yml`：`e2e`（PostgreSQL 服务容器 + `npm run e2e:run`，PR 触发（仅代码改动，`*.md` / `*.mdc` 纯文档改动跳过）/ 手动，见 `specs/002-frontend-e2e/design.md` §6.4）；`.github/workflows/docker-image.yml`：一体化镜像构建并推送 Docker Hub（`390992476/onesystem`，`latest` + `sha-<短 sha>`，`main` push / 手动；需 secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`，见 `AGENTS.md` §7） |
 
 > 端口与「先起前后端再跑 e2e」的约定以本表为准，其他文件只写指针（`AGENTS.md` §2.4）。
 

@@ -85,4 +85,4 @@ Playwright（`@playwright/test`，已在 `frontend` devDependencies）。
 - 位置：`.github/workflows/ci.yml` 的 `e2e` job（`ubuntu-latest`）——CI 上跑的就是本地那条命令 `npm run e2e:run`，不另写一套 YAML 编排。
 - 数据库：**PostgreSQL 服务容器**（`postgres:16`，`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` 对齐 `appsettings.Development.json` 的 `admin` / `admin123` / `app`，端口映射 5432 + `pg_isready` 健康检查），每轮 `app_e2e_<时间戳>` 临时库仍由脚本在容器内创建与删除。
 - 步骤：checkout → `setup-node`(20，npm 缓存) → `setup-dotnet`(8.0.x) → 等待 5432 可连 → `npm ci` → `npx playwright install --with-deps chromium` → 安装 `dotnet-ef` 全局工具（跑完删临时库用）→ `npm run e2e:run` → 失败时上传 `frontend/test-results` 产物。
-- 触发：`pull_request`（含手动触发）；job 超时上限 120 分钟。镜像构建拆到 `.github/workflows/docker-image.yml`（`main` push / 手动触发，仅构建不推仓库）；分支保护仍待办（`AGENTS.md` §8.1）。
+- 触发：`pull_request`（**仅代码改动才触发**：`paths-ignore` 忽略 `**/*.md` / `**/*.mdc` 纯文档改动，如 `AGENTS.md`、`specs/`、`.codebuddy/`）与手动触发；job 超时上限 120 分钟。镜像构建拆到 `.github/workflows/docker-image.yml`（`main` push / 手动触发，构建并推送 Docker Hub）；分支保护仍待办（`AGENTS.md` §8.1）。
