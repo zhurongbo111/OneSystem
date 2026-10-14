@@ -1,17 +1,39 @@
 name: Docker Image
 
+# 生产一体化镜像：main push / 手动触发时构建并推送到 Docker Hub 公开仓库。
+# 依赖仓库 secrets（Settings → Secrets and variables → Actions）：
+#   DOCKERHUB_USERNAME   Docker Hub 用户名
+#   DOCKERHUB_TOKEN      Docker Hub 访问令牌（Personal access token，权限 Read & Write）
+# 镜像形态、构建与运行方式见 AGENTS.md §7 与仓库根 Dockerfile 头部注释。
+
 on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
+
+env:
+  IMAGE_NAME: 390992476/onesystem
 
 jobs:
 
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag onesystem:$(date +%s)
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push the Docker image
+      run: |
+        docker build . --file Dockerfile \
+          --tag "$IMAGE_NAME:latest" \
+          --tag "$IMAGE_NAME:sha-${GITHUB_SHA::7}"
+        docker push "$IMAGE_NAME:latest"
+        docker push "$IMAGE_NAME:sha-${GITHUB_SHA::7}"
