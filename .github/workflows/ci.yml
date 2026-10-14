@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+
+  e2e:
+
+    # PR 校验：前端 e2e（Playwright）直连真实后端与真实数据库。
+    # 数据库由 PostgreSQL 服务容器（Docker）提供，账号密码与库名对齐 appsettings.Development.json，
+    # 每轮 e2e 独立库（app_e2e_<时间戳>）由 npm run e2e:run 自动创建与删除。
+    # 编排约定与失败处理见 specs/002-frontend-e2e/design.md §6。
+    # 镜像构建在 .github/workflows/docker-image.yml（main push）。
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin123
+          POSTGRES_DB: app
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U admin -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 等待 PostgreSQL 接受连接
+        run: |
+          for _ in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/5432) >/dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          echo "PostgreSQL（127.0.0.1:5432）未就绪" >&2
+          exit 1
+
+      - name: 安装前端依赖
+        working-directory: frontend
+        run: npm ci
+
+      - name: 安装 Playwright 浏览器
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: 安装 dotnet-ef（e2e 脚本跑完删临时库用）
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.*
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: 运行 e2e（每轮独立库，跑完自动删库）
+        working-directory: frontend
+        run: npm run e2e:run
+
+      - name: 上传 e2e 产物（失败时排查用）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: frontend/test-results
+          retention-days: 7

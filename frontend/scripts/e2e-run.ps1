@@ -27,6 +27,12 @@
 .PARAMETER Grep
   按用例标题过滤（`playwright --grep`）。
 
+.PARAMETER DbPrefix
+  本轮库名前缀，默认 `app_e2e_`。
+
+.PARAMETER Help
+  打印本帮助（等价于 -h）。
+
 .NOTES
   约定与失败处理见 specs/002-frontend-e2e/design.md §6。
   **无论全量还是过滤，都必须经本脚本运行**（临时库 + 跑完删库）；为图快手工起服务连开发库会污染开发库。
@@ -34,7 +40,8 @@
     npm run e2e:run -- -Spec e2e/general-ledger.spec.ts
     npm run e2e:run -- -Grep 总账
     npm run e2e:run -- -Spec e2e/general-ledger.spec.ts -KeepDatabase
-  仅支持 Windows PowerShell（如需 Linux CI 需另写等价脚本）。
+  Windows 走本脚本（Windows PowerShell），Linux / macOS 走等价脚本 e2e-run.sh，
+  两端由 e2e-run.mjs 按平台分发（`npm run e2e:run` 命令与参数一致）。
 #>
 [CmdletBinding()]
 param(
@@ -44,10 +51,16 @@ param(
     [int]$BackendTimeoutSeconds = 120,
     [string]$DbPrefix = 'app_e2e_',
     [string[]]$Spec = @(),
-    [string]$Grep = ''
+    [string]$Grep = '',
+    [switch]$Help
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($Help) {
+    Get-Help -Name $PSCommandPath -Detailed
+    exit 0
+}
 
 $scriptDir     = $PSScriptRoot                             # frontend/scripts
 $frontendDir   = Split-Path -Parent $scriptDir             # frontend
