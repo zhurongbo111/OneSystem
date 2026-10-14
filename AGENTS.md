@@ -142,7 +142,7 @@
 - 可观测性：后端集成 OpenTelemetry（Tracing + Metrics），日志使用框架默认 `ILogger<T>`（控制台输出，级别按环境区分），细则见后端规则。
 - **部署形态（生产单端口）**：一体化 Docker 镜像（仓库根 `Dockerfile` / `.dockerignore`）——前端构建产物并入后端发布输出的 `wwwroot`，由 API 同端口托管（**容器内监听 80**：`ASPNETCORE_URLS=http://+:80`；宿主按需映射，示例 `-p 5080:80`，部署侧对外仍是单端口 5080），无 Nginx；生产运行环境 `ASPNETCORE_ENVIRONMENT=Production`。构建 / 运行命令与注入项见 `Dockerfile` 头部注释；管道与 SPA 回退细节见 `specs/001-project-scaffold/design.md` §2.10。
 - **镜像发布**：`.github/workflows/docker-image.yml` 在 `main` push（或手动触发）时构建并推送到 Docker Hub 公开仓库 `390992476/onesystem`（标签 `latest` + `sha-<提交短 sha>`）；流水线依赖仓库 secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`（Docker Hub 访问令牌，权限 Read & Write），敏感凭据只存 secrets、不入库（同 §7 配置原则）。
-- **一键启动（compose）**：仓库根 `docker-compose.yml` 起 PostgreSQL + 系统本体——应用**直接拉取** Docker Hub 上的 `390992476/onesystem`（不本地构建），容器内 80 映射宿主 5080；JWT 密钥与数据库口令均带**仅本地 / 开发**用的默认值，共享或生产必须用仓库根 `.env`（已 gitignore）或环境变量（`JWT__SECRET` / `POSTGRES_*`）覆盖；不配 healthcheck，应用靠 `restart: unless-stopped` 等数据库就绪后自行起来。命令与说明见 `.codebuddy/CONTEXT.md` §4 与 compose 文件头部注释。
+- **一键启动（compose）**：仓库根 `docker-compose.yml` 起 PostgreSQL + 系统本体——应用**直接拉取** Docker Hub 上的 `390992476/onesystem`（不本地构建），容器内 80 映射宿主 5080；JWT 密钥与数据库口令均带**仅本地 / 开发**用的默认值，共享或生产必须用仓库根 `.env`（已 gitignore）或环境变量（`JWT__SECRET` / `POSTGRES_*`）覆盖；postgres 带 `pg_isready` 健康检查，应用等数据库就绪后再启动。命令与说明见 `.codebuddy/CONTEXT.md` §4 与 compose 文件头部注释。
 
 ## 8. Git 分支与提交
 
