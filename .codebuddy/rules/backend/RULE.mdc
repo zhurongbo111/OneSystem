@@ -111,7 +111,8 @@ Controller → IMediator.Send(<Action>Request) → 已注册的 <Action>RequestH
 ### 5.4 查询可翻译性（强制）
 
 - 聚合查询必须**整体可翻译为 SQL**。典型不可翻译形状：在「已分组的连接子查询」之上再套外层分组聚合（如先 `GroupBy(ProductId)` 汇总各仓库存、再 `GroupBy(CategoryId)` 求和），EF Core 抛 `The LINQ expression … could not be translated` → 全局异常中间件返回 `50000`，前端表现为整页空数据（**单测用 InMemory 不会暴露**）。改法：拆成「SQL 取明细级投影 + 内存按上层维度聚合」（上层维度基数远小于明细行时可接受；参照 `ReportQueryRepository.GetStockBalanceAsync`）。
-- 判据：新增 / 修改**含聚合的仓储查询**，交付前必须有**打到真实关系型库的验证**（`e2e` 的报表 / 列表用例或等价集成测试），仅单测通过不得视为完成（`AGENTS.md` §6 同旨）。
+- **左连接汇总的投影不得走 `SelectMany + DefaultIfEmpty` + 三元**：`join … into g from x in g.DefaultIfEmpty() select new { V = x == null ? 0 : x.V }` 在真实关系型库上会因子查询 `LEFT JOIN` 的 null 物料化抛 `Nullable object must have a value`（整页 `50000`），InMemory 单测同样不暴露。改用 `GroupJoin` 结果选择器内 `Sum(i => (int?)i.X) ?? 0` / `Any(...)`，EF 翻译为 `COALESCE` / `EXISTS`（参照 `ProductRepository.GetDetailAsync` / `GetPickListAsync`）；被左连接的行无数据是常态而非异常（如「按批次商品首次入库前无库存行」），任何以商品为基准联查库存的列表都要能兜底。
+- 判据：新增 / 修改**含聚合或左连接汇总的仓储查询**，交付前必须有**打到真实关系型库的验证**（`e2e` 的报表 / 列表用例或等价集成测试），仅单测通过不得视为完成（`AGENTS.md` §6 同旨）。
 
 ## 6. 认证（JWT）
 
