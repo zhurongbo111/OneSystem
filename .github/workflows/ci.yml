@@ -3,6 +3,12 @@ name: CI
 on:
   workflow_dispatch:
   pull_request:
+    # 只有代码改动才触发：纯文档改动（AGENTS.md、README.md、specs/、.codebuddy/ 等 *.md / *.mdc）不跑 e2e。
+    # 用 paths-ignore 而非 paths 白名单：新增的、未列入的非文档路径默认仍会触发（fail-safe），
+    # 避免漏跑；新增文档类型（如 .pptx）时在此追加。
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.mdc'
 
 jobs:
 
