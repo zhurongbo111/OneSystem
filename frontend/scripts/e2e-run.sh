@@ -187,13 +187,15 @@ clear_port_occupant() {
     return 1
 }
 
-# 后台拉起命令：setsid 另起会话（可用负 pid 整组停止），进程输出落日志文件
+# 后台拉起命令：setsid 另起会话（可整组停止），进程输出落日志文件；工作目录必须显式指定
+# （后端 `dotnet run --project src/App.Api`、前端 `npm run dev` 都依赖「在哪个目录跑」）
+#   spawn_detached <日志文件> <工作目录> <命令...>
 spawn_detached() {
-    local log="$1"; shift
+    local log="$1" workdir="$2"; shift 2
     if command -v setsid >/dev/null 2>&1; then
-        setsid "$@" >"$log" 2>&1 &
+        (cd "$workdir" && exec setsid "$@") >"$log" 2>&1 &
     else
-        "$@" >"$log" 2>&1 &
+        (cd "$workdir" && exec "$@") >"$log" 2>&1 &
     fi
     spawned_pid=$!
 }
@@ -363,7 +365,7 @@ fi
 printf '%s\n' "$build_out" > "$log_dir/backend-build.log"
 
 write_step "启动后端并等待就绪（库 $database）"
-spawn_detached "$log_dir/backend.log" env \
+spawn_detached "$log_dir/backend.log" "$backend_dir" env \
     ASPNETCORE_ENVIRONMENT=Development \
     ASPNETCORE_URLS="http://localhost:$backend_port" \
     dotnet run --project "$api_project" --no-build \
@@ -384,7 +386,7 @@ log_info "    后端已就绪：http://localhost:$backend_port"
 # 4. 前端 dev：未运行则由脚本启动（结束时一并停止），已在运行则复用
 if ! port_in_use "$frontend_port"; then
     write_step "启动前端 dev（端口 $frontend_port）"
-    spawn_detached "$log_dir/frontend.log" npm run dev
+    spawn_detached "$log_dir/frontend.log" "$frontend_dir" npm run dev
     frontend_pid="$spawned_pid"
     frontend_deadline=$((SECONDS + 120))
     while [ "$SECONDS" -lt "$frontend_deadline" ] && ! port_in_use "$frontend_port"; do sleep 2; done
