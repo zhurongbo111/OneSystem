@@ -16,6 +16,9 @@
 #     onsystem-app
 #   # ASPNETCORE_ENVIRONMENT 运行时指定（不指定时框架默认为 Production）；
 #   # Development 可开 Swagger（/swagger），不推荐用于共享环境
+#
+# 一键启动（PostgreSQL + 系统本体，镜像取 Docker Hub 公开仓库，无需本地构建）：
+#   docker compose up -d          # 见仓库根 docker-compose.yml（本地开发默认值；敏感项可用 .env / 环境变量覆盖）
 
 ARG NODE_VERSION=20
 ARG DOTNET_VERSION=8.0
