@@ -190,7 +190,7 @@ frontend/
 | 前端 lint | `cd frontend; npm run lint` |
 | 前端构建 | `cd frontend; npm run build` |
 | 构建生产一体化镜像 | `docker build -t onsystem-app .`（仓库根；三阶段构建，`Dockerfile` 头部注释含运行示例） |
-| 一键启动（PostgreSQL + 系统本体） | `docker compose up -d`（仓库根；应用镜像取 Docker Hub `390992476/onesystem`，容器内 80 → 宿主 5080；JWT 密钥经根目录 `.env` 或环境变量 `JWT__SECRET`，缺失时 compose 报错；说明见 `docker-compose.yml` 头部注释） |
+| 一键启动（PostgreSQL + 系统本体） | `docker compose up -d`（仓库根；应用镜像取 Docker Hub `390992476/onesystem`，容器内 80 → 宿主 5080；JWT 密钥与数据库口令默认取本地开发值，可用根目录 `.env` 或环境变量 `JWT__SECRET` / `POSTGRES_*` 覆盖；说明见 `docker-compose.yml` 头部注释） |
 | CI（GitHub Actions） | `.github/workflows/ci.yml`：`e2e`（PostgreSQL 服务容器 + `npm run e2e:run`，PR 触发 / 手动，见 `specs/002-frontend-e2e/design.md` §6.4）；`.github/workflows/docker-image.yml`：一体化镜像构建并推送 Docker Hub（`390992476/onesystem`，`latest` + `sha-<短 sha>`，`main` push / 手动；需 secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`，见 `AGENTS.md` §7） |
 
 > 端口与「先起前后端再跑 e2e」的约定以本表为准，其他文件只写指针（`AGENTS.md` §2.4）。

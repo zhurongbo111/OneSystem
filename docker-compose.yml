@@ -1,27 +1,24 @@
-# OneSystem 一键启动：PostgreSQL + 系统本体。
+# OneSystem 一键启动（面向本地 / 开发）：PostgreSQL + 系统本体。
 #
 # 应用镜像直接取 Docker Hub 公开仓库（不本地构建）：390992476/onesystem:latest
 #   - 可用 ONESYSTEM_IMAGE 覆盖（例如固定到某次构建的不可变标签 ONESYSTEM_IMAGE=390992476/onesystem:sha-1a2b3c4）
 #   - 镜像内 API 监听 80，宿主映射到 5080（与 dev 端口一致，便于前端 / 文档对照）
 #
-# 前置：JWT 密钥必须由外部提供（不硬编码、不入库，见 AGENTS.md §7）。在仓库根建 `.env`
-# （已被 .gitignore 忽略），写入一行：
-#     JWT__SECRET=<随机 32 字节十六进制>
-#   生成方式：
-#     PowerShell : -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
-#     bash       : openssl rand -hex 32
-#   也可临时用环境变量前缀注入，不落文件。
-#
 # 使用：
 #   docker compose up -d         # 首次拉取 postgres:16 与 onesystem 镜像，随后自动迁移建库 + 种子
 #   docker compose logs -f app   # 跟启动 / 业务日志
-#   docker compose ps
 #   docker compose down          # 停止（加 -v 连数据库卷一起删除）
 #
 # 访问：http://localhost:5080 ，内置管理员 admin / admin123
 #
-# 注意：数据库账号默认取 dev 值（admin / admin123 / app），仅适合本地 / 开发使用；
-# 共享或生产环境请用环境变量覆盖 POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB（并同时改 JWT__SECRET）。
+# 说明：
+#   - 未配 healthcheck：应用可能先于数据库就绪启动而失败，由 restart: unless-stopped 自动重试，
+#     数据库就绪后即启动成功（首次 up 看到一两次重启属正常）。
+#   - 敏感项默认值（JWT 密钥 / 数据库口令）只面向本地 / 开发；共享或生产环境必须覆盖：
+#     JWT__SECRET、POSTGRES_USER、POSTGRES_PASSWORD、POSTGRES_DB 可用环境变量覆盖，也可写在
+#     仓库根 `.env`（已 gitignore，不入库），例如：
+#       JWT__SECRET=<随机 64 位十六进制>     # bash: openssl rand -hex 32
+#       POSTGRES_PASSWORD=<更强口令>
 
 services:
 
@@ -37,23 +34,17 @@ services:
       - onsystem-pgdata:/var/lib/postgresql/data
     # 默认不对外暴露数据库端口（应用经 compose 网络直连，避免与本机 5432 的开发库冲突）；
     # 需要用 psql / 图形工具直连时再加： ports: ["5433:5432"]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-app}"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
 
   app:
     image: ${ONESYSTEM_IMAGE:-390992476/onesystem:latest}
     container_name: onsystem-app
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-app};Username=${POSTGRES_USER:-admin};Password=${POSTGRES_PASSWORD:-admin123}"
-      JWT__SECRET: ${JWT__SECRET:?请先设置 JWT__SECRET（见本文件头部说明）}
+      JWT__SECRET: ${JWT__SECRET:-local-dev-only-onesystem-jwt-secret-change-me}
     ports:
       - "5080:80"
     # 可选：日志卷（当前日志只输出到控制台，需要落盘时再打开）
