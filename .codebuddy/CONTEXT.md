@@ -190,6 +190,7 @@ frontend/
 | 前端 lint | `cd frontend; npm run lint` |
 | 前端构建 | `cd frontend; npm run build` |
 | 构建生产一体化镜像 | `docker build -t onsystem-app .`（仓库根；三阶段构建，`Dockerfile` 头部注释含运行示例） |
+| 一键启动（PostgreSQL + 系统本体） | `docker compose up -d`（仓库根；应用镜像取 Docker Hub `390992476/onesystem`，容器内 80 → 宿主 5080；JWT 密钥经根目录 `.env` 或环境变量 `JWT__SECRET`，缺失时 compose 报错；说明见 `docker-compose.yml` 头部注释） |
 | CI（GitHub Actions） | `.github/workflows/ci.yml`：`e2e`（PostgreSQL 服务容器 + `npm run e2e:run`，PR 触发 / 手动，见 `specs/002-frontend-e2e/design.md` §6.4）；`.github/workflows/docker-image.yml`：一体化镜像构建并推送 Docker Hub（`390992476/onesystem`，`latest` + `sha-<短 sha>`，`main` push / 手动；需 secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`，见 `AGENTS.md` §7） |
 
 > 端口与「先起前后端再跑 e2e」的约定以本表为准，其他文件只写指针（`AGENTS.md` §2.4）。
@@ -201,7 +202,7 @@ frontend/
 | 数据库 | PostgreSQL，localhost:5432，库 `app`；dev 连接串明文存于 `appsettings.Development.json`（仅本地开发库，例外见 `AGENTS.md` §7） |
 | e2e 数据库 | 每轮 `app_e2e_<时间戳>`：由 `npm run e2e:run` 自动创建与删除，连接串由脚本从开发连接串替换 `Database` 段得到（见 `specs/002-frontend-e2e/design.md` §6）；CI 上数据库宿主为 PostgreSQL 服务容器（§6.4） |
 | 前端 dev API | `VITE_API_BASE_URL=/api`，Vite proxy 转发 `/api` → `http://localhost:5080` |
-| 生产部署 | 已发布公开镜像 `390992476/onesystem:latest`（Docker Hub，`docker pull` 可直接取）；一体化 Docker 镜像容器内单端口 80（`ASPNETCORE_ENVIRONMENT=Production`，`ASPNETCORE_URLS=http://+:80`；宿主映射示例 `-p 5080:80`）：前端 `dist` 并入后端发布输出 `wwwroot`，API 同端口托管（`UseStaticFiles` + `MapFallbackToFile("index.html")` SPA 回退），无 Nginx；启动时自动执行 EF 迁移与种子；持久化日志可选卷 `-v onsystem-logs:/app/logs`。形态见 `AGENTS.md` §7、构建 / 运行见仓库根 `Dockerfile` 头部注释、管道细节见 `specs/001-project-scaffold/design.md` §2.10 |
+| 生产部署 | 已发布公开镜像 `390992476/onesystem:latest`（Docker Hub，`docker pull` 可直接取）；一体化 Docker 镜像容器内单端口 80（`ASPNETCORE_ENVIRONMENT=Production`，`ASPNETCORE_URLS=http://+:80`；宿主映射示例 `-p 5080:80`）：前端 `dist` 并入后端发布输出 `wwwroot`，API 同端口托管（`UseStaticFiles` + `MapFallbackToFile("index.html")` SPA 回退），无 Nginx；启动时自动执行 EF 迁移与种子；持久化日志可选卷 `-v onsystem-logs:/app/logs`；一键启动（PostgreSQL + 应用，镜像直接拉 Docker Hub）见仓库根 `docker-compose.yml`。形态见 `AGENTS.md` §7、构建 / 运行见仓库根 `Dockerfile` 头部注释、管道细节见 `specs/001-project-scaffold/design.md` §2.10 |
 | 敏感配置 | prod 只从环境变量读取：数据库连接串 `ConnectionStrings__Default`、JWT 密钥 `JWT__SECRET`、OTel 端点；dev 允许连接串与 JWT 密钥明文存 `appsettings.Development.json`（仅本地开发库凭据）；代码内一律禁止硬编码 |
 
 ## 6. 现有功能规格（specs/）
