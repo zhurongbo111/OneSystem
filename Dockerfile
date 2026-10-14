@@ -8,7 +8,8 @@
 #   docker build -t onsystem-app .
 #
 # 运行（PostgreSQL 须先可达；容器启动时自动执行 EF 迁移与种子数据）：
-#   docker run -d --name onsystem-app -p 5080:5080 \
+#   容器内监听 80（见下方 ASPNETCORE_URLS / EXPOSE），宿主侧映射到 5080 与 dev 端口对齐：
+#   docker run -d --name onsystem-app -p 5080:80 \
 #     -e ASPNETCORE_ENVIRONMENT=Production \
 #     -e ConnectionStrings__Default="Host=<db-host>;Port=5432;Database=app;Username=<user>;Password=<pwd>" \
 #     -e JWT__SECRET="<jwt-secret>" \
@@ -41,7 +42,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime
 WORKDIR /app
 COPY --from=backend-build /src/publish ./
 # 环境由运行时 -e ASPNETCORE_ENVIRONMENT 指定（缺省即 Production；Development 开 Swagger）
-# 与 dev 端口保持一致，容器内监听所有网卡
+# 容器内监听 80（宿主按需映射，示例 -p 5080:80），监听所有网卡
 ENV ASPNETCORE_URLS=http://+:80
 EXPOSE 80
 ENTRYPOINT ["dotnet", "App.Api.dll"]

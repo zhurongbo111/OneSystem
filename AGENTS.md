@@ -140,7 +140,7 @@
 - 配置原则：非敏感配置放配置文件并按环境区分；敏感配置（数据库连接串、JWT 密钥等）只从环境变量读取，禁止硬编码、禁止入库。
   - **dev 例外**：本地开发库的连接串允许明文写入 `appsettings.Development.json`（**仅限本地 / 开发库**，不得为生产或共享环境凭据）；prod 及任何共享环境一律只从环境变量读取。
 - 可观测性：后端集成 OpenTelemetry（Tracing + Metrics），日志使用框架默认 `ILogger<T>`（控制台输出，级别按环境区分），细则见后端规则。
-- **部署形态（生产单端口）**：一体化 Docker 镜像（仓库根 `Dockerfile` / `.dockerignore`）——前端构建产物并入后端发布输出的 `wwwroot`，由 API 同端口（5080）托管，无 Nginx；生产运行环境 `ASPNETCORE_ENVIRONMENT=Production`。构建 / 运行命令与注入项见 `Dockerfile` 头部注释；管道与 SPA 回退细节见 `specs/001-project-scaffold/design.md` §2.10。
+- **部署形态（生产单端口）**：一体化 Docker 镜像（仓库根 `Dockerfile` / `.dockerignore`）——前端构建产物并入后端发布输出的 `wwwroot`，由 API 同端口托管（**容器内监听 80**：`ASPNETCORE_URLS=http://+:80`；宿主按需映射，示例 `-p 5080:80`，部署侧对外仍是单端口 5080），无 Nginx；生产运行环境 `ASPNETCORE_ENVIRONMENT=Production`。构建 / 运行命令与注入项见 `Dockerfile` 头部注释；管道与 SPA 回退细节见 `specs/001-project-scaffold/design.md` §2.10。
 - **镜像发布**：`.github/workflows/docker-image.yml` 在 `main` push（或手动触发）时构建并推送到 Docker Hub 公开仓库 `390992476/onesystem`（标签 `latest` + `sha-<提交短 sha>`）；流水线依赖仓库 secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`（Docker Hub 访问令牌，权限 Read & Write），敏感凭据只存 secrets、不入库（同 §7 配置原则）。
 
 ## 8. Git 分支与提交
