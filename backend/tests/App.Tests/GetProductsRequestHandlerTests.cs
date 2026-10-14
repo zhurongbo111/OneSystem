@@ -109,4 +109,29 @@ public class GetProductsRequestHandlerTests
         Assert.False(ok.IsBelowSafetyStock);
         Assert.False(zero.IsBelowSafetyStock); // 阈值 0 不提醒
     }
+
+    [Fact]
+    public async Task 商品无库存行_仍返回且库存按零计()
+    {
+        // 040：按批次商品创建后在首次带批次入库前**无**库存行（不再预建 null 批次 0 行）。
+        // 列表左连接必须容纳「无库存行」的商品并兜底 0。注意该缺陷在 InMemory 下不暴露
+        // （真实库上会抛 "Nullable object must have a value" → 整页 50000），故另有 e2e 兜底。
+        var (context, handler) = CreateHandler();
+        var category = new Category { Id = Guid.NewGuid(), Name = "原材料", CreatedAt = DateTimeOffset.UtcNow };
+        context.Categories.Add(category);
+        var now = DateTimeOffset.UtcNow;
+        var batch = new Product { Id = Guid.NewGuid(), Code = "batch-nostock", Name = "未入库批次商品", CategoryId = category.Id, Unit = "个", IsBatchManaged = true, Status = ProductStatus.Enabled, CreatedAt = now, UpdatedAt = now };
+        var plain = new Product { Id = Guid.NewGuid(), Code = "plain-stock", Name = "有库存商品", CategoryId = category.Id, Unit = "个", Status = ProductStatus.Enabled, CreatedAt = now.AddSeconds(1), UpdatedAt = now };
+        context.Products.Add(batch);
+        context.Products.Add(plain);
+        // 仅 plain 有库存行，batch 无任何库存行
+        context.Inventory.Add(new Inventory { Id = Guid.NewGuid(), ProductId = plain.Id, Quantity = 6, UpdatedAt = now });
+        await context.SaveChangesAsync();
+
+        var result = await handler.HandleAsync(new GetProductsRequest { Page = 1, PageSize = 20 });
+
+        Assert.Equal(2, result.Total);
+        Assert.Equal(0, result.Items.Single(i => i.Code == "batch-nostock").StockQuantity);
+        Assert.Equal(6, result.Items.Single(i => i.Code == "plain-stock").StockQuantity);
+    }
 }

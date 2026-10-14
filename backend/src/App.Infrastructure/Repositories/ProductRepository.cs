@@ -56,16 +56,26 @@ public sealed class ProductRepository : IProductRepository
             .GroupBy(i => i.ProductId)
             .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) });
 
-        var query = from p in _dbContext.Products.AsNoTracking()
-                    join c in _dbContext.Categories.AsNoTracking() on p.CategoryId equals c.Id
-                    join i in inventoryByProduct on p.Id equals i.ProductId into iGroup
-                    from i in iGroup.DefaultIfEmpty()
-                    select new
-                    {
-                        Product = p,
-                        CategoryName = c.Name,
-                        StockQuantity = i == null ? 0 : i.Quantity,
-                    };
+        // 左连接：无库存行时按 0 计。用 GroupJoin 结果选择器内 Sum + 空值兜底（与 GetDetailAsync /
+        // GetPickListAsync 同模式），EF 翻译为 COALESCE 子查询；不能用 SelectMany + DefaultIfEmpty + 三元
+        // （子查询 LEFT JOIN 的 null 物料化时抛 "Nullable object must have a value" —— 040 起按批次商品
+        // 在首次带批次入库前无任何库存行，列表页只要返回这类商品即整页 50000）。
+        var query = _dbContext.Products.AsNoTracking()
+            .Join(
+                _dbContext.Categories.AsNoTracking(),
+                p => p.CategoryId,
+                c => c.Id,
+                (p, c) => new { Product = p, CategoryName = c.Name })
+            .GroupJoin(
+                inventoryByProduct,
+                x => x.Product.Id,
+                i => i.ProductId,
+                (x, iGroup) => new
+                {
+                    x.Product,
+                    x.CategoryName,
+                    StockQuantity = iGroup.Sum(i => (int?)i.Quantity) ?? 0,
+                });
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
