@@ -155,7 +155,7 @@
 | `hotfix/<简短描述>` | 生产紧急修复 | 从 `main` 切出，修复合回后立即删除 |
 
 - 同一时间只在一个分支上开发；禁止直接在 `main` 上开发、禁止 force push、禁止改写已推送历史；合并用普通 merge 或 squash merge。
-- **待办**：分支保护尚未建立，`main` 的「受保护」当前**靠约定执行**；流水线已拆为两条——`.github/workflows/ci.yml`（PR 触发：e2e，起 PostgreSQL 容器后跑 `npm run e2e:run`，见 `specs/002-frontend-e2e/design.md` §6.4）与 `.github/workflows/docker-image.yml`（`main` push 触发：一体化镜像构建并推送 Docker Hub `390992476/onesystem`）；分支保护待补。
+- **待办**：分支保护尚未建立，`main` 的「受保护」当前**靠约定执行**；流水线已拆为两条——`.github/workflows/ci.yml`（PR 触发、且仅代码改动触发——纯文档改动跳过：e2e，起 PostgreSQL 容器后跑 `npm run e2e:run`，见 `specs/002-frontend-e2e/design.md` §6.4）与 `.github/workflows/docker-image.yml`（`main` push 触发：一体化镜像构建并推送 Docker Hub `390992476/onesystem`）；分支保护待补。
 
 ### 8.2 提交规范
 
